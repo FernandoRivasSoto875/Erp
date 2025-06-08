@@ -1,0 +1,24 @@
+[
+    {
+        "titulo": "Inicio",
+        "enlace": "https://www.saludenterreno.cl/sitio/Index.Php"
+    },
+    {
+        "titulo": "Q' Somos",
+        "enlace": "quienes_somos.php"
+    },
+    {
+        "titulo": "Servicios",
+        "enlace": "servicios.php"
+    },
+    {
+        "titulo": "Clientes",
+        "enlace": "PrincipalesClientes.Php"
+    },
+     
+    {
+        "titulo": "Contacto",
+        "enlace": "contacto.php"
+    }
+]
+

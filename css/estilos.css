@@ -1,0 +1,195 @@
+:root {
+    --primary-bg-color: #4169E1;
+    --secondary-bg-color: #556B2F;
+    --highlight-color: #008080;
+    --transparent-overlay: rgba(255, 255, 255, 0.7);
+    --shadow-effect: rgba(0, 0, 0, 0.2);
+    --text-primary: #ffffff;
+    --text-secondary: #333333;
+    --main-flex-direction: column;
+    --main-align-items: center;
+    --main-justify-content: flex-start;
+    --main-text-align: center;
+    --main-padding: 20px;
+    --form-margin: 0 auto;
+    --form-display: block;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    height: 100%;
+    box-sizing: border-box;
+    background-color: var(--primary-bg-color);
+    background-image: url("../imagenes/fondositio1.png");
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    color: var(--text-secondary);
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    background-image: url('../imagenes/headerimagen.png');
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    height: 120px;
+    color: var(--text-primary);
+}
+
+.header-container {
+    display: flex;
+    align-items: center;
+}
+
+.header-logo {
+    height: 90px;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.header-title {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--text-primary);
+}
+
+.header-extra-text {
+    text-align: right;
+    font-size: 1rem;
+    color: var(--text-primary);
+}
+
+main {
+    /* Centrar el contenido del main */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center; /* Centrar el texto dentro del main */
+    margin: 0 auto; /* Centrar horizontalmente */
+    padding: var(--main-padding); /* Espaciado interno */
+    max-width: 800px; /* Limitar el ancho máximo */
+}
+
+form {
+    /* Estilos básicos para el formulario */
+    margin: var(--form-margin); /* Mantener centrado horizontalmente */
+    display: var(--form-display); /* Mantener formato de bloque */
+}
+
+nav.menu {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: var(--primary-bg-color);
+    padding: 10px;
+}
+
+nav.menu ul {
+    list-style: none;
+    display: flex;
+    margin: 0;
+    padding: 0;
+}
+
+nav.menu li {
+    margin: 0 10px;
+    position: relative; /* Necesario para posicionar los submenús */
+}
+
+nav.menu a {
+    text-decoration: none;
+    color: var(--text-primary);
+    padding: 5px 10px;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+nav.menu a:hover {
+    background-color: var(--highlight-color);
+    border-radius: 5px;
+}
+
+/* Submenús */
+nav.menu .submenu {
+    display: none; /* Ocultar submenús por defecto */
+    position: absolute;
+    top: 100%; /* Mostrar debajo del ítem padre */
+    left: 0;
+    background-color: var(--primary-bg-color);
+    box-shadow: 0px 4px 6px var(--shadow-effect);
+    padding: 10px;
+    z-index: 1000;
+}
+
+nav.menu .submenu li {
+    margin: 0;
+}
+
+nav.menu .submenu a {
+    font-size: 14px;
+    display: block;
+    padding: 5px 15px;
+}
+
+/* Mostrar submenús al pasar por el ítem padre */
+nav.menu li:hover > .submenu {
+    display: block; /* Submenú visible al pasar el cursor */
+}
+
+/* Responsive para dispositivos móviles */
+@media (max-width: 768px) {
+    nav.menu {
+        flex-direction: column;
+    }
+
+    nav.menu ul {
+        flex-direction: column;
+    }
+
+    nav.menu .submenu {
+        position: static; /* Cambiar posición en dispositivos móviles */
+        box-shadow: none;
+    }
+
+    nav.menu li:hover > .submenu {
+        display: none; /* Deshabilitar hover en móviles */
+    }
+}
+
+section {
+    background: var(--transparent-overlay);
+    text-align: left;
+    max-width: 800px;
+    margin: auto;
+    padding: var(--main-padding);
+    box-shadow: 0px 4px 6px var(--shadow-effect);
+    border-radius: 10px;
+}
+
+section h3 {
+    color: var(--secondary-bg-color);
+}
+
+section p {
+    color: var(--text-secondary);
+}
+
+.footer {
+    background-color: var(--secondary-bg-color);
+    color: var(--text-primary);
+    text-align: var(--main-text-align);
+    padding: var(--main-padding);
+    font-size: 0.9rem;
+}
+
+.menu-toggle {
+    display: none;
+}
+

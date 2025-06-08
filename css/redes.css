@@ -1,0 +1,58 @@
+ /* Contenedor general para los íconos de redes sociales */
+.redes-container {
+    position: fixed; /* Fijar posición flotante */
+    bottom: 20px; /* Ubicación desde el borde inferior */
+    right: 20px; /* Ubicación desde el borde derecho */
+    z-index: 100; /* Asegurar visibilidad sobre otros elementos */
+}
+
+/* Botón de WhatsApp */
+.whatsapp-button img {
+    width: 60px; /* Tamaño estándar para pantallas grandes */
+    height: 60px;
+    border-radius: 50%; /* Forma circular */
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.2); /* Sombra ligera */
+    animation: girar 2s infinite linear; /* Animación de rotación */
+    transition: transform 0.3s ease, box-shadow 0.3s ease; /* Animación para hover */
+}
+
+.whatsapp-button:hover img {
+    transform: scale(1.1); /* Agrandar ligeramente en hover */
+    box-shadow: 0px 6px 10px rgba(0, 0, 0, 0.3); /* Intensificar sombra */
+}
+
+/* Animación de rotación */
+@keyframes girar {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Ajustes para tabletas */
+@media (max-width: 768px) {
+    .redes-container {
+        bottom: 15px; /* Ajustar la posición en tabletas */
+        right: 15px;
+    }
+
+    .whatsapp-button img {
+        width: 50px; /* Reducir tamaño para tabletas */
+        height: 50px;
+    }
+}
+
+/* Ajustes para celulares */
+@media (max-width: 480px) {
+    .redes-container {
+        bottom: 10px; /* Ajustar la posición en celulares */
+        right: 10px;
+    }
+
+    .whatsapp-button img {
+        width: 40px; /* Tamaño más pequeño para celulares */
+        height: 40px;
+    }
+}

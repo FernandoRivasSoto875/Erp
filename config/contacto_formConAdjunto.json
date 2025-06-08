@@ -1,0 +1,76 @@
+{
+    "parametros": {
+                "parametros": {
+                "titulo": "Formulario de Contacto",
+                "comentario": "Por favor, completa este formulario para contactarnos.",
+                "pie": "Gracias por confiar en nosotros.",
+                "cantidadMaximaAdjuntos": 3,
+                "destinatario": "destinatario@correo.com",
+                "remitente": "gestion@tu-sitio.com",
+                "subject": "Nuevo mensaje desde el formulario de contacto"
+                },
+    "campos": [
+        {
+            "nombre": "nombre",
+            "etiqueta": "Nombre",
+            "tipo": "text",
+            "validacion": "letras",
+            "requerido": true
+        },
+        {
+            "nombre": "email",
+            "etiqueta": "Correo Electrónico",
+            "tipo": "email",
+            "validacion": "email",
+            "requerido": true
+        },
+        {
+            "nombre": "telefono",
+            "etiqueta": "Teléfono",
+            "tipo": "tel",
+            "validacion": "telefono",
+            "requerido": true
+        },
+       {
+            "nombre": "profesioncargouoficio",
+            "etiqueta": "Profesión Cargo u Oficio",
+            "tipo": "text",
+            "validacion": "letras",
+            "requerido": true
+        },
+        {
+            "nombre": "mensaje",
+            "etiqueta": "Mensaje",
+            "tipo": "textarea",
+            "validacion": "texto",
+            "requerido": true,
+            "filas": 3
+        },
+        {
+            "nombre": "archivos",
+            "etiqueta": "Archivos Adjuntos",
+            "tipo": "file",
+            "validacion": "archivo",
+            "requerido": false,
+            "multiple": false,
+            "descripcion": [
+                {
+                    "etiqueta": "Archivo de Identificación",
+                    "nombreDescripcion": "descripcion_archivo_1",
+                    "requerido": true
+                },
+                {
+                    "etiqueta": "Archivo de Evidencia",
+                    "nombreDescripcion": "descripcion_archivo_2",
+                    "requerido": true
+                },
+                {
+                    "etiqueta": "Archivo Adicional",
+                    "nombreDescripcion": "descripcion_archivo_3",
+                    "requerido": false
+                }
+            ]
+        }
+    ]
+}
+

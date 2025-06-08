@@ -1,0 +1,43 @@
+[
+    {
+        "titulo": "Inicio",
+        "enlace": "https://www.saludenterreno.cl/sitio/Index.Php"
+    },
+
+
+
+
+
+    {
+        "titulo": "Empresas",
+        "enlace": "servicios.php"
+    },
+    {
+        "titulo": "Personas",
+        "enlace": "quienes_somos.php"
+    },
+    {
+        "titulo": "Captaciones",
+        "enlace": "contactos.php"
+    },
+    {
+        "titulo": "Operativos",
+        "enlace": "intranet.php"
+    },
+    {
+        "titulo": "Ventas",
+        "enlace": "postventa.php"
+    },
+    {
+        "titulo": "Compras",
+        "enlace": "garantias.php"
+    },
+    {
+        "titulo": "Exámenes",
+        "enlace": "examenes.php"
+    },
+    {
+        "titulo": "Descargables",
+        "enlace": "descargables.php"
+    } 
+]

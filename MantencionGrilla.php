@@ -8,7 +8,6 @@ $conn = conexionBd();
 if ($conn->connect_error) {
   die("Error de conexión: " . $conn->connect_error);
 }
-
 // Obtener el parámetro "table_name" desde la URL.
 $table_name = $_GET['Parametros'] ?? null;
 if (!$table_name) {

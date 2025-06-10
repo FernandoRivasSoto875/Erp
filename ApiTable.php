@@ -19,6 +19,7 @@ if (!$conn || $conn->connect_error) {
     exit;
 }
 
+
 // Obtener la tabla desde GET y limpiar entrada
 $table_name = $conn->real_escape_string($_GET['table_name'] ?? '');
 
@@ -75,7 +76,7 @@ if (empty($data)) {
     exit;
 }
 
-// Enviar datos en formato JSON
+// Enviar datos en formato JSON  // Actualizar   
 $response = [
     "columns" => $columns,
     "data" => $data

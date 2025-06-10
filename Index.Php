@@ -1,3 +1,4 @@
+// revisa el codigo anterior con copilot
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -24,4 +25,5 @@
     <?php include 'footer.php'; ?>
 </body>
 </html>
+
  

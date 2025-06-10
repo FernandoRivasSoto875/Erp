@@ -9,3 +9,4 @@ $_SESSION['user_photo'] = 'https://example.com/google-photo.jpg';
 
 // Redirige de nuevo al header después de iniciar sesión
 header('Location: header.php');
+

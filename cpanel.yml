@@ -1,7 +1,6 @@
----
 deployment:
   tasks:
     - echo "Iniciando despliegue..."
-    - /bin/cp -r * ~/public_html/Erp
+    - export DEPLOYPATH=/home3/csa63006/public_html/Erp
+    - /bin/cp -r * $DEPLOYPATH
     - echo "Despliegue completado."
-

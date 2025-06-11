@@ -30,7 +30,7 @@
         }
         ?>
     </main>
-
+cosa
     <?php include 'footer.php'; ?>
 </body>
 </html>

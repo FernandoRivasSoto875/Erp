@@ -21,7 +21,9 @@
     </main>
 
     <?php include 'footer.php'; ?>
+    
 </body>
 </html>
 
  
+git check-ignore .cpanel.yml

@@ -1,0 +1,14 @@
+<[
+    {
+        "titulo": "Presentación Comercial",
+        "archivo": "documentos/setPresentacionComercial.pdf"
+    },
+    {
+        "titulo": "Afiche Promocional Genérico",
+        "archivo": "documentos/SetAficheGenerico.pdf"
+    },
+    {
+        "titulo": "Afiche Promocional 40% Descuento",
+        "archivo": "documentos/SetAficheContado40Descuento.pdf"
+    }
+]

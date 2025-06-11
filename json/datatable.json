@@ -1,0 +1,18 @@
+ 
+{
+    "NombreDatable": "MantenedorDeConfiguracion.php",
+    "DataTablesConfig": {
+        "language": {
+            "url": "https://cdn.datatables.net/plug-ins/1.13.4/i18n/es-MX.json"
+        },
+        "pageLength": 10,
+        "lengthChange": false,
+        "searching": true,
+        "ordering": true,
+        "paging": true,
+        "info": true,
+        "autoWidth": true,
+        "responsive": true,
+        "stateSave": false
+    }
+}

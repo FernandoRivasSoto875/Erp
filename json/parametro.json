@@ -1,0 +1,109 @@
+{
+    "ParaContactos": "contacto@saludenterreno.cl",
+    "IntranetUrl": "https://www.saludenterreno.cl/sitio/intranet.php",
+    "Telefono": "+56 9 7135 0966",
+    "Direccion": "Santiago, Chile.",
+    "NumeroWhatsApp": "+56 9 7135 0966",
+    "MensajeWhatsApp": "Me estoy conectando de la página web de SaludEnTerreno.Cl, necesito hacer la siguiente consulta (haz tu consulta):",
+    "NombreSitio": "SaludEnTerreno.Cl - contacto@saludenterreno.cl - +56 9 7135 0966",
+    "MensajeFooter": "Comprometidos con tu salud visual, dondequiera que estés.",
+    "TituloHeader": "Servicio de Salud Preventiva Empresarial Spa.",
+    "TextoHeader": "Cuidamos tu visión, estés donde estés. Tu satisfacción, nuestra prioridad.",
+    "ColorTituloHeader": "#003399",
+    "ColorTextoHeader": "#003399",
+    "ColoresDiseñoPorDefecto":0,
+    "ColoresDiseño": [
+
+        {
+            "nombre": "5) Azul Rey y Verde Petróleo Opaco",
+            "primary-bg-color": "#4169E1",
+            "secondary-bg-color": "#556B2F",
+            "highlight-color": "#008080",
+            "transparent-overlay": "rgba(255, 255, 255, 0.7)",
+            "shadow-effect": "rgba(0, 0, 0, 0.2)",
+            "text-primary": "#ffffff",
+            "text-secondary": "#333333",
+            "main-flex-direction": "column", 
+            "main-align-items": "center", 
+            "main-justify-content": "flex-start",  
+            "main-text-align": "center", 
+            "main-padding": "20px", 
+            "form-margin": "0 auto", 
+            "form-display": "block" 
+
+        },
+
+
+
+        {
+            "nombre": "1) Rojo Fuego y Burdeos",
+            "primary-bg-color": "#B22222",
+            "secondary-bg-color": "#8B0000",
+            "highlight-color": "#FF6347",
+            "transparent-overlay": "rgba(255, 255, 255, 0.7)",
+            "shadow-effect": "rgba(0, 0, 0, 0.2)",
+            "text-primary": "#ffffff",
+            "text-secondary": "#333333",
+            "main-flex-direction": "column", 
+            "main-align-items": "center", 
+            "main-justify-content": "flex-start",  
+            "main-text-align": "center", 
+            "main-padding": "20px", 
+            "form-margin": "0 auto", 
+            "form-display": "block" 
+ 
+        },
+        {
+            "nombre": "2) Rubí y Burdeos Clásico",
+            "primary-bg-color": "#C71585",
+            "secondary-bg-color": "#800000",
+            "highlight-color": "#DB7093",
+            "transparent-overlay": "rgba(255, 255, 255, 0.7)",
+            "shadow-effect": "rgba(0, 0, 0, 0.2)",
+            "text-primary": "#ffffff",
+            "text-secondary": "#333333",
+            "main-flex-direction": "column", 
+            "main-align-items": "center", 
+            "main-justify-content": "flex-start",  
+            "main-text-align": "center", 
+            "main-padding": "20px", 
+            "form-margin": "0 auto", 
+            "form-display": "block" 
+        },
+        {
+            "nombre": "3) Azul Profundo y Verde Petróleo",
+            "primary-bg-color": "#003366",
+            "secondary-bg-color": "#004c4c",
+            "highlight-color": "#008080",
+            "transparent-overlay": "rgba(255, 255, 255, 0.7)",
+            "shadow-effect": "rgba(0, 0, 0, 0.2)",
+            "text-primary": "#ffffff",
+            "text-secondary": "#333333",
+            "main-flex-direction": "column", 
+            "main-align-items": "center", 
+            "main-justify-content": "flex-start",  
+            "main-text-align": "center", 
+            "main-padding": "20px", 
+            "form-margin": "0 auto", 
+            "form-display": "block" 
+        },
+        {
+            "nombre": "4)Azul Cielo y Verde Petróleo Oscuro",
+            "primary-bg-color": "#87CEEB",
+            "secondary-bg-color": "#013220",
+            "highlight-color": "#005757",
+            "transparent-overlay": "rgba(255, 255, 255, 0.7)",
+            "shadow-effect": "rgba(0, 0, 0, 0.2)",
+            "text-primary": "#ffffff",
+            "text-secondary": "#333333",
+            "main-flex-direction": "column", 
+            "main-align-items": "center", 
+            "main-justify-content": "flex-start",  
+            "main-text-align": "center", 
+            "main-padding": "20px", 
+            "form-margin": "0 auto", 
+            "form-display": "block" 
+        }
+        
+    ]
+}

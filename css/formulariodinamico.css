@@ -1,0 +1,142 @@
+/* ====== VARIABLES GLOBALES ====== */
+:root {
+  --primary-color: #007BFF;
+  --primary-hover: #0056b3;
+  --secondary-color: #333;
+  --light-bg: #f5f5f5;
+  --white: #fff;
+  --gray-border: #ccc;
+  --input-border: #aaa;
+  --font-family: Arial, sans-serif;
+  --base-font-size: 14px;
+  --small-spacing: 0.5rem;
+  --medium-spacing: 0.625rem;
+  --large-spacing: 1.25rem;
+  --border-radius: 0.3125rem;
+}
+
+/* ====== ESTILOS GENERALES ====== */
+body {
+  font-family: var(--font-family);
+  margin: var(--large-spacing);
+  background: var(--light-bg);
+  color: var(--secondary-color);
+}
+
+/* Encabezado */
+.form-header {
+  text-align: left;
+}
+
+.form-header img {
+  width: 100px;
+  height: auto;
+  margin-top: var(--medium-spacing);
+}
+
+/* Fieldset para agrupar campos */
+fieldset {
+  border: 1px solid var(--gray-border);
+  padding: var(--medium-spacing);
+  margin-bottom: var(--large-spacing);
+  background: var(--white);
+  border-radius: var(--border-radius);
+}
+
+/* Contenedor de cada campo */
+.campo-container {
+  border: 1px solid #ddd;
+  padding: var(--small-spacing);
+  background: var(--white);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--medium-spacing);
+}
+
+label {
+  display: block;
+  margin-bottom: var(--small-spacing);
+  font-weight: bold;
+}
+
+/* Estilos para inputs, textarea, select, datalist */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="week"],
+input[type="time"],
+input[type="url"],
+input[type="search"],
+input[type="tel"],
+input[type="color"],
+input[type="range"],
+input[type="file"],
+textarea,
+select {
+  width: 100%;
+  padding: var(--small-spacing);
+  border: 1px solid var(--input-border);
+  border-radius: 0.1875rem;
+  box-sizing: border-box;
+  font-size: var(--base-font-size);
+}
+
+/* Botones */
+button {
+  padding: 0.625rem 1.25rem;
+  background: var(--primary-color);
+  color: var(--white);
+  border: none;
+  cursor: pointer;
+  border-radius: 0.1875rem;
+  font-size: var(--base-font-size);
+  transition: background 0.3s ease;
+}
+
+button:hover {
+  background: var(--primary-hover);
+}
+
+.submit-container {
+  margin-top: var(--large-spacing);
+}
+
+/* Modal CRUD */
+#crud-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--white);
+  border: 1px solid var(--gray-border);
+  padding: var(--large-spacing);
+  z-index: 1000;
+  width: 300px;
+  box-shadow: 0 0.125rem 0.3125rem rgba(0, 0, 0, 0.3);
+}
+
+#crud-modal h3 {
+  margin-top: 0;
+}
+
+#crud-modal ul {
+  list-style: none;
+  padding: 0;
+  margin: var(--medium-spacing) 0;
+}
+
+/* Responsividad */
+@media screen and (max-width: 768px) {
+  fieldset {
+    padding: var(--medium-spacing);
+  }
+}
+
+@media screen and (max-width: 480px) {
+  fieldset {
+    padding: var(--small-spacing);
+  }
+}

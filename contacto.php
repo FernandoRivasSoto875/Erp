@@ -10,7 +10,6 @@
     <?php include 'header.php'; ?>
     <?php include 'menu.php'; ?>
     <?php include 'redes.php'; ?>
-
     <main>
           <?php
         // Ruta absoluta del archivo JSON

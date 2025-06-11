@@ -26,4 +26,3 @@
 </html>
 
  
-git check-ignore .cpanel.yml

@@ -19,6 +19,7 @@
             // Pasar el archivo JSON como parámetro
           //  $_GET['archivo'] = $archivoJson;
             include 'formulario_dinamico.php';
+            
         } else {
             echo "<p>Error: No se pudo cargar el formulario dinámico. Verifica la configuración.</p>";
         }

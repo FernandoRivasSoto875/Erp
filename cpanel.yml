@@ -4,3 +4,4 @@ deployment:
     - export DEPLOYPATH=/home3/csa63006/public_html/Erp
     - /bin/cp -r * $DEPLOYPATH
     - echo "Despliegue completado."
+    

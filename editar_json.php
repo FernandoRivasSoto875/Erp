@@ -10,6 +10,7 @@ if (isset($_GET['archivo'])) {
     } else {
         die("El archivo no existe o no es un archivo JSON válido.");
     }
+    
 
     // Actualizar contenido al enviar el formulario
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {

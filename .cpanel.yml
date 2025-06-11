@@ -3,5 +3,5 @@ deployment:
   tasks:
     - echo "Iniciando despliegue..."
     - /bin/cp -r * ~/public_html/Erp
-    - echo "Despliegue completado."
-    
+      echo "Despliegue completado."
+

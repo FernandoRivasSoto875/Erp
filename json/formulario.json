@@ -49,10 +49,10 @@
   {
     "nombre": "descripcion_producto",
     "etiqueta": "Descripción",
-    "tipo": "selectdata",
+    "tipo": "text",
     "formula": {
       "busqueda": {
-        "tabla": "comuna",
+        "tabla": "Comuna",
         "campo": "ComDes",
         "where": "ComId = {ComId}"
       }

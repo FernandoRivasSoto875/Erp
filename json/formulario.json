@@ -1,0 +1,302 @@
+{
+  "parametros": {
+    "titulo": "Formulario de Contacto",
+    "tituloimagen": "https://www.saludenterreno.cl/sitio/imagenes/contacto.png",
+    "comentario": "Por favor, completa este formulario para contactarnos.",
+    "pie": "Gracias por confiar en nosotros.",
+    "cantidadMaximaAdjuntos": 2,
+    "destinatario": "fernandorivassoto@gmail.com",
+    "remitente": "gestion@saludenterreno.cl",
+    "subject": "Nuevo mensaje desde el formulario de contacto",
+    "estilo": "padding:20px; background:#e8f0fe;"
+  },
+  "grupos": [
+    {
+      "activo": true,
+      "grupoNombre": "Datos Personales",
+      "grupoAlineacion": "columna",
+      "alineacion": "fila",
+      "estilo": "border:1px dashed #007BFF; padding:10px; background:#f9f9f9;",
+      "campos": [
+        {
+          "activo": true,
+          "crud": false,
+          "nombre": "nombre",
+          "etiqueta": "Nombre",
+          "tipo": "text",
+          "requerido": true,
+          "tooltipText": "Ingrese su nombre completo",
+          "placeholder": "Escriba su nombre",
+          "posicionetiqueta": "arriba",
+          "estilo": "color:#007BFF; font-weight:bold;"
+        },
+        {
+          "activo": true,
+          "crud": false,
+          "nombre": "email",
+          "etiqueta": "Correo Electrónico",
+          "tipo": "email",
+          "requerido": true,
+          "tooltipText": "ejemplo@dominio.com",
+          "pattern": "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",
+          "mensajeError": "Ingrese un correo válido",
+          "posicionetiqueta": "izquierdo",
+          "estilo": "color:#d12858; font-style:italic;"
+        },
+
+ {
+          "activo": true,
+          "crud": false,
+          "nombre": "comuna",
+          "etiqueta": "Comuna",
+          "tipo": "list",
+          "requerido": true,
+          "tooltipText": "Seleccione o busque su comuna",
+          "placeholder": "Buscar Comuna...",
+          "autocompletar": true,
+          "data": {
+            "tabla": "Comuna",
+            "campo": "ComDes",
+            "filtro": "ciudadid<>"
+          },
+          "posicionetiqueta": "arriba",
+          "estilo": "color:#007BFF;"
+        }
+
+
+
+
+        ,
+        {
+          "activo": true,
+          "crud": false,
+          "nombre": "ciudad",
+          "etiqueta": "Ciudad",
+          "tipo": "list",
+          "requerido": true,
+          "tooltipText": "Seleccione o busque su ciudad",
+          "placeholder": "Buscar ciudad...",
+          "autocompletar": true,
+          "data": {
+            "tabla": "Ciudad",
+            "campo": "ciudad",
+            "filtro": "ciudadid<>"
+          },
+          "posicionetiqueta": "arriba",
+          "estilo": "color:#007BFF;"
+        }
+      ],
+      "hijos": [
+        {
+          "activo": true,
+          "grupoNombre": "Contacto",
+          "grupoAlineacion": "columna",
+          "alineacion": "fila",
+          "estilo": "border:1px dashed #007BFF; padding:10px; background:#ffffff;",
+          "campos": [
+            {
+              "activo": true,
+              "crud": false,
+              "nombre": "telefono",
+              "etiqueta": "Teléfono",
+              "tipo": "tel",
+              "requerido": false,
+              "tooltipText": "Ingrese su teléfono",
+              "placeholder": "Ej. +56912345678",
+              "posicionetiqueta": "arriba",
+              "estilo": "color:#333;"
+            },
+            {
+              "activo": true,
+              "crud": false,
+              "nombre": "direccion",
+              "etiqueta": "Dirección",
+              "tipo": "text",
+              "requerido": false,
+              "tooltipText": "Ingrese su dirección",
+              "placeholder": "Calle 123, Ciudad",
+              "posicionetiqueta": "arriba",
+              "estilo": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "activo": true,
+      "grupoNombre": "Preferencias",
+      "grupoAlineacion": "fila",
+      "alineacion": "columna",
+      "estilo": "border:1px dashed #d12858; padding:10px; background:#fdfdfd;",
+      "campos": [
+        {
+          "activo": true,
+          "crud": true,
+          "nombre": "genero",
+          "etiqueta": "Género",
+          "tipo": "radio",
+          "requerido": true,
+          "tooltipText": "Seleccione su género",
+          "opciones": ["Masculino", "Femenino", "Otro"],
+          "posicionetiqueta": "arriba",
+          "estilo": "font-size:14px;"
+        },
+        {
+          "activo": true,
+          "crud": true,
+          "nombre": "intereses",
+          "etiqueta": "Intereses",
+          "tipo": "checkbox",
+          "requerido": false,
+          "tooltipText": "Marque sus intereses",
+          "opciones": ["Deportes", "Música", "Tecnología", "Arte"],
+          "posicionetiqueta": "derecho",
+          "estilo": "font-size:14px;"
+        },
+        {
+          "activo": true,
+          "crud": true,
+          "nombre": "nivel_estudio",
+          "etiqueta": "Nivel de Estudio",
+          "tipo": "select",
+          "requerido": true,
+          "tooltipText": "Seleccione su nivel de estudio",
+          "opciones": ["Bachiller", "Técnico", "Universitario", "Postgrado"],
+          "posicionetiqueta": "izquierdo",
+          "estilo": "color:#333;"
+        },
+        {
+          "activo": true,
+          "crud": true,
+          "nombre": "lista_ejemplo",
+          "etiqueta": "Lista (Estático)",
+          "tipo": "list",
+          "requerido": false,
+          "tooltipText": "Seleccione o escriba un elemento",
+          "opciones": ["Item 1", "Item 2", "Item 3"],
+          "placeholder": "Elija o escriba...",
+          "estilo": ""
+        }
+      ],
+      "hijos": [
+        {
+          "activo": true,
+          "grupoNombre": "Datos Dinámicos",
+          "grupoAlineacion": "columna",
+          "alineacion": "fila",
+          "estilo": "border:1px dotted #007BFF; padding:10px; background:#eef;",
+          "campos": [
+            {
+              "activo": true,
+              "crud": true,
+              "nombre": "ciudad_dinamica",
+              "etiqueta": "Ciudad (Dinámico)",
+              "tipo": "list",
+              "requerido": true,
+              "tooltipText": "Seleccione o escriba su ciudad",
+              "placeholder": "Buscar ciudad...",
+              "autocompletar": true,
+              "opciones": ["Santiago", "Valparaíso", "Concepción"],
+              "posicionetiqueta": "arriba",
+              "estilo": "color:#007BFF;"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "activo": true,
+      "grupoNombre": "Tipos Avanzados",
+      "grupoAlineacion": "columna",
+      "alineacion": "fila",
+      "estilo": "border:1px solid #444; padding:10px; background:#fff;",
+      "campos": [
+        {
+          "activo": true,
+          "nombre": "input_password",
+          "etiqueta": "Contraseña",
+          "tipo": "password",
+          "requerido": true,
+          "placeholder": "Ingrese su contraseña",
+          "estilo": ""
+        },
+        {
+          "activo": true,
+          "nombre": "input_number",
+          "etiqueta": "Número",
+          "tipo": "number",
+          "requerido": true,
+          "placeholder": "Ingrese un número",
+          "estilo": ""
+        },
+        {
+          "activo": true,
+          "nombre": "input_datetime",
+          "etiqueta": "Fecha y Hora",
+          "tipo": "datetime-local",
+          "requerido": false,
+          "estilo": ""
+        },
+        {
+          "activo": true,
+          "nombre": "input_month",
+          "etiqueta": "Mes",
+          "tipo": "month",
+          "requerido": false,
+          "estilo": ""
+        },
+        {
+          "activo": true,
+          "nombre": "input_week",
+          "etiqueta": "Semana",
+          "tipo": "week",
+          "requerido": false,
+          "estilo": ""
+        },
+        {
+          "activo": true,
+          "nombre": "input_url",
+          "etiqueta": "URL",
+          "tipo": "url",
+          "requerido": false,
+          "placeholder": "https://ejemplo.com",
+          "estilo": ""
+        },
+        {
+          "activo": true,
+          "nombre": "input_search",
+          "etiqueta": "Búsqueda",
+          "tipo": "search",
+          "requerido": false,
+          "placeholder": "Buscar...",
+          "estilo": ""
+        },
+        {
+          "activo": true,
+          "nombre": "input_tel",
+          "etiqueta": "Teléfono",
+          "tipo": "tel",
+          "requerido": false,
+          "placeholder": "Ingrese teléfono",
+          "estilo": ""
+        },
+        {
+          "activo": true,
+          "nombre": "input_color",
+          "etiqueta": "Color",
+          "tipo": "color",
+          "requerido": false,
+          "estilo": ""
+        },
+        {
+          "activo": true,
+          "nombre": "input_range",
+          "etiqueta": "Rango",
+          "tipo": "range",
+          "requerido": false,
+          "estilo": ""
+        }
+      ]
+    }
+  ]
+}

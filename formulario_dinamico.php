@@ -1,35 +1,40 @@
-<?php
-// Habilitar la visualización de errores en desarrollo.
+ <?php
+// Autor: Fernando Rivas S.
+// filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\formulario_dinamico.php
+
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-// Se asume que tienes un archivo de conexión llamado "funcionesssql.php"
-require 'funcionesssql.php';
+require_once 'funcionessql.php';
 $conn = conexionBd();
 
-// ---------------------------------------------------------------
-// Bloque para actualizar el JSON (Editor de JSON integrado)
-// ---------------------------------------------------------------
-$json_file = 'json/contactoFormulario.json';
-$json_error = "";
-$json_success = "";
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['json_data'])) {
-    $json_new = $_POST['json_data'];
-    // Validar que el contenido es un JSON válido.
-    if (json_decode($json_new) === null) {
-        $json_error = "El formato JSON es inválido. Ningún cambio fue guardado.";
-    } else {
-        if (file_put_contents($json_file, $json_new) !== false) {
-            $json_success = "El archivo JSON se ha guardado correctamente.";
-        } else {
-            $json_error = "Error al guardar el archivo JSON.";
-        }
-    }
+// Lógica para recibir el nombre del archivo JSON por parámetro
+if (!isset($_GET['archivo']) || !preg_match('/^[a-zA-Z0-9_\-]+\.json$/', $_GET['archivo'])) {
+    echo "<div style='color:red;text-align:center;font-weight:bold;'>No existe nombre de formulario.</div>";
+    return;
+}
+$nombre_archivo = $_GET['archivo'];
+$json_file = __DIR__ . '/json/' . $nombre_archivo;
+if (!file_exists($json_file)) {
+    echo "<div style='color:red;text-align:center;font-weight:bold;'>El archivo $nombre_archivo no existe.</div>";
+    return;
 }
 
-// ---------------------------------------------------------------
+$json = json_decode(file_get_contents($json_file), true);
+
+if (!$json) {
+    echo "<div style='color:red'>Error: El archivo JSON no es válido o está vacío.</div>";
+    return;
+}
+if (!isset($json['grupos']) || !is_array($json['grupos'])) {
+    echo "<div style='color:red'>Error: El archivo JSON no contiene grupos de campos.</div>";
+    return;
+}
+
+
 // Función para obtener datos dinámicos desde la BD (propiedad "data")
+ 
+ 
 function obtenerDatosTabla($data) {
     global $conn;
     $tabla  = $data['tabla'];
@@ -37,28 +42,40 @@ function obtenerDatosTabla($data) {
     $filtro = isset($data['filtro']) ? "WHERE " . $data['filtro'] : "";
     $consulta = "SELECT $campo FROM $tabla $filtro";
     $stmt = $conn->prepare($consulta);
-    if ($stmt->execute()) {
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    if ($stmt === false) {
+        echo "<div style='color:red'>Error preparando consulta: $consulta<br>{$conn->error}</div>";
+        return [];
     }
-    return [];
+    $stmt->execute();
+
+    // Detecta si hay una o dos columnas
+    $campos = array_map('trim', explode(',', $campo));
+    $result = [];
+    if (count($campos) == 2) {
+        $stmt->bind_result($id, $nombre);
+        while ($stmt->fetch()) {
+            $result[] = ['id' => $id, 'nombre' => $nombre];
+        }
+    } else {
+        $stmt->bind_result($valor);
+        while ($stmt->fetch()) {
+            $result[] = $valor;
+        }
+    }
+    $stmt->close();
+    return $result;
 }
 
-// ---------------------------------------------------------------
 // Función para generar el contenido de un campo (según su tipo)
-// Soporta: radio, checkbox, select, list, datable, file y otros inputs.
 function generarContenidoCampo($campo) {
     ob_start();
     $tipo = $campo['tipo'];
-    
-    // Se le da prioridad a "data" (opciones dinámicas), sino se evalúa "opciones" (estáticas)
     if (isset($campo['data'])) {
         $opciones = obtenerDatosTabla($campo['data']);
     } else {
         $opciones = isset($campo['opciones']) ? $campo['opciones'] : [];
     }
-    // Marca para activar funcionalidad CRUD (se agrega data-dynamic="true")
     $marcaCrud = (isset($campo['crud']) && $campo['crud'] === true) ? " data-dynamic='true'" : "";
-    
     switch ($tipo) {
         case 'radio':
             echo "<div class='radio-group' id='{$campo['nombre']}_container'>";
@@ -90,6 +107,25 @@ function generarContenidoCampo($campo) {
             }
             echo "</select>";
             break;
+
+
+case 'selectdata':
+    echo "<select name='{$campo['nombre']}' id='{$campo['nombre']}'{$marcaCrud}>";
+    echo "<option value=''>Seleccione...</option>";
+    foreach ($opciones as $opcion) {
+        // Si $opcion es un array (id, nombre), usa $opcion['id'] y $opcion['nombre']
+        if (is_array($opcion)) {
+            $valor = htmlspecialchars($opcion['id'], ENT_QUOTES, 'UTF-8');
+            $texto = htmlspecialchars($opcion['nombre'], ENT_QUOTES, 'UTF-8');
+        } else {
+            $valor = $texto = htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
+        }
+        echo "<option value='{$valor}'>{$texto}</option>";
+    }
+    echo "</select>";
+    break;
+
+ 
         case 'list':
             $datalistId = $campo['nombre'] . "-list";
             echo "<input type='text' name='{$campo['nombre']}' id='{$campo['nombre']}' placeholder='" . ($campo['placeholder'] ?? '') . "' list='{$datalistId}'>";
@@ -101,7 +137,6 @@ function generarContenidoCampo($campo) {
             echo "</datalist>";
             break;
         case 'datable':
-            // Se deja un placeholder para el componente de tabla dinámica.
             echo "<div class='datable' id='{$campo['nombre']}_datable' style='width:100%; border:1px solid #ccc; padding:10px;'>";
             echo "<!-- Aquí se renderizarán los datos en forma tabular -->";
             echo "</div>";
@@ -119,10 +154,40 @@ function generarContenidoCampo($campo) {
     return ob_get_clean();
 }
 
-// ---------------------------------------------------------------
-// Función para renderizar un campo completo (incluye label, input y mensaje de error)
-// ---------------------------------------------------------------
 function generarCampo($campo) {
+    if (isset($campo['activo']) && !$campo['activo']) return "";
+    $estiloCampo = isset($campo['estilo']) ? " style='" . htmlspecialchars($campo['estilo'], ENT_QUOTES, 'UTF-8') . "'" : "";
+    $etiqueta = htmlspecialchars($campo['etiqueta'], ENT_QUOTES, 'UTF-8');
+    $condicion = "";
+    if (isset($campo["condicion"]) && is_array($campo["condicion"])) {
+        $condicion = " data-condicion='" . json_encode($campo["condicion"]) . "'";
+    }
+    $posicion = isset($campo['posicionetiqueta']) ? $campo['posicionetiqueta'] : 'arriba';
+    $html  = "<div class='campo-container' {$estiloCampo} {$condicion}>";
+    switch ($posicion) {
+        case 'izquierdo':
+            $html .= "<label for='{$campo['nombre']}' style='display:inline-block; min-width:120px; vertical-align:top;'>{$etiqueta}</label>";
+            $html .= generarContenidoCampo($campo);
+            break;
+        case 'derecho':
+            $html .= generarContenidoCampo($campo);
+            $html .= "<label for='{$campo['nombre']}' style='display:inline-block; min-width:120px; vertical-align:top; margin-left:10px;'>{$etiqueta}</label>";
+            break;
+        case 'arriba':
+        default:
+            $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label><br>";
+            $html .= generarContenidoCampo($campo);
+            break;
+    }
+    $html .= "<span class='mensaje-error'></span>";
+    $html .= "</div>";
+    return $html;
+}
+
+
+
+// Función para renderizar un campo completo
+function generarCampobak($campo) {
     if (isset($campo['activo']) && !$campo['activo']) return "";
     $estiloCampo = isset($campo['estilo']) ? " style='" . htmlspecialchars($campo['estilo'], ENT_QUOTES, 'UTF-8') . "'" : "";
     $etiqueta = htmlspecialchars($campo['etiqueta'], ENT_QUOTES, 'UTF-8');
@@ -138,9 +203,7 @@ function generarCampo($campo) {
     return $html;
 }
 
-// ---------------------------------------------------------------
 // Función recursiva para renderizar grupos y subgrupos del formulario
-// ---------------------------------------------------------------
 function generarGruposRecursivos($grupos) {
     $html = "";
     foreach ($grupos as $grupo) {
@@ -160,10 +223,6 @@ function generarGruposRecursivos($grupos) {
     }
     return $html;
 }
-
-// ---------------------------------------------------------------
-// Leer el archivo JSON de configuración
-$json = json_decode(file_get_contents($json_file), true);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -188,50 +247,10 @@ $json = json_decode(file_get_contents($json_file), true);
         <button type="submit">Enviar</button>
       </div>
     </form>
-    
-    <!-- Editor de JSON integrado para actualizar la configuración -->
-    <button id="toggle-json-editor" style="margin-top:20px;">Editar JSON</button>
-    <div id="json-editor-container" style="display:none; margin-top:20px;">
-      <form method="post" action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>">
-        <textarea id="json-editor" name="json_data" rows="20" style="width:100%;"><?php echo htmlspecialchars(file_get_contents($json_file), ENT_QUOTES, 'UTF-8'); ?></textarea>
-        <br>
-        <button type="submit">Guardar JSON</button>
-      </form>
-      <?php if ($json_error !== ""): ?>
-        <p style="color:red;"><?php echo $json_error; ?></p>
-      <?php endif; ?>
-      <?php if ($json_success !== ""): ?>
-        <p style="color:green;"><?php echo $json_success; ?></p>
-      <?php endif; ?>
-    </div>
-    
     <footer>
       <p><?php echo htmlspecialchars($json['parametros']['pie'], ENT_QUOTES, 'UTF-8'); ?></p>
     </footer>
   </main>
-  
-  <!-- Modal CRUD para campos con "crud": true -->
-  <div id="crud-modal" style="display: none;" role="dialog" aria-modal="true">
-    <h3 id="crud-modal-title"></h3>
-    <input type="text" id="modal-add-input" placeholder="" autocomplete="off">
-    <button type="button" id="modal-add-button" onclick="agregarModal()">Agregar</button>
-    <ul id="crud-list"></ul>
-    <button type="button" onclick="cerrarCrudModal()">Cerrar</button>
-  </div>
-  
   <script src="js/formulariodinamico.js"></script>
-  <script>
-    // Lógica para mostrar/ocultar el editor JSON
-    document.getElementById('toggle-json-editor').addEventListener('click', function(){
-      var container = document.getElementById('json-editor-container');
-      if(container.style.display === 'none' || container.style.display === ''){
-          container.style.display = 'block';
-          this.textContent = 'Ocultar Editor JSON';
-      } else {
-          container.style.display = 'none';
-          this.textContent = 'Editar JSON';
-      }
-    });
-  </script>
 </body>
 </html>

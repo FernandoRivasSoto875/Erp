@@ -41,7 +41,7 @@
     "readonly": true
   },
   {
-    "nombre": "codigo_producto",
+    "nombre": "ComId",
     "etiqueta": "Código Producto",
     "tipo": "text",
     "placeholder": "Ingrese código"
@@ -52,28 +52,16 @@
     "tipo": "text",
     "formula": {
       "busqueda": {
-        "tabla": "productos",
-        "campo": "descripcion",
-        "where": "codigo = {codigo_producto}"
+        "tabla": "comuna",
+        "campo": "ComDes",
+        "where": "ComId = {ComId}"
       }
     },
     "readonly": true
   },
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+ 
 
   {
     "nombre": "nombre",

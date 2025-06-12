@@ -31,6 +31,84 @@ if (!isset($json['grupos']) || !is_array($json['grupos'])) {
     return;
 }
 
+function generarCampo($campo) {
+    $estiloCampo = isset($campo['estilo']) ? " style='" . htmlspecialchars($campo['estilo'], ENT_QUOTES, 'UTF-8') . "'" : "";
+    $etiqueta = isset($campo['etiqueta']) ? htmlspecialchars($campo['etiqueta'], ENT_QUOTES, 'UTF-8') : '';
+    $posicion = isset($campo['posicionetiqueta']) ? strtolower($campo['posicionetiqueta']) : 'arriba';
+
+    $clasePosicion = '';
+    $alinearDiv = '';
+    switch ($posicion) {
+        case 'izquierdo':
+            $clasePosicion = 'label-izquierdo';
+            break;
+        case 'derecho':
+            $clasePosicion = 'label-derecho';
+            break;
+        case 'arriba.izquierdo':
+        case 'abajo.izquierdo':
+            $alinearDiv = 'alinear-izquierdo';
+            break;
+        case 'arriba.derecho':
+        case 'abajo.derecho':
+            $alinearDiv = 'alinear-derecho';
+            break;
+        case 'arriba.centro':
+        case 'abajo.centro':
+            $alinearDiv = 'alinear-centro';
+            break;
+    }
+
+    $html  = "<div class='campo-container $clasePosicion'{$estiloCampo}>";
+    switch ($posicion) {
+        case 'izquierdo':
+            if ($etiqueta !== '') $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label>";
+            $html .= generarContenidoCampo($campo);
+            break;
+        case 'derecho':
+            $html .= generarContenidoCampo($campo);
+            if ($etiqueta !== '') $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label>";
+            break;
+        case 'arriba.izquierdo':
+        case 'arriba.derecho':
+        case 'arriba.centro':
+            if ($etiqueta !== '') $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label><br>";
+            $html .= "<div class='$alinearDiv'>";
+            $html .= generarContenidoCampo($campo);
+            $html .= "</div>";
+            break;
+        case 'abajo':
+            $html .= generarContenidoCampo($campo);
+            if ($etiqueta !== '') $html .= "<br><label class='etiqueta-abajo' for='{$campo['nombre']}'>{$etiqueta}</label>";
+            break;
+        case 'abajo.izquierdo':
+        case 'abajo.derecho':
+        case 'abajo.centro':
+            $html .= "<div class='$alinearDiv'>";
+            $html .= generarContenidoCampo($campo);
+            if ($etiqueta !== '') $html .= "<br><label class='etiqueta-abajo' for='{$campo['nombre']}'>{$etiqueta}</label>";
+            $html .= "</div>";
+            break;
+        case 'oculto':
+        case 'none':
+            $html .= generarContenidoCampo($campo);
+            break;
+        case 'arriba':
+        default:
+            if ($etiqueta !== '') $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label><br>";
+            $html .= generarContenidoCampo($campo);
+            break;
+    }
+    $html .= "<span class='mensaje-error'></span>";
+    $html .= "</div>";
+    return $html;
+}
+
+
+
+
+
+
 
 // Función para obtener datos dinámicos desde la BD (propiedad "data")
  

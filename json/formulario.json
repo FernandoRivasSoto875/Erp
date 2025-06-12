@@ -18,6 +18,77 @@
       "alineacion": "fila",
       "estilo": "border:1px dashed #007BFF; padding:10px; background:#f9f9f9;",
       "campos": [
+
+
+
+  {
+    "nombre": "cantidad",
+    "etiqueta": "Cantidad",
+    "tipo": "number",
+    "placeholder": "Ingrese cantidad"
+  },
+  {
+    "nombre": "precio_unitario",
+    "etiqueta": "Precio Unitario",
+    "tipo": "number",
+    "placeholder": "Ingrese precio"
+  },
+  {
+    "nombre": "total",
+    "etiqueta": "Total",
+    "tipo": "number",
+    "formula": "cantidad * precio_unitario",
+    "readonly": true
+  },
+  {
+    "nombre": "codigo_producto",
+    "etiqueta": "Código Producto",
+    "tipo": "text",
+    "placeholder": "Ingrese código"
+  },
+  {
+    "nombre": "descripcion_producto",
+    "etiqueta": "Descripción",
+    "tipo": "text",
+    "formula": {
+      "busqueda": {
+        "tabla": "productos",
+        "campo": "descripcion",
+        "where": "codigo = {codigo_producto}"
+      }
+    },
+    "readonly": true
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         {
           "activo": true,
           "crud": false,
@@ -44,7 +115,7 @@
           "estilo": "color:#d12858; font-style:italic;"
         },
 
- {
+         {
           "activo": true,
           "crud": false,
           "nombre": "comuna",

@@ -153,114 +153,102 @@ case 'selectdata':
     }
     return ob_get_clean();
 }
- 
 
+function generarContenidoCampo($campo) {
+    ob_start();
+    $tipo = isset($campo['tipo']) ? $campo['tipo'] : 'text';
+    $nombre = isset($campo['nombre']) ? $campo['nombre'] : '';
+    $placeholder = isset($campo["placeholder"]) ? " placeholder='" . htmlspecialchars($campo["placeholder"], ENT_QUOTES, "UTF-8") . "'" : "";
+    $readonly = (isset($campo["readonly"]) && $campo["readonly"]) ? " readonly" : "";
+    $formulaAttr = "";
 
-function generarCampo($campo) {
-    if (isset($campo['activo']) && !$campo['activo']) return "";
-    $estiloCampo = isset($campo['estilo']) ? " style='" . htmlspecialchars($campo['estilo'], ENT_QUOTES, 'UTF-8') . "'" : "";
-    $etiqueta = isset($campo['etiqueta']) ? htmlspecialchars($campo['etiqueta'], ENT_QUOTES, 'UTF-8') : '';
-    $condicion = "";
-    if (isset($campo["condicion"]) && is_array($campo["condicion"])) {
-        $condicion = " data-condicion='" . json_encode($campo["condicion"]) . "'";
-    }
-    $posicion = isset($campo['posicionetiqueta']) ? strtolower($campo['posicionetiqueta']) : 'arriba';
-
-    // Determina la clase para el contenedor y alineación extra
-    $clasePosicion = '';
-    $alinearDiv = '';
-    switch ($posicion) {
-        case 'izquierdo':
-            $clasePosicion = 'label-izquierdo';
-            break;
-        case 'derecho':
-            $clasePosicion = 'label-derecho';
-            break;
-        case 'arriba.izquierdo':
-        case 'abajo.izquierdo':
-            $alinearDiv = 'alinear-izquierdo';
-            break;
-        case 'arriba.derecho':
-        case 'abajo.derecho':
-            $alinearDiv = 'alinear-derecho';
-            break;
-        case 'arriba.centro':
-        case 'abajo.centro':
-            $alinearDiv = 'alinear-centro';
-            break;
+    // Soporte para fórmula (aritmética o búsqueda)
+    if (isset($campo["formula"])) {
+        $formulaAttr = " data-formula='" . htmlspecialchars(json_encode($campo["formula"]), ENT_QUOTES, "UTF-8") . "'";
+        $readonly = " readonly";
     }
 
-    $html  = "<div class='campo-container $clasePosicion' {$estiloCampo} {$condicion}>";
-
-    switch ($posicion) {
-        case 'izquierdo':
-            // Etiqueta a la izquierda del campo
-            if ($etiqueta !== '') $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label>";
-            $html .= generarContenidoCampo($campo);
-            break;
-        case 'derecho':
-            // Etiqueta a la derecha del campo
-            $html .= generarContenidoCampo($campo);
-            if ($etiqueta !== '') $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label>";
-            break;
-        case 'arriba.izquierdo':
-        case 'arriba.derecho':
-        case 'arriba.centro':
-            // Etiqueta arriba, campo alineado según corresponda
-            if ($etiqueta !== '') $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label><br>";
-            $html .= "<div class='$alinearDiv'>";
-            $html .= generarContenidoCampo($campo);
-            $html .= "</div>";
-            break;
-        case 'abajo':
-            // Campo arriba, etiqueta debajo alineada por defecto
-            $html .= generarContenidoCampo($campo);
-            if ($etiqueta !== '') $html .= "<br><label class='etiqueta-abajo' for='{$campo['nombre']}'>{$etiqueta}</label>";
-            break;
-        case 'abajo.izquierdo':
-        case 'abajo.derecho':
-        case 'abajo.centro':
-            // Campo arriba, etiqueta debajo alineada según corresponda
-            $html .= "<div class='$alinearDiv'>";
-            $html .= generarContenidoCampo($campo);
-            if ($etiqueta !== '') $html .= "<br><label class='etiqueta-abajo' for='{$campo['nombre']}'>{$etiqueta}</label>";
-            $html .= "</div>";
-            break;
-        case 'oculto':
-        case 'none':
-            // No mostrar la etiqueta
-            $html .= generarContenidoCampo($campo);
-            break;
-        case 'arriba':
-        default:
-            // Etiqueta arriba, campo debajo alineado por defecto (izquierda)
-            if ($etiqueta !== '') $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label><br>";
-            $html .= generarContenidoCampo($campo);
-            break;
+    // Opciones dinámicas
+    if (isset($campo['data'])) {
+        $opciones = obtenerDatosTabla($campo['data']);
+    } else {
+        $opciones = isset($campo['opciones']) ? $campo['opciones'] : [];
     }
-    $html .= "<span class='mensaje-error'></span>";
-    $html .= "</div>";
-    return $html;
-}
-// Función recursiva para renderizar grupos y subgrupos del formulario
-function generarGruposRecursivos($grupos) {
-    $html = "";
-    foreach ($grupos as $grupo) {
-        if (isset($grupo['activo']) && !$grupo['activo']) continue;
-        $grupoNombre = isset($grupo['grupoNombre']) ? htmlspecialchars($grupo['grupoNombre'], ENT_QUOTES, 'UTF-8') : "Grupo";
-        $estiloGrupo = isset($grupo['estilo']) ? $grupo['estilo'] : "";
-        $html .= "<fieldset style='{$estiloGrupo}'><legend>{$grupoNombre}</legend>";
-        if (isset($grupo['campos']) && is_array($grupo['campos'])) {
-            foreach ($grupo['campos'] as $campo) {
-                $html .= generarCampo($campo);
+    $marcaCrud = (isset($campo['crud']) && $campo['crud'] === true) ? " data-dynamic='true'" : "";
+
+    switch ($tipo) {
+        case 'radio':
+            echo "<div class='radio-group' id='{$nombre}_container'>";
+            foreach ($opciones as $opcion) {
+                $opcionTexto = htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
+                echo "<span class='radio-item' style='margin-right:15px;'>";
+                echo "<input type='radio' id='{$nombre}_{$opcionTexto}' name='{$nombre}' value='{$opcionTexto}'{$marcaCrud}>";
+                echo "<label for='{$nombre}_{$opcionTexto}'>$opcionTexto</label>";
+                echo "</span>";
             }
-        }
-        if (isset($grupo['hijos']) && is_array($grupo['hijos'])) {
-            $html .= generarGruposRecursivos($grupo['hijos']);
-        }
-        $html .= "</fieldset>";
+            echo "</div>";
+            break;
+        case 'checkbox':
+            echo "<div class='checkbox-group' id='{$nombre}_container'>";
+            foreach ($opciones as $opcion) {
+                $opcionTexto = htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
+                echo "<span class='checkbox-item' style='margin-right:10px;'>";
+                echo "<input type='checkbox' id='{$nombre}_{$opcionTexto}' name='{$nombre}[]' value='{$opcionTexto}'{$marcaCrud}>";
+                echo "<label for='{$nombre}_{$opcionTexto}'>$opcionTexto</label>";
+                echo "</span>";
+            }
+            echo "</div>";
+            break;
+        case 'select':
+            echo "<select name='{$nombre}' id='{$nombre}'>";
+            foreach ($opciones as $opcion) {
+                $opcionTexto = htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
+                echo "<option value='{$opcionTexto}'{$marcaCrud}>$opcionTexto</option>";
+            }
+            echo "</select>";
+            break;
+        case 'selectdata':
+            echo "<select name='{$nombre}' id='{$nombre}'{$marcaCrud}>";
+            echo "<option value=''>Seleccione...</option>";
+            foreach ($opciones as $opcion) {
+                if (is_array($opcion)) {
+                    $valor = htmlspecialchars($opcion['id'], ENT_QUOTES, 'UTF-8');
+                    $texto = htmlspecialchars($opcion['nombre'], ENT_QUOTES, 'UTF-8');
+                } else {
+                    $valor = $texto = htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
+                }
+                echo "<option value='{$valor}'>{$texto}</option>";
+            }
+            echo "</select>";
+            break;
+        case 'list':
+            $datalistId = $nombre . "-list";
+            echo "<input type='text' name='{$nombre}' id='{$nombre}'{$placeholder}{$readonly}{$formulaAttr} list='{$datalistId}'>";
+            echo "<datalist id='{$datalistId}'>";
+            foreach ($opciones as $opcion) {
+                $opcionTexto = htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
+                echo "<option value='{$opcionTexto}'{$marcaCrud}>";
+            }
+            echo "</datalist>";
+            break;
+        case 'datable':
+            echo "<div class='datable' id='{$nombre}_datable' style='width:100%; border:1px solid #ccc; padding:10px;'>";
+            echo "<!-- Aquí se renderizarán los datos en forma tabular -->";
+            echo "</div>";
+            break;
+        case 'file':
+            $accept = isset($campo['accept']) ? " accept='" . htmlspecialchars($campo['accept'], ENT_QUOTES, 'UTF-8') . "'" : "";
+            $capture = isset($campo['capture']) ? " capture='" . htmlspecialchars($campo['capture'], ENT_QUOTES, 'UTF-8') . "'" : "";
+            echo "<input type='file' name='{$nombre}' id='{$nombre}'{$accept}{$capture}>";
+            break;
+        case 'textarea':
+            echo "<textarea name='{$nombre}' id='{$nombre}'{$placeholder}{$readonly}{$formulaAttr}></textarea>";
+            break;
+        default:
+            echo "<input type='{$tipo}' name='{$nombre}' id='{$nombre}'{$placeholder}{$readonly}{$formulaAttr}>";
+            break;
     }
-    return $html;
+    return ob_get_clean();
 }
 ?>
 <!DOCTYPE html>

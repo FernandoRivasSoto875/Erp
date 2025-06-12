@@ -679,21 +679,25 @@ document.addEventListener('DOMContentLoaded', function() {
     } catch {
       input.value = '';
     }
-  }
+  };
 
-  function buscarValor(input, busqueda, valor) {
-    if (!valor) { input.value = ''; return; }
-    fetch('buscar_formula.php', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        tabla: busqueda.tabla,
-        campo: busqueda.campo,
-        where: busqueda.where.replace(/\{.+?\}/, valor)
-      })
+ function buscarValor(input, busqueda, valor) {
+  if (!valor) { input.value = ''; return; }
+  // Extrae el campo clave de la condición (ej: {ComId})
+  const match = busqueda.where.match(/\{(.+?)\}/);
+  const campoClave = match ? match[1] : null;
+  if (!campoClave) { input.value = ''; return; }
+  // Envía where como objeto asociativo
+  fetch('buscar_formula.php', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      tabla: busqueda.tabla,
+      campo: busqueda.campo,
+      where: { [campoClave]: valor }
     })
-    .then(r => r.json())
-    .then(data => { input.value = data.resultado || ''; })
-    .catch(() => { input.value = ''; });
-  }
-});
+  })
+  .then(r => r.json())
+  .then(data => { input.value = data.resultado || ''; })
+  .catch(() => { input.value = ''; });
+}

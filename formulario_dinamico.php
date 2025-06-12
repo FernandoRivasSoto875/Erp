@@ -204,22 +204,7 @@ function generarCampo($campo) {
     return $html;
 }
 
-// Función para renderizar un campo completo
-function generarCampobak($campo) {
-    if (isset($campo['activo']) && !$campo['activo']) return "";
-    $estiloCampo = isset($campo['estilo']) ? " style='" . htmlspecialchars($campo['estilo'], ENT_QUOTES, 'UTF-8') . "'" : "";
-    $etiqueta = htmlspecialchars($campo['etiqueta'], ENT_QUOTES, 'UTF-8');
-    $condicion = "";
-    if (isset($campo["condicion"]) && is_array($campo["condicion"])) {
-        $condicion = " data-condicion='" . json_encode($campo["condicion"]) . "'";
-    }
-    $html  = "<div class='campo-container' {$estiloCampo} {$condicion}>";
-    $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label>";
-    $html .= generarContenidoCampo($campo);
-    $html .= "<span class='mensaje-error'></span>";
-    $html .= "</div>";
-    return $html;
-}
+ 
 
 // Función recursiva para renderizar grupos y subgrupos del formulario
 function generarGruposRecursivos($grupos) {

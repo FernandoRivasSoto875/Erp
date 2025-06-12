@@ -18,6 +18,99 @@
       "alineacion": "fila",
       "estilo": "border:1px dashed #007BFF; padding:10px; background:#f9f9f9;",
       "campos": [
+
+
+
+  {
+    "nombre": "nombre",
+    "etiqueta": "Nombre",
+    "tipo": "text",
+    "posicionetiqueta": "arriba",
+    "placeholder": "Nombre completo"
+  },
+  {
+    "nombre": "email",
+    "etiqueta": "Correo Electrónico",
+    "tipo": "email",
+    "posicionetiqueta": "izquierdo",
+    "placeholder": "ejemplo@correo.com"
+  },
+  {
+    "nombre": "telefono",
+    "etiqueta": "Teléfono",
+    "tipo": "tel",
+    "posicionetiqueta": "derecho",
+    "placeholder": "+56912345678"
+  },
+  {
+    "nombre": "direccion",
+    "etiqueta": "Dirección",
+    "tipo": "text",
+    "posicionetiqueta": "arriba.centro",
+    "placeholder": "Calle y número"
+  },
+  {
+    "nombre": "ciudad",
+    "etiqueta": "Ciudad",
+    "tipo": "text",
+    "posicionetiqueta": "arriba.izquierdo",
+    "placeholder": "Ciudad"
+  },
+  {
+    "nombre": "pais",
+    "etiqueta": "País",
+    "tipo": "text",
+    "posicionetiqueta": "arriba.derecho",
+    "placeholder": "País"
+  },
+  {
+    "nombre": "comentario",
+    "etiqueta": "Comentario",
+    "tipo": "textarea",
+    "posicionetiqueta": "abajo",
+    "placeholder": "Escribe tu comentario"
+  },
+  {
+    "nombre": "codigo",
+    "etiqueta": "Código",
+    "tipo": "text",
+    "posicionetiqueta": "abajo.centro",
+    "placeholder": "Código postal"
+  },
+  {
+    "nombre": "referencia",
+    "etiqueta": "Referencia",
+    "tipo": "text",
+    "posicionetiqueta": "abajo.izquierdo",
+    "placeholder": "Referencia"
+  },
+  {
+    "nombre": "extra",
+    "etiqueta": "Extra",
+    "tipo": "text",
+    "posicionetiqueta": "abajo.derecho",
+    "placeholder": "Dato extra"
+  },
+  {
+    "nombre": "secreto",
+    "etiqueta": "No visible",
+    "tipo": "text",
+    "posicionetiqueta": "oculto",
+    "placeholder": "No se muestra etiqueta"
+  },
+  
+
+
+
+
+
+
+
+
+
+
+
+
         {
           "activo": true,
           "crud": false,

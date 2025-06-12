@@ -1,4 +1,4 @@
-/* ====== VARIABLES GLOBALES ====== */
+ /* ====== VARIABLES GLOBALES ====== */
 :root {
   --primary-color: #007BFF;
   --primary-hover: #0056b3;
@@ -15,34 +15,6 @@
   --border-radius: 0.3125rem;
 }
 
-/* ====== ESTILOS GENERALES ====== */
-body {
-  font-family: var(--font-family);
-  margin: var(--large-spacing);
-  background: var(--light-bg);
-  color: var(--secondary-color);
-}
-
-/* Encabezado */
-.form-header {
-  text-align: left;
-}
-
-.form-header img {
-  width: 100px;
-  height: auto;
-  margin-top: var(--medium-spacing);
-}
-
-/* Fieldset para agrupar campos */
-fieldset {
-  border: 1px solid var(--gray-border);
-  padding: var(--medium-spacing);
-  margin-bottom: var(--large-spacing);
-  background: var(--white);
-  border-radius: var(--border-radius);
-}
-
 /* Contenedor de cada campo */
 .campo-container {
   border: 1px solid #ddd;
@@ -52,13 +24,57 @@ fieldset {
   margin-bottom: var(--medium-spacing);
 }
 
-label {
+/* Etiqueta arriba, campo debajo (por defecto) */
+.campo-container label {
   display: block;
-  margin-bottom: var(--small-spacing);
+  margin-bottom: 4px;
   font-weight: bold;
+  text-align: left;
 }
 
-/* Estilos para inputs, textarea, select, datalist */
+/* Etiqueta a la izquierda del campo */
+.campo-container.label-izquierdo {
+  display: flex;
+  align-items: center;
+}
+.campo-container.label-izquierdo label {
+  margin-right: 10px;
+  min-width: 120px;
+  display: inline-block;
+  margin-bottom: 0;
+  text-align: left;
+}
+
+/* Etiqueta a la derecha del campo */
+.campo-container.label-derecho {
+  display: flex;
+  align-items: center;
+  flex-direction: row-reverse;
+}
+.campo-container.label-derecho label {
+  margin-left: 10px;
+  min-width: 120px;
+  display: inline-block;
+  margin-bottom: 0;
+  text-align: left;
+}
+
+/* Campo alineado a la izquierda debajo o arriba de la etiqueta */
+.campo-container .alinear-izquierdo { text-align: left; }
+/* Campo alineado a la derecha debajo o arriba de la etiqueta */
+.campo-container .alinear-derecho { text-align: right; }
+/* Campo alineado al centro debajo o arriba de la etiqueta */
+.campo-container .alinear-centro { text-align: center; }
+
+/* Etiqueta debajo del campo */
+.campo-container .etiqueta-abajo {
+  margin-top: 4px;
+  display: block;
+  font-weight: bold;
+  text-align: left;
+}
+
+/* Inputs, textarea, select */
 input[type="text"],
 input[type="email"],
 input[type="password"],
@@ -95,7 +111,6 @@ button {
   font-size: var(--base-font-size);
   transition: background 0.3s ease;
 }
-
 button:hover {
   background: var(--primary-hover);
 }
@@ -104,39 +119,16 @@ button:hover {
   margin-top: var(--large-spacing);
 }
 
-/* Modal CRUD */
-#crud-modal {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: var(--white);
-  border: 1px solid var(--gray-border);
-  padding: var(--large-spacing);
-  z-index: 1000;
-  width: 300px;
-  box-shadow: 0 0.125rem 0.3125rem rgba(0, 0, 0, 0.3);
-}
-
-#crud-modal h3 {
-  margin-top: 0;
-}
-
-#crud-modal ul {
-  list-style: none;
-  padding: 0;
-  margin: var(--medium-spacing) 0;
-}
-
 /* Responsividad */
 @media screen and (max-width: 768px) {
-  fieldset {
-    padding: var(--medium-spacing);
+  .campo-container.label-izquierdo,
+  .campo-container.label-derecho {
+    flex-direction: column !important;
+    align-items: flex-start !important;
   }
-}
-
-@media screen and (max-width: 480px) {
-  fieldset {
-    padding: var(--small-spacing);
+  .campo-container.label-izquierdo label,
+  .campo-container.label-derecho label {
+    margin: 0 0 4px 0 !important;
+    min-width: 0 !important;
   }
 }

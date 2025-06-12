@@ -158,44 +158,82 @@ case 'selectdata':
 function generarCampo($campo) {
     if (isset($campo['activo']) && !$campo['activo']) return "";
     $estiloCampo = isset($campo['estilo']) ? " style='" . htmlspecialchars($campo['estilo'], ENT_QUOTES, 'UTF-8') . "'" : "";
-    $etiqueta = htmlspecialchars($campo['etiqueta'], ENT_QUOTES, 'UTF-8');
+    $etiqueta = isset($campo['etiqueta']) ? htmlspecialchars($campo['etiqueta'], ENT_QUOTES, 'UTF-8') : '';
     $condicion = "";
     if (isset($campo["condicion"]) && is_array($campo["condicion"])) {
         $condicion = " data-condicion='" . json_encode($campo["condicion"]) . "'";
     }
     $posicion = isset($campo['posicionetiqueta']) ? strtolower($campo['posicionetiqueta']) : 'arriba';
-    $html  = "<div class='campo-container' {$estiloCampo} {$condicion}>";
+
+    // Determina la clase para el contenedor y alineación extra
+    $clasePosicion = '';
+    $alinearDiv = '';
+    switch ($posicion) {
+        case 'izquierdo':
+            $clasePosicion = 'label-izquierdo';
+            break;
+        case 'derecho':
+            $clasePosicion = 'label-derecho';
+            break;
+        case 'arriba.izquierdo':
+        case 'abajo.izquierdo':
+            $alinearDiv = 'alinear-izquierdo';
+            break;
+        case 'arriba.derecho':
+        case 'abajo.derecho':
+            $alinearDiv = 'alinear-derecho';
+            break;
+        case 'arriba.centro':
+        case 'abajo.centro':
+            $alinearDiv = 'alinear-centro';
+            break;
+    }
+
+    $html  = "<div class='campo-container $clasePosicion' {$estiloCampo} {$condicion}>";
 
     switch ($posicion) {
         case 'izquierdo':
-            $html .= "<label for='{$campo['nombre']}' style='display:inline-block; min-width:120px; vertical-align:top;'>{$etiqueta}</label>";
+            // Etiqueta a la izquierda del campo
+            if ($etiqueta !== '') $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label>";
             $html .= generarContenidoCampo($campo);
             break;
         case 'derecho':
+            // Etiqueta a la derecha del campo
             $html .= generarContenidoCampo($campo);
-            $html .= "<label for='{$campo['nombre']}' style='display:inline-block; min-width:120px; vertical-align:top; margin-left:10px;'>{$etiqueta}</label>";
+            if ($etiqueta !== '') $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label>";
             break;
         case 'arriba.izquierdo':
-            $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label><br>";
-            $html .= "<div style='text-align:left;'>";
-            $html .= generarContenidoCampo($campo);
-            $html .= "</div>";
-            break;
         case 'arriba.derecho':
-            $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label><br>";
-            $html .= "<div style='text-align:right;'>";
+        case 'arriba.centro':
+            // Etiqueta arriba, campo alineado según corresponda
+            if ($etiqueta !== '') $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label><br>";
+            $html .= "<div class='$alinearDiv'>";
             $html .= generarContenidoCampo($campo);
             $html .= "</div>";
             break;
-        case 'arriba.centro':
-            $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label><br>";
-            $html .= "<div style='text-align:center;'>";
+        case 'abajo':
+            // Campo arriba, etiqueta debajo alineada por defecto
             $html .= generarContenidoCampo($campo);
+            if ($etiqueta !== '') $html .= "<br><label class='etiqueta-abajo' for='{$campo['nombre']}'>{$etiqueta}</label>";
+            break;
+        case 'abajo.izquierdo':
+        case 'abajo.derecho':
+        case 'abajo.centro':
+            // Campo arriba, etiqueta debajo alineada según corresponda
+            $html .= "<div class='$alinearDiv'>";
+            $html .= generarContenidoCampo($campo);
+            if ($etiqueta !== '') $html .= "<br><label class='etiqueta-abajo' for='{$campo['nombre']}'>{$etiqueta}</label>";
             $html .= "</div>";
+            break;
+        case 'oculto':
+        case 'none':
+            // No mostrar la etiqueta
+            $html .= generarContenidoCampo($campo);
             break;
         case 'arriba':
         default:
-            $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label><br>";
+            // Etiqueta arriba, campo debajo alineado por defecto (izquierda)
+            if ($etiqueta !== '') $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label><br>";
             $html .= generarContenidoCampo($campo);
             break;
     }
@@ -203,9 +241,6 @@ function generarCampo($campo) {
     $html .= "</div>";
     return $html;
 }
-
- 
-
 // Función recursiva para renderizar grupos y subgrupos del formulario
 function generarGruposRecursivos($grupos) {
     $html = "";

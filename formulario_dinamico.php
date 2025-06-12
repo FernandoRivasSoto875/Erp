@@ -155,6 +155,7 @@ case 'selectdata':
 }
  
 
+
 function generarCampo($campo) {
     if (isset($campo['activo']) && !$campo['activo']) return "";
     $estiloCampo = isset($campo['estilo']) ? " style='" . htmlspecialchars($campo['estilo'], ENT_QUOTES, 'UTF-8') . "'" : "";

@@ -637,3 +637,63 @@ function initDynamicReordering() {
         });
     }
 }
+document.addEventListener('DOMContentLoaded', function() {
+  // Fórmulas aritméticas
+  document.querySelectorAll('[data-formula]').forEach(function(input) {
+    let formulaData = input.getAttribute('data-formula');
+    try { formulaData = JSON.parse(formulaData); } catch { }
+
+    if (typeof formulaData === 'string') {
+      // Es una fórmula aritmética simple
+      const campos = formulaData.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) || [];
+      campos.forEach(function(campo) {
+        const campoInput = document.getElementsByName(campo)[0];
+        if (campoInput) {
+          campoInput.addEventListener('input', function() {
+            calcularFormula(input, formulaData, campos);
+          });
+        }
+      });
+      // Calcular al cargar
+      calcularFormula(input, formulaData, campos);
+    } else if (formulaData.busqueda) {
+      // Es una búsqueda tipo selectdata
+      const campoClave = formulaData.busqueda.where.match(/\{(.+?)\}/)[1];
+      const campoInput = document.getElementsByName(campoClave)[0];
+      if (campoInput) {
+        campoInput.addEventListener('input', function() {
+          buscarValor(input, formulaData.busqueda, campoInput.value);
+        });
+      }
+    }
+  });
+
+  function calcularFormula(input, formula, campos) {
+    let expr = formula;
+    campos.forEach(function(campo) {
+      const val = parseFloat(document.getElementsByName(campo)[0]?.value || 0);
+      expr = expr.replace(new RegExp("\\b" + campo + "\\b", "g"), val);
+    });
+    try {
+      input.value = eval(expr);
+    } catch {
+      input.value = '';
+    }
+  }
+
+  function buscarValor(input, busqueda, valor) {
+    if (!valor) { input.value = ''; return; }
+    fetch('buscar_formula.php', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        tabla: busqueda.tabla,
+        campo: busqueda.campo,
+        where: busqueda.where.replace(/\{.+?\}/, valor)
+      })
+    })
+    .then(r => r.json())
+    .then(data => { input.value = data.resultado || ''; })
+    .catch(() => { input.value = ''; });
+  }
+});

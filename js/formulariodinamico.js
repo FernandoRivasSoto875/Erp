@@ -637,14 +637,20 @@ function initDynamicReordering() {
         });
     }
 }
+
+
+
+
+
+
+ // ===================== LÓGICA DE FÓRMULAS Y BÚSQUEDA =====================
 document.addEventListener('DOMContentLoaded', function() {
-  // Fórmulas aritméticas
   document.querySelectorAll('[data-formula]').forEach(function(input) {
     let formulaData = input.getAttribute('data-formula');
     try { formulaData = JSON.parse(formulaData); } catch { }
 
     if (typeof formulaData === 'string') {
-      // Es una fórmula aritmética simple
+      // Fórmula aritmética
       const campos = formulaData.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) || [];
       campos.forEach(function(campo) {
         const campoInput = document.getElementsByName(campo)[0];
@@ -654,40 +660,45 @@ document.addEventListener('DOMContentLoaded', function() {
           });
         }
       });
-      // Calcular al cargar
       calcularFormula(input, formulaData, campos);
     } else if (formulaData.busqueda) {
-      // Es una búsqueda tipo selectdata
-      const campoClave = formulaData.busqueda.where.match(/\{(.+?)\}/)[1];
-      const campoInput = document.getElementsByName(campoClave)[0];
-      if (campoInput) {
-        campoInput.addEventListener('input', function() {
-          buscarValor(input, formulaData.busqueda, campoInput.value);
-        });
+      // Búsqueda tipo selectdata
+      const match = formulaData.busqueda.where.match(/\{(.+?)\}/);
+      const campoClave = match ? match[1] : null;
+      if (campoClave) {
+        const campoInput = document.getElementsByName(campoClave)[0];
+        if (campoInput) {
+          campoInput.addEventListener('input', function() {
+            buscarValor(input, formulaData.busqueda, campoInput.value);
+          });
+          // Ejecutar búsqueda al cargar si ya hay valor
+          if (campoInput.value) {
+            buscarValor(input, formulaData.busqueda, campoInput.value);
+          }
+        }
       }
     }
   });
+});
 
-  function calcularFormula(input, formula, campos) {
-    let expr = formula;
-    campos.forEach(function(campo) {
-      const val = parseFloat(document.getElementsByName(campo)[0]?.value || 0);
-      expr = expr.replace(new RegExp("\\b" + campo + "\\b", "g"), val);
-    });
-    try {
-      input.value = eval(expr);
-    } catch {
-      input.value = '';
-    }
-  };
+function calcularFormula(input, formula, campos) {
+  let expr = formula;
+  campos.forEach(function(campo) {
+    const val = parseFloat(document.getElementsByName(campo)[0]?.value || 0);
+    expr = expr.replace(new RegExp("\\b" + campo + "\\b", "g"), val);
+  });
+  try {
+    input.value = eval(expr);
+  } catch {
+    input.value = '';
+  }
+}
 
- function buscarValor(input, busqueda, valor) {
+function buscarValor(input, busqueda, valor) {
   if (!valor) { input.value = ''; return; }
-  // Extrae el campo clave de la condición (ej: {ComId})
   const match = busqueda.where.match(/\{(.+?)\}/);
   const campoClave = match ? match[1] : null;
   if (!campoClave) { input.value = ''; return; }
-  // Envía where como objeto asociativo
   fetch('buscar_formula.php', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},

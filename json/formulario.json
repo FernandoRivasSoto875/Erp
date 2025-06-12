@@ -59,6 +59,100 @@
     },
     "readonly": true
   },
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  {
+    "nombre": "nombre",
+    "etiqueta": "Nombre",
+    "tipo": "text",
+    "posicionetiqueta": "arriba",
+    "placeholder": "Nombre completo"
+  },
+  {
+    "nombre": "email",
+    "etiqueta": "Correo Electrónico",
+    "tipo": "email",
+    "posicionetiqueta": "izquierdo",
+    "placeholder": "ejemplo@correo.com"
+  },
+  {
+    "nombre": "telefono",
+    "etiqueta": "Teléfono",
+    "tipo": "tel",
+    "posicionetiqueta": "derecho",
+    "placeholder": "+56912345678"
+  },
+  {
+    "nombre": "direccion",
+    "etiqueta": "Dirección",
+    "tipo": "text",
+    "posicionetiqueta": "arriba.centro",
+    "placeholder": "Calle y número"
+  },
+  {
+    "nombre": "ciudad",
+    "etiqueta": "Ciudad",
+    "tipo": "text",
+    "posicionetiqueta": "arriba.izquierdo",
+    "placeholder": "Ciudad"
+  },
+  {
+    "nombre": "pais",
+    "etiqueta": "País",
+    "tipo": "text",
+    "posicionetiqueta": "arriba.derecho",
+    "placeholder": "País"
+  },
+  {
+    "nombre": "comentario",
+    "etiqueta": "Comentario",
+    "tipo": "textarea",
+    "posicionetiqueta": "abajo",
+    "placeholder": "Escribe tu comentario"
+  },
+  {
+    "nombre": "codigo",
+    "etiqueta": "Código",
+    "tipo": "text",
+    "posicionetiqueta": "abajo.centro",
+    "placeholder": "Código postal"
+  },
+  {
+    "nombre": "referencia",
+    "etiqueta": "Referencia",
+    "tipo": "text",
+    "posicionetiqueta": "abajo.izquierdo",
+    "placeholder": "Referencia"
+  },
+  {
+    "nombre": "extra",
+    "etiqueta": "Extra",
+    "tipo": "text",
+    "posicionetiqueta": "abajo.derecho",
+    "placeholder": "Dato extra"
+  },
+  {
+    "nombre": "secreto",
+    "etiqueta": "No visible",
+    "tipo": "text",
+    "posicionetiqueta": "oculto",
+    "placeholder": "No se muestra etiqueta"
+  },
+  
  
         {
           "activo": true,
@@ -85,44 +179,20 @@
           "posicionetiqueta": "izquierdo",
           "estilo": "color:#d12858; font-style:italic;"
         },
-
-         {
-          "activo": true,
-          "crud": false,
-          "nombre": "comuna",
-          "etiqueta": "Comuna",
-          "tipo": "list",
-          "requerido": true,
-          "tooltipText": "Seleccione o busque su comuna",
-          "placeholder": "Buscar Comuna...",
-          "autocompletar": true,
-          "data": {
-            "tabla": "Comuna",
-            "campo": "ComDes",
-            "filtro": "ciudadid<>"
-          },
-          "posicionetiqueta": "arriba",
-          "estilo": "color:#007BFF;"
-        }
-
-
-
-
-        ,
         {
           "activo": true,
-          "crud": false,
+          "crud": true,
           "nombre": "ciudad",
           "etiqueta": "Ciudad",
-          "tipo": "list",
+          "tipo": "selectdata",
           "requerido": true,
           "tooltipText": "Seleccione o busque su ciudad",
           "placeholder": "Buscar ciudad...",
           "autocompletar": true,
           "data": {
-            "tabla": "Ciudad",
-            "campo": "ciudad",
-            "filtro": "ciudadid<>"
+            "tabla": "Comuna",
+            "campo": "ComDes",
+            "filtro": "1=1"
           },
           "posicionetiqueta": "arriba",
           "estilo": "color:#007BFF;"
@@ -130,7 +200,7 @@
       ],
       "hijos": [
         {
-          "activo": true,
+          "activo": false,
           "grupoNombre": "Contacto",
           "grupoAlineacion": "columna",
           "alineacion": "fila",
@@ -165,7 +235,7 @@
       ]
     },
     {
-      "activo": true,
+      "activo": false,
       "grupoNombre": "Preferencias",
       "grupoAlineacion": "fila",
       "alineacion": "columna",
@@ -247,7 +317,7 @@
       ]
     },
     {
-      "activo": true,
+      "activo": false,
       "grupoNombre": "Tipos Avanzados",
       "grupoAlineacion": "columna",
       "alineacion": "fila",

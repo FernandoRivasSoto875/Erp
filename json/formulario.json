@@ -58,37 +58,8 @@
       }
     },
     "readonly": true
-  }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  },
+ 
         {
           "activo": true,
           "crud": false,

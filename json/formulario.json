@@ -49,7 +49,7 @@
   {
     "nombre": "descripcion_producto",
     "etiqueta": "Descripción",
-    "tipo": "text",
+    "tipo": "selectdata",
     "formula": {
       "busqueda": {
         "tabla": "comuna",

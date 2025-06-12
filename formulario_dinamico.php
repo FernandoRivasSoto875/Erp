@@ -163,6 +163,47 @@ function generarContenidoCampo($campo) {
     }
     return ob_get_clean();
 }
+
+// ---------------------------------------------------------------
+// Función recursiva para renderizar grupos y subgrupos del formulario
+// ---------------------------------------------------------------
+function generarGruposRecursivos($grupos) {
+    $html = "";
+    foreach ($grupos as $grupo) {
+        if (isset($grupo['activo']) && !$grupo['activo']) continue;
+        $grupoNombre = isset($grupo['grupoNombre']) ? htmlspecialchars($grupo['grupoNombre'], ENT_QUOTES, 'UTF-8') : "Grupo";
+        $estiloGrupo = isset($grupo['estilo']) ? $grupo['estilo'] : "";
+        $html .= "<fieldset style='{$estiloGrupo}'><legend>{$grupoNombre}</legend>";
+        if (isset($grupo['campos']) && is_array($grupo['campos'])) {
+            foreach ($grupo['campos'] as $campo) {
+                $html .= generarCampo($campo);
+            }
+        }
+        if (isset($grupo['hijos']) && is_array($grupo['hijos'])) {
+            $html .= generarGruposRecursivos($grupo['hijos']);
+        }
+        $html .= "</fieldset>";
+    }
+    return $html;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ?>
 <!DOCTYPE html>
 <html lang="es">

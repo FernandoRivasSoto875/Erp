@@ -153,6 +153,7 @@ case 'selectdata':
     }
     return ob_get_clean();
 }
+ 
 
 function generarCampo($campo) {
     if (isset($campo['activo']) && !$campo['activo']) return "";
@@ -162,8 +163,9 @@ function generarCampo($campo) {
     if (isset($campo["condicion"]) && is_array($campo["condicion"])) {
         $condicion = " data-condicion='" . json_encode($campo["condicion"]) . "'";
     }
-    $posicion = isset($campo['posicionetiqueta']) ? $campo['posicionetiqueta'] : 'arriba';
+    $posicion = isset($campo['posicionetiqueta']) ? strtolower($campo['posicionetiqueta']) : 'arriba';
     $html  = "<div class='campo-container' {$estiloCampo} {$condicion}>";
+
     switch ($posicion) {
         case 'izquierdo':
             $html .= "<label for='{$campo['nombre']}' style='display:inline-block; min-width:120px; vertical-align:top;'>{$etiqueta}</label>";
@@ -172,6 +174,24 @@ function generarCampo($campo) {
         case 'derecho':
             $html .= generarContenidoCampo($campo);
             $html .= "<label for='{$campo['nombre']}' style='display:inline-block; min-width:120px; vertical-align:top; margin-left:10px;'>{$etiqueta}</label>";
+            break;
+        case 'arriba.izquierdo':
+            $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label><br>";
+            $html .= "<div style='text-align:left;'>";
+            $html .= generarContenidoCampo($campo);
+            $html .= "</div>";
+            break;
+        case 'arriba.derecho':
+            $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label><br>";
+            $html .= "<div style='text-align:right;'>";
+            $html .= generarContenidoCampo($campo);
+            $html .= "</div>";
+            break;
+        case 'arriba.centro':
+            $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label><br>";
+            $html .= "<div style='text-align:center;'>";
+            $html .= generarContenidoCampo($campo);
+            $html .= "</div>";
             break;
         case 'arriba':
         default:
@@ -183,8 +203,6 @@ function generarCampo($campo) {
     $html .= "</div>";
     return $html;
 }
-
-
 
 // Función para renderizar un campo completo
 function generarCampobak($campo) {

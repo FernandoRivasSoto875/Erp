@@ -43,6 +43,7 @@
           "nombre": "descripcion_producto",
           "etiqueta": "Descripción",
           "tipo": "text",
+                   "formato": "moneda",
           "formula": {
             "busqueda": {
               "tabla": "Comuna",

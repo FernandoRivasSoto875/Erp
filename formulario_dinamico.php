@@ -252,6 +252,13 @@ function generarContenidoCampo($campo) {
     $readonly = (isset($campo["readonly"]) && $campo["readonly"]) ? " readonly" : "";
     $formulaAttr = "";
 
+// Soporte para formato numérico/moneda
+    $dataFormato = isset($campo['formato']) ? " data-formato='" . htmlspecialchars($campo['formato'], ENT_QUOTES, 'UTF-8') . "'" : "";
+
+
+
+
+
     // Soporte para fórmula (aritmética o búsqueda)
     if (isset($campo["formula"])) {
         $formulaAttr = " data-formula='" . htmlspecialchars(json_encode($campo["formula"]), ENT_QUOTES, "UTF-8") . "'";

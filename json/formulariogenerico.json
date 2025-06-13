@@ -10,7 +10,7 @@
     "subject": "Nuevo mensaje desde el formulario de contacto",
     "estilo": "padding:20px; background:#e8f0fe;",
      "mailDe": "Intranet@SaludEnterreno.cl",
-    "mailPara": "fernandorivassoto@gmailcom",
+    "mailPara": "fernandorivassoto@gmail.com",
     "mailCc": "copia@example.com",
     "mailCco": "copiaoculta@example.com",
     "tipoformatoenvio": "htmlc,pdf"

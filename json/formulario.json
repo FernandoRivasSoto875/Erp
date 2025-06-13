@@ -305,7 +305,7 @@
       ]
     },
     {
-      "activo": false,
+      "activo": true,
       "grupoNombre": "Tipos Avanzados",
       "grupoAlineacion": "columna",
       "alineacion": "fila",
@@ -376,7 +376,7 @@
           "nombre": "input_tel",
           "etiqueta": "Teléfono",
           "tipo": "tel",
-          "requerido": false,
+          "requerido": true,
           "placeholder": "Ingrese teléfono",
           "estilo": ""
         },

@@ -36,7 +36,7 @@
           "nombre": "total",
           "etiqueta": "Totales",
           "tipo": "text",
-          "formula": "cantidad * precio_unitario * descripcion_producto",
+          "formula": "cantidad * precio_unitario * comuna",
           "formato": "moneda",
           "readonly": true
         },

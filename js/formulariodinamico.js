@@ -434,6 +434,7 @@ function initDynamicReordering() {
 }
 
 // ===================== INICIALIZACIÓN DE EVENTOS =====================
+
 document.addEventListener('DOMContentLoaded', function() {
   // Formateo automático en blur
   document.querySelectorAll('input[data-formato]').forEach(function(input) {
@@ -449,6 +450,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let formulaData = input.getAttribute('data-formula');
     try { formulaData = JSON.parse(formulaData); } catch { }
     if (typeof formulaData === 'string') {
+      // Quitar comillas dobles si existen (por json_encode en PHP)
+      formulaData = formulaData.replace(/^"(.*)"$/, '$1');
       // Fórmula aritmética
       const campos = formulaData.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) || [];
       campos.forEach(function(campo) {
@@ -475,7 +478,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // Autosave y validación
+  // ======= resto igual =======
   cargarCampos();
   const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
   fields.forEach(el => {
@@ -483,14 +486,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (el.getAttribute("pattern")) el.addEventListener("blur", validarInput);
   });
 
-  // Autocompletar
   document.querySelectorAll("input[data-autocompletar='true']").forEach(field => {
     field.addEventListener("input", autocompleteField);
   });
 
-  // Condiciones
   configurarCondiciones();
-
-  // CRUD y reordenamiento
   initDynamicReordering();
 });
+
+
+ 

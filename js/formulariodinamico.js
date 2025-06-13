@@ -39,7 +39,31 @@ function limpiarNumero(valor) {
 }
 
 
+function calcularFormula(input, formulaData, campos) {
+  let expr = formulaData;
+  campos.forEach(function(campo) {
+    let campoInput = document.getElementsByName(campo)[0];
+    let val = 0;
+    if (campoInput) {
+      val = parseFloat(limpiarNumero(campoInput.value)) || 0;
+    }
+    expr = expr.replace(new RegExp("\\b" + campo + "\\b", "g"), val);
+  });
+  try {
+    let resultado = eval(expr);
+    // Asigna el resultado al campo actual (el que tiene el data-formula)
+    input.value = resultado;
 
+    // Aplica formato si corresponde
+    const formato = input.getAttribute('data-formato');
+    if (formato) {
+      aplicarFormato(input, formato);
+    }
+  } catch (e) {
+    console.error("Error al calcular fórmula:", formulaData, e);
+    input.value = '';
+  }
+}
 
 function calcularFormulaVer01(input, formula, campos) {
   let expr = formula;
@@ -62,7 +86,7 @@ function calcularFormulaVer01(input, formula, campos) {
 }
 
 
-function calcularFormula(input, formula, campos) {
+function calcularFormula02(input, formula, campos) {
   let expr = formula;
   campos.forEach(function(campo) {
     let campoInput = document.getElementsByName(campo)[0];

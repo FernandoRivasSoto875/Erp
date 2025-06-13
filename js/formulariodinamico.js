@@ -5,7 +5,6 @@ function limpiarNumero(valor) {
   valor = valor.replace(/\./g, '').replace(',', '.');
   return valor;
 }
-
 function aplicarFormato(input, formato) {
   let valor = input.value;
   if (!valor) return;

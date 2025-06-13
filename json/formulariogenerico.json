@@ -62,7 +62,7 @@
 
       {
           "nombre": "total",
-          "etiqueta": "Totales",
+          "etiqueta": "Total",
           "tipo": "text",
           "formula": "cantidad * precio_unitario * descripcion_producto",
           "formato": "moneda",

@@ -2,7 +2,6 @@
 let currentFieldType = null;
 let currentFieldName = null;
 let editingItem = null;
-
 /**
  * Crea un ID válido combinando el nombre del campo y el valor.
  */

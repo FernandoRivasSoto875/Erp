@@ -32,14 +32,7 @@
           "formato": "moneda",
           "placeholder": "Ingrese precio"
         },
-        {
-          "nombre": "total",
-          "etiqueta": "Totales",
-          "tipo": "text",
-          "formula": "cantidad * precio_unitario * descripcion_producto",
-          "formato": "moneda",
-          "readonly": true
-        },
+  
         {
           "nombre": "ComId",
           "etiqueta": "Código Producto",
@@ -65,6 +58,27 @@
           "tipo": "text",
           "placeholder": "Nombre completo"
         },
+
+      {
+          "nombre": "total",
+          "etiqueta": "Totales",
+          "tipo": "text",
+          "formula": "cantidad * precio_unitario * descripcion_producto",
+          "formato": "moneda",
+          "readonly": true
+        },
+
+
+
+
+
+
+
+
+
+
+
+
         {
           "nombre": "email",
           "etiqueta": "Correo Electrónico",

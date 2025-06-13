@@ -18,7 +18,7 @@
     <main>
         <?php
         // Solo el nombre del archivo JSON
-        $_GET['archivo'] = 'formulario.json';
+        $_GET['archivo'] = 'formulariogenerico.json';
 
         if (file_exists('formulariodinamico.php')) {
             include 'formulariodinamico.php';

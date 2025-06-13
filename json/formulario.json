@@ -18,130 +18,124 @@
       "alineacion": "fila",
       "estilo": "border:1px dashed #007BFF; padding:10px; background:#f9f9f9;",
       "campos": [
-
-  {
-    "nombre": "cantidad",
-    "etiqueta": "Cantidad",
-    "tipo": "text",
-      "formato": "#,##0.00",
-    "placeholder": "Ingrese cantidad"
-  },
-  {
-    "nombre": "precio_unitario",
-    "etiqueta": "Precio Unitario",
-    "tipo": "texr",
-    "formato": "moneda",
-    "placeholder": "Ingrese precio"
-  },
-  {
-    "nombre": "total",
-    "etiqueta": "Totales",
-    "tipo": "text",
-    "formula": "cantidad * precio_unitario",
-    "formato": "moneda", 
-    "readonly": true
-  },
-  {
-    "nombre": "ComId",
-    "etiqueta": "Código Producto",
-    "tipo": "text",
-    "placeholder": "Ingrese código"
-  },
-  {
-    "nombre": "descripcion_producto",
-    "etiqueta": "Descripción",
-    "tipo": "text",
-    "formula": {
-      "busqueda": {
-        "tabla": "Comuna",
-        "campo": "ComDes",
-        "where": "ComId = {ComId}"
-      }
-    },
-    "readonly": true
-  },
-
- 
-
-  {
-    "nombre": "nombre",
-    "etiqueta": "Nombre",
-    "tipo": "text",
-    "posicionetiqueta": "arriba",
-    "placeholder": "Nombre completo"
-  },
-  {
-    "nombre": "email",
-    "etiqueta": "Correo Electrónico",
-    "tipo": "email",
-    "posicionetiqueta": "izquierdo",
-    "placeholder": "ejemplo@correo.com"
-  },
-  {
-    "nombre": "telefono",
-    "etiqueta": "Teléfono",
-    "tipo": "tel",
-    "posicionetiqueta": "derecho",
-    "placeholder": "+56912345678"
-  },
-  {
-    "nombre": "direccion",
-    "etiqueta": "Dirección",
-    "tipo": "text",
-    "posicionetiqueta": "arriba.centro",
-    "placeholder": "Calle y número"
-  },
-  {
-    "nombre": "ciudad",
-    "etiqueta": "Ciudad",
-    "tipo": "text",
-    "posicionetiqueta": "arriba.izquierdo",
-    "placeholder": "Ciudad"
-  },
-  {
-    "nombre": "pais",
-    "etiqueta": "País",
-    "tipo": "text",
-    "posicionetiqueta": "arriba.derecho",
-    "placeholder": "País"
-  },
-  {
-    "nombre": "comentario",
-    "etiqueta": "Comentario",
-    "tipo": "textarea",
-    "posicionetiqueta": "abajo",
-    "placeholder": "Escribe tu comentario"
-  },
-  {
-    "nombre": "codigo",
-    "etiqueta": "Código",
-    "tipo": "text",
-    "posicionetiqueta": "abajo.centro",
-    "placeholder": "Código postal"
-  },
-  {
-    "nombre": "referencia",
-    "etiqueta": "Referencia",
-    "tipo": "text",
-    "posicionetiqueta": "abajo.izquierdo",
-    "placeholder": "Referencia"
-  },
-  {
-    "nombre": "extra",
-    "etiqueta": "Extra",
-    "tipo": "text",
-    "posicionetiqueta": "abajo.derecho",
-    "placeholder": "Dato extra"
-  },
-  {
-    "nombre": "secreto",
-    "etiqueta": "No visible",
-    "tipo": "text",
-    "posicionetiqueta": "oculto",
-    "placeholder": "No se muestra etiqueta"
-  },
-  
- 
+        {
+          "nombre": "cantidad",
+          "etiqueta": "Cantidad",
+          "tipo": "text",
+          "formato": "#,##0.00",
+          "placeholder": "Ingrese cantidad"
+        },
+        {
+          "nombre": "precio_unitario",
+          "etiqueta": "Precio Unitario",
+          "tipo": "texr",
+          "formato": "moneda",
+          "placeholder": "Ingrese precio"
+        },
+        {
+          "nombre": "total",
+          "etiqueta": "Totales",
+          "tipo": "text",
+          "formula": "cantidad * precio_unitario",
+          "formato": "moneda",
+          "readonly": true
+        },
+        {
+          "nombre": "ComId",
+          "etiqueta": "Código Producto",
+          "tipo": "text",
+          "placeholder": "Ingrese código"
+        },
+        {
+          "nombre": "descripcion_producto",
+          "etiqueta": "Descripción",
+          "tipo": "text",
+          "formula": {
+            "busqueda": {
+              "tabla": "Comuna",
+              "campo": "ComDes",
+              "where": "ComId = {ComId}"
+            }
+          },
+          "readonly": true
+        },
+        {
+          "nombre": "nombre",
+          "etiqueta": "Nombre",
+          "tipo": "text",
+          "posicionetiqueta": "arriba",
+          "placeholder": "Nombre completo"
+        },
+        {
+          "nombre": "email",
+          "etiqueta": "Correo Electrónico",
+          "tipo": "email",
+          "posicionetiqueta": "izquierdo",
+          "placeholder": "ejemplo@correo.com"
+        },
+        {
+          "nombre": "telefono",
+          "etiqueta": "Teléfono",
+          "tipo": "tel",
+          "posicionetiqueta": "derecho",
+          "placeholder": "+56912345678"
+        },
+        {
+          "nombre": "direccion",
+          "etiqueta": "Dirección",
+          "tipo": "text",
+          "posicionetiqueta": "arriba.centro",
+          "placeholder": "Calle y número"
+        },
+        {
+          "nombre": "ciudad",
+          "etiqueta": "Ciudad",
+          "tipo": "text",
+          "posicionetiqueta": "arriba.izquierdo",
+          "placeholder": "Ciudad"
+        },
+        {
+          "nombre": "pais",
+          "etiqueta": "País",
+          "tipo": "text",
+          "posicionetiqueta": "arriba.derecho",
+          "placeholder": "País"
+        },
+        {
+          "nombre": "comentario",
+          "etiqueta": "Comentario",
+          "tipo": "textarea",
+          "posicionetiqueta": "abajo",
+          "placeholder": "Escribe tu comentario"
+        },
+        {
+          "nombre": "codigo",
+          "etiqueta": "Código",
+          "tipo": "text",
+          "posicionetiqueta": "abajo.centro",
+          "placeholder": "Código postal"
+        },
+        {
+          "nombre": "referencia",
+          "etiqueta": "Referencia",
+          "tipo": "text",
+          "posicionetiqueta": "abajo.izquierdo",
+          "placeholder": "Referencia"
+        },
+        {
+          "nombre": "extra",
+          "etiqueta": "Extra",
+          "tipo": "text",
+          "posicionetiqueta": "abajo.derecho",
+          "placeholder": "Dato extra"
+        },
+        {
+          "nombre": "secreto",
+          "etiqueta": "No visible",
+          "tipo": "text",
+          "posicionetiqueta": "oculto",
+          "placeholder": "No se muestra etiqueta"
+        },
         {
           "activo": true,
           "crud": false,
@@ -237,7 +231,11 @@
           "tipo": "radio",
           "requerido": true,
           "tooltipText": "Seleccione su género",
-          "opciones": ["Masculino", "Femenino", "Otro"],
+          "opciones": [
+            "Masculino",
+            "Femenino",
+            "Otro"
+          ],
           "posicionetiqueta": "arriba",
           "estilo": "font-size:14px;"
         },
@@ -249,7 +247,12 @@
           "tipo": "checkbox",
           "requerido": false,
           "tooltipText": "Marque sus intereses",
-          "opciones": ["Deportes", "Música", "Tecnología", "Arte"],
+          "opciones": [
+            "Deportes",
+            "Música",
+            "Tecnología",
+            "Arte"
+          ],
           "posicionetiqueta": "derecho",
           "estilo": "font-size:14px;"
         },
@@ -261,7 +264,12 @@
           "tipo": "select",
           "requerido": true,
           "tooltipText": "Seleccione su nivel de estudio",
-          "opciones": ["Bachiller", "Técnico", "Universitario", "Postgrado"],
+          "opciones": [
+            "Bachiller",
+            "Técnico",
+            "Universitario",
+            "Postgrado"
+          ],
           "posicionetiqueta": "izquierdo",
           "estilo": "color:#333;"
         },
@@ -273,7 +281,11 @@
           "tipo": "list",
           "requerido": false,
           "tooltipText": "Seleccione o escriba un elemento",
-          "opciones": ["Item 1", "Item 2", "Item 3"],
+          "opciones": [
+            "Item 1",
+            "Item 2",
+            "Item 3"
+          ],
           "placeholder": "Elija o escriba...",
           "estilo": ""
         }
@@ -296,7 +308,11 @@
               "tooltipText": "Seleccione o escriba su ciudad",
               "placeholder": "Buscar ciudad...",
               "autocompletar": true,
-              "opciones": ["Santiago", "Valparaíso", "Concepción"],
+              "opciones": [
+                "Santiago",
+                "Valparaíso",
+                "Concepción"
+              ],
               "posicionetiqueta": "arriba",
               "estilo": "color:#007BFF;"
             }

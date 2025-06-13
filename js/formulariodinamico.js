@@ -434,7 +434,6 @@ function initDynamicReordering() {
 }
 
 // ===================== INICIALIZACIÓN DE EVENTOS =====================
-
 document.addEventListener('DOMContentLoaded', function() {
   // Formateo automático en blur
   document.querySelectorAll('input[data-formato]').forEach(function(input) {
@@ -460,6 +459,8 @@ document.addEventListener('DOMContentLoaded', function() {
           });
         }
       });
+      // Calcula la fórmula al cargar la página
+      calcularFormula(input, formulaData, campos);
     } else if (typeof formulaData === 'object' && formulaData.busqueda) {
       // Fórmula de búsqueda
       const campoClave = formulaData.busqueda.where.match(/\{(.+?)\}/);

@@ -20,7 +20,7 @@
         // Solo el nombre del archivo JSON
         $_GET['archivo'] = 'formulario.json';
 
-        if (file_exists('formulario_dinamico.php')) {
+        if (file_exists('formulariodinamico.php')) {
             include 'formulario_dinamico.php';
         } else {
             echo "<p>Error: No se pudo cargar el formulario dinámico. Verifica la configuración.</p>";

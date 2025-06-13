@@ -113,6 +113,11 @@ function cargarCampos() {
     let saved = localStorage.getItem(field.name);
     if (saved) {
       field.value = saved;
+      // Aplica el formato si corresponde
+      const formato = field.getAttribute('data-formato');
+      if (formato) {
+        aplicarFormato(field, formato);
+      }
       // Dispara un evento 'input' para forzar el guardado del campo
       field.dispatchEvent(new Event('input'));
     }

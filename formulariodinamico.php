@@ -1,3 +1,4 @@
+
 <?php
 // filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\formulariodinamico.php
 // Autor: Fernando Rivas S.
@@ -30,6 +31,9 @@ if (!isset($json['grupos']) || !is_array($json['grupos'])) {
     echo "<div style='color:red'>Error: El archivo JSON no contiene grupos de campos.</div>";
     return;
 }
+
+// Obtener la fecha de creación del archivo JSON
+$fecha_creacion = isset($json['parametros']['fecha_creacion']) ? $json['parametros']['fecha_creacion'] : 'Fecha desconocida';
 
 function generarCampo($campo) {
     $estiloCampo = isset($campo['estilo']) ? " style='" . htmlspecialchars($campo['estilo'], ENT_QUOTES, 'UTF-8') . "'" : "";
@@ -387,7 +391,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       <?php endif; ?>
     </header>
     <p><?php echo htmlspecialchars($json['parametros']['comentario'], ENT_QUOTES, 'UTF-8'); ?></p>
-    <form id="formulario" method="POST" enctype="multipart/form-data">
+    <form id="formulario" method="POST" enctype="multipart/form-data" data-archivo="<?php echo htmlspecialchars($nombre_archivo, ENT_QUOTES, 'UTF-8'); ?>">
       <?php echo generarGruposRecursivos($json['grupos']); ?>
       <div class="submit-container">
         <button type="submit">Enviar</button>
@@ -396,7 +400,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <footer>
       <p><?php echo htmlspecialchars($json['parametros']['pie'], ENT_QUOTES, 'UTF-8'); ?></p>
     </footer>
+    <p>Fecha de creación: <?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p>
   </main>
   <script src="js/formulariodinamico.js"></script>
 </body>
-</html> 
+</html>

@@ -508,7 +508,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   });
-
   // Autosave y validación
   cargarCampos();
   const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");

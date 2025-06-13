@@ -144,7 +144,7 @@ function obtenerDatosTabla($data) {
     return $result;
 }
 
-function generarContenidoCampo($campo) {
+function generarContenidoCampo1($campo) {
     ob_start();
     $tipo = isset($campo['tipo']) ? $campo['tipo'] : 'text';
     $nombre = isset($campo['nombre']) ? $campo['nombre'] : '';
@@ -351,7 +351,7 @@ function generarContenidoCampo3($campo) {
 
 
 
-function generarContenidoCampo2($campo) {
+function generarContenidoCampo($campo) {
     ob_start();
     $tipo = isset($campo['tipo']) ? $campo['tipo'] : 'text';
     $nombre = isset($campo['nombre']) ? $campo['nombre'] : '';

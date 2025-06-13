@@ -688,12 +688,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
-
-
 function calcularFormula(input, formula, campos) {
   let expr = formula;
   campos.forEach(function(campo) {
-    const val = parseFloat(document.getElementsByName(campo)[0]?.value || 0);
+    const val = parseFloat(document.getElementsByName(campo)[0]?.value.replace(/\./g, '').replace(',', '.') || 0);
     expr = expr.replace(new RegExp("\\b" + campo + "\\b", "g"), val);
   });
   try {
@@ -701,7 +699,12 @@ function calcularFormula(input, formula, campos) {
   } catch {
     input.value = '';
   }
+  // Aplica formato si corresponde
+  const formato = input.getAttribute('data-formato');
+  if (formato) aplicarFormato(input, formato);
 }
+
+ 
  function buscarValor(input, busqueda, valor) {
   if (!valor) { input.value = ''; return; }
   const match = busqueda.where.match(/\{(.+?)\}/);
@@ -726,9 +729,11 @@ function calcularFormula(input, formula, campos) {
   })
   .catch(() => { input.value = ''; });
 }
-function aplicarFormato(input, formato) {
+ function aplicarFormato(input, formato) {
   let valor = input.value;
   if (!valor) return;
+  // Quita símbolos de moneda y espacios
+  valor = valor.replace(/[^\d,.-]/g, '');
   let num = parseFloat(valor.replace(/\./g, '').replace(',', '.'));
   if (isNaN(num)) return;
 
@@ -741,5 +746,4 @@ function aplicarFormato(input, formato) {
   } else if (formato === "0.00") {
     input.value = num.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
-  // Puedes agregar más formatos según tus necesidades
 }

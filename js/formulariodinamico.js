@@ -693,13 +693,12 @@ function calcularFormula(input, formula, campos) {
     input.value = '';
   }
 }
-
-function buscarValor(input, busqueda, valor) {
+ function buscarValor(input, busqueda, valor) {
   if (!valor) { input.value = ''; return; }
   const match = busqueda.where.match(/\{(.+?)\}/);
   const campoClave = match ? match[1] : null;
   if (!campoClave) { input.value = ''; return; }
-  fetch('buscar_formula.php', {
+  fetch('ajax/buscar_formula.php', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
@@ -708,7 +707,13 @@ function buscarValor(input, busqueda, valor) {
       where: { [campoClave]: valor }
     })
   })
-  .then(r => r.json())
-  .then(data => { input.value = data.resultado || ''; })
+  .then(r => r.ok ? r.json() : Promise.reject())
+  .then(data => {
+    if (data && typeof data.resultado !== "undefined" && data.resultado !== null) {
+      input.value = data.resultado;
+    } else {
+      input.value = '';
+    }
+  })
   .catch(() => { input.value = ''; });
 }

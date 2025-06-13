@@ -159,6 +159,105 @@ function generarContenidoCampo($campo) {
         $readonly = " readonly";
     }
 
+    // Soporte para formato numérico/moneda
+    $dataFormato = isset($campo['formato']) ? " data-formato='" . htmlspecialchars($campo['formato'], ENT_QUOTES, 'UTF-8') . "'" : "";
+
+    // Opciones dinámicas
+    if (isset($campo['data'])) {
+        $opciones = obtenerDatosTabla($campo['data']);
+    } else {
+        $opciones = isset($campo['opciones']) ? $campo['opciones'] : [];
+    }
+    $marcaCrud = (isset($campo['crud']) && $campo['crud'] === true) ? " data-dynamic='true'" : "";
+
+    switch ($tipo) {
+        case 'radio':
+            echo "<div class='radio-group' id='{$nombre}_container'>";
+            foreach ($opciones as $opcion) {
+                $opcionTexto = htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
+                echo "<span class='radio-item' style='margin-right:15px;'>";
+                echo "<input type='radio' id='{$nombre}_{$opcionTexto}' name='{$nombre}' value='{$opcionTexto}'{$marcaCrud}>";
+                echo "<label for='{$nombre}_{$opcionTexto}'>$opcionTexto</label>";
+                echo "</span>";
+            }
+            echo "</div>";
+            break;
+        case 'checkbox':
+            echo "<div class='checkbox-group' id='{$nombre}_container'>";
+            foreach ($opciones as $opcion) {
+                $opcionTexto = htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
+                echo "<span class='checkbox-item' style='margin-right:10px;'>";
+                echo "<input type='checkbox' id='{$nombre}_{$opcionTexto}' name='{$nombre}[]' value='{$opcionTexto}'{$marcaCrud}>";
+                echo "<label for='{$nombre}_{$opcionTexto}'>$opcionTexto</label>";
+                echo "</span>";
+            }
+            echo "</div>";
+            break;
+        case 'select':
+            echo "<select name='{$nombre}' id='{$nombre}'>";
+            foreach ($opciones as $opcion) {
+                $opcionTexto = htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
+                echo "<option value='{$opcionTexto}'{$marcaCrud}>$opcionTexto</option>";
+            }
+            echo "</select>";
+            break;
+        case 'selectdata':
+            echo "<select name='{$nombre}' id='{$nombre}'{$marcaCrud}>";
+            echo "<option value=''>Seleccione...</option>";
+            foreach ($opciones as $opcion) {
+                if (is_array($opcion)) {
+                    $valor = htmlspecialchars($opcion['id'], ENT_QUOTES, 'UTF-8');
+                    $texto = htmlspecialchars($opcion['nombre'], ENT_QUOTES, 'UTF-8');
+                } else {
+                    $valor = $texto = htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
+                }
+                echo "<option value='{$valor}'>{$texto}</option>";
+            }
+            echo "</select>";
+            break;
+        case 'list':
+            $datalistId = $nombre . "-list";
+            echo "<input type='text' name='{$nombre}' id='{$nombre}'{$placeholder}{$readonly}{$formulaAttr}{$dataFormato} list='{$datalistId}'>";
+            echo "<datalist id='{$datalistId}'>";
+            foreach ($opciones as $opcion) {
+                $opcionTexto = htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
+                echo "<option value='{$opcionTexto}'{$marcaCrud}>";
+            }
+            echo "</datalist>";
+            break;
+        case 'datable':
+            echo "<div class='datable' id='{$nombre}_datable' style='width:100%; border:1px solid #ccc; padding:10px;'>";
+            echo "<!-- Aquí se renderizarán los datos en forma tabular -->";
+            echo "</div>";
+            break;
+        case 'file':
+            $accept = isset($campo['accept']) ? " accept='" . htmlspecialchars($campo['accept'], ENT_QUOTES, 'UTF-8') . "'" : "";
+            $capture = isset($campo['capture']) ? " capture='" . htmlspecialchars($campo['capture'], ENT_QUOTES, 'UTF-8') . "'" : "";
+            echo "<input type='file' name='{$nombre}' id='{$nombre}'{$accept}{$capture}>";
+            break;
+        case 'textarea':
+            echo "<textarea name='{$nombre}' id='{$nombre}'{$placeholder}{$readonly}{$formulaAttr}{$dataFormato}></textarea>";
+            break;
+        default:
+            echo "<input type='{$tipo}' name='{$nombre}' id='{$nombre}'{$placeholder}{$readonly}{$formulaAttr}{$dataFormato}>";
+            break;
+    }
+    return ob_get_clean();
+}
+function generarContenidoCampo12053035($campo) {
+    ob_start();
+    $tipo = isset($campo['tipo']) ? $campo['tipo'] : 'text';
+    $nombre = isset($campo['nombre']) ? $campo['nombre'] : '';
+    $placeholder = isset($campo["placeholder"]) ? " placeholder='" . htmlspecialchars($campo["placeholder"], ENT_QUOTES, "UTF-8") . "'" : "";
+    $readonly = (isset($campo["readonly"]) && $campo["readonly"]) ? " readonly" : "";
+    $formulaAttr = "";
+
+    // Soporte para fórmula (aritmética o búsqueda)
+    if (isset($campo["formula"])) {
+        $formulaAttr = " data-formula='" . htmlspecialchars(json_encode($campo["formula"]), ENT_QUOTES, "UTF-8") . "'";
+        $readonly = " readonly";
+    }
+
     // Opciones dinámicas
     if (isset($campo['data'])) {
         $opciones = obtenerDatosTabla($campo['data']);

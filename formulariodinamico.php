@@ -262,7 +262,7 @@ function generarGruposRecursivos($grupos) {
 }
 
 // ---------------------------------------------------------------
-// Función para enviar el formulario con adjunto HTML y PDF real
+// FUNCIÓN PARA ENVIAR EL FORMULARIO CON ADJUNTOS MIME CORRECTOS
 // ---------------------------------------------------------------
 function enviarFormulario($jsonFile, $formData) {
     $jsonData = file_get_contents($jsonFile);
@@ -276,7 +276,7 @@ function enviarFormulario($jsonFile, $formData) {
 
     $tiposFormatoEnvio = explode(',', strtolower($config['parametros']['tipoformatoenvio'] ?? 'htmlc'));
 
-    // --- 1. Usar la etiqueta como nombre de campo ---
+    // Obtener etiquetas
     function obtenerEtiquetas($grupos) {
         $etiquetas = [];
         foreach ($grupos as $grupo) {
@@ -295,7 +295,7 @@ function enviarFormulario($jsonFile, $formData) {
     }
     $etiquetas = obtenerEtiquetas($config['grupos']);
 
-    // --- 2. Construir el HTML del formulario usando etiquetas ---
+    // Construir HTML
     $mensajeHTML = "<h2>Datos del Formulario</h2><table border='1'>";
     foreach ($formData as $key => $value) {
         $nombreCampo = isset($etiquetas[$key]) ? $etiquetas[$key] : $key;
@@ -304,7 +304,7 @@ function enviarFormulario($jsonFile, $formData) {
     }
     $mensajeHTML .= "</table>";
 
-    // --- 3. Construir el PDF real usando FPDF ---
+    // Construir PDF real usando FPDF
     $pdf = new FPDF();
     $pdf->AddPage();
     $pdf->SetFont('Arial', 'B', 14);
@@ -316,66 +316,68 @@ function enviarFormulario($jsonFile, $formData) {
         $pdf->Cell(60, 8, utf8_decode($nombreCampo) . ':', 1);
         $pdf->Cell(0, 8, utf8_decode($value), 1, 1);
     }
-    $pdfContent = $pdf->Output('S'); // S = return as string
+    $pdfContent = $pdf->Output('S');
 
     $asunto = $config['parametros']['subject'] ?? "Formulario Recibido";
     $cabeceras = "From: " . $mailDe . "\r\n";
-    $cabeceras .= "Reply-To: " . $mailDe . "\r\n";
     if (!empty($mailCc)) $cabeceras .= "Cc: " . $mailCc . "\r\n";
     if (!empty($mailCco)) $cabeceras .= "Bcc: " . $mailCco . "\r\n";
     $cabeceras .= "MIME-Version: 1.0\r\n";
 
-    // --- 4. Adjuntar HTML y PDF si corresponde ---
+    // Si solo htmlc, enviar como cuerpo
     if (in_array('htmlc', $tiposFormatoEnvio)) {
         $cabeceras .= "Content-Type: text/html; charset=UTF-8\r\n";
-        mail($mailPara, $asunto, $mensajeHTML, $cabeceras);
-    } else {
-        $boundary = "PHP-mixed-" . md5(time());
-        $cabeceras .= "Content-Type: multipart/mixed; boundary=\"$boundary\"\r\n";
-
-        $mensaje = "--$boundary\r\n";
-        $mensaje .= "Content-Type: text/html; charset=UTF-8\r\n";
-        $mensaje .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
-        $mensaje .= $mensajeHTML . "\r\n\r\n";
-
-        // Adjuntar HTML
-        if (in_array('html', $tiposFormatoEnvio)) {
-            $filename = "formulario.html";
-            $attachment = chunk_split(base64_encode($mensajeHTML));
-            $mensaje .= "--$boundary\r\n";
-            $mensaje .= "Content-Type: text/html; name=\"$filename\"\r\n";
-            $mensaje .= "Content-Disposition: attachment; filename=\"$filename\"\r\n";
-            $mensaje .= "Content-Transfer-Encoding: base64\r\n\r\n";
-            $mensaje .= $attachment . "\r\n\r\n";
-        }
-
-        // Adjuntar PDF real
-        if (in_array('pdf', $tiposFormatoEnvio)) {
-            $filename = "formulario.pdf";
-            $attachment = chunk_split(base64_encode($pdfContent));
-            $mensaje .= "--$boundary\r\n";
-            $mensaje .= "Content-Type: application/pdf; name=\"$filename\"\r\n";
-            $mensaje .= "Content-Disposition: attachment; filename=\"$filename\"\r\n";
-            $mensaje .= "Content-Transfer-Encoding: base64\r\n\r\n";
-            $mensaje .= $attachment . "\r\n\r\n";
-        }
-
-        $mensaje .= "--$boundary--\r\n";
-        mail($mailPara, $asunto, $mensaje, $cabeceras);
+        return mail($mailPara, $asunto, $mensajeHTML, $cabeceras);
     }
 
-    return true;
+    // Si hay adjuntos, armar MIME
+    $boundary = "----=_Part_" . md5(uniqid(time()));
+    $cabeceras .= "Content-Type: multipart/mixed; boundary=\"$boundary\"\r\n";
+
+    $mensaje = "--$boundary\r\n";
+    $mensaje .= "Content-Type: text/html; charset=UTF-8\r\n";
+    $mensaje .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
+    $mensaje .= $mensajeHTML . "\r\n\r\n";
+
+    // Adjuntar HTML
+    if (in_array('html', $tiposFormatoEnvio)) {
+        $filename = "formulario.html";
+        $attachment = chunk_split(base64_encode($mensajeHTML));
+        $mensaje .= "--$boundary\r\n";
+        $mensaje .= "Content-Type: text/html; name=\"$filename\"\r\n";
+        $mensaje .= "Content-Disposition: attachment; filename=\"$filename\"\r\n";
+        $mensaje .= "Content-Transfer-Encoding: base64\r\n\r\n";
+        $mensaje .= $attachment . "\r\n\r\n";
+    }
+
+    // Adjuntar PDF
+    if (in_array('pdf', $tiposFormatoEnvio)) {
+        $filename = "formulario.pdf";
+        $attachment = chunk_split(base64_encode($pdfContent));
+        $mensaje .= "--$boundary\r\n";
+        $mensaje .= "Content-Type: application/pdf; name=\"$filename\"\r\n";
+        $mensaje .= "Content-Disposition: attachment; filename=\"$filename\"\r\n";
+        $mensaje .= "Content-Transfer-Encoding: base64\r\n\r\n";
+        $mensaje .= $attachment . "\r\n\r\n";
+    }
+
+    $mensaje .= "--$boundary--\r\n";
+
+    // Enviar y mostrar resultado
+    $ok = mail($mailPara, $asunto, $mensaje, $cabeceras);
+    if ($ok) {
+        echo "<p style='color: green; text-align: center;'>¡Correo enviado correctamente!</p>";
+    } else {
+        echo "<p style='color: red; text-align: center;'>Error al enviar el correo. Revise la configuración del servidor.</p>";
+    }
+    return $ok;
 }
 
 // Verificar si se ha enviado el formulario
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $formData = $_POST; // Recibe todos los datos del formulario
 
-    if (enviarFormulario($json_file, $formData)) {
-        echo "<p style='color: green; text-align: center;'>Formulario enviado correctamente.</p>";
-    } else {
-        echo "<p style='color: red; text-align: center;'>Error al enviar el formulario.</p>";
-    }
+    enviarFormulario($json_file, $formData);
 }
 ?>
 <!DOCTYPE html>
@@ -406,6 +408,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </footer>
     <p>Fecha de creación: <?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p>
   </main>
-  <script src="js/formulariodinamico.js"></script>
-</body>
-</html>
+  <script

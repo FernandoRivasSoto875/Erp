@@ -478,7 +478,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // ======= resto igual =======
+   
   cargarCampos();
   const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
   fields.forEach(el => {

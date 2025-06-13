@@ -22,20 +22,21 @@
   {
     "nombre": "cantidad",
     "etiqueta": "Cantidad",
-    "tipo": "number",
+    "tipo": "text",
+      "formato": "#,##0.00",
     "placeholder": "Ingrese cantidad"
   },
   {
     "nombre": "precio_unitario",
     "etiqueta": "Precio Unitario",
-    "tipo": "number",
+    "tipo": "texr",
     "formato": "moneda",
     "placeholder": "Ingrese precio"
   },
   {
     "nombre": "total",
     "etiqueta": "Total",
-    "tipo": "number",
+    "tipo": "text",
     "formula": "cantidad * precio_unitario",
     "formato": "#,##0.00",
     "readonly": true

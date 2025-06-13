@@ -108,9 +108,7 @@ function generarCampo($campo) {
 
 
 
-
-
-// Función para obtener datos dinámicos desde la BD (propiedad "data")
+ 
  
  
 function obtenerDatosTabla($data) {
@@ -484,8 +482,6 @@ function generarGruposRecursivos($grupos) {
 }
 
  
-
-
 
 ?>
 <!DOCTYPE html>

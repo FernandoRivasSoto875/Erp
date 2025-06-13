@@ -680,7 +680,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 });
-
 function calcularFormula(input, formula, campos) {
   let expr = formula;
   campos.forEach(function(campo) {

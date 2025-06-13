@@ -451,8 +451,7 @@ function generarContenidoCampo($campo) {
         default:
                 echo "<input type='{$tipo}' name='{$nombre}' id='{$nombre}'{$placeholder}{$readonly}{$formulaAttr}{$dataFormato}>";
            break;
-    }
-    return ob_get_clean();
+    }    return ob_get_clean();
 }
 
 

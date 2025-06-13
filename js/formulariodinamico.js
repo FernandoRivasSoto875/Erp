@@ -659,26 +659,39 @@ document.addEventListener('DOMContentLoaded', function() {
           });
         }
       });
-      calcularFormula(input, formulaData, campos);
-    } else if (formulaData.busqueda) {
-      // Búsqueda tipo selectdata
-      const match = formulaData.busqueda.where.match(/\{(.+?)\}/);
-      const campoClave = match ? match[1] : null;
-      if (campoClave) {
-        const campoInput = document.getElementsByName(campoClave)[0];
-        if (campoInput) {
-          campoInput.addEventListener('input', function() {
-            buscarValor(input, formulaData.busqueda, campoInput.value);
-          });
-          // Ejecutar búsqueda al cargar si ya hay valor
-          if (campoInput.value) {
-            buscarValor(input, formulaData.busqueda, campoInput.value);
-          }
-        }
-      }
+
+function calcularFormula(input, formula, campos) {
+  let expr = formula;
+  campos.forEach(function(campo) {
+    let campoInput = document.getElementsByName(campo)[0];
+    let val = 0;
+    if (campoInput) {
+      val = parseFloat(limpiarNumero(campoInput.value)) || 0;
     }
+    expr = expr.replace(new RegExp("\\b" + campo + "\\b", "g"), val);
   });
-});
+  try {
+    input.value = eval(expr);
+  } catch {
+    input.value = '';
+  }
+  // Aplica formato si corresponde
+  const formato = input.getAttribute('data-formato');
+  if (formato) aplicarFormato(input, formato);
+}
+
+
+function limpiarNumero(valor) {
+  // Quita todo excepto números, punto, coma y signo menos
+  valor = valor.replace(/[^\d,.-]/g, '');
+  // Reemplaza puntos de miles por nada, y comas por punto decimal
+  valor = valor.replace(/\./g, '').replace(',', '.');
+  return valor;
+}
+
+
+
+ 
 document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('input[data-formato]').forEach(function(input) {
     const formato = input.getAttribute('data-formato');
@@ -731,32 +744,4 @@ document.addEventListener('DOMContentLoaded', function() {
   } else if (formato === "0.00") {
     input.value = num.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
-}
-function calcularFormula(input, formula, campos) {
-  let expr = formula;
-  campos.forEach(function(campo) {
-    let campoInput = document.getElementsByName(campo)[0];
-    let val = 0;
-    if (campoInput) {
-      val = parseFloat(limpiarNumero(campoInput.value)) || 0;
-    }
-    expr = expr.replace(new RegExp("\\b" + campo + "\\b", "g"), val);
-  });
-  try {
-    input.value = eval(expr);
-  } catch {
-    input.value = '';
-  }
-  // Aplica formato si corresponde
-  const formato = input.getAttribute('data-formato');
-  if (formato) aplicarFormato(input, formato);
-}
-
-
-function limpiarNumero(valor) {
-  // Quita todo excepto números, punto, coma y signo menos
-  valor = valor.replace(/[^\d,.-]/g, '');
-  // Reemplaza puntos de miles por nada, y comas por punto decimal
-  valor = valor.replace(/\./g, '').replace(',', '.');
-  return valor;
 }

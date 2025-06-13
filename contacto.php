@@ -21,7 +21,7 @@
         $_GET['archivo'] = 'contactoformulario.json';
 
         if (file_exists('formulariodinamico.php')) {
-            include 'formulario_dinamico.php';
+            include 'formulariodinamico.php';
         } else {
             echo "<p>Error: No se pudo cargar el formulario dinámico. Verifica la configuración.</p>";
         }

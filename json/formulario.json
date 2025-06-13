@@ -35,7 +35,7 @@
   },
   {
     "nombre": "total",
-    "etiqueta": "Total",
+    "etiqueta": "Totales",
     "tipo": "text",
     "formula": "cantidad * precio_unitario",
     "formato": "moneda", 

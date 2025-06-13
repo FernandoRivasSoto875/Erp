@@ -1,6 +1,5 @@
 <?php
  
-
 require_once '../funcionessql.php';
 $conn = conexionBd();
 

@@ -698,7 +698,7 @@ function calcularFormula(input, formula, campos) {
   const match = busqueda.where.match(/\{(.+?)\}/);
   const campoClave = match ? match[1] : null;
   if (!campoClave) { input.value = ''; return; }
-  fetch('ajax/buscar_formula.php', {
+  fetch('ajax/busqueda_formula.php', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({

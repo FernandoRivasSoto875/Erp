@@ -24,7 +24,7 @@ function aplicarFormato(input, formato) {
     }
     return;
   }
-
+ 
   // Si es text, aplica formato local
   if (formato === "moneda") {
     input.value = num.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });

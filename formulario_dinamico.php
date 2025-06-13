@@ -451,8 +451,8 @@ function generarContenidoCampo($campo) {
             echo "<textarea name='{$nombre}' id='{$nombre}'{$placeholder}{$readonly}{$formulaAttr}></textarea>";
             break;
         default:
-            echo "<input type='{$tipo}' name='{$nombre}' id='{$nombre}'{$placeholder}{$readonly}{$formulaAttr}>";
-            break;
+                echo "<input type='{$tipo}' name='{$nombre}' id='{$nombre}'{$placeholder}{$readonly}{$formulaAttr}{$dataFormato}>";
+           break;
     }
     return ob_get_clean();
 }

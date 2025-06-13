@@ -44,7 +44,7 @@ function limpiarNumero(valor) {
 
 
 
-function calcularFormula(input, formula, campos) {
+function calcularFormulaVer01(input, formula, campos) {
   let expr = formula;
   campos.forEach(function(campo) {
     let campoInput = document.getElementsByName(campo)[0];
@@ -63,6 +63,63 @@ function calcularFormula(input, formula, campos) {
   const formato = input.getAttribute('data-formato');
   if (formato) aplicarFormato(input, formato);
 }
+
+
+function calcularFormula(input, formula, campos) {
+  let expr = formula;
+  campos.forEach(function(campo) {
+    let campoInput = document.getElementsByName(campo)[0];
+    let val = 0;
+    if (campoInput) {
+      val = parseFloat(limpiarNumero(campoInput.value)) || 0;
+    }
+    expr = expr.replace(new RegExp("\\b" + campo + "\\b", "g"), val);
+  });
+  try {
+    let resultado = eval(expr);
+    // Asigna el resultado al campo oculto "total"
+    document.getElementsByName("total")[0].value = resultado;
+
+    // Formatea el resultado y lo muestra en el campo "total_calculado"
+    const formato = input.getAttribute('data-formato');
+    let formateado = '';
+    if (!isNaN(resultado)) {
+      if (formato === "moneda") {
+        formateado = resultado.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
+      } else if (formato === "#,##0.00" || formato === "0.00") {
+        formateado = resultado.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      } else if (formato === "0") {
+        formateado = resultado.toLocaleString('es-CL', { maximumFractionDigits: 0 });
+      }
+    }
+    document.getElementsByName("total_calculado")[0].value = formateado;
+
+  } catch {
+    document.getElementsByName("total")[0].value = '';
+    document.getElementsByName("total_calculado")[0].value = '';
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function buscarValor(input, busqueda, valor) {
   if (!valor) { input.value = ''; return; }

@@ -1,4 +1,5 @@
 <?php
+ 
 
 require_once '../funcionessql.php';
 $conn = conexionBd();
@@ -25,7 +26,7 @@ if ($valores) {
 }
 $stmt->execute();
 $stmt->bind_result($resultado);
-$stmt->fetch();
+$found = $stmt->fetch();
 $stmt->close();
 
-echo json_encode(['resultado' => $resultado]);
+echo json_encode(['resultado' => $found ? $resultado : null]);

@@ -41,9 +41,6 @@ function limpiarNumero(valor) {
 
 
 
-
-
-
 function calcularFormulaVer01(input, formula, campos) {
   let expr = formula;
   campos.forEach(function(campo) {

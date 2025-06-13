@@ -13,7 +13,7 @@
   "grupos": [
     {
       "activo": true,
-      "grupoNombre": "Datos Personales",
+      "grupoNombre": "Datos Personalesss",
       "grupoAlineacion": "columna",
       "alineacion": "fila",
       "estilo": "border:1px dashed #007BFF; padding:10px; background:#f9f9f9;",

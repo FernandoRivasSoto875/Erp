@@ -19,7 +19,6 @@
       "estilo": "border:1px dashed #007BFF; padding:10px; background:#f9f9f9;",
       "campos": [
 
-
   {
     "nombre": "cantidad",
     "etiqueta": "Cantidad",
@@ -60,7 +59,6 @@
     },
     "readonly": true
   },
-
 
  
 

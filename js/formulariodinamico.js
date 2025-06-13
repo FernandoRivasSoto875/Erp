@@ -730,9 +730,9 @@ function calcularFormula(input, formula, campos) {
   .catch(() => { input.value = ''; });
 }
  function aplicarFormato(input, formato) {
+  console.log('aplicarFormato', input.name, input.value, formato); // <-- agrega esto
   let valor = input.value;
   if (!valor) return;
-  // Quita símbolos de moneda y espacios
   valor = valor.replace(/[^\d,.-]/g, '');
   let num = parseFloat(valor.replace(/\./g, '').replace(',', '.'));
   if (isNaN(num)) return;

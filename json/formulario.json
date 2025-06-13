@@ -38,7 +38,7 @@
     "etiqueta": "Total",
     "tipo": "text",
     "formula": "cantidad * precio_unitario",
-    "formato": "#,##0",
+    "formato": "moneda",
     "readonly": true
   },
   {

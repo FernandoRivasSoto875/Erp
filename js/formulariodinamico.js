@@ -6,7 +6,7 @@ function limpiarNumero(valor) {
   return valor;
 }
 
-function aplicarFormato(input, formato) {
+function XaplicarFormato(input, formato) {
   let valor = input.value;
   if (!valor) return;
   valor = valor.replace(/[^\d,.-]/g, '');
@@ -23,6 +23,47 @@ function aplicarFormato(input, formato) {
     input.value = num.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 }
+
+function aplicarFormato(input, formato) {
+  let valor = input.value;
+  if (!valor) return;
+  valor = valor.replace(/[^\d,.-]/g, '');
+  let num = parseFloat(valor.replace(/\./g, '').replace(',', '.'));
+  if (isNaN(num)) return;
+
+  // Si el input es type="number", usa punto decimal SIEMPRE
+  if (input.type === "number") {
+    if (formato === "moneda" || formato === "#,##0.00" || formato === "0.00") {
+      input.value = num.toFixed(2);
+    } else if (formato === "0") {
+      input.value = Math.round(num);
+    } else {
+      input.value = num;
+    }
+    return;
+  }
+
+  // Si es text, aplica formato local
+  if (formato === "moneda") {
+    input.value = num.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
+  } else if (formato === "#,##0.00") {
+    input.value = num.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  } else if (formato === "0") {
+    input.value = num.toLocaleString('es-CL', { maximumFractionDigits: 0 });
+  } else if (formato === "0.00") {
+    input.value = num.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+}
+
+
+
+
+
+
+
+
+
+
 
 function calcularFormula(input, formula, campos) {
   let expr = formula;

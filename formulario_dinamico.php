@@ -145,7 +145,7 @@ function obtenerDatosTabla($data) {
 }
 
  
-function generarContenidoCampo($campo) {
+function generarContenidoCampo1($campo) {
     ob_start();
     $tipo = isset($campo['tipo']) ? $campo['tipo'] : 'text';
     $nombre = isset($campo['nombre']) ? $campo['nombre'] : '';
@@ -244,7 +244,7 @@ function generarContenidoCampo($campo) {
     }
     return ob_get_clean();
 }
-function generarContenidoCampo12053035($campo) {
+function generarContenidoCampo($campo) {
     ob_start();
     $tipo = isset($campo['tipo']) ? $campo['tipo'] : 'text';
     $nombre = isset($campo['nombre']) ? $campo['nombre'] : '';

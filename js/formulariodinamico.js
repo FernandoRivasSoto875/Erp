@@ -5,6 +5,7 @@ function limpiarNumero(valor) {
   valor = valor.replace(/\./g, '').replace(',', '.');
   return valor;
 }
+
 function aplicarFormato(input, formato) {
   let valor = input.value;
   if (!valor) return;
@@ -60,6 +61,13 @@ function calcularFormula(input, formulaData, campos) {
     // Guarda el valor calculado en el almacenamiento local
     localStorage.setItem(input.name, resultado);
 
+    // Actualiza y guarda el valor del campo oculto "total"
+    if (input.id === "total_calculado") {
+      const total = document.getElementById("total");
+      total.value = resultado;
+      localStorage.setItem("total", resultado);
+    }
+
   } catch (e) {
     console.error("Error al calcular fórmula:", formulaData, e);
     input.value = '';
@@ -84,6 +92,8 @@ function buscarValor(input, busqueda, valor) {
   .then(data => {
     if (data && typeof data.resultado !== "undefined" && data.resultado !== null) {
       input.value = data.resultado;
+       // Guarda el valor en el almacenamiento local
+      localStorage.setItem(input.name, data.resultado);
     } else {
       input.value = '';
     }

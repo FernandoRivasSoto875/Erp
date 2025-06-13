@@ -1,7 +1,6 @@
  <?php
 // filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\formulariodinamico.php
 // Autor: Fernando Rivas S.
-
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 

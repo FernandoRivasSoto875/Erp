@@ -36,7 +36,7 @@
           "nombre": "total",
           "etiqueta": "Totales",
           "tipo": "text",
-          "formula": "cantidad * precio_unitario",
+          "formula": "cantidad * precio_unitario * descripcion_producto",
           "formato": "moneda",
           "readonly": true
         },
@@ -53,7 +53,7 @@
           "formula": {
             "busqueda": {
               "tabla": "Comuna",
-              "campo": "ComDes",
+              "campo": "ComId",
               "where": "ComId = {ComId}"
             }
           },

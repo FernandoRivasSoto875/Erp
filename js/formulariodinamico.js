@@ -1,4 +1,4 @@
- // ===================== UTILIDADES DE FORMATO Y FÓRMULAS =====================
+// ===================== UTILIDADES DE FORMATO Y FÓRMULAS =====================
 
 function limpiarNumero(valor) {
   valor = valor.replace(/[^\d,.-]/g, '');
@@ -6,8 +6,7 @@ function limpiarNumero(valor) {
   return valor;
 }
 
- 
- function aplicarFormato(input, formato) {
+function aplicarFormato(input, formato) {
   let valor = input.value;
   if (!valor) return;
   valor = valor.replace(/[^\d,.-]/g, '');
@@ -38,7 +37,6 @@ function limpiarNumero(valor) {
   }
 }
 
-
 function calcularFormula(input, formulaData, campos) {
   let expr = formulaData;
   campos.forEach(function(campo) {
@@ -64,83 +62,6 @@ function calcularFormula(input, formulaData, campos) {
     input.value = '';
   }
 }
-
-function calcularFormulaVer01(input, formula, campos) {
-  let expr = formula;
-  campos.forEach(function(campo) {
-    let campoInput = document.getElementsByName(campo)[0];
-    let val = 0;
-    if (campoInput) {
-      val = parseFloat(limpiarNumero(campoInput.value)) || 0;
-    }
-    expr = expr.replace(new RegExp("\\b" + campo + "\\b", "g"), val);
-  });
-  try {
-    input.value = eval(expr);
-  } catch {
-    input.value = '';
-  }
-  // Aplica formato si corresponde
-  const formato = input.getAttribute('data-formato');
-  if (formato) aplicarFormato(input, formato);
-}
-
-
-function calcularFormula02(input, formula, campos) {
-  let expr = formula;
-  campos.forEach(function(campo) {
-    let campoInput = document.getElementsByName(campo)[0];
-    let val = 0;
-    if (campoInput) {
-      val = parseFloat(limpiarNumero(campoInput.value)) || 0;
-    }
-    expr = expr.replace(new RegExp("\\b" + campo + "\\b", "g"), val);
-  });
-  try {
-    let resultado = eval(expr);
-    // Asigna el resultado al campo oculto "total"
-    document.getElementsByName("total")[0].value = resultado;
-
-    // Formatea el resultado y lo muestra en el campo "total_calculado"
-    const formato = input.getAttribute('data-formato');
-    let formateado = '';
-    if (!isNaN(resultado)) {
-      if (formato === "moneda") {
-        formateado = resultado.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
-      } else if (formato === "#,##0.00" || formato === "0.00") {
-        formateado = resultado.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      } else if (formato === "0") {
-        formateado = resultado.toLocaleString('es-CL', { maximumFractionDigits: 0 });
-      }
-    }
-    document.getElementsByName("total_calculado")[0].value = formateado;
-
-  } catch {
-    document.getElementsByName("total")[0].value = '';
-    document.getElementsByName("total_calculado")[0].value = '';
-  }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 function buscarValor(input, busqueda, valor) {
   if (!valor) { input.value = ''; return; }
@@ -576,7 +497,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-   
+  // Autosave y validación
   cargarCampos();
   const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
   fields.forEach(el => {
@@ -584,13 +505,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (el.getAttribute("pattern")) el.addEventListener("blur", validarInput);
   });
 
+  // Autocompletar
   document.querySelectorAll("input[data-autocompletar='true']").forEach(field => {
     field.addEventListener("input", autocompleteField);
   });
 
+  // Campos condicionales
   configurarCondiciones();
+
+  // CRUD y reordenamiento
   initDynamicReordering();
-});
-
-
- 
+}); 

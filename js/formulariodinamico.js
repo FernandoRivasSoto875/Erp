@@ -111,7 +111,11 @@ function cargarCampos() {
   const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
   fields.forEach(field => {
     let saved = localStorage.getItem(field.name);
-    if (saved) field.value = saved;
+    if (saved) {
+      field.value = saved;
+      // Dispara un evento 'input' para forzar el guardado del campo
+      field.dispatchEvent(new Event('input'));
+    }
   });
 }
 
@@ -550,4 +554,4 @@ document.addEventListener('DOMContentLoaded', function() {
       console.error('Error:', error);
     });
   });
-});
+}); 

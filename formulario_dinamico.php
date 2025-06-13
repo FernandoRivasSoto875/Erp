@@ -457,13 +457,7 @@ function generarContenidoCampo($campo) {
     return ob_get_clean();
 }
 
-function limpiarNumero(valor) {
-  // Quita todo excepto números, punto, coma y signo menos
-  valor = valor.replace(/[^\d,.-]/g, '');
-  // Reemplaza puntos de miles por nada, y comas por punto decimal
-  valor = valor.replace(/\./g, '').replace(',', '.');
-  return valor;
-}
+
 
 
 // ---------------------------------------------------------------
@@ -489,38 +483,7 @@ function generarGruposRecursivos($grupos) {
     return $html;
 }
 
-
-
-
-
-
-function calcularFormula(input, formula, campos) {
-  let expr = formula;
-  campos.forEach(function(campo) {
-    let campoInput = document.getElementsByName(campo)[0];
-    let val = 0;
-    if (campoInput) {
-      val = parseFloat(limpiarNumero(campoInput.value)) || 0;
-    }
-    expr = expr.replace(new RegExp("\\b" + campo + "\\b", "g"), val);
-  });
-  try {
-    input.value = eval(expr);
-  } catch {
-    input.value = '';
-  }
-  // Aplica formato si corresponde
-  const formato = input.getAttribute('data-formato');
-  if (formato) aplicarFormato(input, formato);
-}
-
-
-
-
-
-
-
-
+ 
 
 
 

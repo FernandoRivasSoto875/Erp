@@ -536,27 +536,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Evitar la recarga de la página al enviar el formulario
   document.getElementById("formulario").addEventListener("submit", function(event) {
-    event.preventDefault(); // Evita la recarga de la página
-
-    // Obtén el valor del campo de solo lectura
-    const totalCalculado = document.getElementById("total_calculado").value;
-
-    // Copia el valor al campo oculto
-    document.getElementById("total").value = totalCalculado;
+    event.preventDefault();
 
     const formData = new FormData(this);
 
-    fetch('procesar_formulario.php', { // Reemplaza con la URL de tu script PHP
-      method: 'POST',
-      body: formData
+    // Obtener el nombre del archivo JSON desde el atributo data-archivo del formulario
+    const nombreArchivo = document.getElementById("formulario").getAttribute("data-archivo");
+
+    fetch('formulariodinamico.php?archivo=' + nombreArchivo, {
+        method: 'POST',
+        body: formData
     })
     .then(response => response.text())
     .then(data => {
-      // Muestra un mensaje de éxito o error
-      alert(data);
+        alert(data);
     })
     .catch(error => {
-      console.error('Error:', error);
+        console.error('Error:', error);
     });
-  });
+});
 }); 

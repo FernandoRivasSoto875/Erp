@@ -1,4 +1,5 @@
 <?php
+// filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\formulariodinamico.php
 // Autor: Fernando Rivas S.
 
 ini_set('display_errors', 1);
@@ -228,9 +229,7 @@ function generarContenidoCampo($campo) {
             break;
         default:
             echo "<input type='{$tipo}' name='{$nombre}' id='{$nombre}'{$placeholder}{$readonly}{$formulaAttr}{$dataFormato}>";
-          
-         
-           break;
+            break;
     }
     return ob_get_clean();
 }
@@ -256,6 +255,119 @@ function generarGruposRecursivos($grupos) {
         $html .= "</fieldset>";
     }
     return $html;
+}
+
+// Función para enviar el formulario
+function enviarFormulario($jsonFile, $formData) {
+    // Leer el archivo JSON
+    $jsonData = file_get_contents($jsonFile);
+    $config = json_decode($jsonData, true);
+
+    // Extraer parámetros del JSON
+    $mailDe = $config['parametros']['mailDe'] ?? null;
+    $mailPara = $config['parametros']['mailPara'] ?? null;
+    $mailCc = $config['parametros']['mailCc'] ?? null;
+    $mailCco = $config['parametros']['mailCco'] ?? null;
+    $usuario = $config['parametros']['usuario'] ?? 'Formulario'; // Valor por defecto si no existe
+
+    $tiposFormatoEnvio = explode(',', strtolower($config['parametros']['tipoformatoenvio'] ?? 'htmlc')); // Por defecto htmlc
+
+    // Construir el mensaje del correo (HTML)
+    $mensajeHTML = "<h2>Datos del Formulario</h2><table border='1'>";
+    foreach ($formData as $key => $value) {
+        $mensajeHTML .= "<tr><td><strong>" . htmlspecialchars($key) . ":</strong></td><td>" . htmlspecialchars($value) . "</td></tr>";
+    }
+    $mensajeHTML .= "</table>";
+
+    $asunto = "Formulario Recibido";
+    $cabeceras = "From: " . $mailDe . "\r\n";
+    $cabeceras .= "Reply-To: " . $mailDe . "\r\n";
+    $cabeceras .= "Cc: " . $mailCc . "\r\n";
+    $cabeceras .= "Bcc: " . $mailCco . "\r\n";
+    $cabeceras .= "MIME-Version: 1.0\r\n";
+
+    // Manejar diferentes tipos de formato de envío
+    if (in_array('htmlc', $tiposFormatoEnvio)) {
+        // Enviar como cuerpo del correo
+        $cabeceras .= "Content-Type: text/html; charset=UTF-8\r\n";
+        mail($mailPara, $asunto, $mensajeHTML, $cabeceras);
+    } else {
+        // Enviar adjuntos
+        $cabeceras .= "Content-Type: multipart/mixed; boundary=\"PHP-mixed-" . md5(time()) . "\"\r\n";
+
+        $mensaje = "--PHP-mixed-" . md5(time()) . "\r\n";
+        $mensaje .= "Content-Type: text/html; charset=UTF-8\r\n";
+        $mensaje .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
+        $mensaje .= $mensajeHTML . "\r\n\r\n";
+
+        // Crear adjuntos según los tipos de formato
+        if (in_array('html', $tiposFormatoEnvio)) {
+            $filename = "formulario.html";
+            $attachment = chunk_split(base64_encode($mensajeHTML));
+            $mensaje .= "--PHP-mixed-" . md5(time()) . "\r\n";
+            $mensaje .= "Content-Type: text/html; name=\"" . $filename . "\"\r\n";
+            $mensaje .= "Content-Disposition: attachment\r\n";
+            $mensaje .= "Content-Transfer-Encoding: base64\r\n\r\n";
+            $mensaje .= $attachment . "\r\n\r\n";
+        }
+
+        // Adjuntos para XLS, PDF, WORD (simulados, necesitas generar los archivos)
+        if (in_array('xls', $tiposFormatoEnvio)) {
+            $filename = "formulario.xls";
+            // Aquí debes generar el archivo XLS y leer su contenido
+            $file_content = "Simulación de contenido XLS"; // Reemplazar con el contenido real
+            $attachment = chunk_split(base64_encode($file_content));
+
+            $mensaje .= "--PHP-mixed-" . md5(time()) . "\r\n";
+            $mensaje .= "Content-Type: application/vnd.ms-excel; name=\"" . $filename . "\"\r\n";
+            $mensaje .= "Content-Disposition: attachment\r\n";
+            $mensaje .= "Content-Transfer-Encoding: base64\r\n\r\n";
+            $mensaje .= $attachment . "\r\n\r\n";
+        }
+
+         if (in_array('pdf', $tiposFormatoEnvio)) {
+            $filename = "formulario.pdf";
+            // Aquí debes generar el archivo PDF y leer su contenido
+            $file_content = "Simulación de contenido PDF"; // Reemplazar con el contenido real
+            $attachment = chunk_split(base64_encode($file_content));
+
+            $mensaje .= "--PHP-mixed-" . md5(time()) . "\r\n";
+            $mensaje .= "Content-Type: application/pdf; name=\"" . $filename . "\"\r\n";
+            $mensaje .= "Content-Disposition: attachment\r\n";
+            $mensaje .= "Content-Transfer-Encoding: base64\r\n\r\n";
+            $mensaje .= $attachment . "\r\n\r\n";
+        }
+
+         if (in_array('word', $tiposFormatoEnvio)) {
+            $filename = "formulario.docx";
+            // Aquí debes generar el archivo WORD y leer su contenido
+            $file_content = "Simulación de contenido WORD"; // Reemplazar con el contenido real
+            $attachment = chunk_split(base64_encode($file_content));
+
+            $mensaje .= "--PHP-mixed-" . md5(time()) . "\r\n";
+            $mensaje .= "Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document; name=\"" . $filename . "\"\r\n";
+            $mensaje .= "Content-Disposition: attachment\r\n";
+            $mensaje .= "Content-Transfer-Encoding: base64\r\n\r\n";
+            $mensaje .= $attachment . "\r\n\r\n";
+        }
+
+        $mensaje .= "--PHP-mixed-" . md5(time()) . "--\r\n";
+
+        mail($mailPara, $asunto, $mensaje, $cabeceras);
+    }
+
+    return true; // Indica que el correo se envió correctamente
+}
+
+// Verificar si se ha enviado el formulario
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $formData = $_POST; // Recibe todos los datos del formulario
+
+    if (enviarFormulario($json_file, $formData)) {
+        echo "<p style='color: green; text-align: center;'>Formulario enviado correctamente.</p>";
+    } else {
+        echo "<p style='color: red; text-align: center;'>Error al enviar el formulario.</p>";
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -287,4 +399,4 @@ function generarGruposRecursivos($grupos) {
   </main>
   <script src="js/formulariodinamico.js"></script>
 </body>
-</html>
+</html> 

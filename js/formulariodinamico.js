@@ -57,6 +57,10 @@ function calcularFormula(input, formulaData, campos) {
     if (formato) {
       aplicarFormato(input, formato);
     }
+
+    // Guarda el valor calculado en el almacenamiento local
+    localStorage.setItem(input.name, resultado);
+
   } catch (e) {
     console.error("Error al calcular fórmula:", formulaData, e);
     input.value = '';
@@ -92,11 +96,6 @@ function buscarValor(input, busqueda, valor) {
 
 function guardarCampo(e) {
   localStorage.setItem(e.target.name, e.target.value);
-
-  // Guarda también el valor del campo oculto "total"
-  if (e.target.name === "total_calculado") {
-    localStorage.setItem("total", document.getElementById("total").value);
-  }
 }
 
 function cargarCampos() {
@@ -105,13 +104,6 @@ function cargarCampos() {
     let saved = localStorage.getItem(field.name);
     if (saved) field.value = saved;
   });
-
-  // Carga el valor calculado del campo oculto "total"
-  const totalGuardado = localStorage.getItem("total");
-  if (totalGuardado) {
-    document.getElementById("total").value = totalGuardado;
-    document.getElementById("total_calculado").value = totalGuardado; // Actualiza también el campo visible
-  }
 }
 
 function validarInput(e) {
@@ -243,10 +235,7 @@ function crearCrudRow(value, editarCallback, eliminarCallback) {
   btnDelete.addEventListener("click", eliminarCallback);
 
   spanActions.appendChild(btnEdit);
-  spanActions.appendChild(btnDelete);
-
-  li.appendChild(spanValue);
-  li.appendChild(spanActions);
+  spanActions.appendChild(spanActions);
 
   return li;
 }
@@ -552,4 +541,4 @@ document.addEventListener('DOMContentLoaded', function() {
       console.error('Error:', error);
     });
   });
-});
+}); 

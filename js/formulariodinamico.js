@@ -680,6 +680,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 });
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('input[data-formato]').forEach(function(input) {
+    const formato = input.getAttribute('data-formato');
+    if (!formato) return;
+    input.addEventListener('blur', function() {
+      aplicarFormato(input, formato);
+    });
+  });
+});
+
+
+
+
+
 function calcularFormula(input, formula, campos) {
   let expr = formula;
   campos.forEach(function(campo) {
@@ -715,4 +729,21 @@ function calcularFormula(input, formula, campos) {
     }
   })
   .catch(() => { input.value = ''; });
+}
+function aplicarFormato(input, formato) {
+  let valor = input.value;
+  if (!valor) return;
+  let num = parseFloat(valor.replace(/\./g, '').replace(',', '.'));
+  if (isNaN(num)) return;
+
+  if (formato === "moneda") {
+    input.value = num.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
+  } else if (formato === "#,##0.00") {
+    input.value = num.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  } else if (formato === "0") {
+    input.value = num.toLocaleString('es-CL', { maximumFractionDigits: 0 });
+  } else if (formato === "0.00") {
+    input.value = num.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  // Puedes agregar más formatos según tus necesidades
 }

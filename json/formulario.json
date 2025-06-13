@@ -31,6 +31,7 @@
     "nombre": "precio_unitario",
     "etiqueta": "Precio Unitario",
     "tipo": "number",
+    "formato": "moneda",
     "placeholder": "Ingrese precio"
   },
   {
@@ -38,6 +39,7 @@
     "etiqueta": "Total",
     "tipo": "number",
     "formula": "cantidad * precio_unitario",
+    "formato": "#,##0.00",
     "readonly": true
   },
   {

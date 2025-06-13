@@ -1,4 +1,4 @@
-<?php
+ <?php
 // filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\formulariodinamico.php
 // Autor: Fernando Rivas S.
 

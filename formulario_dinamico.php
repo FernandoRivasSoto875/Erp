@@ -144,7 +144,6 @@ function obtenerDatosTabla($data) {
     return $result;
 }
 
- 
 function generarContenidoCampo($campo) {
     ob_start();
     $tipo = isset($campo['tipo']) ? $campo['tipo'] : 'text';

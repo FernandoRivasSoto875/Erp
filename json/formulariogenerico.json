@@ -51,7 +51,7 @@
               "where": "ComId = {ComId}"
             }
           },
-          "readonly": true
+          "readonly":false
         },
         {
           "nombre": "nombre",

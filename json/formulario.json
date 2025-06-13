@@ -188,7 +188,7 @@
       ],
       "hijos": [
         {
-          "activo": false,
+          "activo": true,
           "grupoNombre": "Contacto",
           "grupoAlineacion": "columna",
           "alineacion": "fila",

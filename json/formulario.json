@@ -1,4 +1,4 @@
-{
+ {
   "parametros": {
     "titulo": "Formulario de Contacto",
     "tituloimagen": "https://www.saludenterreno.cl/sitio/imagenes/contacto.png",
@@ -63,7 +63,6 @@
           "nombre": "nombre",
           "etiqueta": "Nombre",
           "tipo": "text",
-          "posicionetiqueta": "arriba",
           "placeholder": "Nombre completo"
         },
         {

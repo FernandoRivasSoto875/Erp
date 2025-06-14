@@ -6,8 +6,10 @@ error_reporting(E_ALL);
 require_once 'funcionessql.php';
 require_once __DIR__ . '/vendor/autoload.php'; // mPDF autoload
 
+use Shuchkin\SimpleXLSXGen;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
+use PhpOffice\PhpWord\PhpWord;
 
 $conn = conexionBd();
 

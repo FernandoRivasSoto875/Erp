@@ -275,20 +275,31 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     $mpdf->WriteHTML($htmlForm);
     $pdfContent = $mpdf->Output('', 'S');
 
-    // XLS (Excel simple)
-    $xlsContent = "<table border='1'>";
-    $xlsContent .= "<tr>";
-    foreach ($formData as $key => $value) {
-        $xlsContent .= "<th>" . htmlspecialchars($key, ENT_QUOTES, 'UTF-8') . "</th>";
+    // XLSX (Excel real) usando SimpleXLSXGen si está disponible
+    $xlsContent = null;
+    $xlsFilename = 'formulario.xlsx';
+    if (class_exists('Shuchkin\SimpleXLSXGen')) {
+        $header = [array_keys($formData)];
+        $row = [array_map(function($v) { return is_array($v) ? implode(', ', $v) : $v; }, $formData)];
+        $xlsx = \Shuchkin\SimpleXLSXGen::fromArray(array_merge($header, $row));
+        $xlsContent = $xlsx->toString();
+    } else {
+        // Fallback: CSV (Excel lo abre)
+        $xlsFilename = 'formulario.csv';
+        $xlsRows = [];
+        $xlsRows[] = implode(",", array_map(function($k){return '"'.str_replace('"','""',$k).'"';}, array_keys($formData)));
+        $xlsRows[] = implode(",", array_map(function($v){
+            $v = is_array($v) ? implode(', ', $v) : $v;
+            return '"'.str_replace('"','""',$v).'"';
+        }, $formData));
+        $xlsContent = implode("\r\n", $xlsRows);
     }
-    $xlsContent .= "</tr><tr>";
-    foreach ($formData as $value) {
-        $xlsContent .= "<td>" . htmlspecialchars(is_array($value) ? implode(', ', $value) : $value, ENT_QUOTES, 'UTF-8') . "</td>";
-    }
-    $xlsContent .= "</tr></table>";
 
     // JSON
     $jsonContent = json_encode($formData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    if ($jsonContent === false) {
+        $jsonContent = '{}';
+    }
 
     // XML
     $xml = new SimpleXMLElement('<formulario/>');
@@ -297,7 +308,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     }
     $xmlContent = $xml->asXML();
 
-    // DOC (Word simple, usando HTML)
+    // DOCX (Word real) usando HTML (Word lo abre)
     $docContent = "<html><body>" . $htmlForm . "</body></html>";
 
     $asunto = $config['subject'] ?? "Formulario Recibido";
@@ -326,22 +337,26 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
             $tipo = trim(strtolower($tipo));
             switch ($tipo) {
                 case 'pdf':
-                    $mail->addStringAttachment($pdfContent, 'formulario.pdf');
+                    $mail->addStringAttachment($pdfContent, 'formulario.pdf', 'base64', 'application/pdf');
                     break;
                 case 'html':
-                    $mail->addStringAttachment($htmlForm, 'formulario.html');
+                    $mail->addStringAttachment($htmlForm, 'formulario.html', 'base64', 'text/html');
                     break;
                 case 'xls':
-                    $mail->addStringAttachment($xlsContent, 'formulario.xls');
+                    if ($xlsFilename === 'formulario.xlsx') {
+                        $mail->addStringAttachment($xlsContent, $xlsFilename, 'base64', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                    } else {
+                        $mail->addStringAttachment($xlsContent, $xlsFilename, 'base64', 'text/csv');
+                    }
                     break;
                 case 'json':
-                    $mail->addStringAttachment($jsonContent, 'formulario.json');
+                    $mail->addStringAttachment($jsonContent, 'formulario.json', 'base64', 'application/json');
                     break;
                 case 'xml':
-                    $mail->addStringAttachment($xmlContent, 'formulario.xml');
+                    $mail->addStringAttachment($xmlContent, 'formulario.xml', 'base64', 'application/xml');
                     break;
                 case 'doc':
-                    $mail->addStringAttachment($docContent, 'formulario.doc');
+                    $mail->addStringAttachment($docContent, 'formulario.doc', 'base64', 'application/msword');
                     break;
                 case 'htmlc':
                     // No adjunta, solo pone el HTML como cuerpo del correo
@@ -363,6 +378,9 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     }
 }
 
+
+
+ 
  
 // VALIDACIÓN Y ENVÍO DEL FORMULARIO
 if ($_SERVER["REQUEST_METHOD"] == "POST") {

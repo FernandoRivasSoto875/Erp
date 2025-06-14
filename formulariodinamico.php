@@ -1,5 +1,5 @@
- 
- <?php
+  
+  <?php
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
@@ -79,7 +79,7 @@ function obtenerDatosTabla($data) {
 }
 
 // Normaliza los valores del formulario para los adjuntos y para visualización
-function normalizaValores($formData, $json) {
+function normalizaValores($formData, $json, $paraJson = false) {
     $result = [];
     foreach ($json['grupos'] as $grupo) {
         if (isset($grupo['campos'])) {
@@ -88,21 +88,32 @@ function normalizaValores($formData, $json) {
                 $tipo = $campo['tipo'];
                 $valor = isset($formData[$nombre]) ? $formData[$nombre] : '';
                 if ($tipo === 'checkbox') {
-                    if (is_array($valor)) {
-                        $result[$nombre] = implode(', ', $valor);
-                    } elseif (is_string($valor) && strlen($valor)) {
-                        $result[$nombre] = $valor;
+                    if ($paraJson) {
+                        // Para JSON, guardar como array
+                        if (is_array($valor)) {
+                            $result[$nombre] = $valor;
+                        } elseif (is_string($valor) && strlen($valor)) {
+                            $result[$nombre] = array_map('trim', explode(',', $valor));
+                        } else {
+                            $result[$nombre] = [];
+                        }
                     } else {
-                        $result[$nombre] = '';
+                        // Para otros formatos, como texto
+                        if (is_array($valor)) {
+                            $result[$nombre] = implode(', ', $valor);
+                        } elseif (is_string($valor) && strlen($valor)) {
+                            $result[$nombre] = $valor;
+                        } else {
+                            $result[$nombre] = '';
+                        }
                     }
                 } else {
                     $result[$nombre] = is_array($valor) ? implode(', ', $valor) : $valor;
                 }
             }
         }
-        // Recursividad para hijos
         if (isset($grupo['hijos'])) {
-            $result = array_merge($result, normalizaValores($formData, ['grupos' => $grupo['hijos']]));
+            $result = array_merge($result, normalizaValores($formData, ['grupos' => $grupo['hijos']], $paraJson));
         }
     }
     return $result;
@@ -128,7 +139,7 @@ function generarContenidoCampo($campo, $valor = '', $soloLectura = false) {
         if ($tipo === 'checkbox') {
             $valores = is_array($valor) ? $valor : (strlen($valor) ? array_map('trim', explode(',', $valor)) : []);
             return htmlspecialchars(implode(', ', $valores), ENT_QUOTES, 'UTF-8');
-        } elseif ($tipo === 'select' || $tipo === 'selectdata' || $tipo === 'radio') {
+        } elseif ($tipo === 'radio' || $tipo === 'select' || $tipo === 'selectdata') {
             return htmlspecialchars($valor, ENT_QUOTES, 'UTF-8');
         }
         return htmlspecialchars($valor, ENT_QUOTES, 'UTF-8');
@@ -306,7 +317,8 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     $tiposFormatoEnvio = explode(',', strtolower($config['tipoformatoenvio'] ?? 'htmlc'));
 
     // Normaliza los valores para los adjuntos
-    $valoresAdjuntos = normalizaValores($formData, $json);
+    $valoresAdjuntos = normalizaValores($formData, $json, false);
+    $valoresAdjuntosJson = normalizaValores($formData, $json, true);
 
     // Generar el HTML del formulario con valores y CSS
     $htmlForm = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
@@ -350,7 +362,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     }
 
     // JSON
-    $jsonContent = json_encode($valoresAdjuntos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    $jsonContent = json_encode($valoresAdjuntosJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     if ($jsonContent === false) {
         $jsonContent = '{}';
     }
@@ -437,7 +449,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
         mkdir($registroDir, 0777, true);
     }
     $registroFile = $registroDir . $GLOBALS['nombre_archivo'] . '_ultimo.json';
-    file_put_contents($registroFile, json_encode($formData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    file_put_contents($registroFile, json_encode($valoresAdjuntosJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
 
 // VALIDACIÓN Y ENVÍO DEL FORMULARIO
@@ -492,7 +504,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         enviarFormulario($json_file, $formData, $css, $json);
     }
 }
- ?>
+
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -520,7 +533,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <button type="submit">Enviar</button>
       </div>
     </form>
-    <footer>
+ 
+   <footer>
       <p><?php echo htmlspecialchars($json['parametros']['pie'], ENT_QUOTES, 'UTF-8'); ?></p>
     </footer>
     <p>Fecha de creación: <?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p>

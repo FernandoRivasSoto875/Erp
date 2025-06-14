@@ -264,7 +264,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <form id="formulario" method="POST" enctype="multipart/form-data" data-archivo="<?php echo htmlspecialchars($nombre_archivo, ENT_QUOTES, 'UTF-8'); ?>">
       <?php
         $valoresParaFormulario = $_SERVER["REQUEST_METHOD"] == "POST"
-            ? $_POST
+            ? prepararValoresGuardados($json, $_POST)
             : prepararValoresGuardados($json, $valoresGuardados);
         echo generarGruposRecursivos($json['grupos'], $valoresParaFormulario);
       ?>

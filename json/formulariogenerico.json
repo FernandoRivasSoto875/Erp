@@ -69,16 +69,10 @@
           "nombre": "total",
           "etiqueta": "Total",
           "tipo": "text",
-          "formula": "cantidad * precio_unitario * 1*descripcion_producto",
+          "formula": "cantidad * precio_unitario * 1",
           "formato": "moneda",
           "readonly": true
         },
-
-
- 
-
-
-
         {
           "nombre": "email",
           "etiqueta": "Correo Electrónico",

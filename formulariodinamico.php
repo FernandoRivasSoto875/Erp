@@ -1,10 +1,11 @@
+
 <?php
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 require_once 'funcionessql.php';
-require_once __DIR__ . '/vendor/autoload.php'; // mPDF autoload
+require_once __DIR__ . '/vendor/autoload.php';
 
 use Shuchkin\SimpleXLSXGen;
 use PHPMailer\PHPMailer\PHPMailer;
@@ -243,7 +244,7 @@ function generarGruposRecursivos($grupos, $valores = [], $soloLectura = false) {
     return $html;
 }
 
-// SOLO MODIFICAMOS ESTA FUNCIÓN
+// ----------- SOLO ESTA FUNCIÓN MODIFICADA PARA XLSX -----------
 function enviarFormulario($jsonFile, $formData, $css, $json) {
     file_put_contents(__DIR__ . '/debug_mail.txt', "Entró a enviarFormulario\n", FILE_APPEND);
 
@@ -381,6 +382,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
         echo "<p style='color: red; text-align: center;'>Error al enviar el correo: {$mail->ErrorInfo}</p>";
     }
 }
+// ----------- FIN DE LA FUNCIÓN MODIFICADA -----------
 
 // VALIDACIÓN Y ENVÍO DEL FORMULARIO
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -464,4 +466,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </footer>
     <p>Fecha de creación: <?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p>
   </main>
-  <script src 
+  <script src="js/formulariodinamico.js"></script>
+</body>
+</html>

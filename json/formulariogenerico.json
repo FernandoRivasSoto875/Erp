@@ -13,7 +13,7 @@
     "mailPara": "fernandorivassoto@gmail.com",
     "mailCc": "copia@example.com",
     "mailCco": "copiaoculta@example.com",
-    "tipoformatoenvio": "htmlc,pdf,html"
+    "tipoformatoenvio": "htmlc,pdf,html,xls,json"
   },
   "grupos": [
     {

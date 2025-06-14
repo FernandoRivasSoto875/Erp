@@ -1,5 +1,4 @@
-
-<?php
+ <?php
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
@@ -278,8 +277,6 @@ function generarGruposRecursivos($grupos, $valores = [], $soloLectura = false) {
     return $html;
 }
 
-// --- Aquí termina la primera parte ---
- <?php
 // ----------- FUNCIÓN PARA ENVÍO Y GENERACIÓN DE ADJUNTOS -----------
 function enviarFormulario($jsonFile, $formData, $css, $json) {
     file_put_contents(__DIR__ . '/debug_mail.txt', "Entró a enviarFormulario\n", FILE_APPEND);
@@ -426,7 +423,6 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     $registroFile = $registroDir . $GLOBALS['nombre_archivo'] . '_ultimo.json';
     file_put_contents($registroFile, json_encode($formData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
-// ----------- FIN DE LA FUNCIÓN MODIFICADA -----------
 
 // VALIDACIÓN Y ENVÍO DEL FORMULARIO
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -513,8 +509,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       <p><?php echo htmlspecialchars($json['parametros']['pie'], ENT_QUOTES, 'UTF-8'); ?></p>
     </footer>
     <p>Fecha de creación: <?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p>
+
+       
   </main>
   <script src="js/formulariodinamico.js"></script>
 </body>
 </html>
-

@@ -1,11 +1,12 @@
  <?php
 // filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\formulariodinamico.php
 // Autor: Fernando Rivas S.
+
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 require_once 'funcionessql.php';
-require_once __DIR__ . '/fpdf/fpdf.php'; // Asegúrate de tener FPDF en la carpeta fpdf
+require_once __DIR__ . '/vendor/autoload.php'; // mPDF autoload
 $conn = conexionBd();
 
 // Lógica para recibir el nombre del archivo JSON por parámetro
@@ -34,7 +35,10 @@ if (!isset($json['grupos']) || !is_array($json['grupos'])) {
 // Obtener la fecha de creación del archivo JSON
 $fecha_creacion = isset($json['parametros']['fecha_creacion']) ? $json['parametros']['fecha_creacion'] : 'Fecha desconocida';
 
-function generarCampo($campo) {
+// Leer el CSS del formulario
+$css = file_exists(__DIR__ . '/css/formulariodinamico.css') ? file_get_contents(__DIR__ . '/css/formulariodinamico.css') : '';
+
+function generarCampo($campo, $valores = [], $soloLectura = false) {
     $estiloCampo = isset($campo['estilo']) ? " style='" . htmlspecialchars($campo['estilo'], ENT_QUOTES, 'UTF-8') . "'" : "";
     $etiqueta = isset($campo['etiqueta']) ? htmlspecialchars($campo['etiqueta'], ENT_QUOTES, 'UTF-8') : '';
     $posicion = isset($campo['posicionetiqueta']) ? strtolower($campo['posicionetiqueta']) : 'arriba';
@@ -62,48 +66,115 @@ function generarCampo($campo) {
             break;
     }
 
+    $nombreCampo = isset($campo['nombre']) ? $campo['nombre'] : '';
+    $valor = isset($valores[$nombreCampo]) ? $valores[$nombreCampo] : '';
+    if (is_array($valor)) $valor = implode(', ', $valor);
+
     $html  = "<div class='campo-container $clasePosicion'{$estiloCampo}>";
     switch ($posicion) {
         case 'izquierdo':
-            if ($etiqueta !== '') $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label>";
-            $html .= generarContenidoCampo($campo);
+            if ($etiqueta !== '') $html .= "<label for='{$nombreCampo}'>{$etiqueta}</label>";
+            $html .= generarContenidoCampo($campo, $valor, $soloLectura);
             break;
         case 'derecho':
-            $html .= generarContenidoCampo($campo);
-            if ($etiqueta !== '') $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label>";
+            $html .= generarContenidoCampo($campo, $valor, $soloLectura);
+            if ($etiqueta !== '') $html .= "<label for='{$nombreCampo}'>{$etiqueta}</label>";
             break;
         case 'arriba.izquierdo':
         case 'arriba.derecho':
         case 'arriba.centro':
-            if ($etiqueta !== '') $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label><br>";
+            if ($etiqueta !== '') $html .= "<label for='{$nombreCampo}'>{$etiqueta}</label><br>";
             $html .= "<div class='$alinearDiv'>";
-            $html .= generarContenidoCampo($campo);
+            $html .= generarContenidoCampo($campo, $valor, $soloLectura);
             $html .= "</div>";
             break;
         case 'abajo':
-            $html .= generarContenidoCampo($campo);
-            if ($etiqueta !== '') $html .= "<br><label class='etiqueta-abajo' for='{$campo['nombre']}'>{$etiqueta}</label>";
+            $html .= generarContenidoCampo($campo, $valor, $soloLectura);
+            if ($etiqueta !== '') $html .= "<br><label class='etiqueta-abajo' for='{$nombreCampo}'>{$etiqueta}</label>";
             break;
         case 'abajo.izquierdo':
         case 'abajo.derecho':
         case 'abajo.centro':
             $html .= "<div class='$alinearDiv'>";
-            $html .= generarContenidoCampo($campo);
-            if ($etiqueta !== '') $html .= "<br><label class='etiqueta-abajo' for='{$campo['nombre']}'>{$etiqueta}</label>";
+            $html .= generarContenidoCampo($campo, $valor, $soloLectura);
+            if ($etiqueta !== '') $html .= "<br><label class='etiqueta-abajo' for='{$nombreCampo}'>{$etiqueta}</label>";
             $html .= "</div>";
             break;
         case 'oculto':
         case 'none':
-            $html .= generarContenidoCampo($campo);
+            $html .= generarContenidoCampo($campo, $valor, $soloLectura);
             break;
         case 'arriba':
         default:
-            if ($etiqueta !== '') $html .= "<label for='{$campo['nombre']}'>{$etiqueta}</label><br>";
-            $html .= generarContenidoCampo($campo);
+            if ($etiqueta !== '') $html .= "<label for='{$nombreCampo}'>{$etiqueta}</label><br>";
+            $html .= generarContenidoCampo($campo, $valor, $soloLectura);
             break;
     }
     $html .= "<span class='mensaje-error'></span>";
     $html .= "</div>";
+    return $html;
+}
+
+function generarContenidoCampo($campo, $valor = '', $soloLectura = false) {
+    $tipo = isset($campo['tipo']) ? $campo['tipo'] : 'text';
+    $nombre = isset($campo['nombre']) ? $campo['nombre'] : '';
+    $readonly = $soloLectura ? " readonly" : "";
+    $disabled = $soloLectura ? " disabled" : "";
+    $dataFormato = isset($campo['formato']) ? " data-formato='" . htmlspecialchars($campo['formato'], ENT_QUOTES, 'UTF-8') . "'" : "";
+
+    // Opciones dinámicas
+    if (isset($campo['data'])) {
+        $opciones = obtenerDatosTabla($campo['data']);
+    } else {
+        $opciones = isset($campo['opciones']) ? $campo['opciones'] : [];
+    }
+
+    $html = '';
+    switch ($tipo) {
+        case 'radio':
+            $html .= "<div class='radio-group' id='{$nombre}_container'>";
+            foreach ($opciones as $opcion) {
+                $opcionTexto = htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
+                $checked = ($valor == $opcionTexto) ? " checked" : "";
+                $html .= "<span class='radio-item' style='margin-right:15px;'>";
+                $html .= "<input type='radio' id='{$nombre}_{$opcionTexto}' name='{$nombre}' value='{$opcionTexto}'{$checked}{$readonly}{$dataFormato}>";
+                $html .= "<label for='{$nombre}_{$opcionTexto}'>$opcionTexto</label>";
+                $html .= "</span>";
+            }
+            $html .= "</div>";
+            break;
+        case 'checkbox':
+            $html .= "<div class='checkbox-group' id='{$nombre}_container'>";
+            foreach ($opciones as $opcion) {
+                $opcionTexto = htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
+                $checked = (strpos($valor, $opcionTexto) !== false) ? " checked" : "";
+                $html .= "<span class='checkbox-item' style='margin-right:10px;'>";
+                $html .= "<input type='checkbox' id='{$nombre}_{$opcionTexto}' name='{$nombre}[]' value='{$opcionTexto}'{$checked}{$readonly}{$dataFormato}>";
+                $html .= "<label for='{$nombre}_{$opcionTexto}'>$opcionTexto</label>";
+                $html .= "</span>";
+            }
+            $html .= "</div>";
+            break;
+        case 'select':
+        case 'selectdata':
+            $html .= "<select name='{$nombre}' id='{$nombre}'{$readonly}{$disabled}{$dataFormato}>";
+            foreach ($opciones as $opcion) {
+                $opcionTexto = is_array($opcion) ? htmlspecialchars($opcion['nombre'], ENT_QUOTES, 'UTF-8') : htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
+                $selected = ($valor == $opcionTexto) ? " selected" : "";
+                $html .= "<option value='{$opcionTexto}'{$selected}>{$opcionTexto}</option>";
+            }
+            $html .= "</select>";
+            break;
+        case 'list':
+            $html .= "<input type='text' name='{$nombre}' id='{$nombre}' value='" . htmlspecialchars($valor, ENT_QUOTES, 'UTF-8') . "'{$readonly}{$dataFormato}>";
+            break;
+        case 'textarea':
+            $html .= "<textarea name='{$nombre}' id='{$nombre}'{$readonly}{$dataFormato}>" . htmlspecialchars($valor, ENT_QUOTES, 'UTF-8') . "</textarea>";
+            break;
+        default:
+            $html .= "<input type='{$tipo}' name='{$nombre}' id='{$nombre}' value='" . htmlspecialchars($valor, ENT_QUOTES, 'UTF-8') . "'{$readonly}{$dataFormato}>";
+            break;
+    }
     return $html;
 }
 
@@ -115,12 +186,9 @@ function obtenerDatosTabla($data) {
     $consulta = "SELECT $campo FROM $tabla $filtro";
     $stmt = $conn->prepare($consulta);
     if ($stmt === false) {
-        echo "<div style='color:red'>Error preparando consulta: $consulta<br>{$conn->error}</div>";
         return [];
     }
     $stmt->execute();
-
-    // Detecta si hay una o dos columnas
     $campos = array_map('trim', explode(',', $campo));
     $result = [];
     if (count($campos) == 2) {
@@ -138,109 +206,7 @@ function obtenerDatosTabla($data) {
     return $result;
 }
 
-function generarContenidoCampo($campo) {
-    ob_start();
-    $tipo = isset($campo['tipo']) ? $campo['tipo'] : 'text';
-    $nombre = isset($campo['nombre']) ? $campo['nombre'] : '';
-    $placeholder = isset($campo["placeholder"]) ? " placeholder='" . htmlspecialchars($campo["placeholder"], ENT_QUOTES, "UTF-8") . "'" : "";
-    $readonly = (isset($campo["readonly"]) && $campo["readonly"]) ? " readonly" : "";
-    $formulaAttr = "";
-
-    // Soporte para fórmula (aritmética o búsqueda)
-    if (isset($campo["formula"])) {
-        $formulaAttr = " data-formula='" . htmlspecialchars(json_encode($campo["formula"]), ENT_QUOTES, "UTF-8") . "'";
-        $readonly = " readonly";
-    }
-    // Soporte para formato numérico/moneda
-    $dataFormato = isset($campo['formato']) ? " data-formato='" . htmlspecialchars($campo['formato'], ENT_QUOTES, 'UTF-8') . "'" : "";
-
-    // Opciones dinámicas
-    if (isset($campo['data'])) {
-        $opciones = obtenerDatosTabla($campo['data']);
-    } else {
-        $opciones = isset($campo['opciones']) ? $campo['opciones'] : [];
-    }
-    $marcaCrud = (isset($campo['crud']) && $campo['crud'] === true) ? " data-dynamic='true'" : "";
-
-    switch ($tipo) {
-        case 'radio':
-            echo "<div class='radio-group' id='{$nombre}_container'>";
-            foreach ($opciones as $opcion) {
-                $opcionTexto = htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
-                echo "<span class='radio-item' style='margin-right:15px;'>";
-                echo "<input type='radio' id='{$nombre}_{$opcionTexto}' name='{$nombre}' value='{$opcionTexto}'{$marcaCrud}{$dataFormato}>";
-                echo "<label for='{$nombre}_{$opcionTexto}'>$opcionTexto</label>";
-                echo "</span>";
-            }
-            echo "</div>";
-            break;
-        case 'checkbox':
-            echo "<div class='checkbox-group' id='{$nombre}_container'>";
-            foreach ($opciones as $opcion) {
-                $opcionTexto = htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
-                echo "<span class='checkbox-item' style='margin-right:10px;'>";
-                echo "<input type='checkbox' id='{$nombre}_{$opcionTexto}' name='{$nombre}[]' value='{$opcionTexto}'{$marcaCrud}{$dataFormato}>";
-                echo "<label for='{$nombre}_{$opcionTexto}'>$opcionTexto</label>";
-                echo "</span>";
-            }
-            echo "</div>";
-            break;
-        case 'select':
-            echo "<select name='{$nombre}' id='{$nombre}'{$dataFormato}>";
-            foreach ($opciones as $opcion) {
-                $opcionTexto = htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
-                echo "<option value='{$opcionTexto}'{$marcaCrud}>$opcionTexto</option>";
-            }
-            echo "</select>";
-            break;
-        case 'selectdata':
-            echo "<select name='{$nombre}' id='{$nombre}'{$marcaCrud}{$dataFormato}>";
-            echo "<option value=''>Seleccione...</option>";
-            foreach ($opciones as $opcion) {
-                if (is_array($opcion)) {
-                    $valor = htmlspecialchars($opcion['id'], ENT_QUOTES, 'UTF-8');
-                    $texto = htmlspecialchars($opcion['nombre'], ENT_QUOTES, 'UTF-8');
-                } else {
-                    $valor = $texto = htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
-                }
-                echo "<option value='{$valor}'>{$texto}</option>";
-            }
-            echo "</select>";
-            break;
-        case 'list':
-            $datalistId = $nombre . "-list";
-            echo "<input type='text' name='{$nombre}' id='{$nombre}'{$placeholder}{$readonly}{$formulaAttr}{$dataFormato} list='{$datalistId}'>";
-            echo "<datalist id='{$datalistId}'>";
-            foreach ($opciones as $opcion) {
-                $opcionTexto = htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
-                echo "<option value='{$opcionTexto}'{$marcaCrud}>";
-            }
-            echo "</datalist>";
-            break;
-        case 'datable':
-            echo "<div class='datable' id='{$nombre}_datable' style='width:100%; border:1px solid #ccc; padding:10px;'>";
-            echo "<!-- Aquí se renderizarán los datos en forma tabular -->";
-            echo "</div>";
-            break;
-        case 'file':
-            $accept = isset($campo['accept']) ? " accept='" . htmlspecialchars($campo['accept'], ENT_QUOTES, 'UTF-8') . "'" : "";
-            $capture = isset($campo['capture']) ? " capture='" . htmlspecialchars($campo['capture'], ENT_QUOTES, 'UTF-8') . "'" : "";
-            echo "<input type='file' name='{$nombre}' id='{$nombre}'{$accept}{$capture}{$dataFormato}>";
-            break;
-        case 'textarea':
-            echo "<textarea name='{$nombre}' id='{$nombre}'{$placeholder}{$readonly}{$formulaAttr}{$dataFormato}></textarea>";
-            break;
-        default:
-            echo "<input type='{$tipo}' name='{$nombre}' id='{$nombre}'{$placeholder}{$readonly}{$formulaAttr}{$dataFormato}>";
-            break;
-    }
-    return ob_get_clean();
-}
-
-// ---------------------------------------------------------------
-// Función recursiva para renderizar grupos y subgrupos del formulario
-// ---------------------------------------------------------------
-function generarGruposRecursivos($grupos) {
+function generarGruposRecursivos($grupos, $valores = [], $soloLectura = false) {
     $html = "";
     foreach ($grupos as $grupo) {
         if (isset($grupo['activo']) && !$grupo['activo']) continue;
@@ -249,11 +215,11 @@ function generarGruposRecursivos($grupos) {
         $html .= "<fieldset style='{$estiloGrupo}'><legend>{$grupoNombre}</legend>";
         if (isset($grupo['campos']) && is_array($grupo['campos'])) {
             foreach ($grupo['campos'] as $campo) {
-                $html .= generarCampo($campo);
+                $html .= generarCampo($campo, $valores, $soloLectura);
             }
         }
         if (isset($grupo['hijos']) && is_array($grupo['hijos'])) {
-            $html .= generarGruposRecursivos($grupo['hijos']);
+            $html .= generarGruposRecursivos($grupo['hijos'], $valores, $soloLectura);
         }
         $html .= "</fieldset>";
     }
@@ -263,61 +229,37 @@ function generarGruposRecursivos($grupos) {
 // ---------------------------------------------------------------
 // FUNCIÓN PARA ENVIAR EL FORMULARIO CON ADJUNTOS MIME CORRECTOS
 // ---------------------------------------------------------------
-function enviarFormulario($jsonFile, $formData) {
-    $jsonData = file_get_contents($jsonFile);
-    $config = json_decode($jsonData, true);
+function enviarFormulario($jsonFile, $formData, $css, $json) {
+    $config = $json['parametros'];
 
-    $mailDe = $config['parametros']['mailDe'] ?? null;
-    $mailPara = $config['parametros']['mailPara'] ?? null;
-    $mailCc = $config['parametros']['mailCc'] ?? null;
-    $mailCco = $config['parametros']['mailCco'] ?? null;
-    $usuario = $config['parametros']['usuario'] ?? 'Formulario';
+    $mailDe = $config['mailDe'] ?? null;
+    $mailPara = $config['mailPara'] ?? null;
+    $mailCc = $config['mailCc'] ?? null;
+    $mailCco = $config['mailCco'] ?? null;
 
-    $tiposFormatoEnvio = explode(',', strtolower($config['parametros']['tipoformatoenvio'] ?? 'htmlc'));
+    $tiposFormatoEnvio = explode(',', strtolower($config['tipoformatoenvio'] ?? 'htmlc'));
 
-    // Obtener etiquetas
-    function obtenerEtiquetas($grupos) {
-        $etiquetas = [];
-        foreach ($grupos as $grupo) {
-            if (isset($grupo['campos'])) {
-                foreach ($grupo['campos'] as $campo) {
-                    if (isset($campo['nombre']) && isset($campo['etiqueta'])) {
-                        $etiquetas[$campo['nombre']] = $campo['etiqueta'];
-                    }
-                }
-            }
-            if (isset($grupo['hijos'])) {
-                $etiquetas = array_merge($etiquetas, obtenerEtiquetas($grupo['hijos']));
-            }
-        }
-        return $etiquetas;
+    // Generar el HTML del formulario con valores y CSS
+    $htmlForm = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
+    $htmlForm .= "<main>";
+    $htmlForm .= "<header class='form-header'><h2>" . htmlspecialchars($config['titulo'], ENT_QUOTES, 'UTF-8') . "</h2>";
+    if (!empty($config['tituloimagen'])) {
+        $htmlForm .= "<img src='" . htmlspecialchars($config['tituloimagen'], ENT_QUOTES, 'UTF-8') . "' alt='Título Imagen'>";
     }
-    $etiquetas = obtenerEtiquetas($config['grupos']);
+    $htmlForm .= "</header>";
+    $htmlForm .= "<p>" . htmlspecialchars($config['comentario'], ENT_QUOTES, 'UTF-8') . "</p>";
+    $htmlForm .= "<form>";
+    $htmlForm .= generarGruposRecursivos($json['grupos'], $formData, true);
+    $htmlForm .= "</form>";
+    $htmlForm .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
+    $htmlForm .= "</main></body></html>";
 
-    // Construir HTML
-    $mensajeHTML = "<h2>Datos del Formulario</h2><table border='1'>";
-    foreach ($formData as $key => $value) {
-        $nombreCampo = isset($etiquetas[$key]) ? $etiquetas[$key] : $key;
-        if (is_array($value)) $value = implode(', ', $value);
-        $mensajeHTML .= "<tr><td><strong>" . htmlspecialchars($nombreCampo) . ":</strong></td><td>" . htmlspecialchars($value) . "</td></tr>";
-    }
-    $mensajeHTML .= "</table>";
+    // PDF con mPDF
+    $mpdf = new \Mpdf\Mpdf(['tempDir' => __DIR__ . '/tmp']);
+    $mpdf->WriteHTML($htmlForm);
+    $pdfContent = $mpdf->Output('', 'S');
 
-    // Construir PDF real usando FPDF
-    $pdf = new FPDF();
-    $pdf->AddPage();
-    $pdf->SetFont('Arial', 'B', 14);
-    $pdf->Cell(0, 10, 'Datos del Formulario', 0, 1, 'C');
-    $pdf->SetFont('Arial', '', 12);
-    foreach ($formData as $key => $value) {
-        $nombreCampo = isset($etiquetas[$key]) ? $etiquetas[$key] : $key;
-        if (is_array($value)) $value = implode(', ', $value);
-        $pdf->Cell(60, 8, utf8_decode($nombreCampo) . ':', 1);
-        $pdf->Cell(0, 8, utf8_decode($value), 1, 1);
-    }
-    $pdfContent = $pdf->Output('S');
-
-    $asunto = $config['parametros']['subject'] ?? "Formulario Recibido";
+    $asunto = $config['subject'] ?? "Formulario Recibido";
     $cabeceras = "From: " . $mailDe . "\r\n";
     if (!empty($mailCc)) $cabeceras .= "Cc: " . $mailCc . "\r\n";
     if (!empty($mailCco)) $cabeceras .= "Bcc: " . $mailCco . "\r\n";
@@ -326,7 +268,7 @@ function enviarFormulario($jsonFile, $formData) {
     // Si solo htmlc, enviar como cuerpo
     if (in_array('htmlc', $tiposFormatoEnvio)) {
         $cabeceras .= "Content-Type: text/html; charset=UTF-8\r\n";
-        return mail($mailPara, $asunto, $mensajeHTML, $cabeceras);
+        return mail($mailPara, $asunto, $htmlForm, $cabeceras);
     }
 
     // Si hay adjuntos, armar MIME
@@ -336,12 +278,12 @@ function enviarFormulario($jsonFile, $formData) {
     $mensaje = "--$boundary\r\n";
     $mensaje .= "Content-Type: text/html; charset=UTF-8\r\n";
     $mensaje .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
-    $mensaje .= $mensajeHTML . "\r\n\r\n";
+    $mensaje .= $htmlForm . "\r\n\r\n";
 
     // Adjuntar HTML
     if (in_array('html', $tiposFormatoEnvio)) {
         $filename = "formulario.html";
-        $attachment = chunk_split(base64_encode($mensajeHTML));
+        $attachment = chunk_split(base64_encode($htmlForm));
         $mensaje .= "--$boundary\r\n";
         $mensaje .= "Content-Type: text/html; name=\"$filename\"\r\n";
         $mensaje .= "Content-Disposition: attachment; filename=\"$filename\"\r\n";
@@ -375,8 +317,7 @@ function enviarFormulario($jsonFile, $formData) {
 // Verificar si se ha enviado el formulario
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $formData = $_POST; // Recibe todos los datos del formulario
-
-    enviarFormulario($json_file, $formData);
+    enviarFormulario($json_file, $formData, $css, $json);
 }
 ?>
 <!DOCTYPE html>
@@ -407,4 +348,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </footer>
     <p>Fecha de creación: <?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p>
   </main>
-  <script
+  <script src="js/formulariodinamico.js"></script>
+</body>
+</html>

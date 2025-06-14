@@ -59,7 +59,7 @@
           "readonly":false
         },
         {
-          "nombre": "nombre",
+          "nombre": "nombre3",
           "etiqueta": "Nombre",
           "tipo": "text",
           "placeholder": "Nombre completo"
@@ -74,7 +74,7 @@
           "readonly": true
         },
         {
-          "nombre": "email",
+          "nombre": "email2",
           "etiqueta": "Correo Electrónico",
           "tipo": "email",
           "posicionetiqueta": "izquierdo",
@@ -95,7 +95,7 @@
           "placeholder": "Calle y número"
         },
         {
-          "nombre": "ciudad",
+          "nombre": "ciudad2",
           "etiqueta": "Ciudad",
           "tipo": "text",
           "posicionetiqueta": "arriba.izquierdo",
@@ -146,7 +146,7 @@
         {
           "activo": true,
           "crud": false,
-          "nombre": "nombre",
+          "nombre": "nombre1",
           "etiqueta": "Nombre",
           "tipo": "text",
           "requerido": true,
@@ -158,7 +158,7 @@
         {
           "activo": true,
           "crud": false,
-          "nombre": "email",
+          "nombre": "email1",
           "etiqueta": "Correo Electrónico",
           "tipo": "email",
           "requerido": true,
@@ -171,7 +171,7 @@
         {
           "activo": true,
           "crud": true,
-          "nombre": "ciudad",
+          "nombre": "ciudad1",
           "etiqueta": "Ciudad",
           "tipo": "selectdata",
           "requerido": true,

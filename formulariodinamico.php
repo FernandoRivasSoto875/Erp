@@ -1,4 +1,4 @@
- <?php
+<?php
 // filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\formulariodinamico.php
 // Autor: Fernando Rivas S.
 
@@ -266,9 +266,15 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     $cabeceras .= "MIME-Version: 1.0\r\n";
 
     // Si solo htmlc, enviar como cuerpo
-    if (in_array('htmlc', $tiposFormatoEnvio)) {
+    if (in_array('htmlc', $tiposFormatoEnvio) && count($tiposFormatoEnvio) === 1) {
         $cabeceras .= "Content-Type: text/html; charset=UTF-8\r\n";
-        return mail($mailPara, $asunto, $htmlForm, $cabeceras);
+        $ok = mail($mailPara, $asunto, $htmlForm, $cabeceras);
+        if ($ok) {
+            echo "<p style='color: green; text-align: center;'>¡Correo enviado correctamente!</p>";
+        } else {
+            echo "<p style='color: red; text-align: center;'>Error al enviar el correo. Revise la configuración del servidor.</p>";
+        }
+        return $ok;
     }
 
     // Si hay adjuntos, armar MIME

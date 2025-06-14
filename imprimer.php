@@ -14,25 +14,18 @@ $htmlBody = '<h2>¡Esto es una prueba de PHPMailer!</h2><p>Si ves este mensaje, 
 $mail = new PHPMailer(true);
 
 try {
-    // Puedes usar SMTP si tu servidor lo requiere:
-    // $mail->isSMTP();
-    // $mail->Host = 'smtp.tudominio.com';
-    // $mail->SMTPAuth = true;
-    // $mail->Username = 'usuario@tudominio.com';
-    // $mail->Password = 'tu_password';
-    // $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-    // $mail->Port = 587;
-
     $mail->setFrom($mailDe, 'Remitente Prueba');
     $mail->addAddress($mailPara);
     $mail->Subject = $asunto;
     $mail->isHTML(true);
     $mail->Body = $htmlBody;
 
+    // Agrega el adjunto (asegúrate que el archivo exista)
+    $mail->addAttachment(__DIR__ . '/test_mail.php', 'test_mail.php');
+
     $mail->send();
-    echo "<p style='color:green'>¡Correo enviado correctamente a $mailPara!</p>";
+    echo "<p style='color:green'>¡Correo enviado correctamente a $mailPara con adjunto!</p>";
 } catch (Exception $e) {
     echo "<p style='color:red'>Error al enviar el correo: {$mail->ErrorInfo}</p>";
 }
 ?>
-

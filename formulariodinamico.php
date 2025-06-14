@@ -1,5 +1,5 @@
- 
- <?php
+
+<?php
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
@@ -280,11 +280,14 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     $xlsContent = null;
     $xlsFilename = 'formulario.xlsx';
     if (class_exists('Shuchkin\SimpleXLSXGen')) {
-        // Crea el archivo Excel real (.xlsx)
+        // Crea el archivo Excel real (.xlsx) usando saveAs() y file_get_contents()
         $header = [array_keys($formData)];
         $row = [array_map(function($v) { return is_array($v) ? implode(', ', $v) : $v; }, $formData)];
         $xlsx = \Shuchkin\SimpleXLSXGen::fromArray(array_merge($header, $row));
-        $xlsContent = $xlsx->downloadAsString();
+        $tempXlsx = tempnam(sys_get_temp_dir(), 'xlsx_') . '.xlsx';
+        $xlsx->saveAs($tempXlsx);
+        $xlsContent = file_get_contents($tempXlsx);
+        unlink($tempXlsx);
     } else {
         // Fallback: CSV (Excel lo abre igual)
         $xlsFilename = 'formulario.csv';
@@ -378,7 +381,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     } catch (Exception $e) {
         echo "<p style='color: red; text-align: center;'>Error al enviar el correo: {$mail->ErrorInfo}</p>";
     }
-} // <-- CIERRE CORRECTO DE LA FUNCIÓN enviarFormulario
+}
 
 // VALIDACIÓN Y ENVÍO DEL FORMULARIO
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -462,4 +465,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </footer>
     <p>Fecha de creación: <?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p>
   </main>
-  <script src="js/formulariodinamico.js"></script>
+  <script src

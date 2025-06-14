@@ -1,4 +1,5 @@
- <?php
+
+<?php
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
@@ -198,12 +199,10 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
 // VALIDACIÓN Y ENVÍO DEL FORMULARIO
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
-    $formData = $_POST; // Recibe todos los datos del formulario
+    $formData = $_POST;
 
-    // VALIDACIONES BÁSICAS
     $errores = [];
 
-    // Validar que mailPara y mailDe existen y son emails válidos
     $mailPara = $json['parametros']['mailPara'] ?? '';
     $mailDe = $json['parametros']['mailDe'] ?? '';
     if (empty($mailPara) || !filter_var($mailPara, FILTER_VALIDATE_EMAIL)) {
@@ -213,7 +212,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $errores[] = "El remitente del correo (mailDe) no es válido.";
     }
 
-    // Validar que todos los campos requeridos del formulario estén presentes
     function validarCamposRequeridos($grupos, $formData, &$errores) {
         foreach ($grupos as $grupo) {
             if (isset($grupo['campos'])) {
@@ -231,7 +229,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     validarCamposRequeridos($json['grupos'], $formData, $errores);
 
-    // Mostrar errores si existen
     if (!empty($errores)) {
         echo "<div style='color:red;'><ul>";
         foreach ($errores as $error) {

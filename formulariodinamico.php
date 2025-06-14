@@ -246,6 +246,7 @@ function generarGruposRecursivos($grupos, $valores = [], $soloLectura = false) {
 
 // Envío de formulario y adjuntos
 
+ 
 function enviarFormulario($jsonFile, $formData, $css, $json) {
     file_put_contents(__DIR__ . '/debug_mail.txt', "Entró a enviarFormulario\n", FILE_APPEND);
 
@@ -281,12 +282,13 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     $xlsContent = null;
     $xlsFilename = 'formulario.xlsx';
     if (class_exists('Shuchkin\SimpleXLSXGen')) {
+        // Crea el archivo Excel real (.xlsx)
         $header = [array_keys($formData)];
         $row = [array_map(function($v) { return is_array($v) ? implode(', ', $v) : $v; }, $formData)];
         $xlsx = \Shuchkin\SimpleXLSXGen::fromArray(array_merge($header, $row));
-        $xlsContent = $xlsx->toString();
+        $xlsContent = $xlsx->downloadAsString();
     } else {
-        // Fallback: CSV (Excel lo abre)
+        // Fallback: CSV (Excel lo abre igual)
         $xlsFilename = 'formulario.csv';
         $xlsRows = [];
         $xlsRows[] = implode(",", array_map(function($k){return '"'.str_replace('"','""',$k).'"';}, array_keys($formData)));
@@ -310,7 +312,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     }
     $xmlContent = $xml->asXML();
 
-    // DOCX (Word real) usando HTML (Word lo abre)
+    // DOC (Word real) usando HTML (Word lo abre)
     $docContent = "<html><body>" . $htmlForm . "</body></html>";
 
     $asunto = $config['subject'] ?? "Formulario Recibido";
@@ -377,9 +379,6 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
         echo "<p style='color: green; text-align: center;'>¡Correo enviado correctamente!</p>";
     } catch (Exception $e) {
         echo "<p style='color: red; text-align: center;'>Error al enviar el correo: {$mail->ErrorInfo}</p>";
-    }
-}
-
 
 
  

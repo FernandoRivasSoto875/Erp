@@ -1,3 +1,4 @@
+ 
  <?php
 
 ini_set('display_errors', 1);
@@ -78,13 +79,30 @@ function obtenerDatosTabla($data) {
 }
 
 // Normaliza los valores del formulario para los adjuntos y para visualización
-function normalizaValores($formData) {
+function normalizaValores($formData, $json) {
     $result = [];
-    foreach ($formData as $k => $v) {
-        if (is_array($v)) {
-            $result[$k] = implode(', ', $v);
-        } else {
-            $result[$k] = $v;
+    foreach ($json['grupos'] as $grupo) {
+        if (isset($grupo['campos'])) {
+            foreach ($grupo['campos'] as $campo) {
+                $nombre = $campo['nombre'];
+                $tipo = $campo['tipo'];
+                $valor = isset($formData[$nombre]) ? $formData[$nombre] : '';
+                if ($tipo === 'checkbox') {
+                    if (is_array($valor)) {
+                        $result[$nombre] = implode(', ', $valor);
+                    } elseif (is_string($valor) && strlen($valor)) {
+                        $result[$nombre] = $valor;
+                    } else {
+                        $result[$nombre] = '';
+                    }
+                } else {
+                    $result[$nombre] = is_array($valor) ? implode(', ', $valor) : $valor;
+                }
+            }
+        }
+        // Recursividad para hijos
+        if (isset($grupo['hijos'])) {
+            $result = array_merge($result, normalizaValores($formData, ['grupos' => $grupo['hijos']]));
         }
     }
     return $result;
@@ -108,14 +126,12 @@ function generarContenidoCampo($campo, $valor = '', $soloLectura = false) {
     // Si es solo lectura (para adjuntos), solo muestra el valor seleccionado como texto
     if ($soloLectura) {
         if ($tipo === 'checkbox') {
-            if (is_array($valor)) {
-                return htmlspecialchars(implode(', ', $valor), ENT_QUOTES, 'UTF-8');
-            } else {
-                return htmlspecialchars($valor, ENT_QUOTES, 'UTF-8');
-            }
-        } elseif ($tipo === 'radio' || $tipo === 'select' || $tipo === 'selectdata') {
+            $valores = is_array($valor) ? $valor : (strlen($valor) ? array_map('trim', explode(',', $valor)) : []);
+            return htmlspecialchars(implode(', ', $valores), ENT_QUOTES, 'UTF-8');
+        } elseif ($tipo === 'select' || $tipo === 'selectdata' || $tipo === 'radio') {
             return htmlspecialchars($valor, ENT_QUOTES, 'UTF-8');
         }
+        return htmlspecialchars($valor, ENT_QUOTES, 'UTF-8');
     }
 
     // NUEVO: agrega data-formula si existe
@@ -290,7 +306,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     $tiposFormatoEnvio = explode(',', strtolower($config['tipoformatoenvio'] ?? 'htmlc'));
 
     // Normaliza los valores para los adjuntos
-    $valoresAdjuntos = normalizaValores($formData);
+    $valoresAdjuntos = normalizaValores($formData, $json);
 
     // Generar el HTML del formulario con valores y CSS
     $htmlForm = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
@@ -476,8 +492,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         enviarFormulario($json_file, $formData, $css, $json);
     }
 }
-
-?>
+ ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -509,8 +524,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       <p><?php echo htmlspecialchars($json['parametros']['pie'], ENT_QUOTES, 'UTF-8'); ?></p>
     </footer>
     <p>Fecha de creación: <?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p>
-
-       
   </main>
   <script src="js/formulariodinamico.js"></script>
 </body>

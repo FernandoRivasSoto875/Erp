@@ -1,6 +1,4 @@
-<?php
-
-
+ <?php
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
@@ -10,8 +8,6 @@ require_once __DIR__ . '/vendor/autoload.php'; // mPDF autoload
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
-
-
 
 $conn = conexionBd();
 
@@ -247,13 +243,8 @@ function generarGruposRecursivos($grupos, $valores = [], $soloLectura = false) {
 }
 
 // Envío de formulario y adjuntos
- 
- 
-
 function enviarFormulario($jsonFile, $formData, $css, $json) {
-   file_put_contents(__DIR__ . '/debug_mail1.txt', "Entró a enviarFormulario\n", FILE_APPEND);
- 
-
+    file_put_contents(__DIR__ . '/debug_mail.txt', "Entró a enviarFormulario\n", FILE_APPEND);
 
     $config = $json['parametros'];
 
@@ -324,16 +315,10 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     }
 }
 
-
-
-
-
-
 // VALIDACIÓN Y ENVÍO DEL FORMULARIO
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
-file_put_contents(__DIR__ . '/debug_mail.txt', "POST recibido\n", FILE_APPEND); // <-- Línea de depuración
-
+    file_put_contents(__DIR__ . '/debug_mail.txt', "POST recibido\n", FILE_APPEND);
 
     $formData = $_POST; // Recibe todos los datos del formulario
 
@@ -368,6 +353,8 @@ file_put_contents(__DIR__ . '/debug_mail.txt', "POST recibido\n", FILE_APPEND); 
     }
     validarCamposRequeridos($json['grupos'], $formData, $errores);
 
+    file_put_contents(__DIR__ . '/debug_mail.txt', "Errores: " . print_r($errores, true), FILE_APPEND);
+
     // Mostrar errores si existen
     if (!empty($errores)) {
         echo "<div style='color:red;'><ul>";
@@ -376,9 +363,11 @@ file_put_contents(__DIR__ . '/debug_mail.txt', "POST recibido\n", FILE_APPEND); 
         }
         echo "</ul></div>";
     } else {
+        file_put_contents(__DIR__ . '/debug_mail.txt', "Llamando a enviarFormulario\n", FILE_APPEND);
         enviarFormulario($json_file, $formData, $css, $json);
     }
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -410,4 +399,5 @@ file_put_contents(__DIR__ . '/debug_mail.txt', "POST recibido\n", FILE_APPEND); 
   </main>
   <script src="js/formulariodinamico.js"></script>
 </body>
-</html> 
+</html>
+

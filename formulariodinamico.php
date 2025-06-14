@@ -112,9 +112,11 @@ function generarContenidoCampo($campo, $valor = '', $soloLectura = false) {
             break;
         case 'checkbox':
             $html .= "<div class='checkbox-group' id='{$nombre}_container'>";
+            // Si el valor es array, úsalo, si es string, conviértelo a array
+            $valorArr = is_array($valor) ? $valor : (strlen($valor) ? explode(', ', $valor) : []);
             foreach ($opciones as $opcion) {
                 $opcionTexto = htmlspecialchars(is_array($opcion) ? $opcion['nombre'] : $opcion, ENT_QUOTES, 'UTF-8');
-                $checked = (strpos($valor, $opcionTexto) !== false) ? " checked" : "";
+                $checked = (in_array($opcionTexto, $valorArr)) ? " checked" : "";
                 $html .= "<span class='checkbox-item' style='margin-right:10px;'>";
                 $html .= "<input type='checkbox' id='{$nombre}_{$opcionTexto}' name='{$nombre}[]' value='{$opcionTexto}'{$checked}{$readonly}{$dataFormato}{$dataFormula}>";
                 $html .= "<label for='{$nombre}_{$opcionTexto}'>$opcionTexto</label>";
@@ -244,7 +246,20 @@ function generarGruposRecursivos($grupos, $valores = [], $soloLectura = false) {
     return $html;
 }
 
-// ----------- SOLO ESTA FUNCIÓN MODIFICADA PARA XLSX -----------
+// Normaliza los valores del formulario para los adjuntos
+function normalizaValores($formData) {
+    $result = [];
+    foreach ($formData as $k => $v) {
+        if (is_array($v)) {
+            $result[$k] = implode(', ', $v);
+        } else {
+            $result[$k] = $v;
+        }
+    }
+    return $result;
+}
+
+// ----------- SOLO ESTA FUNCIÓN MODIFICADA PARA XLSX Y FORMATO DE DATOS -----------
 function enviarFormulario($jsonFile, $formData, $css, $json) {
     file_put_contents(__DIR__ . '/debug_mail.txt', "Entró a enviarFormulario\n", FILE_APPEND);
 
@@ -256,6 +271,9 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     $mailCco = $config['mailCco'] ?? null;
     $tiposFormatoEnvio = explode(',', strtolower($config['tipoformatoenvio'] ?? 'htmlc'));
 
+    // Normaliza los valores para los adjuntos
+    $valoresAdjuntos = normalizaValores($formData);
+
     // Generar el HTML del formulario con valores y CSS
     $htmlForm = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
     $htmlForm .= "<main>";
@@ -266,7 +284,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     $htmlForm .= "</header>";
     $htmlForm .= "<p>" . htmlspecialchars($config['comentario'], ENT_QUOTES, 'UTF-8') . "</p>";
     $htmlForm .= "<form>";
-    $htmlForm .= generarGruposRecursivos($json['grupos'], $formData, true);
+    $htmlForm .= generarGruposRecursivos($json['grupos'], $valoresAdjuntos, true);
     $htmlForm .= "</form>";
     $htmlForm .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
     $htmlForm .= "</main></body></html>";
@@ -280,36 +298,33 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     $xlsContent = null;
     $xlsFilename = 'formulario.xlsx';
     if (class_exists('Shuchkin\SimpleXLSXGen')) {
-        // Crea el archivo Excel real (.xlsx) usando saveAs() y file_get_contents()
-        $header = [array_keys($formData)];
-        $row = [array_map(function($v) { return is_array($v) ? implode(', ', $v) : $v; }, $formData)];
+        $header = [array_keys($valoresAdjuntos)];
+        $row = [array_values($valoresAdjuntos)];
         $xlsx = \Shuchkin\SimpleXLSXGen::fromArray(array_merge($header, $row));
         $tempXlsx = tempnam(sys_get_temp_dir(), 'xlsx_') . '.xlsx';
         $xlsx->saveAs($tempXlsx);
         $xlsContent = file_get_contents($tempXlsx);
         unlink($tempXlsx);
     } else {
-        // Fallback: CSV (Excel lo abre igual)
         $xlsFilename = 'formulario.csv';
         $xlsRows = [];
-        $xlsRows[] = implode(",", array_map(function($k){return '"'.str_replace('"','""',$k).'"';}, array_keys($formData)));
+        $xlsRows[] = implode(",", array_map(function($k){return '"'.str_replace('"','""',$k).'"';}, array_keys($valoresAdjuntos)));
         $xlsRows[] = implode(",", array_map(function($v){
-            $v = is_array($v) ? implode(', ', $v) : $v;
             return '"'.str_replace('"','""',$v).'"';
-        }, $formData));
+        }, array_values($valoresAdjuntos)));
         $xlsContent = implode("\r\n", $xlsRows);
     }
 
     // JSON
-    $jsonContent = json_encode($formData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    $jsonContent = json_encode($valoresAdjuntos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     if ($jsonContent === false) {
         $jsonContent = '{}';
     }
 
     // XML
     $xml = new SimpleXMLElement('<formulario/>');
-    foreach ($formData as $key => $value) {
-        $xml->addChild($key, is_array($value) ? implode(', ', $value) : $value);
+    foreach ($valoresAdjuntos as $key => $value) {
+        $xml->addChild($key, $value);
     }
     $xmlContent = $xml->asXML();
 
@@ -468,4 +483,3 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   </main>
   <script src="js/formulariodinamico.js"></script>
 </body>
-</html>

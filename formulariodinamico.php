@@ -1,4 +1,9 @@
 <?php
+
+
+file_put_contents('debug_mail.txt', "El script PHP se está ejecutando\n", FILE_APPEND);
+
+
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -316,28 +321,6 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
         echo "<p style='color: red; text-align: center;'>Error al enviar el correo: {$mail->ErrorInfo}</p>";
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

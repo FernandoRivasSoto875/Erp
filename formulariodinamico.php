@@ -243,6 +243,7 @@ function generarGruposRecursivos($grupos, $valores = [], $soloLectura = false) {
 }
 
 // Envío de formulario y adjuntos
+
 function enviarFormulario($jsonFile, $formData, $css, $json) {
     file_put_contents(__DIR__ . '/debug_mail.txt', "Entró a enviarFormulario\n", FILE_APPEND);
 
@@ -274,6 +275,31 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     $mpdf->WriteHTML($htmlForm);
     $pdfContent = $mpdf->Output('', 'S');
 
+    // XLS (Excel simple)
+    $xlsContent = "<table border='1'>";
+    $xlsContent .= "<tr>";
+    foreach ($formData as $key => $value) {
+        $xlsContent .= "<th>" . htmlspecialchars($key, ENT_QUOTES, 'UTF-8') . "</th>";
+    }
+    $xlsContent .= "</tr><tr>";
+    foreach ($formData as $value) {
+        $xlsContent .= "<td>" . htmlspecialchars(is_array($value) ? implode(', ', $value) : $value, ENT_QUOTES, 'UTF-8') . "</td>";
+    }
+    $xlsContent .= "</tr></table>";
+
+    // JSON
+    $jsonContent = json_encode($formData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+
+    // XML
+    $xml = new SimpleXMLElement('<formulario/>');
+    foreach ($formData as $key => $value) {
+        $xml->addChild($key, is_array($value) ? implode(', ', $value) : $value);
+    }
+    $xmlContent = $xml->asXML();
+
+    // DOC (Word simple, usando HTML)
+    $docContent = "<html><body>" . $htmlForm . "</body></html>";
+
     $asunto = $config['subject'] ?? "Formulario Recibido";
 
     // --- ENVÍO CON PHPMailer ---
@@ -295,17 +321,39 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
         $mail->Subject = $asunto;
         $mail->isHTML(true);
 
-        // El cuerpo del correo
-        $mail->Body = $htmlForm;
-
-        // Adjuntar PDF si corresponde
-        if (in_array('pdf', $tiposFormatoEnvio)) {
-            $mail->addStringAttachment($pdfContent, 'formulario.pdf');
+        // Adjuntar según tipoformatoenvio
+        foreach ($tiposFormatoEnvio as $tipo) {
+            $tipo = trim(strtolower($tipo));
+            switch ($tipo) {
+                case 'pdf':
+                    $mail->addStringAttachment($pdfContent, 'formulario.pdf');
+                    break;
+                case 'html':
+                    $mail->addStringAttachment($htmlForm, 'formulario.html');
+                    break;
+                case 'xls':
+                    $mail->addStringAttachment($xlsContent, 'formulario.xls');
+                    break;
+                case 'json':
+                    $mail->addStringAttachment($jsonContent, 'formulario.json');
+                    break;
+                case 'xml':
+                    $mail->addStringAttachment($xmlContent, 'formulario.xml');
+                    break;
+                case 'doc':
+                    $mail->addStringAttachment($docContent, 'formulario.doc');
+                    break;
+                case 'htmlc':
+                    // No adjunta, solo pone el HTML como cuerpo del correo
+                    break;
+            }
         }
 
-        // Adjuntar HTML como archivo si corresponde
-        if (in_array('html', $tiposFormatoEnvio)) {
-            $mail->addStringAttachment($htmlForm, 'formulario.html');
+        // El cuerpo del correo (si incluye htmlc, usa el HTML como cuerpo)
+        if (in_array('htmlc', $tiposFormatoEnvio)) {
+            $mail->Body = $htmlForm;
+        } else {
+            $mail->Body = "Adjunto el(los) archivo(s) del formulario.";
         }
 
         $mail->send();
@@ -315,6 +363,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     }
 }
 
+ 
 // VALIDACIÓN Y ENVÍO DEL FORMULARIO
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 

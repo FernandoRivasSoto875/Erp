@@ -1,4 +1,4 @@
-// ===================== UTILIDADES DE FORMATO Y FÓRMULAS =====================
+ // ===================== UTILIDADES DE FORMATO Y FÓRMULAS =====================
 
 function limpiarNumero(valor) {
   valor = valor.replace(/[^\d,.-]/g, '');
@@ -13,7 +13,6 @@ function aplicarFormato(input, formato) {
   let num = parseFloat(valor.replace(/\./g, '').replace(',', '.'));
   if (isNaN(num)) return;
 
-  // Si el input es type="number", NO uses formato local, solo punto decimal
   if (input.type === "number") {
     if (formato === "moneda" || formato === "#,##0.00" || formato === "0.00") {
       input.value = num.toFixed(2);
@@ -25,7 +24,6 @@ function aplicarFormato(input, formato) {
     return;
   }
 
-  // Si es text, aplica formato local
   if (formato === "moneda") {
     input.value = num.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
   } else if (formato === "#,##0.00") {
@@ -49,25 +47,17 @@ function calcularFormula(input, formulaData, campos) {
   });
   try {
     let resultado = eval(expr);
-    // Asigna el resultado al campo actual (el que tiene el data-formula)
     input.value = resultado;
-
-    // Aplica formato si corresponde
     const formato = input.getAttribute('data-formato');
     if (formato) {
       aplicarFormato(input, formato);
     }
-
-    // Guarda el valor calculado en el almacenamiento local
     localStorage.setItem(input.name, resultado);
-
-    // Actualiza y guarda el valor del campo oculto "total"
     if (input.id === "total_calculado") {
       const total = document.getElementById("total");
       total.value = resultado;
       localStorage.setItem("total", resultado);
     }
-
   } catch (e) {
     console.error("Error al calcular fórmula:", formulaData, e);
     input.value = '';
@@ -92,7 +82,6 @@ function buscarValor(input, busqueda, valor) {
   .then(data => {
     if (data && typeof data.resultado !== "undefined" && data.resultado !== null) {
       input.value = data.resultado;
-       // Guarda el valor en el almacenamiento local
       localStorage.setItem(input.name, data.resultado);
     } else {
       input.value = '';
@@ -113,12 +102,10 @@ function cargarCampos() {
     let saved = localStorage.getItem(field.name);
     if (saved) {
       field.value = saved;
-      // Aplica el formato si corresponde
       const formato = field.getAttribute('data-formato');
       if (formato) {
         aplicarFormato(field, formato);
       }
-      // Dispara un evento 'input' para forzar el guardado del campo
       field.dispatchEvent(new Event('input'));
     }
   });
@@ -253,7 +240,10 @@ function crearCrudRow(value, editarCallback, eliminarCallback) {
   btnDelete.addEventListener("click", eliminarCallback);
 
   spanActions.appendChild(btnEdit);
-  spanActions.appendChild(spanActions);
+  spanActions.appendChild(btnDelete);
+
+  li.appendChild(spanValue);
+  li.appendChild(spanActions);
 
   return li;
 }
@@ -428,7 +418,6 @@ function eliminarElemento(tipo, element, listItem) {
   if (listItem) listItem.remove();
 }
 
-// --- Drag & Drop para reordenar CRUD ---
 function attachDragEvents(li) {
   li.addEventListener("dragstart", function(e) {
     e.dataTransfer.effectAllowed = "move";
@@ -474,7 +463,6 @@ function initDynamicReordering() {
 // ===================== INICIALIZACIÓN DE EVENTOS =====================
 
 document.addEventListener('DOMContentLoaded', function() {
-  // Formateo automático en blur
   document.querySelectorAll('input[data-formato]').forEach(function(input) {
     const formato = input.getAttribute('data-formato');
     if (!formato) return;
@@ -483,14 +471,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // Fórmulas automáticas y búsqueda
   document.querySelectorAll('[data-formula]').forEach(function(input) {
     let formulaData = input.getAttribute('data-formula');
     try { formulaData = JSON.parse(formulaData); } catch { }
     if (typeof formulaData === 'string') {
-      // Quitar comillas dobles si existen (por json_encode en PHP)
       formulaData = formulaData.replace(/^"(.*)"$/, '$1');
-      // Fórmula aritmética
       const campos = formulaData.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) || [];
       campos.forEach(function(campo) {
         const campoInput = document.getElementsByName(campo)[0];
@@ -500,10 +485,8 @@ document.addEventListener('DOMContentLoaded', function() {
           });
         }
       });
-      // Calcula la fórmula al cargar la página
       calcularFormula(input, formulaData, campos);
     } else if (typeof formulaData === 'object' && formulaData.busqueda) {
-      // Fórmula de búsqueda
       const campoClave = formulaData.busqueda.where.match(/\{(.+?)\}/);
       if (campoClave) {
         const campoInput = document.getElementsByName(campoClave[1])[0];
@@ -515,7 +498,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   });
-  // Autosave y validación
+
   cargarCampos();
   const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
   fields.forEach(el => {
@@ -523,26 +506,17 @@ document.addEventListener('DOMContentLoaded', function() {
     if (el.getAttribute("pattern")) el.addEventListener("blur", validarInput);
   });
 
-  // Autocompletar
   document.querySelectorAll("input[data-autocompletar='true']").forEach(field => {
     field.addEventListener("input", autocompleteField);
   });
 
-  // Campos condicionales
   configurarCondiciones();
-
-  // CRUD y reordenamiento
   initDynamicReordering();
 
-  // Evitar la recarga de la página al enviar el formulario
   document.getElementById("formulario").addEventListener("submit", function(event) {
     event.preventDefault();
-
     const formData = new FormData(this);
-
-    // Obtener el nombre del archivo JSON desde el atributo data-archivo del formulario
     const nombreArchivo = document.getElementById("formulario").getAttribute("data-archivo");
-
     fetch('formulariodinamico.php?archivo=' + nombreArchivo, {
         method: 'POST',
         body: formData
@@ -554,5 +528,5 @@ document.addEventListener('DOMContentLoaded', function() {
     .catch(error => {
         console.error('Error:', error);
     });
+  });
 });
-}); 

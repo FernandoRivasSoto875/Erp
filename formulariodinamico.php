@@ -1,7 +1,4 @@
 <?php
-// filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\formulariodinamico.php
-// Autor: Fernando Rivas S.
-
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -75,6 +72,16 @@ function generarContenidoCampo($campo, $valor = '', $soloLectura = false) {
     $disabled = $soloLectura ? " disabled" : "";
     $dataFormato = isset($campo['formato']) ? " data-formato='" . htmlspecialchars($campo['formato'], ENT_QUOTES, 'UTF-8') . "'" : "";
 
+    // NUEVO: agrega data-formula si existe
+    $dataFormula = "";
+    if (isset($campo['formula'])) {
+        if (is_array($campo['formula'])) {
+            $dataFormula = " data-formula='" . htmlspecialchars(json_encode($campo['formula']), ENT_QUOTES, 'UTF-8') . "'";
+        } else {
+            $dataFormula = " data-formula='" . htmlspecialchars($campo['formula'], ENT_QUOTES, 'UTF-8') . "'";
+        }
+    }
+
     // Opciones dinámicas
     if (isset($campo['data'])) {
         $opciones = obtenerDatosTabla($campo['data']);
@@ -90,7 +97,7 @@ function generarContenidoCampo($campo, $valor = '', $soloLectura = false) {
                 $opcionTexto = htmlspecialchars(is_array($opcion) ? $opcion['nombre'] : $opcion, ENT_QUOTES, 'UTF-8');
                 $checked = ($valor == $opcionTexto) ? " checked" : "";
                 $html .= "<span class='radio-item' style='margin-right:15px;'>";
-                $html .= "<input type='radio' id='{$nombre}_{$opcionTexto}' name='{$nombre}' value='{$opcionTexto}'{$checked}{$readonly}{$dataFormato}>";
+                $html .= "<input type='radio' id='{$nombre}_{$opcionTexto}' name='{$nombre}' value='{$opcionTexto}'{$checked}{$readonly}{$dataFormato}{$dataFormula}>";
                 $html .= "<label for='{$nombre}_{$opcionTexto}'>$opcionTexto</label>";
                 $html .= "</span>";
             }
@@ -102,7 +109,7 @@ function generarContenidoCampo($campo, $valor = '', $soloLectura = false) {
                 $opcionTexto = htmlspecialchars(is_array($opcion) ? $opcion['nombre'] : $opcion, ENT_QUOTES, 'UTF-8');
                 $checked = (strpos($valor, $opcionTexto) !== false) ? " checked" : "";
                 $html .= "<span class='checkbox-item' style='margin-right:10px;'>";
-                $html .= "<input type='checkbox' id='{$nombre}_{$opcionTexto}' name='{$nombre}[]' value='{$opcionTexto}'{$checked}{$readonly}{$dataFormato}>";
+                $html .= "<input type='checkbox' id='{$nombre}_{$opcionTexto}' name='{$nombre}[]' value='{$opcionTexto}'{$checked}{$readonly}{$dataFormato}{$dataFormula}>";
                 $html .= "<label for='{$nombre}_{$opcionTexto}'>$opcionTexto</label>";
                 $html .= "</span>";
             }
@@ -110,7 +117,7 @@ function generarContenidoCampo($campo, $valor = '', $soloLectura = false) {
             break;
         case 'select':
         case 'selectdata':
-            $html .= "<select name='{$nombre}' id='{$nombre}'{$readonly}{$disabled}{$dataFormato}>";
+            $html .= "<select name='{$nombre}' id='{$nombre}'{$readonly}{$disabled}{$dataFormato}{$dataFormula}>";
             foreach ($opciones as $opcion) {
                 $opcionTexto = is_array($opcion) ? htmlspecialchars($opcion['nombre'], ENT_QUOTES, 'UTF-8') : htmlspecialchars($opcion, ENT_QUOTES, 'UTF-8');
                 $selected = ($valor == $opcionTexto) ? " selected" : "";
@@ -119,13 +126,13 @@ function generarContenidoCampo($campo, $valor = '', $soloLectura = false) {
             $html .= "</select>";
             break;
         case 'list':
-            $html .= "<input type='text' name='{$nombre}' id='{$nombre}' value='" . htmlspecialchars($valor, ENT_QUOTES, 'UTF-8') . "'{$readonly}{$dataFormato}>";
+            $html .= "<input type='text' name='{$nombre}' id='{$nombre}' value='" . htmlspecialchars($valor, ENT_QUOTES, 'UTF-8') . "'{$readonly}{$dataFormato}{$dataFormula}>";
             break;
         case 'textarea':
-            $html .= "<textarea name='{$nombre}' id='{$nombre}'{$readonly}{$dataFormato}>" . htmlspecialchars($valor, ENT_QUOTES, 'UTF-8') . "</textarea>";
+            $html .= "<textarea name='{$nombre}' id='{$nombre}'{$readonly}{$dataFormato}{$dataFormula}>" . htmlspecialchars($valor, ENT_QUOTES, 'UTF-8') . "</textarea>";
             break;
         default:
-            $html .= "<input type='{$tipo}' name='{$nombre}' id='{$nombre}' value='" . htmlspecialchars($valor, ENT_QUOTES, 'UTF-8') . "'{$readonly}{$dataFormato}>";
+            $html .= "<input type='{$tipo}' name='{$nombre}' id='{$nombre}' value='" . htmlspecialchars($valor, ENT_QUOTES, 'UTF-8') . "'{$readonly}{$disabled}{$dataFormato}{$dataFormula}>";
             break;
     }
     return $html;
@@ -399,4 +406,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   </main>
   <script src="js/formulariodinamico.js"></script>
 </body>
-</html>
+</html> 

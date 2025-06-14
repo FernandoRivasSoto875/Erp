@@ -331,6 +331,10 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
 
 // VALIDACIÓN Y ENVÍO DEL FORMULARIO
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
+
+file_put_contents(__DIR__ . '/debug_mail.txt', "POST recibido\n", FILE_APPEND); // <-- Línea de depuración
+
+
     $formData = $_POST; // Recibe todos los datos del formulario
 
     // VALIDACIONES BÁSICAS

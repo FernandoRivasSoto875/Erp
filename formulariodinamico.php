@@ -1,4 +1,3 @@
-
 <?php
 
 ini_set('display_errors', 1);
@@ -14,7 +13,6 @@ use PHPMailer\PHPMailer\Exception;
 
 $conn = conexionBd();
 
-// Validar y cargar el archivo JSON
 if (!isset($_GET['archivo']) || !preg_match('/^[a-zA-Z0-9_\-]+\.json$/', $_GET['archivo'])) {
     echo "<div style='color:red;text-align:center;font-weight:bold;'>No existe nombre de formulario.</div>";
     exit;
@@ -37,20 +35,15 @@ if (!isset($json['grupos']) || !is_array($json['grupos'])) {
     exit;
 }
 
-// Obtener la fecha de creación del archivo JSON
 $fecha_creacion = isset($json['parametros']['fecha_creacion']) ? $json['parametros']['fecha_creacion'] : 'Fecha desconocida';
-
-// Leer el CSS del formulario
 $css = file_exists(__DIR__ . '/css/formulariodinamico.css') ? file_get_contents(__DIR__ . '/css/formulariodinamico.css') : '';
 
-// Recuperar datos guardados localmente
 $registroFile = __DIR__ . '/data/' . $nombre_archivo . '_ultimo.json';
 $valoresGuardados = [];
 if (file_exists($registroFile)) {
     $valoresGuardados = json_decode(file_get_contents($registroFile), true);
 }
 
-// ----------- FUNCIÓN PARA ENVÍO Y GENERACIÓN DE ADJUNTOS -----------
 function enviarFormulario($jsonFile, $formData, $css, $json) {
     $config = $json['parametros'];
 
@@ -60,11 +53,9 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     $mailCco = $config['mailCco'] ?? null;
     $tiposFormatoEnvio = explode(',', strtolower($config['tipoformatoenvio'] ?? 'htmlc'));
 
-    // Normaliza los valores para los adjuntos
     $valoresAdjuntos = normalizaValores($formData, $json, false);
     $valoresAdjuntosJson = normalizaValores($formData, $json, true);
 
-    // Generar el HTML del formulario con valores y CSS
     $htmlForm = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
     $htmlForm .= "<main>";
     $htmlForm .= "<header class='form-header'><h2>" . htmlspecialchars($config['titulo'], ENT_QUOTES, 'UTF-8') . "</h2>";
@@ -79,12 +70,10 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     $htmlForm .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
     $htmlForm .= "</main></body></html>";
 
-    // PDF con mPDF
     $mpdf = new \Mpdf\Mpdf(['tempDir' => __DIR__ . '/tmp']);
     $mpdf->WriteHTML($htmlForm);
     $pdfContent = $mpdf->Output('', 'S');
 
-    // XLSX (Excel real) usando SimpleXLSXGen si está disponible
     $xlsContent = null;
     $xlsFilename = 'formulario.xlsx';
     if (class_exists('Shuchkin\SimpleXLSXGen')) {
@@ -105,36 +94,23 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
         $xlsContent = implode("\r\n", $xlsRows);
     }
 
-    // JSON
     $jsonContent = json_encode($valoresAdjuntosJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     if ($jsonContent === false) {
         $jsonContent = '{}';
     }
 
-    // XML
     $xml = new SimpleXMLElement('<formulario/>');
     foreach ($valoresAdjuntos as $key => $value) {
         $xml->addChild($key, $value);
     }
     $xmlContent = $xml->asXML();
 
-    // DOC (Word real) usando HTML (Word lo abre)
     $docContent = "<html><body>" . $htmlForm . "</body></html>";
 
     $asunto = $config['subject'] ?? "Formulario Recibido";
 
-    // --- ENVÍO CON PHPMailer ---
     $mail = new PHPMailer(true);
     try {
-        // Si necesitas SMTP, descomenta y configura:
-        // $mail->isSMTP();
-        // $mail->Host = 'smtp.tudominio.com';
-        // $mail->SMTPAuth = true;
-        // $mail->Username = 'usuario@tudominio.com';
-        // $mail->Password = 'tu_password';
-        // $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        // $mail->Port = 587;
-
         $mail->setFrom($mailDe, 'Formulario Web');
         $mail->addAddress($mailPara);
         if (!empty($mailCc)) $mail->addCC($mailCc);
@@ -142,7 +118,6 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
         $mail->Subject = $asunto;
         $mail->isHTML(true);
 
-        // Adjuntar según tipoformatoenvio
         foreach ($tiposFormatoEnvio as $tipo) {
             $tipo = trim(strtolower($tipo));
             switch ($tipo) {
@@ -169,12 +144,10 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
                     $mail->addStringAttachment($docContent, 'formulario.doc', 'base64', 'application/msword');
                     break;
                 case 'htmlc':
-                    // No adjunta, solo pone el HTML como cuerpo del correo
                     break;
             }
         }
 
-        // El cuerpo del correo (si incluye htmlc, usa el HTML como cuerpo)
         if (in_array('htmlc', $tiposFormatoEnvio)) {
             $mail->Body = $htmlForm;
         } else {
@@ -187,7 +160,6 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
         echo "<p style='color: red; text-align: center;'>Error al enviar el correo: {$mail->ErrorInfo}</p>";
     }
 
-    // Guardar los datos localmente para recuperación futura
     $registroDir = __DIR__ . '/data/';
     if (!is_dir($registroDir)) {
         mkdir($registroDir, 0777, true);
@@ -196,7 +168,6 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     file_put_contents($registroFile, json_encode($valoresAdjuntosJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
 
-// VALIDACIÓN Y ENVÍO DEL FORMULARIO
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $formData = $_POST;
@@ -276,4 +247,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   </main>
   <script src="js/formulariodinamico.js"></script>
 </body>
-</html>
+</html> 

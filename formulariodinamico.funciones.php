@@ -1,4 +1,5 @@
-<?php
+ 
+ <?php
 
 function obtenerDatosTabla($data) {
     global $conn;
@@ -39,6 +40,9 @@ function normalizaValores($formData, $json, $paraJson = false) {
                         $valor = [];
                     }
                     $result[$nombre] = $paraJson ? $valor : implode(', ', $valor);
+                } elseif ($tipo === 'radio') {
+                    $valor = isset($formData[$nombre]) ? $formData[$nombre] : '';
+                    $result[$nombre] = is_array($valor) ? implode(', ', $valor) : $valor;
                 } else {
                     $valor = isset($formData[$nombre]) ? $formData[$nombre] : '';
                     $result[$nombre] = is_array($valor) ? implode(', ', $valor) : $valor;

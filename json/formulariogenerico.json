@@ -1,4 +1,4 @@
- {
+{
   "parametros": {
     "titulo": "Formulario de Contacto",
     "tituloimagen": "https://www.saludenterreno.cl/sitio/imagenes/contacto.png",
@@ -9,16 +9,16 @@
     "remitente": "gestion@saludenterreno.cl",
     "subject": "Nuevo mensaje desde el formulario de contacto",
     "estilo": "padding:20px; background:#e8f0fe;",
-     "mailDe": "Intranet@SaludEnterreno.cl",
+    "mailDe": "Intranet@SaludEnterreno.cl",
     "mailPara": "fernandorivassoto@gmail.com",
     "mailCc": "copia@example.com",
     "mailCco": "copiaoculta@example.com",
-    "tipoformatoenvio": "htmlc" 
+    "tipoformatoenvio": "htmlc"
   },
   "grupos": [
     {
       "activo": true,
-      "grupoNombre": "Datos Personalesss",
+      "grupoNombre": "Datos Personales",
       "grupoAlineacion": "columna",
       "alineacion": "fila",
       "estilo": "border:1px dashed #007BFF; padding:10px; background:#f9f9f9;",
@@ -37,7 +37,6 @@
           "formato": "moneda",
           "placeholder": "Ingrese precio"
         },
-  
         {
           "nombre": "ComId",
           "etiqueta": "Código Producto",
@@ -48,24 +47,22 @@
           "nombre": "descripcion_producto",
           "etiqueta": "Descripción",
           "tipo": "text",
-                   "formato": "moneda",
           "formula": {
             "busqueda": {
               "tabla": "Comuna",
-              "campo": "ComId",
+              "campo": "ComDes",
               "where": "ComId = {ComId}"
             }
           },
-          "readonly":false
+          "readonly": false
         },
         {
-          "nombre": "nombre3",
+          "nombre": "nombre",
           "etiqueta": "Nombre",
           "tipo": "text",
           "placeholder": "Nombre completo"
         },
-
-      {
+        {
           "nombre": "total",
           "etiqueta": "Total",
           "tipo": "text",
@@ -74,7 +71,7 @@
           "readonly": true
         },
         {
-          "nombre": "email2",
+          "nombre": "email",
           "etiqueta": "Correo Electrónico",
           "tipo": "email",
           "posicionetiqueta": "izquierdo",
@@ -95,7 +92,7 @@
           "placeholder": "Calle y número"
         },
         {
-          "nombre": "ciudad2",
+          "nombre": "ciudad",
           "etiqueta": "Ciudad",
           "tipo": "text",
           "posicionetiqueta": "arriba.izquierdo",
@@ -146,7 +143,7 @@
         {
           "activo": true,
           "crud": false,
-          "nombre": "nombre1",
+          "nombre": "nombre_2",
           "etiqueta": "Nombre",
           "tipo": "text",
           "requerido": true,
@@ -158,7 +155,7 @@
         {
           "activo": true,
           "crud": false,
-          "nombre": "email1",
+          "nombre": "email_2",
           "etiqueta": "Correo Electrónico",
           "tipo": "email",
           "requerido": true,
@@ -171,7 +168,7 @@
         {
           "activo": true,
           "crud": true,
-          "nombre": "ciudad1",
+          "nombre": "ciudad_2",
           "etiqueta": "Ciudad",
           "tipo": "selectdata",
           "requerido": true,
@@ -198,7 +195,7 @@
             {
               "activo": true,
               "crud": false,
-              "nombre": "telefono",
+              "nombre": "telefono_secundario",
               "etiqueta": "Teléfono",
               "tipo": "tel",
               "requerido": false,
@@ -210,7 +207,7 @@
             {
               "activo": true,
               "crud": false,
-              "nombre": "direccion",
+              "nombre": "direccion_secundaria",
               "etiqueta": "Dirección",
               "tipo": "text",
               "requerido": false,

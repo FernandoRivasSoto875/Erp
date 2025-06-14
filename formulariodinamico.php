@@ -379,7 +379,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
         echo "<p style='color: green; text-align: center;'>¡Correo enviado correctamente!</p>";
     } catch (Exception $e) {
         echo "<p style='color: red; text-align: center;'>Error al enviar el correo: {$mail->ErrorInfo}</p>";
- 
+   }
  
 // VALIDACIÓN Y ENVÍO DEL FORMULARIO
 if ($_SERVER["REQUEST_METHOD"] == "POST") {

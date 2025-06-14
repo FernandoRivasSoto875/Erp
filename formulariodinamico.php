@@ -4,6 +4,12 @@ error_reporting(E_ALL);
 
 require_once 'funcionessql.php';
 require_once __DIR__ . '/vendor/autoload.php'; // mPDF autoload
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+
+
 $conn = conexionBd();
 
 // Validar y cargar el archivo JSON
@@ -238,6 +244,9 @@ function generarGruposRecursivos($grupos, $valores = [], $soloLectura = false) {
 }
 
 // Envío de formulario y adjuntos
+ 
+ 
+
 function enviarFormulario($jsonFile, $formData, $css, $json) {
     $config = $json['parametros'];
 
@@ -245,7 +254,6 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     $mailPara = $config['mailPara'] ?? null;
     $mailCc = $config['mailCc'] ?? null;
     $mailCco = $config['mailCco'] ?? null;
-
     $tiposFormatoEnvio = explode(',', strtolower($config['tipoformatoenvio'] ?? 'htmlc'));
 
     // Generar el HTML del formulario con valores y CSS
@@ -269,65 +277,72 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     $pdfContent = $mpdf->Output('', 'S');
 
     $asunto = $config['subject'] ?? "Formulario Recibido";
-    $cabeceras = "From: " . $mailDe . "\r\n";
-    if (!empty($mailCc)) $cabeceras .= "Cc: " . $mailCc . "\r\n";
-    if (!empty($mailCco)) $cabeceras .= "Bcc: " . $mailCco . "\r\n";
-    $cabeceras .= "MIME-Version: 1.0\r\n";
 
-    // Si solo htmlc, enviar como cuerpo
-    if (in_array('htmlc', $tiposFormatoEnvio) && count($tiposFormatoEnvio) === 1) {
-        $cabeceras .= "Content-Type: text/html; charset=UTF-8\r\n";
-        $ok = mail($mailPara, $asunto, $htmlForm, $cabeceras);
-        if ($ok) {
-            echo "<p style='color: green; text-align: center;'>¡Correo enviado correctamente!</p>";
-        } else {
-            echo "<p style='color: red; text-align: center;'>Error al enviar el correo. Revise la configuración del servidor.</p>";
+    // --- ENVÍO CON PHPMailer ---
+    $mail = new PHPMailer(true);
+    try {
+        // Si necesitas SMTP, descomenta y configura:
+        // $mail->isSMTP();
+        // $mail->Host = 'smtp.tudominio.com';
+        // $mail->SMTPAuth = true;
+        // $mail->Username = 'usuario@tudominio.com';
+        // $mail->Password = 'tu_password';
+        // $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        // $mail->Port = 587;
+
+        $mail->setFrom($mailDe, 'Formulario Web');
+        $mail->addAddress($mailPara);
+        if (!empty($mailCc)) $mail->addCC($mailCc);
+        if (!empty($mailCco)) $mail->addBCC($mailCco);
+        $mail->Subject = $asunto;
+        $mail->isHTML(true);
+
+        // El cuerpo del correo
+        $mail->Body = $htmlForm;
+
+        // Adjuntar PDF si corresponde
+        if (in_array('pdf', $tiposFormatoEnvio)) {
+            $mail->addStringAttachment($pdfContent, 'formulario.pdf');
         }
-        return $ok;
-    }
 
-    // Si hay adjuntos, armar MIME
-    $boundary = "----=_Part_" . md5(uniqid(time()));
-    $cabeceras .= "Content-Type: multipart/mixed; boundary=\"$boundary\"\r\n";
+        // Adjuntar HTML como archivo si corresponde
+        if (in_array('html', $tiposFormatoEnvio)) {
+            $mail->addStringAttachment($htmlForm, 'formulario.html');
+        }
 
-    $mensaje = "--$boundary\r\n";
-    $mensaje .= "Content-Type: text/html; charset=UTF-8\r\n";
-    $mensaje .= "Content-Transfer-Encoding: 7bit\r\n\r\n";
-    $mensaje .= $htmlForm . "\r\n\r\n";
-
-    // Adjuntar HTML
-    if (in_array('html', $tiposFormatoEnvio)) {
-        $filename = "formulario.html";
-        $attachment = chunk_split(base64_encode($htmlForm));
-        $mensaje .= "--$boundary\r\n";
-        $mensaje .= "Content-Type: text/html; name=\"$filename\"\r\n";
-        $mensaje .= "Content-Disposition: attachment; filename=\"$filename\"\r\n";
-        $mensaje .= "Content-Transfer-Encoding: base64\r\n\r\n";
-        $mensaje .= $attachment . "\r\n\r\n";
-    }
-
-    // Adjuntar PDF
-    if (in_array('pdf', $tiposFormatoEnvio)) {
-        $filename = "formulario.pdf";
-        $attachment = chunk_split(base64_encode($pdfContent));
-        $mensaje .= "--$boundary\r\n";
-        $mensaje .= "Content-Type: application/pdf; name=\"$filename\"\r\n";
-        $mensaje .= "Content-Disposition: attachment; filename=\"$filename\"\r\n";
-        $mensaje .= "Content-Transfer-Encoding: base64\r\n\r\n";
-        $mensaje .= $attachment . "\r\n\r\n";
-    }
-
-    $mensaje .= "--$boundary--\r\n";
-
-    // Enviar y mostrar resultado
-    $ok = mail($mailPara, $asunto, $mensaje, $cabeceras);
-    if ($ok) {
+        $mail->send();
         echo "<p style='color: green; text-align: center;'>¡Correo enviado correctamente!</p>";
-    } else {
-        echo "<p style='color: red; text-align: center;'>Error al enviar el correo. Revise la configuración del servidor.</p>";
+    } catch (Exception $e) {
+        echo "<p style='color: red; text-align: center;'>Error al enviar el correo: {$mail->ErrorInfo}</p>";
     }
-    return $ok;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // VALIDACIÓN Y ENVÍO DEL FORMULARIO
 if ($_SERVER["REQUEST_METHOD"] == "POST") {

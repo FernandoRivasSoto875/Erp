@@ -1,5 +1,4 @@
-  
-  <?php
+ <?php
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
@@ -119,6 +118,29 @@ function normalizaValores($formData, $json, $paraJson = false) {
     return $result;
 }
 
+// Prepara los valores guardados para que los checkbox sean arrays y radio sean strings
+function prepararValoresGuardados($json, $valoresGuardados) {
+    foreach ($json['grupos'] as $grupo) {
+        if (isset($grupo['campos'])) {
+            foreach ($grupo['campos'] as $campo) {
+                $nombre = $campo['nombre'];
+                $tipo = $campo['tipo'];
+                if (isset($valoresGuardados[$nombre])) {
+                    if ($tipo === 'checkbox') {
+                        if (is_string($valoresGuardados[$nombre])) {
+                            $valoresGuardados[$nombre] = array_map('trim', explode(',', $valoresGuardados[$nombre]));
+                        }
+                    }
+                }
+            }
+        }
+        if (isset($grupo['hijos'])) {
+            $valoresGuardados = prepararValoresGuardados(['grupos' => $grupo['hijos']], $valoresGuardados);
+        }
+    }
+    return $valoresGuardados;
+}
+
 // Función para generar campos del formulario
 function generarContenidoCampo($campo, $valor = '', $soloLectura = false) {
     $tipo = isset($campo['tipo']) ? $campo['tipo'] : 'text';
@@ -134,7 +156,6 @@ function generarContenidoCampo($campo, $valor = '', $soloLectura = false) {
         $opciones = isset($campo['opciones']) ? $campo['opciones'] : [];
     }
 
-    // Si es solo lectura (para adjuntos), solo muestra el valor seleccionado como texto
     if ($soloLectura) {
         if ($tipo === 'checkbox') {
             $valores = is_array($valor) ? $valor : (strlen($valor) ? array_map('trim', explode(',', $valor)) : []);
@@ -145,7 +166,6 @@ function generarContenidoCampo($campo, $valor = '', $soloLectura = false) {
         return htmlspecialchars($valor, ENT_QUOTES, 'UTF-8');
     }
 
-    // NUEVO: agrega data-formula si existe
     $dataFormula = "";
     if (isset($campo['formula'])) {
         if (is_array($campo['formula'])) {
@@ -525,16 +545,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <p><?php echo htmlspecialchars($json['parametros']['comentario'], ENT_QUOTES, 'UTF-8'); ?></p>
     <form id="formulario" method="POST" enctype="multipart/form-data" data-archivo="<?php echo htmlspecialchars($nombre_archivo, ENT_QUOTES, 'UTF-8'); ?>">
       <?php
-        // Si hay POST, usa $_POST; si no, usa los valores guardados
-        $valoresParaFormulario = $_SERVER["REQUEST_METHOD"] == "POST" ? $_POST : $valoresGuardados;
+        // Si hay POST, usa $_POST; si no, usa los valores guardados (preparados)
+        $valoresParaFormulario = $_SERVER["REQUEST_METHOD"] == "POST"
+            ? $_POST
+            : prepararValoresGuardados($json, $valoresGuardados);
         echo generarGruposRecursivos($json['grupos'], $valoresParaFormulario);
       ?>
       <div class="submit-container">
         <button type="submit">Enviar</button>
       </div>
     </form>
- 
-   <footer>
+      <footer>
       <p><?php echo htmlspecialchars($json['parametros']['pie'], ENT_QUOTES, 'UTF-8'); ?></p>
     </footer>
     <p>Fecha de creación: <?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p>

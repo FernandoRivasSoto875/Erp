@@ -321,10 +321,60 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
 }
 
 // Verificar si se ha enviado el formulario
+<?php
+// ...existing code...
+
+// Verificar si se ha enviado el formulario
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $formData = $_POST; // Recibe todos los datos del formulario
-    enviarFormulario($json_file, $formData, $css, $json);
+
+    // VALIDACIONES BÁSICAS
+    $errores = [];
+
+    // Validar que mailPara y mailDe existen y son emails válidos
+    $mailPara = $json['parametros']['mailPara'] ?? '';
+    $mailDe = $json['parametros']['mailDe'] ?? '';
+    if (empty($mailPara) || !filter_var($mailPara, FILTER_VALIDATE_EMAIL)) {
+        $errores[] = "El destinatario del correo (mailPara) no es válido.";
+    }
+    if (empty($mailDe) || !filter_var($mailDe, FILTER_VALIDATE_EMAIL)) {
+        $errores[] = "El remitente del correo (mailDe) no es válido.";
+    }
+
+    // Validar que todos los campos requeridos del formulario estén presentes
+    function validarCamposRequeridos($grupos, $formData, &$errores) {
+        foreach ($grupos as $grupo) {
+            if (isset($grupo['campos'])) {
+                foreach ($grupo['campos'] as $campo) {
+                    if (!empty($campo['requerido']) && empty($formData[$campo['nombre']])) {
+                        $etiqueta = $campo['etiqueta'] ?? $campo['nombre'];
+                        $errores[] = "El campo '{$etiqueta}' es obligatorio.";
+                    }
+                }
+            }
+            if (isset($grupo['hijos'])) {
+                validarCamposRequeridos($grupo['hijos'], $formData, $errores);
+            }
+        }
+    }
+    validarCamposRequeridos($json['grupos'], $formData, $errores);
+
+    // Mostrar errores si existen
+    if (!empty($errores)) {
+        echo "<div style='color:red;'><ul>";
+        foreach ($errores as $error) {
+            echo "<li>" . htmlspecialchars($error) . "</li>";
+        }
+        echo "</ul></div>";
+    } else {
+        enviarFormulario($json_file, $formData, $css, $json);
+    }
 }
+
+// ...existing code...
+
+
+
 ?>
 <!DOCTYPE html>
 <html lang="es">

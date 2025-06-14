@@ -1,3 +1,4 @@
+ 
  <?php
 
 ini_set('display_errors', 1);
@@ -9,7 +10,6 @@ require_once __DIR__ . '/vendor/autoload.php'; // mPDF autoload
 use Shuchkin\SimpleXLSXGen;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
-use PhpOffice\PhpWord\PhpWord;
 
 $conn = conexionBd();
 
@@ -245,8 +245,6 @@ function generarGruposRecursivos($grupos, $valores = [], $soloLectura = false) {
 }
 
 // Envío de formulario y adjuntos
-
- 
 function enviarFormulario($jsonFile, $formData, $css, $json) {
     file_put_contents(__DIR__ . '/debug_mail.txt', "Entró a enviarFormulario\n", FILE_APPEND);
 
@@ -379,8 +377,9 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
         echo "<p style='color: green; text-align: center;'>¡Correo enviado correctamente!</p>";
     } catch (Exception $e) {
         echo "<p style='color: red; text-align: center;'>Error al enviar el correo: {$mail->ErrorInfo}</p>";
-   }
- 
+    }
+} // <-- CIERRE CORRECTO DE LA FUNCIÓN enviarFormulario
+
 // VALIDACIÓN Y ENVÍO DEL FORMULARIO
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
@@ -464,6 +463,3 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <p>Fecha de creación: <?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p>
   </main>
   <script src="js/formulariodinamico.js"></script>
-</body>
-</html>
-

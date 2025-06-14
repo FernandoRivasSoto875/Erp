@@ -1,4 +1,3 @@
-
 <?php
 
 ini_set('display_errors', 1);
@@ -42,6 +41,13 @@ $fecha_creacion = isset($json['parametros']['fecha_creacion']) ? $json['parametr
 // Leer el CSS del formulario
 $css = file_exists(__DIR__ . '/css/formulariodinamico.css') ? file_get_contents(__DIR__ . '/css/formulariodinamico.css') : '';
 
+// Recuperar datos guardados localmente
+$registroFile = __DIR__ . '/data/' . $nombre_archivo . '_ultimo.json';
+$valoresGuardados = [];
+if (file_exists($registroFile)) {
+    $valoresGuardados = json_decode(file_get_contents($registroFile), true);
+}
+
 // Función para obtener datos de tabla si corresponde
 function obtenerDatosTabla($data) {
     global $conn;
@@ -68,6 +74,19 @@ function obtenerDatosTabla($data) {
         }
     }
     $stmt->close();
+    return $result;
+}
+
+// Normaliza los valores del formulario para los adjuntos y para visualización
+function normalizaValores($formData) {
+    $result = [];
+    foreach ($formData as $k => $v) {
+        if (is_array($v)) {
+            $result[$k] = implode(', ', $v);
+        } else {
+            $result[$k] = $v;
+        }
+    }
     return $result;
 }
 
@@ -112,8 +131,8 @@ function generarContenidoCampo($campo, $valor = '', $soloLectura = false) {
             break;
         case 'checkbox':
             $html .= "<div class='checkbox-group' id='{$nombre}_container'>";
-            // Si el valor es array, úsalo, si es string, conviértelo a array
-            $valorArr = is_array($valor) ? $valor : (strlen($valor) ? explode(', ', $valor) : []);
+            // Si el valor es string, conviértelo a array
+            $valorArr = is_array($valor) ? $valor : (strlen($valor) ? array_map('trim', explode(',', $valor)) : []);
             foreach ($opciones as $opcion) {
                 $opcionTexto = htmlspecialchars(is_array($opcion) ? $opcion['nombre'] : $opcion, ENT_QUOTES, 'UTF-8');
                 $checked = (in_array($opcionTexto, $valorArr)) ? " checked" : "";
@@ -246,20 +265,7 @@ function generarGruposRecursivos($grupos, $valores = [], $soloLectura = false) {
     return $html;
 }
 
-// Normaliza los valores del formulario para los adjuntos
-function normalizaValores($formData) {
-    $result = [];
-    foreach ($formData as $k => $v) {
-        if (is_array($v)) {
-            $result[$k] = implode(', ', $v);
-        } else {
-            $result[$k] = $v;
-        }
-    }
-    return $result;
-}
-
-// ----------- SOLO ESTA FUNCIÓN MODIFICADA PARA XLSX Y FORMATO DE DATOS -----------
+// ----------- FUNCIÓN MODIFICADA PARA XLSX Y FORMATO DE DATOS -----------
 function enviarFormulario($jsonFile, $formData, $css, $json) {
     file_put_contents(__DIR__ . '/debug_mail.txt', "Entró a enviarFormulario\n", FILE_APPEND);
 
@@ -396,6 +402,14 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     } catch (Exception $e) {
         echo "<p style='color: red; text-align: center;'>Error al enviar el correo: {$mail->ErrorInfo}</p>";
     }
+
+    // Guardar los datos localmente para recuperación futura
+    $registroDir = __DIR__ . '/data/';
+    if (!is_dir($registroDir)) {
+        mkdir($registroDir, 0777, true);
+    }
+    $registroFile = $registroDir . $GLOBALS['nombre_archivo'] . '_ultimo.json';
+    file_put_contents($registroFile, json_encode($formData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
 // ----------- FIN DE LA FUNCIÓN MODIFICADA -----------
 
@@ -471,7 +485,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </header>
     <p><?php echo htmlspecialchars($json['parametros']['comentario'], ENT_QUOTES, 'UTF-8'); ?></p>
     <form id="formulario" method="POST" enctype="multipart/form-data" data-archivo="<?php echo htmlspecialchars($nombre_archivo, ENT_QUOTES, 'UTF-8'); ?>">
-      <?php echo generarGruposRecursivos($json['grupos']); ?>
+      <?php
+        // Si hay POST, usa $_POST; si no, usa los valores guardados
+        $valoresParaFormulario = $_SERVER["REQUEST_METHOD"] == "POST" ? $_POST : $valoresGuardados;
+        echo generarGruposRecursivos($json['grupos'], $valoresParaFormulario);
+      ?>
       <div class="submit-container">
         <button type="submit">Enviar</button>
       </div>
@@ -483,3 +501,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   </main>
   <script src="js/formulariodinamico.js"></script>
 </body>
+</html>

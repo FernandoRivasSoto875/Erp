@@ -1,4 +1,4 @@
- <?php
+<?php
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
@@ -87,24 +87,14 @@ function normalizaValores($formData, $json, $paraJson = false) {
                 $tipo = $campo['tipo'];
                 $valor = isset($formData[$nombre]) ? $formData[$nombre] : '';
                 if ($tipo === 'checkbox') {
+                    // Siempre array
+                    if (is_string($valor)) {
+                        $valor = array_map('trim', explode(',', $valor));
+                    }
                     if ($paraJson) {
-                        // Para JSON, guardar como array
-                        if (is_array($valor)) {
-                            $result[$nombre] = $valor;
-                        } elseif (is_string($valor) && strlen($valor)) {
-                            $result[$nombre] = array_map('trim', explode(',', $valor));
-                        } else {
-                            $result[$nombre] = [];
-                        }
+                        $result[$nombre] = is_array($valor) ? $valor : [];
                     } else {
-                        // Para otros formatos, como texto
-                        if (is_array($valor)) {
-                            $result[$nombre] = implode(', ', $valor);
-                        } elseif (is_string($valor) && strlen($valor)) {
-                            $result[$nombre] = $valor;
-                        } else {
-                            $result[$nombre] = '';
-                        }
+                        $result[$nombre] = is_array($valor) ? implode(', ', $valor) : '';
                     }
                 } else {
                     $result[$nombre] = is_array($valor) ? implode(', ', $valor) : $valor;
@@ -129,6 +119,13 @@ function prepararValoresGuardados($json, $valoresGuardados) {
                     if ($tipo === 'checkbox') {
                         if (is_string($valoresGuardados[$nombre])) {
                             $valoresGuardados[$nombre] = array_map('trim', explode(',', $valoresGuardados[$nombre]));
+                        }
+                        if (!is_array($valoresGuardados[$nombre])) {
+                            $valoresGuardados[$nombre] = [];
+                        }
+                    } else {
+                        if (is_array($valoresGuardados[$nombre])) {
+                            $valoresGuardados[$nombre] = implode(', ', $valoresGuardados[$nombre]);
                         }
                     }
                 }
@@ -256,7 +253,6 @@ function generarCampo($campo, $valores = [], $soloLectura = false) {
 
     $nombreCampo = isset($campo['nombre']) ? $campo['nombre'] : '';
     $valor = isset($valores[$nombreCampo]) ? $valores[$nombreCampo] : '';
-    if (is_array($valor)) $valor = implode(', ', $valor);
 
     $html  = "<div class='campo-container $clasePosicion'{$estiloCampo}>";
     switch ($posicion) {
@@ -326,8 +322,6 @@ function generarGruposRecursivos($grupos, $valores = [], $soloLectura = false) {
 
 // ----------- FUNCIÓN PARA ENVÍO Y GENERACIÓN DE ADJUNTOS -----------
 function enviarFormulario($jsonFile, $formData, $css, $json) {
-    file_put_contents(__DIR__ . '/debug_mail.txt', "Entró a enviarFormulario\n", FILE_APPEND);
-
     $config = $json['parametros'];
 
     $mailDe = $config['mailDe'] ?? null;
@@ -475,8 +469,6 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
 // VALIDACIÓN Y ENVÍO DEL FORMULARIO
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
-    file_put_contents(__DIR__ . '/debug_mail.txt', "POST recibido\n", FILE_APPEND);
-
     $formData = $_POST; // Recibe todos los datos del formulario
 
     // VALIDACIONES BÁSICAS
@@ -510,8 +502,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     validarCamposRequeridos($json['grupos'], $formData, $errores);
 
-    file_put_contents(__DIR__ . '/debug_mail.txt', "Errores: " . print_r($errores, true), FILE_APPEND);
-
     // Mostrar errores si existen
     if (!empty($errores)) {
         echo "<div style='color:red;'><ul>";
@@ -520,7 +510,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         echo "</ul></div>";
     } else {
-        file_put_contents(__DIR__ . '/debug_mail.txt', "Llamando a enviarFormulario\n", FILE_APPEND);
         enviarFormulario($json_file, $formData, $css, $json);
     }
 }
@@ -545,7 +534,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <p><?php echo htmlspecialchars($json['parametros']['comentario'], ENT_QUOTES, 'UTF-8'); ?></p>
     <form id="formulario" method="POST" enctype="multipart/form-data" data-archivo="<?php echo htmlspecialchars($nombre_archivo, ENT_QUOTES, 'UTF-8'); ?>">
       <?php
-        // Si hay POST, usa $_POST; si no, usa los valores guardados (preparados)
         $valoresParaFormulario = $_SERVER["REQUEST_METHOD"] == "POST"
             ? $_POST
             : prepararValoresGuardados($json, $valoresGuardados);
@@ -555,11 +543,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <button type="submit">Enviar</button>
       </div>
     </form>
-      <footer>
+    <footer>
       <p><?php echo htmlspecialchars($json['parametros']['pie'], ENT_QUOTES, 'UTF-8'); ?></p>
     </footer>
     <p>Fecha de creación: <?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p>
-  </main>
-  <script src="js/formulariodinamico.js"></script>
+    </main>
+    <script src="js/formulariodinamico.js"></script>
 </body>
 </html>
+
+

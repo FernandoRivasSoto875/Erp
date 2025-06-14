@@ -1,5 +1,4 @@
-<?php
-// --- FUNCIONES PRINCIPALES ---
+ <?php
 
 function obtenerDatosTabla($data) {
     global $conn;
@@ -165,4 +164,98 @@ function generarContenidoCampo($campo, $valor = '', $soloLectura = false) {
     return $html;
 }
 
-// ...puedes agregar aquí las funciones de generarCampo y generarGruposRecursivos si lo deseas...
+function generarCampo($campo, $valores = [], $soloLectura = false) {
+    $estiloCampo = isset($campo['estilo']) ? " style='" . htmlspecialchars($campo['estilo'], ENT_QUOTES, 'UTF-8') . "'" : "";
+    $etiqueta = isset($campo['etiqueta']) ? htmlspecialchars($campo['etiqueta'], ENT_QUOTES, 'UTF-8') : '';
+    $posicion = isset($campo['posicionetiqueta']) ? strtolower($campo['posicionetiqueta']) : 'arriba';
+
+    $clasePosicion = '';
+    $alinearDiv = '';
+    switch ($posicion) {
+        case 'izquierdo':
+            $clasePosicion = 'label-izquierdo';
+            break;
+        case 'derecho':
+            $clasePosicion = 'label-derecho';
+            break;
+        case 'arriba.izquierdo':
+        case 'abajo.izquierdo':
+            $alinearDiv = 'alinear-izquierdo';
+            break;
+        case 'arriba.derecho':
+        case 'abajo.derecho':
+            $alinearDiv = 'alinear-derecho';
+            break;
+        case 'arriba.centro':
+        case 'abajo.centro':
+            $alinearDiv = 'alinear-centro';
+            break;
+    }
+
+    $nombreCampo = isset($campo['nombre']) ? $campo['nombre'] : '';
+    $valor = isset($valores[$nombreCampo]) ? $valores[$nombreCampo] : '';
+
+    $html  = "<div class='campo-container $clasePosicion'{$estiloCampo}>";
+    switch ($posicion) {
+        case 'izquierdo':
+            if ($etiqueta !== '') $html .= "<label for='{$nombreCampo}'>{$etiqueta}</label>";
+            $html .= generarContenidoCampo($campo, $valor, $soloLectura);
+            break;
+        case 'derecho':
+            $html .= generarContenidoCampo($campo, $valor, $soloLectura);
+            if ($etiqueta !== '') $html .= "<label for='{$nombreCampo}'>{$etiqueta}</label>";
+            break;
+        case 'arriba.izquierdo':
+        case 'arriba.derecho':
+        case 'arriba.centro':
+            if ($etiqueta !== '') $html .= "<label for='{$nombreCampo}'>{$etiqueta}</label><br>";
+            $html .= "<div class='$alinearDiv'>";
+            $html .= generarContenidoCampo($campo, $valor, $soloLectura);
+            $html .= "</div>";
+            break;
+        case 'abajo':
+            $html .= generarContenidoCampo($campo, $valor, $soloLectura);
+            if ($etiqueta !== '') $html .= "<br><label class='etiqueta-abajo' for='{$nombreCampo}'>{$etiqueta}</label>";
+            break;
+        case 'abajo.izquierdo':
+        case 'abajo.derecho':
+        case 'abajo.centro':
+            $html .= "<div class='$alinearDiv'>";
+            $html .= generarContenidoCampo($campo, $valor, $soloLectura);
+            if ($etiqueta !== '') $html .= "<br><label class='etiqueta-abajo' for='{$nombreCampo}'>{$etiqueta}</label>";
+            $html .= "</div>";
+            break;
+        case 'oculto':
+        case 'none':
+            $html .= generarContenidoCampo($campo, $valor, $soloLectura);
+            break;
+        case 'arriba':
+        default:
+            if ($etiqueta !== '') $html .= "<label for='{$nombreCampo}'>{$etiqueta}</label><br>";
+            $html .= generarContenidoCampo($campo, $valor, $soloLectura);
+            break;
+    }
+    $html .= "<span class='mensaje-error'></span>";
+    $html .= "</div>";
+    return $html;
+}
+
+function generarGruposRecursivos($grupos, $valores = [], $soloLectura = false) {
+    $html = "";
+    foreach ($grupos as $grupo) {
+        if (isset($grupo['activo']) && !$grupo['activo']) continue;
+        $grupoNombre = isset($grupo['grupoNombre']) ? htmlspecialchars($grupo['grupoNombre'], ENT_QUOTES, 'UTF-8') : "Grupo";
+        $estiloGrupo = isset($grupo['estilo']) ? $grupo['estilo'] : "";
+        $html .= "<fieldset style='{$estiloGrupo}'><legend>{$grupoNombre}</legend>";
+        if (isset($grupo['campos']) && is_array($grupo['campos'])) {
+            foreach ($grupo['campos'] as $campo) {
+                $html .= generarCampo($campo, $valores, $soloLectura);
+            }
+        }
+        if (isset($grupo['hijos']) && is_array($grupo['hijos'])) {
+            $html .= generarGruposRecursivos($grupo['hijos'], $valores, $soloLectura);
+        }
+        $html .= "</fieldset>";
+    }
+    return $html;
+}

@@ -243,7 +243,7 @@ function generarGruposRecursivos($grupos, $valores = [], $soloLectura = false) {
     return $html;
 }
 
-// Envío de formulario y adjuntos
+// SOLO MODIFICAMOS ESTA FUNCIÓN
 function enviarFormulario($jsonFile, $formData, $css, $json) {
     file_put_contents(__DIR__ . '/debug_mail.txt', "Entró a enviarFormulario\n", FILE_APPEND);
 
@@ -464,4 +464,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </footer>
     <p>Fecha de creación: <?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p>
   </main>
-  <script src
+  <script src 

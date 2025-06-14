@@ -253,6 +253,9 @@ function generarGruposRecursivos($grupos, $valores = [], $soloLectura = false) {
  
 
 function enviarFormulario($jsonFile, $formData, $css, $json) {
+   file_put_contents(__DIR__ . '/debug_mail1.txt', "Entró a enviarFormulario\n", FILE_APPEND);
+
+
     $config = $json['parametros'];
 
     $mailDe = $config['mailDe'] ?? null;

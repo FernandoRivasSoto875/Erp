@@ -320,11 +320,9 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
     return $ok;
 }
 
-// Verificar si se ha enviado el formulario
-<?php
-// ...existing code...
-
-// Verificar si se ha enviado el formulario
+// ---------------------------------------------------------------
+// VALIDACIÓN Y ENVÍO DEL FORMULARIO
+// ---------------------------------------------------------------
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $formData = $_POST; // Recibe todos los datos del formulario
 
@@ -370,11 +368,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         enviarFormulario($json_file, $formData, $css, $json);
     }
 }
-
-// ...existing code...
-
-
-
 ?>
 <!DOCTYPE html>
 <html lang="es">

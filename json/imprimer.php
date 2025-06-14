@@ -1,5 +1,4 @@
  
-
 <?php
 require __DIR__ . '/vendor/autoload.php';
 
@@ -36,3 +35,4 @@ try {
     echo "<p style='color:red'>Error al enviar el correo: {$mail->ErrorInfo}</p>";
 }
 ?>
+

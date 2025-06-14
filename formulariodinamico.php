@@ -1,8 +1,6 @@
 <?php
 
 
-file_put_contents('debug_mail.txt', "El script PHP se está ejecutando\n", FILE_APPEND);
-
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
@@ -254,6 +252,7 @@ function generarGruposRecursivos($grupos, $valores = [], $soloLectura = false) {
 
 function enviarFormulario($jsonFile, $formData, $css, $json) {
    file_put_contents(__DIR__ . '/debug_mail1.txt', "Entró a enviarFormulario\n", FILE_APPEND);
+ 
 
 
     $config = $json['parametros'];

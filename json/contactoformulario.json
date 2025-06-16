@@ -112,7 +112,7 @@
 
 
         {
-          "activo": true,
+          "activo": false,
           "crud": false,
           "nombre": "nombre",
           "etiqueta": "Nombre",

@@ -43,7 +43,6 @@
     "placeholder": "+56912345678"
   },
   {
-           "activo": false,
     "nombre": "direccion",
     "etiqueta": "Dirección",
     "tipo": "text",
@@ -51,7 +50,6 @@
     "placeholder": "Calle y número"
   },
   {
-           "activo": false,
     "nombre": "ciudad",
     "etiqueta": "Ciudad",
     "tipo": "text",
@@ -59,7 +57,6 @@
     "placeholder": "Ciudad"
   },
   {
-           "activo": false,
     "nombre": "pais",
     "etiqueta": "País",
     "tipo": "text",
@@ -74,16 +71,13 @@
     "placeholder": "Escribe tu comentario"
   },
   {
-           "activo": false,
     "nombre": "codigo",
     "etiqueta": "Código",
     "tipo": "text",
     "posicionetiqueta": "abajo.centro",
     "placeholder": "Código postal"
   },
-
   {
-           "activo": false,
     "nombre": "referencia",
     "etiqueta": "Referencia",
     "tipo": "text",
@@ -91,7 +85,6 @@
     "placeholder": "Referencia"
   },
   {
-           "activo": false,
     "nombre": "extra",
     "etiqueta": "Extra",
     "tipo": "text",
@@ -99,7 +92,6 @@
     "placeholder": "Dato extra"
   },
   {
-           "activo": false,
     "nombre": "secreto",
     "etiqueta": "No visible",
     "tipo": "text",

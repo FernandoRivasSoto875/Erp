@@ -1,4 +1,4 @@
- // ===================== UTILIDADES DE FORMATO Y FÓRMULAS =====================
+// ===================== UTILIDADES DE FORMATO Y FÓRMULAS =====================
 
 function limpiarNumero(valor) {
   valor = valor.replace(/[^\d,.-]/g, '');
@@ -513,6 +513,7 @@ document.addEventListener('DOMContentLoaded', function() {
   configurarCondiciones();
   initDynamicReordering();
 
+  // ===================== ENVÍO AJAX Y MENSAJE ARRIBA DEL FORMULARIO =====================
   document.getElementById("formulario").addEventListener("submit", function(event) {
     event.preventDefault();
     const formData = new FormData(this);
@@ -523,10 +524,23 @@ document.addEventListener('DOMContentLoaded', function() {
     })
     .then(response => response.text())
     .then(data => {
-        alert(data);
+        // Extrae el mensaje del HTML devuelto y lo pone en el div
+        var tempDiv = document.createElement('div');
+        tempDiv.innerHTML = data;
+        var nuevoMensaje = tempDiv.querySelector('#mensaje-envio');
+        if (nuevoMensaje) {
+          document.getElementById('mensaje-envio').innerHTML = nuevoMensaje.innerHTML;
+          document.getElementById('mensaje-envio').className = nuevoMensaje.className;
+        }
+        // Si quieres limpiar el formulario tras éxito:
+        if (nuevoMensaje && nuevoMensaje.classList.contains('exito')) {
+          // document.getElementById('formulario').reset();
+        }
     })
     .catch(error => {
         console.error('Error:', error);
+        document.getElementById('mensaje-envio').innerHTML = "Error al enviar el formulario.";
+        document.getElementById('mensaje-envio').className = "error";
     });
   });
 });

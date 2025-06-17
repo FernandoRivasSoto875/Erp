@@ -44,7 +44,10 @@ if (file_exists($registroFile)) {
     $valoresGuardados = json_decode(file_get_contents($registroFile), true);
 }
 
-function enviarFormulario($jsonFile, $formData, $css, $json) {
+$mensajeEnvio = '';
+$mensajeEnvioTipo = '';
+
+function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$mensajeEnvioTipo) {
     $config = $json['parametros'];
 
     $mailDe = $config['mailDe'] ?? null;
@@ -155,9 +158,11 @@ function enviarFormulario($jsonFile, $formData, $css, $json) {
         }
 
         $mail->send();
-        echo "<p style='color: green; text-align: center;'>¡Correo enviado correctamente!</p>";
+        $mensajeEnvio = "¡Formulario enviado correctamente!";
+        $mensajeEnvioTipo = "exito";
     } catch (Exception $e) {
-        echo "<p style='color: red; text-align: center;'>Error al enviar el correo: {$mail->ErrorInfo}</p>";
+        $mensajeEnvio = "Error al enviar el formulario: {$mail->ErrorInfo}";
+        $mensajeEnvioTipo = "error";
     }
 
     $registroDir = __DIR__ . '/data/';
@@ -201,13 +206,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     validarCamposRequeridos($json['grupos'], $formData, $errores);
 
     if (!empty($errores)) {
-        echo "<div style='color:red;'><ul>";
+        $mensajeEnvio = "<ul>";
         foreach ($errores as $error) {
-            echo "<li>" . htmlspecialchars($error) . "</li>";
+            $mensajeEnvio .= "<li>" . htmlspecialchars($error) . "</li>";
         }
-        echo "</ul></div>";
+        $mensajeEnvio .= "</ul>";
+        $mensajeEnvioTipo = "error";
     } else {
-        enviarFormulario($json_file, $formData, $css, $json);
+        enviarFormulario($json_file, $formData, $css, $json, $mensajeEnvio, $mensajeEnvioTipo);
     }
 }
 
@@ -219,6 +225,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?php echo htmlspecialchars($json['parametros']['titulo'], ENT_QUOTES, 'UTF-8'); ?></title>
   <link rel="stylesheet" href="css/formulariodinamico.css">
+  <style>
+    #mensaje-envio { margin: 20px 0; font-weight: bold; }
+    #mensaje-envio.exito { color: green; }
+    #mensaje-envio.error { color: red; }
+  </style>
 </head>
 <body>
   <main>
@@ -229,6 +240,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       <?php endif; ?>
     </header>
     <p><?php echo htmlspecialchars($json['parametros']['comentario'], ENT_QUOTES, 'UTF-8'); ?></p>
+    <div id="mensaje-envio" class="<?php echo htmlspecialchars($mensajeEnvioTipo); ?>">
+      <?php echo $mensajeEnvio; ?>
+    </div>
     <form id="formulario" method="POST" enctype="multipart/form-data" data-archivo="<?php echo htmlspecialchars($nombre_archivo, ENT_QUOTES, 'UTF-8'); ?>">
       <?php
         $valoresParaFormulario = $_SERVER["REQUEST_METHOD"] == "POST"
@@ -247,4 +261,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   </main>
   <script src="js/formulariodinamico.js"></script>
 </body>
-</html> 
+</html>

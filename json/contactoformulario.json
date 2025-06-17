@@ -1,6 +1,9 @@
  
 {
   "parametros": {
+    
+
+
     "titulo": "Formulario de Contacto",
     "tituloimagen": "https://www.saludenterreno.cl/sitio/imagenes/contacto.png",
     "comentario": "Por favor, completa este formulario para contactarnos.",
@@ -9,7 +12,15 @@
     "destinatario": "fernandorivassoto@gmail.com",
     "remitente": "gestion@saludenterreno.cl",
     "subject": "Nuevo mensaje desde el formulario de contacto",
-    "estilo": "padding:20px; background:#e8f0fe;"
+    "estilo": "padding:20px; background:#e8f0fe;",
+    "mailDe": "Intranet@SaludEnterreno.cl",
+    "mailPara": "fernandorivassoto@gmail.com",
+    "mailCc": "copia@example.com",
+    "mailCco": "copiaoculta@example.com", "tipoformatoenvio": "htmlc,pdf,html,xls,json"
+
+   
+
+
   },
   "grupos": [
     {

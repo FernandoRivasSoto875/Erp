@@ -498,6 +498,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   });
+
   cargarCampos();
   const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
   fields.forEach(el => {
@@ -542,4 +543,4 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('mensaje-envio').className = "error";
     });
   });
-});
+}); 

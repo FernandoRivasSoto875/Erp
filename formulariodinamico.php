@@ -1,4 +1,4 @@
-<?php
+ <?php
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
@@ -49,6 +49,7 @@ $mensajeEnvioTipo = '';
 
 function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$mensajeEnvioTipo) {
     $config = $json['parametros'];
+    $titulo = isset($config['titulo']) ? preg_replace('/[^a-zA-Z0-9_\-]/', '_', $config['titulo']) : 'formulario';
 
     $mailDe = $config['mailDe'] ?? null;
     $mailPara = $config['mailPara'] ?? null;
@@ -78,7 +79,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     $pdfContent = $mpdf->Output('', 'S');
 
     $xlsContent = null;
-    $xlsFilename = 'formulario.xlsx';
+    $esXlsx = false;
     if (class_exists('Shuchkin\SimpleXLSXGen')) {
         $header = [array_keys($valoresAdjuntos)];
         $row = [array_values($valoresAdjuntos)];
@@ -87,14 +88,15 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
         $xlsx->saveAs($tempXlsx);
         $xlsContent = file_get_contents($tempXlsx);
         unlink($tempXlsx);
+        $esXlsx = true;
     } else {
-        $xlsFilename = 'formulario.csv';
         $xlsRows = [];
         $xlsRows[] = implode(",", array_map(function($k){return '"'.str_replace('"','""',$k).'"';}, array_keys($valoresAdjuntos)));
         $xlsRows[] = implode(",", array_map(function($v){
             return '"'.str_replace('"','""',$v).'"';
         }, array_values($valoresAdjuntos)));
         $xlsContent = implode("\r\n", $xlsRows);
+        $esXlsx = false;
     }
 
     $jsonContent = json_encode($valoresAdjuntosJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
@@ -109,6 +111,14 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     $xmlContent = $xml->asXML();
 
     $docContent = "<html><body>" . $htmlForm . "</body></html>";
+
+    // Nombres de archivos adjuntos personalizados según el título
+    $pdfFilename  = $titulo . '.pdf';
+    $htmlFilename = $titulo . '.html';
+    $xlsFilename  = $titulo . ($esXlsx ? '.xlsx' : '.csv');
+    $jsonFilename = $titulo . '.json';
+    $xmlFilename  = $titulo . '.xml';
+    $docFilename  = $titulo . '.doc';
 
     $asunto = $config['subject'] ?? "Formulario Recibido";
 
@@ -125,26 +135,26 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
             $tipo = trim(strtolower($tipo));
             switch ($tipo) {
                 case 'pdf':
-                    $mail->addStringAttachment($pdfContent, 'formulario.pdf', 'base64', 'application/pdf');
+                    $mail->addStringAttachment($pdfContent, $pdfFilename, 'base64', 'application/pdf');
                     break;
                 case 'html':
-                    $mail->addStringAttachment($htmlForm, 'formulario.html', 'base64', 'text/html');
+                    $mail->addStringAttachment($htmlForm, $htmlFilename, 'base64', 'text/html');
                     break;
                 case 'xls':
-                    if ($xlsFilename === 'formulario.xlsx') {
+                    if ($esXlsx) {
                         $mail->addStringAttachment($xlsContent, $xlsFilename, 'base64', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
                     } else {
                         $mail->addStringAttachment($xlsContent, $xlsFilename, 'base64', 'text/csv');
                     }
                     break;
                 case 'json':
-                    $mail->addStringAttachment($jsonContent, 'formulario.json', 'base64', 'application/json');
+                    $mail->addStringAttachment($jsonContent, $jsonFilename, 'base64', 'application/json');
                     break;
                 case 'xml':
-                    $mail->addStringAttachment($xmlContent, 'formulario.xml', 'base64', 'application/xml');
+                    $mail->addStringAttachment($xmlContent, $xmlFilename, 'base64', 'application/xml');
                     break;
                 case 'doc':
-                    $mail->addStringAttachment($docContent, 'formulario.doc', 'base64', 'application/msword');
+                    $mail->addStringAttachment($docContent, $docFilename, 'base64', 'application/msword');
                     break;
                 case 'htmlc':
                     break;
@@ -257,11 +267,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <footer>
       <p><?php echo htmlspecialchars($json['parametros']['pie'], ENT_QUOTES, 'UTF-8'); ?></p>
     </footer>
-  
-
- 
-<!-- <p><?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p> -->
-
+    <!-- Puedes comentar la siguiente línea si no quieres mostrar la fecha de creación -->
+    <!-- <p>Fecha de creación: <?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p> -->
   </main>
   <script src="js/formulariodinamico.js"></script>
 </body>

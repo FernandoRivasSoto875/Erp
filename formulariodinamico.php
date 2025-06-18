@@ -47,6 +47,9 @@ if (file_exists($registroFile)) {
 $mensajeEnvio = '';
 $mensajeEnvioTipo = '';
 
+// Obtener el valor de "limpiar" desde el JSON de parámetros
+$limpiar = isset($json['parametros']['limpiar']) ? ($json['parametros']['limpiar'] ? 'true' : 'false') : 'false';
+
 function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$mensajeEnvioTipo) {
     $config = $json['parametros'];
     $titulo = isset($config['titulo']) ? preg_replace('/[^a-zA-Z0-9_\-]/', '_', $config['titulo']) : 'formulario';
@@ -240,6 +243,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     #mensaje-envio.exito { color: green; }
     #mensaje-envio.error { color: red; }
   </style>
+  <script>
+    // Variable JS para saber si se debe limpiar el formulario tras envío exitoso
+    var LIMPIAR_FORMULARIO = <?php echo $limpiar; ?>;
+  </script>
 </head>
 <body>
   <main>

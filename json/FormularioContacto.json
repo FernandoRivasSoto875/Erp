@@ -5,7 +5,8 @@
     "comentario": "Por favor, completa este formulario para contactarnos.",
     "pie": "Gracias por confiar en nosotros.",
     "cantidadMaximaAdjuntos": 2,
-    "destinatario": "fernandorivassoto@gmail.com",
+    "limpiar":true,
+     "destinatario": "fernandorivassoto@gmail.com",
     "remitente": "gestion@saludenterreno.cl",
     "subject": "Nuevo mensaje desde el formulario de contacto",
     "estilo": "padding:20px; background:#e8f0fe;"

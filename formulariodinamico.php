@@ -257,7 +257,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <footer>
       <p><?php echo htmlspecialchars($json['parametros']['pie'], ENT_QUOTES, 'UTF-8'); ?></p>
     </footer>
-    <p>Fecha de creación: <?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p>
+    <p>*<?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p>
   </main>
   <script src="js/formulariodinamico.js"></script>
 </body>

@@ -81,8 +81,9 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     $mpdf->WriteHTML($htmlForm);
     $pdfContent = $mpdf->Output('', 'S');
 
-    // Generar XLSX y CSV
+    // Generar XLSX y XLS (xls como CSV pero con extensión .xls)
     $xlsContent = null;
+    $xlsxContent = null;
     $csvContent = null;
     $esXlsx = false;
     if (class_exists('Shuchkin\SimpleXLSXGen')) {
@@ -91,7 +92,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
         $xlsx = \Shuchkin\SimpleXLSXGen::fromArray(array_merge($header, $row));
         $tempXlsx = tempnam(sys_get_temp_dir(), 'xlsx_') . '.xlsx';
         $xlsx->saveAs($tempXlsx);
-        $xlsContent = file_get_contents($tempXlsx);
+        $xlsxContent = file_get_contents($tempXlsx);
         unlink($tempXlsx);
         $esXlsx = true;
     }
@@ -102,6 +103,8 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
         return '"'.str_replace('"','""',$v).'"';
     }, array_values($valoresAdjuntos)));
     $csvContent = implode("\r\n", $csvRows);
+    // Para .xls (realmente CSV con extensión .xls)
+    $xlsContent = $csvContent;
 
     $jsonContent = json_encode($valoresAdjuntosJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     if ($jsonContent === false) {
@@ -120,6 +123,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     $pdfFilename  = $titulo . '.pdf';
     $htmlFilename = $titulo . '.html';
     $xlsxFilename = $titulo . '.xlsx';
+    $xlsFilename  = $titulo . '.xls';
     $csvFilename  = $titulo . '.csv';
     $jsonFilename = $titulo . '.json';
     $xmlFilename  = $titulo . '.xml';
@@ -146,9 +150,13 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
                     $mail->addStringAttachment($htmlForm, $htmlFilename, 'base64', 'text/html');
                     break;
                 case 'xls':
-                case 'xlsx':
                     if ($xlsContent) {
-                        $mail->addStringAttachment($xlsContent, $xlsxFilename, 'base64', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                        $mail->addStringAttachment($xlsContent, $xlsFilename, 'base64', 'application/vnd.ms-excel');
+                    }
+                    break;
+                case 'xlsx':
+                    if ($xlsxContent) {
+                        $mail->addStringAttachment($xlsxContent, $xlsxFilename, 'base64', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
                     }
                     break;
                 case 'csv':

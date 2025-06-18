@@ -81,7 +81,9 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     $mpdf->WriteHTML($htmlForm);
     $pdfContent = $mpdf->Output('', 'S');
 
+    // Generar XLSX y CSV
     $xlsContent = null;
+    $csvContent = null;
     $esXlsx = false;
     if (class_exists('Shuchkin\SimpleXLSXGen')) {
         $header = [array_keys($valoresAdjuntos)];
@@ -92,15 +94,14 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
         $xlsContent = file_get_contents($tempXlsx);
         unlink($tempXlsx);
         $esXlsx = true;
-    } else {
-        $xlsRows = [];
-        $xlsRows[] = implode(",", array_map(function($k){return '"'.str_replace('"','""',$k).'"';}, array_keys($valoresAdjuntos)));
-        $xlsRows[] = implode(",", array_map(function($v){
-            return '"'.str_replace('"','""',$v).'"';
-        }, array_values($valoresAdjuntos)));
-        $xlsContent = implode("\r\n", $xlsRows);
-        $esXlsx = false;
     }
+    // CSV siempre disponible
+    $csvRows = [];
+    $csvRows[] = implode(",", array_map(function($k){return '"'.str_replace('"','""',$k).'"';}, array_keys($valoresAdjuntos)));
+    $csvRows[] = implode(",", array_map(function($v){
+        return '"'.str_replace('"','""',$v).'"';
+    }, array_values($valoresAdjuntos)));
+    $csvContent = implode("\r\n", $csvRows);
 
     $jsonContent = json_encode($valoresAdjuntosJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     if ($jsonContent === false) {
@@ -118,7 +119,8 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     // Nombres de archivos adjuntos personalizados según el título
     $pdfFilename  = $titulo . '.pdf';
     $htmlFilename = $titulo . '.html';
-    $xlsFilename  = $titulo . ($esXlsx ? '.xlsx' : '.csv');
+    $xlsxFilename = $titulo . '.xlsx';
+    $csvFilename  = $titulo . '.csv';
     $jsonFilename = $titulo . '.json';
     $xmlFilename  = $titulo . '.xml';
     $docFilename  = $titulo . '.doc';
@@ -144,10 +146,15 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
                     $mail->addStringAttachment($htmlForm, $htmlFilename, 'base64', 'text/html');
                     break;
                 case 'xls':
-                    if ($esXlsx) {
-                        $mail->addStringAttachment($xlsContent, $xlsFilename, 'base64', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-                    } else {
-                        $mail->addStringAttachment($xlsContent, $xlsFilename, 'base64', 'text/csv');
+                case 'xlsx':
+                    if ($xlsContent) {
+                        $mail->addStringAttachment($xlsContent, $xlsxFilename, 'base64', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                    }
+                    break;
+                case 'csv':
+                case 'cvs':
+                    if ($csvContent) {
+                        $mail->addStringAttachment($csvContent, $csvFilename, 'base64', 'text/csv');
                     }
                     break;
                 case 'json':

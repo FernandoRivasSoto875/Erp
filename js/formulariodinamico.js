@@ -498,6 +498,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
   });
+
   cargarCampos();
   const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
   fields.forEach(el => {
@@ -523,7 +524,6 @@ document.addEventListener('DOMContentLoaded', function() {
     })
     .then(response => response.text())
     .then(data => {
-        // Extrae el mensaje del HTML devuelto y lo pone en el div
         var tempDiv = document.createElement('div');
         tempDiv.innerHTML = data;
         var nuevoMensaje = tempDiv.querySelector('#mensaje-envio');
@@ -531,9 +531,12 @@ document.addEventListener('DOMContentLoaded', function() {
           document.getElementById('mensaje-envio').innerHTML = nuevoMensaje.innerHTML;
           document.getElementById('mensaje-envio').className = nuevoMensaje.className;
         }
-        // Si quieres limpiar el formulario tras éxito:
-        if (nuevoMensaje && nuevoMensaje.classList.contains('exito')) {
-          // document.getElementById('formulario').reset();
+        // Limpiar formulario solo si LIMPIAR_FORMULARIO es true y el envío fue exitoso
+        if (typeof LIMPIAR_FORMULARIO !== "undefined" && LIMPIAR_FORMULARIO && nuevoMensaje && nuevoMensaje.classList.contains('exito')) {
+          document.getElementById('formulario').reset();
+          // Limpia localStorage si usas autosave
+          const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
+          fields.forEach(field => localStorage.removeItem(field.name));
         }
     })
     .catch(error => {
@@ -542,4 +545,4 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('mensaje-envio').className = "error";
     });
   });
-}); 
+});

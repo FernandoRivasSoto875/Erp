@@ -17,7 +17,8 @@
     "mailDe": "Intranet@SaludEnterreno.cl",
     "mailPara": "fernandorivassoto@gmail.com",
     "mailCc": "copia@example.com",
-    "mailCco": "copiaoculta@example.com", "tipoformatoenvio": "htmlc,pdf,html,xls,json"
+    "mailCco": "copiaoculta@example.com", 
+    "tipoformatoenvio": "htmlc,pdf,html,xls,json,cvs"
 
    
 

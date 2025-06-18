@@ -9,6 +9,7 @@
     "comentario": "Por favor, completa este formulario para contactarnos.",
     "pie": "***",
     "cantidadMaximaAdjuntos": 2,
+    "limpiar":true,
     "destinatario": "fernandorivassoto@gmail.com",
     "remitente": "gestion@saludenterreno.cl",
     "subject": "Nuevo mensaje desde el formulario de contacto",

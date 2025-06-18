@@ -47,8 +47,8 @@ if (file_exists($registroFile)) {
 $mensajeEnvio = '';
 $mensajeEnvioTipo = '';
 
-// Obtener el valor de "limpiar" desde el JSON de parámetros
-$limpiar = isset($json['parametros']['limpiar']) ? ($json['parametros']['limpiar'] ? 'true' : 'false') : 'false';
+// Lógica de LIMPIAR: si no existe o es true, limpiar; si es false, no limpiar
+$limpiar = (!isset($json['parametros']['limpiar']) || $json['parametros']['limpiar'] === true) ? 'true' : 'false';
 
 function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$mensajeEnvioTipo) {
     $config = $json['parametros'];
@@ -295,3 +295,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <script src="js/formulariodinamico.js"></script>
 </body>
 </html>
+
+
+
+ 

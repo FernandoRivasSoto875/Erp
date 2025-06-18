@@ -1,3 +1,5 @@
+ // formulariodinamico.js
+
 // ===================== UTILIDADES DE FORMATO Y FÓRMULAS =====================
 
 function limpiarNumero(valor) {
@@ -532,11 +534,14 @@ document.addEventListener('DOMContentLoaded', function() {
           document.getElementById('mensaje-envio').className = nuevoMensaje.className;
         }
         // Limpiar formulario solo si LIMPIAR_FORMULARIO es true y el envío fue exitoso
-        if (typeof LIMPIAR_FORMULARIO !== "undefined" && LIMPIAR_FORMULARIO && nuevoMensaje && nuevoMensaje.classList.contains('exito')) {
+        if (
+          typeof LIMPIAR_FORMULARIO !== "undefined" &&
+          LIMPIAR_FORMULARIO &&
+          nuevoMensaje &&
+          nuevoMensaje.classList.contains('exito')
+        ) {
           document.getElementById('formulario').reset();
-          // Limpia localStorage si usas autosave
-          const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
-          fields.forEach(field => localStorage.removeItem(field.name));
+          // NO limpiar localStorage, para que los datos permanezcan guardados localmente
         }
     })
     .catch(error => {
@@ -546,3 +551,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
+
+  // ===================== ENVÍO AJAX Y MENSAJE ARRIBA DEL FORMULARIO =====================
+ 

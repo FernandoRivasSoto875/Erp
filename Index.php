@@ -19,11 +19,9 @@
  status        <img src="imagenes/inicioservicios.png" alt="Servicios" style="max-width: 400px; border-radius: 10px;">
         <p></p>
     </main>
-
     <?php include 'footer.php'; ?>
 </body>
 </html>
-
 
 
  

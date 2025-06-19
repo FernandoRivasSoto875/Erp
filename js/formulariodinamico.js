@@ -551,7 +551,8 @@ document.addEventListener('DOMContentLoaded', function() {
           nuevoMensaje.classList.contains('exito')
         ) {
         //  alert('Limpio el formulario');
-          document.getElementById('formulario').reset();
+           console.log('Limpio el formulario');
+           document.getElementById('formulario').reset();
         }
 
     })

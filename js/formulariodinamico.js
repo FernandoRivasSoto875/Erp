@@ -543,6 +543,17 @@ document.addEventListener('DOMContentLoaded', function() {
           document.getElementById('formulario').reset();
           // NO limpiar localStorage, para que los datos permanezcan guardados localmente
         }
+
+        if (
+          typeof LIMPIAR_FORMULARIO !== "undefined" &&
+          LIMPIAR_FORMULARIO &&
+          nuevoMensaje &&
+          nuevoMensaje.classList.contains('exito')
+        ) {
+          alert('Limpio el formulario');
+          document.getElementById('formulario').reset();
+        }
+
     })
     .catch(error => {
         console.error('Error:', error);

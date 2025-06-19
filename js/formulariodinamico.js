@@ -539,11 +539,7 @@ document.addEventListener('DOMContentLoaded', function() {
           nuevoMensaje.classList.contains('exito')
         ) {
           document.getElementById('formulario').reset();
-          // Limpiar localStorage de los campos del formulario
-          const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
-          fields.forEach(field => {
-            localStorage.removeItem(field.name);
-          });
+           
         }
     })
     .catch(error => {

@@ -62,7 +62,6 @@ $menuArray = json_decode($jsonData, true);
     return $html;
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="es">
 <head>

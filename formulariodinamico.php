@@ -246,6 +246,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -277,9 +278,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </div>
     <form id="formulario" method="POST" enctype="multipart/form-data" data-archivo="<?php echo htmlspecialchars($nombre_archivo, ENT_QUOTES, 'UTF-8'); ?>">
       <?php
-        $valoresParaFormulario = $_SERVER["REQUEST_METHOD"] == "POST"
-            ? prepararValoresGuardados($json, $_POST)
-            : prepararValoresGuardados($json, $valoresGuardados);
+        // Ajuste: Si el envío fue exitoso, mostrar campos vacíos; si no, mostrar valores guardados o del POST
+        $exito = ($_SERVER["REQUEST_METHOD"] == "POST" && $mensajeEnvioTipo === "exito");
+        $valoresParaFormulario = $exito
+            ? prepararValoresGuardados($json, []) // campos vacíos tras éxito
+            : ($_SERVER["REQUEST_METHOD"] == "POST"
+                ? prepararValoresGuardados($json, $_POST)
+                : prepararValoresGuardados($json, $valoresGuardados)
+              );
         echo generarGruposRecursivos($json['grupos'], $valoresParaFormulario);
       ?>
       <div class="submit-container">
@@ -293,5 +299,5 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <!-- <p>Fecha de creación: <?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p> -->
   </main>
   <script src="js/formulariodinamico.js"></script>
-</body>
-</html>  
+  </body>
+</html>

@@ -1,4 +1,4 @@
- <?php
+<?php
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
@@ -294,8 +294,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   </main>
   <script src="js/formulariodinamico.js"></script>
 </body>
-</html>
-
-
-
- 
+</html>  

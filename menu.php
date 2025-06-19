@@ -8,7 +8,7 @@ if ($conn->connect_error) {
 }
 
 $sql = "SELECT MenuId, MenuOrden, MenuTitulo, MenuEnlace, MenuPadreId 
-        FROM Menu where MenuGrupo=1
+        FROM Menu WHERE MenuGrupo=1
         ORDER BY MenuPadreId, MenuOrden";
 $result = $conn->query($sql);
 
@@ -32,22 +32,21 @@ $jsonData = json_encode($menu_items);
 $menuArray = json_decode($jsonData, true);
 
 /* FUNCIÓN PARA GENERAR EL MENÚ DE FORMA RECURSIVA A PARTIR DEL ARRAY obtenido del JSON */
- <?php
 function construirMenu($items, $padreId = 0) {
     $html = '';
 
+    // Filtrar los elementos que tienen como padre el id proporcionado
     $subItems = array_filter($items, function ($item) use ($padreId) {
         return $item['MenuPadreId'] == $padreId;
     });
 
+    // Si hay subelementos, construir el HTML
     if (!empty($subItems)) {
-        $html .= '<ul>';
+        $html .= '<ul>'; // Abrimos el nivel del menú
         foreach ($subItems as $subItem) {
             $enlace = trim($subItem['MenuEnlace']);
             // Si es URL absoluta o relativa desde raíz, usar tal cual
-            if (
-                preg_match('#^(https?://|/)#i', $enlace)
-            ) {
+            if (preg_match('#^(https?://|/)#i', $enlace)) {
                 $href = $enlace;
             } else {
                 // Si es solo nombre de archivo, anteponer "/"
@@ -56,10 +55,11 @@ function construirMenu($items, $padreId = 0) {
             $html .= '<li>';
             $html .= '<a href="' . htmlspecialchars($href) . '">'
                    . htmlspecialchars($subItem['MenuTitulo']) . '</a>';
+            // Llamada recursiva para construir submenús
             $html .= construirMenu($items, $subItem['MenuId']);
             $html .= '</li>';
         }
-        $html .= '</ul>';
+        $html .= '</ul>'; // Cerramos el nivel del menú
     }
 
     return $html;

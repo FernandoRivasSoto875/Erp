@@ -523,6 +523,7 @@ document.addEventListener('DOMContentLoaded', function() {
         body: formData
     })
     .then(response => response.text())
+        // ...existing code...
     .then(data => {
         var tempDiv = document.createElement('div');
         tempDiv.innerHTML = data;
@@ -538,10 +539,14 @@ document.addEventListener('DOMContentLoaded', function() {
           nuevoMensaje &&
           nuevoMensaje.classList.contains('exito')
         ) {
-          document.getElementById('formulario').reset();
-           
+          // Limpiar campos manualmente
+          const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
+          fields.forEach(field => {
+            field.value = '';
+          });
         }
     })
+    // ...existing code...
     .catch(error => {
         console.error('Error:', error);
         document.getElementById('mensaje-envio').innerHTML = "Error al enviar el formulario.";

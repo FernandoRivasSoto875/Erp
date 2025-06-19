@@ -15,10 +15,13 @@
        <main>
         <h2>Bienvenido a .....nuestro Servicio de Salud y Óptica empresarial en Terreno</h2>
         <h3>Nos acercamos a tu empresa para cuidar la salud visual y bienestar de tus colaboradores, brindando atención profesional y soluciones a su medida.</h3>
- status        <img src="imagenes/inicioservicios.png" alt="Servicios" style="max-width: 400px; border-radius: 10px;">
+       <img src="imagenes/inicioservicios.png" alt="Servicios" style="max-width: 400px; border-radius: 10px;">
         <p></p>
     </main>
     <?php include 'footer.php'; ?>
 </body>
 </html> 
+
+
+
 

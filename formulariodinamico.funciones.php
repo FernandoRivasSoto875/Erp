@@ -1,6 +1,8 @@
  
  <?php
 
+ 
+
 function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
     $html = "";
     foreach ($fieldsets as $fieldset) {
@@ -13,6 +15,7 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
 
         $html .= "<fieldset$fieldsetAttrs>";
         if ($legend) $html .= "<legend>$legend</legend>";
+
         // Campos
         if (isset($fieldset['fields'])) {
             foreach ($fieldset['fields'] as $field) {
@@ -33,20 +36,43 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                 $autofocus = !empty($field['autofocus']) ? 'autofocus' : '';
                 $classField = isset($field['class']) ? 'class="'.$field['class'].'"' : '';
                 $styleField = isset($field['style']) ? 'style="'.$field['style'].'"' : '';
-                $options = $field['options'] ?? [];
                 $readonly = !empty($field['readonly']) || $soloLectura ? 'readonly' : '';
                 $disabled = !empty($field['disabled']) || $soloLectura ? 'disabled' : '';
+
+                // Soporte para atributos data-* (incluye data-formula)
+                $dataAttrs = '';
+                foreach ($field as $k => $v) {
+                    if (strpos($k, 'data-') === 0) {
+                        $dataAttrs .= ' ' . $k . '="' . htmlspecialchars($v) . '"';
+                    }
+                }
+
+                $options = $field['options'] ?? [];
 
                 $html .= "<div class='campo-container'>";
                 if ($label && $type !== 'hidden') $html .= "<label for=\"$name\">$label</label>";
 
                 if ($type === 'textarea') {
-                    $html .= "<textarea name=\"$name\" id=\"$name\" $placeholder $required $maxlength $minlength $autocomplete $autofocus $readonly $disabled $classField $styleField>" . htmlspecialchars($value) . "</textarea>";
+                    $html .= "<textarea name=\"$name\" id=\"$name\" $placeholder $required $maxlength $minlength $autocomplete $autofocus $readonly $disabled $classField $styleField $dataAttrs>" . htmlspecialchars($value) . "</textarea>";
                 } elseif ($type === 'select') {
-                    $html .= "<select name=\"$name\" id=\"$name\" $required $readonly $disabled $classField $styleField>";
+                    $html .= "<select name=\"$name\" id=\"$name\" $required $readonly $disabled $classField $styleField $dataAttrs>";
                     foreach ($options as $opt) {
                         $opt_val = is_array($opt) ? $opt['value'] : $opt;
                         $opt_label = is_array($opt) ? $opt['label'] : $opt;
+                        $sel = ($value == $opt_val) ? 'selected' : '';
+                        $html .= "<option value=\"$opt_val\" $sel>$opt_label</option>";
+                    }
+                    $html .= "</select>";
+                } elseif ($type === 'selectdata') {
+                    // Debes tener la función obtenerDatosTabla disponible
+                    $options = [];
+                    if (isset($field['data'])) {
+                        $options = obtenerDatosTabla($field['data']);
+                    }
+                    $html .= "<select name=\"$name\" id=\"$name\" $required $readonly $disabled $classField $styleField $dataAttrs>";
+                    foreach ($options as $opt) {
+                        $opt_val = $opt['value'] ?? ($opt['id'] ?? '');
+                        $opt_label = $opt['label'] ?? ($opt['nombre'] ?? '');
                         $sel = ($value == $opt_val) ? 'selected' : '';
                         $html .= "<option value=\"$opt_val\" $sel>$opt_label</option>";
                     }
@@ -58,12 +84,12 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                         $is_checked = ($type === 'checkbox' && is_array($value) && in_array($opt_val, $value)) ||
                                       ($type === 'checkbox' && $value == $opt_val) ||
                                       ($type === 'radio' && $value == $opt_val) ? 'checked' : '';
-                        $html .= "<label><input type=\"$type\" name=\"$name" . ($type === 'checkbox' ? '[]' : '') . "\" value=\"$opt_val\" $is_checked $required $readonly $disabled $classField $styleField> $opt_label</label> ";
+                        $html .= "<label><input type=\"$type\" name=\"$name" . ($type === 'checkbox' ? '[]' : '') . "\" value=\"$opt_val\" $is_checked $required $readonly $disabled $classField $styleField $dataAttrs> $opt_label</label> ";
                     }
                 } elseif ($type === 'hidden') {
-                    $html .= "<input type=\"hidden\" name=\"$name\" id=\"$name\" value=\"" . htmlspecialchars($value) . "\" />";
+                    $html .= "<input type=\"hidden\" name=\"$name\" id=\"$name\" value=\"" . htmlspecialchars($value) . "\" $dataAttrs />";
                 } else {
-                    $html .= "<input type=\"$type\" name=\"$name\" id=\"$name\" value=\"" . htmlspecialchars($value) . "\" placeholder=\"$placeholder\" $required $maxlength $minlength $min $max $step $pattern $accept $autocomplete $autofocus $readonly $disabled $classField $styleField />";
+                    $html .= "<input type=\"$type\" name=\"$name\" id=\"$name\" value=\"" . htmlspecialchars($value) . "\" placeholder=\"$placeholder\" $required $maxlength $minlength $min $max $step $pattern $accept $autocomplete $autofocus $readonly $disabled $classField $styleField $dataAttrs />";
                 }
                 $html .= "</div>";
             }
@@ -77,6 +103,7 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
     }
     return $html;
 }
+?>
  
 function obtenerDatosTabla($data) {
     global $conn;

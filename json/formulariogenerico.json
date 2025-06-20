@@ -14,7 +14,9 @@
     "mailPara": "destino@ejemplo.com",
     "mailCc": "copia@ejemplo.com",
     "mailCco": "oculto@ejemplo.com",
-    "tipoformatoenvio": "htmlc,pdf,xls,json",
+    
+     "tipoformatoenvio": "htmlc,pdf,html,xls,json,cvs,xlsx,doc,xml",
+
     "limpiar": true
   },
   "fieldsets": [
@@ -32,6 +34,21 @@
           "autocomplete": "on",
           "autofocus": true
         },
+
+
+{
+  "name": "total",
+  "label": "Total",
+  "type": "number",
+  "readonly": true,
+  "data-formula": "10 + 10"
+},
+
+
+
+
+
+
         {
           "name": "email",
           "label": "Correo electrónico",
@@ -208,7 +225,37 @@
           "name": "oculto",
           "type": "hidden",
           "value": "valor_oculto"
+        },
+        
+
+   {
+          
+          "name": "ciudad_2",
+          "label": "Ciudad data",,
+          "type": "selectdata",
+          "placeholder": "Buscar ciudad...",
+       
+          "data": {
+            "tabla": "Comuna",
+            "campo": "ComDes",
+            "filtro": "1=1"
+          },
+           
+           
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
       ]
     }
   ]

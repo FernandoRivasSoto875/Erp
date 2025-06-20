@@ -103,13 +103,13 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
     }
     return $html;
 }
-?>
+ 
  
 function obtenerDatosTabla($data) {
     global $conn;
     $tabla  = $data['tabla'];
     $campo  = $data['campo'];
-    $filtro = isset($data['filtro']) ? "WHERE " . $data['filtro'] : "";
+    $filtro = isset($data['filtro']) && $data['filtro'] ? "WHERE " . $data['filtro'] : "";
     $consulta = "SELECT $campo FROM $tabla $filtro";
     $stmt = $conn->prepare($consulta);
     if ($stmt === false) return [];
@@ -118,14 +118,19 @@ function obtenerDatosTabla($data) {
     $result = [];
     if (count($campos) == 2) {
         $stmt->bind_result($id, $nombre);
-        while ($stmt->fetch()) $result[] = ['id' => $id, 'nombre' => $nombre];
+        while ($stmt->fetch()) {
+            $result[] = ['value' => $id, 'label' => $nombre];
+        }
     } else {
         $stmt->bind_result($valor);
-        while ($stmt->fetch()) $result[] = $valor;
+        while ($stmt->fetch()) {
+            $result[] = ['value' => $valor, 'label' => $valor];
+        }
     }
     $stmt->close();
     return $result;
 }
+ 
 
 function normalizaValores($formData, $json, $paraJson = false) {
     $result = [];

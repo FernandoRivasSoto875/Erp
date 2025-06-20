@@ -77,19 +77,7 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
     }
     return $html;
 }
-?>
-
-
-
-
-
-
-
-
-
-
-
-
+ 
 function obtenerDatosTabla($data) {
     global $conn;
     $tabla  = $data['tabla'];

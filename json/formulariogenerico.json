@@ -5,16 +5,41 @@
     "comentario": "Por favor, complete todos los campos requeridos.",
     "pie": "Gracias por usar nuestro sistema.",
     "fecha_creacion": "2024-06-20",
-    "cantidadMaximaAdjuntos": 3,
+ 
+    "cantidadMaximaAdjuntos": 2,
+    "limpiar":true,
     "destinatario": "fernandorivassoto@gmail.com",
     "remitente": "gestion@saludenterreno.cl",
     "subject": "Nuevo mensaje desde el formulario de contacto",
     "estilo": "padding:20px; background:#e8f0fe;",
-    "mailDe": "fernandorivassoto@gmail.com",
+    "mailDe": "Intranet@SaludEnterreno.cl",
     "mailPara": "fernandorivassoto@gmail.com",
     "mailCc": "copia@example.com",
-    "tipoformatoenvio": "htmlc,pdf,html",
-    "limpiar": true
+    "mailCco": "copiaoculta@example.com", 
+    "tipoformatoenvio": "htmlc,pdf,html,xls,json,cvs,xlsx,doc,xml"
+
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
   },
   "fieldsets": [
     {

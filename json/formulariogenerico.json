@@ -37,7 +37,7 @@
           "label": "Total",
           "type": "number",
           "readonly": true,
-          "data-formula": "10 + 10"
+          "data-formula": "10 + 10 * edad"
         },
         {
           "name": "email",
@@ -224,7 +224,7 @@
           "data": {
             "tabla": "Comuna",
             "campo": "ComDes",
-            "filtro": "1=1"
+            "filtro": "1=13"
           }
         }
       ]

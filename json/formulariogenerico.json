@@ -10,7 +10,7 @@
     "remitente": "gestion@saludenterreno.cl",
     "subject": "Nuevo mensaje desde el formulario de contacto",
     "estilo": "padding:20px; background:#e8f0fe;",
-    "mailDe": "Intranet@PoderJUdicialcl",
+    "mailDe": "Intranet@PoderJUdicial.cl",
     "mailPara": "fernandorivassoto@gmail.com",
     "mailCc": "copia@example.com",
     "tipoformatoenvio": "htmlc,pdf,html",

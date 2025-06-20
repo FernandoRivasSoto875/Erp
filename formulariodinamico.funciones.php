@@ -13,7 +13,6 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
 
         $html .= "<fieldset$fieldsetAttrs>";
         if ($legend) $html .= "<legend>$legend</legend>";
-
         // Campos
         if (isset($fieldset['fields'])) {
             foreach ($fieldset['fields'] as $field) {

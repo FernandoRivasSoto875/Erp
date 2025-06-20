@@ -1,7 +1,6 @@
  <?php
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
-
 require_once 'formulariodinamico.funciones.php';
 
 if (!isset($_GET['archivo']) || !preg_match('/^[a-zA-Z0-9_\-]+\.json$/', $_GET['archivo'])) {
@@ -25,7 +24,6 @@ if (!isset($json['fieldsets']) || !is_array($json['fieldsets'])) {
     echo "<div style='color:red'>Error: El archivo JSON no contiene fieldsets.</div>";
     exit;
 }
-
 $mensajeEnvio = '';
 $mensajeEnvioTipo = '';
 

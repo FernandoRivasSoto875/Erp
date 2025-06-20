@@ -30,8 +30,8 @@ if (!$json) {
     echo "<div style='color:red'>Error: El archivo JSON no es válido o está vacío.</div>";
     exit;
 }
-if (!isset($json['grupos']) || !is_array($json['grupos'])) {
-    echo "<div style='color:red'>Error: El archivo JSON no contiene grupos de campos.</div>";
+if (!isset($json['fieldsets']) || !is_array($json['fieldsets'])) {
+    echo "<div style='color:red'>Error: El archivo JSON no contiene fieldsets de campos.</div>";
     exit;
 }
 
@@ -72,7 +72,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     $htmlForm .= "</header>";
     $htmlForm .= "<p>" . htmlspecialchars($config['comentario'], ENT_QUOTES, 'UTF-8') . "</p>";
     $htmlForm .= "<form>";
-    $htmlForm .= generarGruposRecursivos($json['grupos'], $valoresAdjuntos, true);
+    $htmlForm .= generarFieldsets($json['fieldsets'], $valoresAdjuntos, true);
     $htmlForm .= "</form>";
     $htmlForm .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
     $htmlForm .= "</main></body></html>";
@@ -216,22 +216,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $errores[] = "El remitente del correo (mailDe) no es válido.";
     }
 
-    function validarCamposRequeridos($grupos, $formData, &$errores) {
-        foreach ($grupos as $grupo) {
-            if (isset($grupo['campos'])) {
-                foreach ($grupo['campos'] as $campo) {
-                    if (!empty($campo['requerido']) && empty($formData[$campo['nombre']])) {
-                        $etiqueta = $campo['etiqueta'] ?? $campo['nombre'];
-                        $errores[] = "El campo '{$etiqueta}' es obligatorio.";
+    function validarCamposRequeridos($fieldsets, $formData, &$errores) {
+        foreach ($fieldsets as $fieldset) {
+            if (isset($fieldset['fields'])) {
+                foreach ($fieldset['fields'] as $field) {
+                    if (!empty($field['required']) && empty($formData[$field['name']])) {
+                        $label = $field['label'] ?? $field['name'];
+                        $errores[] = "El campo '{$label}' es obligatorio.";
                     }
                 }
             }
-            if (isset($grupo['hijos'])) {
-                validarCamposRequeridos($grupo['hijos'], $formData, $errores);
+            if (isset($fieldset['fieldsets'])) {
+                validarCamposRequeridos($fieldset['fieldsets'], $formData, $errores);
             }
         }
     }
-    validarCamposRequeridos($json['grupos'], $formData, $errores);
+    validarCamposRequeridos($json['fieldsets'], $formData, $errores);
 
     if (!empty($errores)) {
         $mensajeEnvio = "<ul>";
@@ -254,13 +254,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?php echo htmlspecialchars($json['parametros']['titulo'], ENT_QUOTES, 'UTF-8'); ?></title>
   <link rel="stylesheet" href="css/formulariodinamico.css">
-  <style>
-    #mensaje-envio { margin: 20px 0; font-weight: bold; }
-    #mensaje-envio.exito { color: green; }
-    #mensaje-envio.error { color: red; }
-  </style>
+ </style>
   <script>
-    // Variable JS para saber si se debe limpiar el formulario tras envío exitoso
     var LIMPIAR_FORMULARIO = <?php echo $limpiar; ?>;
   </script>
 </head>
@@ -278,15 +273,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </div>
     <form id="formulario" method="POST" enctype="multipart/form-data" data-archivo="<?php echo htmlspecialchars($nombre_archivo, ENT_QUOTES, 'UTF-8'); ?>">
       <?php
-        // Ajuste: Si el envío fue exitoso, mostrar campos vacíos; si no, mostrar valores guardados o del POST
         $exito = ($_SERVER["REQUEST_METHOD"] == "POST" && $mensajeEnvioTipo === "exito");
         $valoresParaFormulario = $exito
-            ? prepararValoresGuardados($json, []) // campos vacíos tras éxito
+            ? prepararValoresGuardados($json, [])
             : ($_SERVER["REQUEST_METHOD"] == "POST"
                 ? prepararValoresGuardados($json, $_POST)
                 : prepararValoresGuardados($json, $valoresGuardados)
               );
-        echo generarGruposRecursivos($json['grupos'], $valoresParaFormulario);
+        echo generarFieldsets($json['fieldsets'], $valoresParaFormulario);
       ?>
       <div class="submit-container">
         <button type="submit">Enviar</button>
@@ -295,7 +289,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <footer>
       <p><?php echo htmlspecialchars($json['parametros']['pie'], ENT_QUOTES, 'UTF-8'); ?></p>
     </footer>
-    <!-- Puedes comentar la siguiente línea si no quieres mostrar la fecha de creación -->
     <!-- <p>Fecha de creación: <?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p> -->
   </main>
   <script src="js/formulariodinamico.js"></script>

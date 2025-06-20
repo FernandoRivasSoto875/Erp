@@ -1,0 +1,234 @@
+{
+  "parametros": {
+    "titulo": "Formulario Genérico Completo",
+    "tituloimagen": "https://via.placeholder.com/150",
+    "comentario": "Por favor, complete todos los campos requeridos.",
+    "pie": "Gracias por usar nuestro sistema.",
+    "fecha_creacion": "2024-06-20",
+    "cantidadMaximaAdjuntos": 3,
+    "destinatario": "destino@ejemplo.com",
+    "remitente": "remitente@ejemplo.com",
+    "subject": "Nuevo registro en el formulario genérico",
+    "estilo": "padding:20px; background:#f0f0f0;",
+    "mailDe": "no-reply@ejemplo.com",
+    "mailPara": "destino@ejemplo.com",
+    "mailCc": "copia@ejemplo.com",
+    "mailCco": "oculto@ejemplo.com",
+    "tipoformatoenvio": "htmlc,pdf,html",
+        "tipoformatoenviffo": "htmlc,pdf,html,xxls,json,cvs,xlsax,doc,xml",
+        "limpiar": true
+  },
+  "fieldsets": [
+    {
+      "legend": "Datos Personales",
+      "style": "border:1px solid #007BFF; padding:10px; background:#f9f9f9;",
+      "fields": [
+        {
+          "name": "nombre",
+          "label": "Nombre completo",
+          "type": "text",
+          "placeholder": "Ingrese su nombre",
+          "required": true,
+          "maxlength": 100,
+          "autocomplete": "on",
+          "autofocus": true
+        },
+        {
+          "name": "total",
+          "label": "Total",
+          "type": "number",
+          "readonly": true,
+          "data-formula": "10 + 10 * edad"
+        },
+        {
+          "name": "email",
+          "label": "Correo electrónico",
+          "type": "email",
+          "placeholder": "usuario@dominio.com",
+          "required": true,
+          "maxlength": 100,
+          "autocomplete": "on"
+        },
+        {
+          "name": "telefono",
+          "label": "Teléfono",
+          "type": "tel",
+          "placeholder": "+56912345678",
+          "pattern": "[0-9+]{9,15}",
+          "required": false
+        },
+        {
+          "name": "fecha_nacimiento",
+          "label": "Fecha de nacimiento",
+          "type": "date",
+          "required": false
+        },
+        {
+          "name": "hora_contacto",
+          "label": "Hora de contacto",
+          "type": "time"
+        },
+        {
+          "name": "edad",
+          "label": "Edad",
+          "type": "number",
+          "min": 0,
+          "max": 120,
+          "step": 1,
+          "required": false
+        },
+        {
+          "name": "website",
+          "label": "Sitio web personal",
+          "type": "url",
+          "placeholder": "https://ejemplo.com"
+        },
+        {
+          "name": "color_favorito",
+          "label": "Color favorito",
+          "type": "color"
+        },
+        {
+          "name": "archivo_perfil",
+          "label": "Foto de perfil",
+          "type": "file",
+          "accept": "image/*"
+        },
+        {
+          "name": "password",
+          "label": "Contraseña",
+          "type": "password",
+          "placeholder": "Ingrese una contraseña segura",
+          "required": true,
+          "minlength": 6,
+          "maxlength": 32
+        }
+      ],
+      "fieldsets": [
+        {
+          "legend": "Dirección",
+          "fields": [
+            {
+              "name": "calle",
+              "label": "Calle",
+              "type": "text"
+            },
+            {
+              "name": "ciudad",
+              "label": "Ciudad",
+              "type": "text"
+            },
+            {
+              "name": "pais",
+              "label": "País",
+              "type": "select",
+              "options": [
+                { "value": "", "label": "Seleccione un país" },
+                { "value": "cl", "label": "Chile" },
+                { "value": "ar", "label": "Argentina" },
+                { "value": "pe", "label": "Perú" },
+                { "value": "br", "label": "Brasil" }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "legend": "Preferencias y Otros",
+      "style": "border:1px solid #28a745; padding:10px; background:#f5fff5;",
+      "fields": [
+        {
+          "name": "genero",
+          "label": "Género",
+          "type": "radio",
+          "required": true,
+          "options": [
+            { "value": "masculino", "label": "Masculino" },
+            { "value": "femenino", "label": "Femenino" },
+            { "value": "otro", "label": "Otro" }
+          ]
+        },
+        {
+          "name": "intereses",
+          "label": "Intereses",
+          "type": "checkbox",
+          "options": [
+            { "value": "deportes", "label": "Deportes" },
+            { "value": "musica", "label": "Música" },
+            { "value": "tecnologia", "label": "Tecnología" },
+            { "value": "arte", "label": "Arte" }
+          ]
+        },
+        {
+          "name": "nivel_estudio",
+          "label": "Nivel de estudio",
+          "type": "select",
+          "options": [
+            { "value": "", "label": "Seleccione" },
+            { "value": "secundario", "label": "Secundario" },
+            { "value": "tecnico", "label": "Técnico" },
+            { "value": "universitario", "label": "Universitario" },
+            { "value": "postgrado", "label": "Postgrado" }
+          ]
+        },
+        {
+          "name": "comentarios",
+          "label": "Comentarios adicionales",
+          "type": "textarea",
+          "placeholder": "Escriba aquí sus comentarios",
+          "maxlength": 500
+        },
+        {
+          "name": "acepta_terminos",
+          "label": "Acepto los términos y condiciones",
+          "type": "checkbox",
+          "required": true,
+          "options": [
+            { "value": "si", "label": "Sí" }
+          ]
+        },
+        {
+          "name": "rango_satisfaccion",
+          "label": "Nivel de satisfacción",
+          "type": "range",
+          "min": 1,
+          "max": 10,
+          "step": 1
+        },
+        {
+          "name": "mes_favorito",
+          "label": "Mes favorito",
+          "type": "month"
+        },
+        {
+          "name": "semana_favorita",
+          "label": "Semana favorita",
+          "type": "week"
+        },
+        {
+          "name": "busqueda",
+          "label": "Buscar algo",
+          "type": "search",
+          "placeholder": "Buscar..."
+        },
+        {
+          "name": "oculto",
+          "type": "hidden",
+          "value": "valor_oculto"
+        },
+        {
+          "name": "ciudad_2",
+          "label": "Ciudad data",
+          "type": "selectdata",
+          "placeholder": "Buscar ciudad...",
+          "data": {
+            "tabla": "Comuna",
+            "campo": "ComDes",
+            "filtro": "1=1"
+          }
+        }
+      ]
+    }
+  ]
+} 

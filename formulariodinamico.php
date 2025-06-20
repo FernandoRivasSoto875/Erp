@@ -152,18 +152,43 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
                 case 'xls':
                     if ($xlsContent) {
                         $mail->addStringAttachment($xlsContent, $xlsFilename, 'base64', 'application/vnd.ms-excel');
-
-
-
-
-
-
+ 
                         
                     }
                     break;
-                case 'xlsxx':
+                case 'xlsx':
                     if ($xlsxContent) {
                         $mail->addStringAttachment($xlsxContent, $xlsxFilename, 'base64', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+
+                     if (class_exists('Shuchkin\SimpleXLSXGen')) {
+                                $header = [array_keys($valoresAdjuntos)];
+                                $row = [array_values($valoresAdjuntos)];
+                                $xlsx = \Shuchkin\SimpleXLSXGen::fromArray(array_merge($header, $row));
+                                $tempXlsx = tempnam(sys_get_temp_dir(), 'xlsx_') . '.xlsx';
+                                $xlsx->saveAs($tempXlsx);
+                                if (file_exists($tempXlsx)) {
+                                    $xlsxContent = file_get_contents($tempXlsx);
+                                    unlink($tempXlsx);
+                                } else {
+                                    echo "<div style='color:red'>No se pudo crear el archivo temporal XLSX en: $tempXlsx</div>";
+                                }
+                            } else {
+                                echo "<div style='color:red'>La clase SimpleXLSXGen no está disponible.</div>";
+                            }
+
+
+
+
+
+
+
+
+
+
+
+
+
                     }
                     break;
                 case 'csv':

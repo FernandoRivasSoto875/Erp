@@ -152,9 +152,16 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
                 case 'xls':
                     if ($xlsContent) {
                         $mail->addStringAttachment($xlsContent, $xlsFilename, 'base64', 'application/vnd.ms-excel');
+
+
+
+
+
+
+                        
                     }
                     break;
-                case 'xlsx':
+                case 'xlsxx':
                     if ($xlsxContent) {
                         $mail->addStringAttachment($xlsxContent, $xlsxFilename, 'base64', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
                     }

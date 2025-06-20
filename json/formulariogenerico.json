@@ -37,7 +37,7 @@
           "label": "Total",
           "type": "number",
           "readonly": true,
-          "formula": "10 + 10"
+          "data-formula": "10 + 10"
         },
         {
           "name": "email",
@@ -230,4 +230,3 @@
       ]
     }
   ]
-}

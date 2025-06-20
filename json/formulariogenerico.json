@@ -1,422 +1,215 @@
-{
+ {
   "parametros": {
-    "titulo": "Formulario de Contacto",
-    "tituloimagen": "https://www.saludenterreno.cl/sitio/imagenes/contacto.png",
-    "comentario": "Por favor, completa este formulario para contactarnos.",
-    "pie": "Gracias por confiar en nosotros.",
-    "cantidadMaximaAdjuntos": 2,
-    "destinatario": "fernandorivassoto@gmail.com",
-    "remitente": "gestion@saludenterreno.cl",
-    "subject": "Nuevo mensaje desde el formulario de contacto",
-    "estilo": "padding:20px; background:#e8f0fe;",
-    "mailDe": "Intranet@SaludEnterreno.cl",
-    "mailPara": "fernandorivassoto@gmail.com",
-    "mailCc": "copia@example.com",
-    "mailCco": "copiaoculta@example.com", "tipoformatoenvio": "htmlc,pdf,html,xls,json"
-   
+    "titulo": "Formulario Genérico Completo",
+    "tituloimagen": "https://via.placeholder.com/150",
+    "comentario": "Por favor, complete todos los campos requeridos.",
+    "pie": "Gracias por usar nuestro sistema.",
+    "fecha_creacion": "2024-06-20",
+    "cantidadMaximaAdjuntos": 3,
+    "destinatario": "destino@ejemplo.com",
+    "remitente": "remitente@ejemplo.com",
+    "subject": "Nuevo registro en el formulario genérico",
+    "estilo": "padding:20px; background:#f0f0f0;",
+    "mailDe": "no-reply@ejemplo.com",
+    "mailPara": "destino@ejemplo.com",
+    "mailCc": "copia@ejemplo.com",
+    "mailCco": "oculto@ejemplo.com",
+    "tipoformatoenvio": "htmlc,pdf,xls,json",
+    "limpiar": true
   },
-  "grupos": [
+  "fieldsets": [
     {
-      "activo": true,
-      "grupoNombre": "Datos Personales",
-      "grupoAlineacion": "columna",
-      "alineacion": "fila",
-      "estilo": "border:1px dashed #007BFF; padding:10px; background:#f9f9f9;",
-      "campos": [
+      "legend": "Datos Personales",
+      "style": "border:1px solid #007BFF; padding:10px; background:#f9f9f9;",
+      "fields": [
         {
-          "nombre": "cantidad",
-          "etiqueta": "Cantidad",
-          "tipo": "text",
-          "formato": "#,##0.00",
-          "placeholder": "Ingrese cantidad"
+          "name": "nombre",
+          "label": "Nombre completo",
+          "type": "text",
+          "placeholder": "Ingrese su nombre",
+          "required": true,
+          "maxlength": 100,
+          "autocomplete": "on",
+          "autofocus": true
         },
         {
-          "nombre": "precio_unitario",
-          "etiqueta": "Precio Unitario",
-          "tipo": "text",
-          "formato": "moneda",
-          "placeholder": "Ingrese precio"
+          "name": "email",
+          "label": "Correo electrónico",
+          "type": "email",
+          "placeholder": "usuario@dominio.com",
+          "required": true,
+          "maxlength": 100,
+          "autocomplete": "on"
         },
         {
-          "nombre": "ComId",
-          "etiqueta": "Código Producto",
-          "tipo": "text",
-          "placeholder": "Ingrese código"
+          "name": "telefono",
+          "label": "Teléfono",
+          "type": "tel",
+          "placeholder": "+56912345678",
+          "pattern": "[0-9+]{9,15}",
+          "required": false
         },
         {
-          "nombre": "descripcion_producto",
-          "etiqueta": "Descripción",
-          "tipo": "text",
-          "formula": {
-            "busqueda": {
-              "tabla": "Comuna",
-              "campo": "ComDes",
-              "where": "ComId = {ComId}"
-            }
-          },
-          "readonly": false
+          "name": "fecha_nacimiento",
+          "label": "Fecha de nacimiento",
+          "type": "date",
+          "required": false
         },
         {
-          "nombre": "nombre",
-          "etiqueta": "Nombre",
-          "tipo": "text",
-          "placeholder": "Nombre completo"
+          "name": "hora_contacto",
+          "label": "Hora de contacto",
+          "type": "time"
         },
         {
-          "nombre": "total",
-          "etiqueta": "Total",
-          "tipo": "text",
-          "formula": "cantidad * precio_unitario * 1",
-          "formato": "moneda",
-          "readonly": true
+          "name": "edad",
+          "label": "Edad",
+          "type": "number",
+          "min": 0,
+          "max": 120,
+          "step": 1,
+          "required": false
         },
         {
-          "nombre": "email",
-          "etiqueta": "Correo Electrónico",
-          "tipo": "email",
-          "posicionetiqueta": "izquierdo",
-          "placeholder": "ejemplo@correo.com"
+          "name": "website",
+          "label": "Sitio web personal",
+          "type": "url",
+          "placeholder": "https://ejemplo.com"
         },
         {
-          "nombre": "telefono",
-          "etiqueta": "Teléfono",
-          "tipo": "tel",
-          "posicionetiqueta": "derecho",
-          "placeholder": "+56912345678"
+          "name": "color_favorito",
+          "label": "Color favorito",
+          "type": "color"
         },
         {
-          "nombre": "direccion",
-          "etiqueta": "Dirección",
-          "tipo": "text",
-          "posicionetiqueta": "arriba.centro",
-          "placeholder": "Calle y número"
+          "name": "archivo_perfil",
+          "label": "Foto de perfil",
+          "type": "file",
+          "accept": "image/*"
         },
         {
-          "nombre": "ciudad",
-          "etiqueta": "Ciudad",
-          "tipo": "text",
-          "posicionetiqueta": "arriba.izquierdo",
-          "placeholder": "Ciudad"
-        },
-        {
-          "nombre": "pais",
-          "etiqueta": "País",
-          "tipo": "text",
-          "posicionetiqueta": "arriba.derecho",
-          "placeholder": "País"
-        },
-        {
-          "nombre": "comentario",
-          "etiqueta": "Comentario",
-          "tipo": "textarea",
-          "posicionetiqueta": "abajo",
-          "placeholder": "Escribe tu comentario"
-        },
-        {
-          "nombre": "codigo",
-          "etiqueta": "Código",
-          "tipo": "text",
-          "posicionetiqueta": "abajo.centro",
-          "placeholder": "Código postal"
-        },
-        {
-          "nombre": "referencia",
-          "etiqueta": "Referencia",
-          "tipo": "text",
-          "posicionetiqueta": "abajo.izquierdo",
-          "placeholder": "Referencia"
-        },
-        {
-          "nombre": "extra",
-          "etiqueta": "Extra",
-          "tipo": "text",
-          "posicionetiqueta": "abajo.derecho",
-          "placeholder": "Dato extra"
-        },
-        {
-          "nombre": "secreto",
-          "etiqueta": "No visible",
-          "tipo": "text",
-          "posicionetiqueta": "oculto",
-          "placeholder": "No se muestra etiqueta"
-        },
-        {
-          "activo": true,
-          "crud": false,
-          "nombre": "nombre_2",
-          "etiqueta": "Nombre",
-          "tipo": "text",
-          "requerido": true,
-          "tooltipText": "Ingrese su nombre completo",
-          "placeholder": "Escriba su nombre",
-          "posicionetiqueta": "arriba",
-          "estilo": "color:#007BFF; font-weight:bold;"
-        },
-        {
-          "activo": true,
-          "crud": false,
-          "nombre": "email_2",
-          "etiqueta": "Correo Electrónico",
-          "tipo": "email",
-          "requerido": true,
-          "tooltipText": "ejemplo@dominio.com",
-          "pattern": "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}",
-          "mensajeError": "Ingrese un correo válido",
-          "posicionetiqueta": "izquierdo",
-          "estilo": "color:#d12858; font-style:italic;"
-        },
-        {
-          "activo": true,
-          "crud": true,
-          "nombre": "ciudad_2",
-          "etiqueta": "Ciudad",
-          "tipo": "selectdata",
-          "requerido": true,
-          "tooltipText": "Seleccione o busque su ciudad",
-          "placeholder": "Buscar ciudad...",
-          "autocompletar": true,
-          "data": {
-            "tabla": "Comuna",
-            "campo": "ComDes",
-            "filtro": "1=1"
-          },
-          "posicionetiqueta": "arriba",
-          "estilo": "color:#007BFF;"
+          "name": "password",
+          "label": "Contraseña",
+          "type": "password",
+          "placeholder": "Ingrese una contraseña segura",
+          "required": true,
+          "minlength": 6,
+          "maxlength": 32
         }
       ],
-      "hijos": [
+      "fieldsets": [
         {
-          "activo": true,
-          "grupoNombre": "Contacto",
-          "grupoAlineacion": "columna",
-          "alineacion": "fila",
-          "estilo": "border:1px dashed #007BFF; padding:10px; background:#ffffff;",
-          "campos": [
+          "legend": "Dirección",
+          "fields": [
             {
-              "activo": true,
-              "crud": false,
-              "nombre": "telefono_secundario",
-              "etiqueta": "Teléfono",
-              "tipo": "tel",
-              "requerido": false,
-              "tooltipText": "Ingrese su teléfono",
-              "placeholder": "Ej. +56912345678",
-              "posicionetiqueta": "arriba",
-              "estilo": "color:#333;"
+              "name": "calle",
+              "label": "Calle",
+              "type": "text"
             },
             {
-              "activo": true,
-              "crud": false,
-              "nombre": "direccion_secundaria",
-              "etiqueta": "Dirección",
-              "tipo": "text",
-              "requerido": false,
-              "tooltipText": "Ingrese su dirección",
-              "placeholder": "Calle 123, Ciudad",
-              "posicionetiqueta": "arriba",
-              "estilo": ""
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "activo": true,
-      "grupoNombre": "Preferencias",
-      "grupoAlineacion": "fila",
-      "alineacion": "columna",
-      "estilo": "border:1px dashed #d12858; padding:10px; background:#fdfdfd;",
-      "campos": [
-        {
-          "activo": true,
-          "crud": true,
-          "nombre": "genero",
-          "etiqueta": "Género",
-          "tipo": "radio",
-          "requerido": true,
-          "tooltipText": "Seleccione su género",
-          "opciones": [
-            "Masculino",
-            "Femenino",
-            "Otro"
-          ],
-          "posicionetiqueta": "arriba",
-          "estilo": "font-size:14px;"
-        },
-        {
-          "activo": true,
-          "crud": true,
-          "nombre": "intereses",
-          "etiqueta": "Intereses",
-          "tipo": "checkbox",
-          "requerido": false,
-          "tooltipText": "Marque sus intereses",
-          "opciones": [
-            "Deportes",
-            "Música",
-            "Tecnología",
-            "Arte"
-          ],
-          "posicionetiqueta": "derecho",
-          "estilo": "font-size:14px;"
-        },
-        {
-          "activo": true,
-          "crud": true,
-          "nombre": "nivel_estudio",
-          "etiqueta": "Nivel de Estudio",
-          "tipo": "select",
-          "requerido": true,
-          "tooltipText": "Seleccione su nivel de estudio",
-          "opciones": [
-            "Bachiller",
-            "Técnico",
-            "Universitario",
-            "Postgrado"
-          ],
-          "posicionetiqueta": "izquierdo",
-          "estilo": "color:#333;"
-        },
-        {
-          "activo": true,
-          "crud": true,
-          "nombre": "lista_ejemplo",
-          "etiqueta": "Lista (Estático)",
-          "tipo": "list",
-          "requerido": false,
-          "tooltipText": "Seleccione o escriba un elemento",
-          "opciones": [
-            "Item 1",
-            "Item 2",
-            "Item 3"
-          ],
-          "placeholder": "Elija o escriba...",
-          "estilo": ""
-        }
-      ],
-      "hijos": [
-        {
-          "activo": true,
-          "grupoNombre": "Datos Dinámicos",
-          "grupoAlineacion": "columna",
-          "alineacion": "fila",
-          "estilo": "border:1px dotted #007BFF; padding:10px; background:#eef;",
-          "campos": [
+              "name": "ciudad",
+              "label": "Ciudad",
+              "type": "text"
+            },
             {
-              "activo": true,
-              "crud": true,
-              "nombre": "ciudad_dinamica",
-              "etiqueta": "Ciudad (Dinámico)",
-              "tipo": "list",
-              "requerido": true,
-              "tooltipText": "Seleccione o escriba su ciudad",
-              "placeholder": "Buscar ciudad...",
-              "autocompletar": true,
-              "opciones": [
-                "Santiago",
-                "Valparaíso",
-                "Concepción"
-              ],
-              "posicionetiqueta": "arriba",
-              "estilo": "color:#007BFF;"
+              "name": "pais",
+              "label": "País",
+              "type": "select",
+              "options": [
+                { "value": "", "label": "Seleccione un país" },
+                { "value": "cl", "label": "Chile" },
+                { "value": "ar", "label": "Argentina" },
+                { "value": "pe", "label": "Perú" },
+                { "value": "br", "label": "Brasil" }
+              ]
             }
           ]
         }
       ]
     },
     {
-      "activo": true,
-      "grupoNombre": "Tipos Avanzados",
-      "grupoAlineacion": "columna",
-      "alineacion": "fila",
-      "estilo": "border:1px solid #444; padding:10px; background:#fff;",
-      "campos": [
+      "legend": "Preferencias y Otros",
+      "style": "border:1px solid #28a745; padding:10px; background:#f5fff5;",
+      "fields": [
         {
-          "activo": true,
-          "nombre": "input_password",
-          "etiqueta": "Contraseña",
-          "tipo": "password",
-          "requerido": true,
-          "placeholder": "Ingrese su contraseña",
-          "estilo": ""
+          "name": "genero",
+          "label": "Género",
+          "type": "radio",
+          "required": true,
+          "options": [
+            { "value": "masculino", "label": "Masculino" },
+            { "value": "femenino", "label": "Femenino" },
+            { "value": "otro", "label": "Otro" }
+          ]
         },
         {
-          "activo": true,
-          "nombre": "input_number",
-          "etiqueta": "Número",
-          "tipo": "number",
-          "requerido": true,
-          "placeholder": "Ingrese un número",
-          "estilo": ""
+          "name": "intereses",
+          "label": "Intereses",
+          "type": "checkbox",
+          "options": [
+            { "value": "deportes", "label": "Deportes" },
+            { "value": "musica", "label": "Música" },
+            { "value": "tecnologia", "label": "Tecnología" },
+            { "value": "arte", "label": "Arte" }
+          ]
         },
         {
-          "activo": true,
-          "nombre": "input_datetime",
-          "etiqueta": "Fecha y Hora",
-          "tipo": "datetime-local",
-          "requerido": false,
-          "estilo": ""
+          "name": "nivel_estudio",
+          "label": "Nivel de estudio",
+          "type": "select",
+          "options": [
+            { "value": "", "label": "Seleccione" },
+            { "value": "secundario", "label": "Secundario" },
+            { "value": "tecnico", "label": "Técnico" },
+            { "value": "universitario", "label": "Universitario" },
+            { "value": "postgrado", "label": "Postgrado" }
+          ]
         },
         {
-          "activo": true,
-          "nombre": "input_month",
-          "etiqueta": "Mes",
-          "tipo": "month",
-          "requerido": false,
-          "estilo": ""
+          "name": "comentarios",
+          "label": "Comentarios adicionales",
+          "type": "textarea",
+          "placeholder": "Escriba aquí sus comentarios",
+          "maxlength": 500
         },
         {
-          "activo": true,
-          "nombre": "input_week",
-          "etiqueta": "Semana",
-          "tipo": "week",
-          "requerido": false,
-          "estilo": ""
+          "name": "acepta_terminos",
+          "label": "Acepto los términos y condiciones",
+          "type": "checkbox",
+          "required": true,
+          "options": [
+            { "value": "si", "label": "Sí" }
+          ]
         },
         {
-          "activo": true,
-          "nombre": "input_url",
-          "etiqueta": "URL",
-          "tipo": "url",
-          "requerido": false,
-          "placeholder": "https://ejemplo.com",
-          "estilo": ""
+          "name": "rango_satisfaccion",
+          "label": "Nivel de satisfacción",
+          "type": "range",
+          "min": 1,
+          "max": 10,
+          "step": 1
         },
         {
-          "activo": true,
-          "nombre": "input_search",
-          "etiqueta": "Búsqueda",
-          "tipo": "search",
-          "requerido": false,
-          "placeholder": "Buscar...",
-          "estilo": ""
+          "name": "mes_favorito",
+          "label": "Mes favorito",
+          "type": "month"
         },
         {
-          "activo": true,
-          "nombre": "input_tel",
-          "etiqueta": "Teléfono",
-          "tipo": "tel",
-          "requerido": true,
-          "placeholder": "Ingrese teléfono",
-          "estilo": ""
+          "name": "semana_favorita",
+          "label": "Semana favorita",
+          "type": "week"
         },
         {
-          "activo": true,
-          "nombre": "input_color",
-          "etiqueta": "Color",
-          "tipo": "color",
-          "requerido": false,
-          "estilo": ""
+          "name": "busqueda",
+          "label": "Buscar algo",
+          "type": "search",
+          "placeholder": "Buscar..."
         },
         {
-          "activo": true,
-          "nombre": "input_range",
-          "etiqueta": "Rango",
-          "tipo": "range",
-          "requerido": false,
-          "estilo": ""
+          "name": "oculto",
+          "type": "hidden",
+          "value": "valor_oculto"
         }
       ]
     }
   ]
-} 
+}

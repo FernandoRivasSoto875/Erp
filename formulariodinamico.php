@@ -185,6 +185,23 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
             $mail->Body = "Adjunto el(los) archivo(s) del formulario.";
         }
 
+
+echo "<pre>";
+echo "Adjuntos solicitados: "; print_r($tiposFormatoEnvio);
+echo "PDF: " . (isset($pdfContent) && $pdfContent ? "OK" : "NO") . "\n";
+echo "XLSX: " . (isset($xlsxContent) && $xlsxContent ? "OK" : "NO") . "\n";
+echo "XLS: " . (isset($xlsContent) && $xlsContent ? "OK" : "NO") . "\n";
+echo "CSV: " . (isset($csvContent) && $csvContent ? "OK" : "NO") . "\n";
+echo "JSON: " . (isset($jsonContent) && $jsonContent ? "OK" : "NO") . "\n";
+echo "XML: " . (isset($xmlContent) && $xmlContent ? "OK" : "NO") . "\n";
+echo "DOC: " . (isset($docContent) && $docContent ? "OK" : "NO") . "\n";
+echo "HTML: " . (isset($htmlForm) && $htmlForm ? "OK" : "NO") . "\n";
+echo "</pre>";
+
+
+
+
+
         $mail->send();
         $mensajeEnvio = "¡Formulario enviado correctamente!";
         $mensajeEnvioTipo = "exito";

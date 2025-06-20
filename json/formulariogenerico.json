@@ -224,7 +224,7 @@
           "data": {
             "tabla": "Comuna",
             "campo": "ComDes",
-            "filtro": "1=13"
+            "filtro": "1=1"
           }
         }
       ]

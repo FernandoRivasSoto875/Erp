@@ -1,4 +1,4 @@
-<?php
+ <?php
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -109,7 +109,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     }
     $htmlForm .= "</header>";
     $htmlForm .= "<p>" . htmlspecialchars($config['comentario'], ENT_QUOTES, 'UTF-8') . "</p>";
-    $htmlForm .= renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos, $baseUrl); // <-- aquí usará $baseUrl
+    $htmlForm .= renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos, $baseUrl);
     $htmlForm .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
     $htmlForm .= "</main></body></html>";
 
@@ -252,7 +252,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     }
     $registroFile = $registroDir . $GLOBALS['nombre_archivo'] . '_ultimo.json';
     file_put_contents($registroFile, json_encode($valoresAdjuntosJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-} // <-- ESTA LLAVE CIERRA enviarFormulario
+} // <--- ESTA LLAVE CIERRA enviarFormulario
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $formData = $_POST;

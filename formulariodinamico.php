@@ -64,8 +64,7 @@ function validarCamposRequeridos($fieldsets, $formData, &$errores) {
             validarCamposRequeridos($fieldset['fieldsets'], $formData, $errores);
         }
     }
-}
-
+ 
 function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$mensajeEnvioTipo) {
     $config = $json['parametros'];
     $titulo = isset($config['titulo']) ? preg_replace('/[^a-zA-Z0-9_\-]/', '_', $config['titulo']) : 'formulario';
@@ -89,6 +88,11 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     $valoresAdjuntos = normalizaValores($formData, $json, false);
     $valoresAdjuntosJson = normalizaValores($formData, $json, true);
 
+    // --- BLOQUE PARA IMÁGENES INLINE (CID) ---
+    global $imagenesInline;
+    $imagenesInline = [];
+    // Se llenará después de crear $mail
+
     // Generar HTML para todos los formatos
     $htmlForm = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
     $htmlForm .= "<main>";
@@ -100,7 +104,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     }
     $htmlForm .= "</header>";
     $htmlForm .= "<p>" . htmlspecialchars($config['comentario'], ENT_QUOTES, 'UTF-8') . "</p>";
-    $htmlForm .= renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos);
+    $htmlForm .= renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos); // <-- aquí usará $imagenesInline
     $htmlForm .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
     $htmlForm .= "</main></body></html>";
 
@@ -150,6 +154,32 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     $asunto = $config['subject'] ?? "Formulario Recibido";
 
     $mail = new PHPMailer(true);
+
+    // --- BLOQUE PARA EMBEBER IMÁGENES COMO INLINE (CID) ---
+    foreach ($json['fieldsets'] as $fieldset) {
+        if (isset($fieldset['fields'])) {
+            foreach ($fieldset['fields'] as $field) {
+                if (($field['type'] ?? '') === 'file') {
+                    $name = $field['name'];
+                    $files = $formData[$name] ?? [];
+                    if (!is_array($files)) $files = [$files];
+                    foreach ($files as $idx => $file) {
+                        $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                        if (in_array($ext, ['jpg','jpeg','png','gif','webp'])) {
+                            $rutaAbsoluta = __DIR__ . '/' . $file;
+                            if (file_exists($rutaAbsoluta)) {
+                                $cid = $name . '_' . $idx;
+                                $mail->addEmbeddedImage($rutaAbsoluta, $cid);
+                                $imagenesInline[$file] = $cid;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // --- FIN BLOQUE IMÁGENES INLINE ---
+
     try {
         $mail->setFrom($mailDe, 'Formulario Web');
         $mail->addAddress($mailPara);
@@ -218,6 +248,9 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     $registroFile = $registroDir . $GLOBALS['nombre_archivo'] . '_ultimo.json';
     file_put_contents($registroFile, json_encode($valoresAdjuntosJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
+
+ 
+
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $formData = $_POST;

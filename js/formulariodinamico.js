@@ -1,4 +1,4 @@
- // ===================== UTILIDADES DE FORMATO Y FÓRMULAS =====================
+  
 function mostrarArchivosSeleccionados(input) {
     var fileListDiv = document.getElementById('filelist_' + input.name.replace('[]',''));
     if (!fileListDiv) return;
@@ -13,19 +13,22 @@ function mostrarArchivosSeleccionados(input) {
         fileListDiv.appendChild(ul);
     }
 }
+
 function previewImage(input) {
-  if (input.files && input.files[0]) {
-    var reader = new FileReader();
-    reader.onload = function(e) {
-      var img = document.getElementById('preview_' + input.name);
-      if (img) {
-        img.src = e.target.result;
-        img.style.display = 'block';
-      }
+    var img = document.getElementById('preview_' + input.name.replace('[]',''));
+    if (!img) return;
+    if (input.files && input.files[0]) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            img.src = e.target.result;
+            img.style.display = 'block';
+        }
+        reader.readAsDataURL(input.files[0]);
+    } else {
+        img.style.display = 'none';
     }
-    reader.readAsDataURL(input.files[0]);
-  }
 }
+ 
 
  function limpiarNumero(valor) {
   valor = valor.replace(/[^\d,.-]/g, '');

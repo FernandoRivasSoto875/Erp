@@ -11,7 +11,11 @@
     "TextoHeader": "Cuidamos tu visión, estés donde estés. Tu satisfacción, nuestra prioridad.",
     "ColorTituloHeader": "#003399",
     "ColorTextoHeader": "#003399",
+    "baseurl": "https://saludenterreno.cl/ErpQa/uploads/",
     "ColoresDiseñoPorDefecto":0,
+
+
+    
     "ColoresDiseño": [
 
         {

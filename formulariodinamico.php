@@ -64,6 +64,7 @@ function validarCamposRequeridos($fieldsets, $formData, &$errores) {
             validarCamposRequeridos($fieldset['fieldsets'], $formData, $errores);
         }
     }
+ }
  
 function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$mensajeEnvioTipo) {
     $config = $json['parametros'];

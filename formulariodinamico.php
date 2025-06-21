@@ -1,4 +1,4 @@
-<?php
+ <?php
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
@@ -50,7 +50,22 @@ $mensajeEnvioTipo = '';
 // Lógica de LIMPIAR: si no existe o es true, limpiar; si es false, no limpiar
 $limpiar = (!isset($json['parametros']['limpiar']) || $json['parametros']['limpiar'] === true) ? 'true' : 'false';
 
- 
+function validarCamposRequeridos($fieldsets, $formData, &$errores) {
+    foreach ($fieldsets as $fieldset) {
+        if (isset($fieldset['fields'])) {
+            foreach ($fieldset['fields'] as $field) {
+                if (!empty($field['required']) && (empty($formData[$field['name']]) || (is_array($formData[$field['name']]) && count($formData[$field['name']]) == 0))) {
+                    $label = $field['label'] ?? $field['name'];
+                    $errores[] = "El campo '{$label}' es obligatorio.";
+                }
+            }
+        }
+        if (isset($fieldset['fieldsets'])) {
+            validarCamposRequeridos($fieldset['fieldsets'], $formData, $errores);
+        }
+    }
+}
+
 function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$mensajeEnvioTipo) {
     $config = $json['parametros'];
     $titulo = isset($config['titulo']) ? preg_replace('/[^a-zA-Z0-9_\-]/', '_', $config['titulo']) : 'formulario';
@@ -203,12 +218,11 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     $registroFile = $registroDir . $GLOBALS['nombre_archivo'] . '_ultimo.json';
     file_put_contents($registroFile, json_encode($valoresAdjuntosJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
-  
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $formData = $_POST;
     $errores = [];
- 
+
     // --- BLOQUE PARA GUARDAR ARCHIVOS (SOPORTA MULTIPLES) ---
     foreach ($json['fieldsets'] as $fieldset) {
         if (isset($fieldset['fields'])) {
@@ -216,7 +230,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 if (($field['type'] ?? '') === 'file') {
                     $name = $field['name'];
                     if (!empty($field['multiple'])) {
-                        // Procesar múltiples archivos
                         if (isset($_FILES[$name]) && is_array($_FILES[$name]['name'])) {
                             $files = $_FILES[$name];
                             $formData[$name] = [];
@@ -231,7 +244,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             }
                         }
                     } else {
-                        // Procesar archivo único
                         if (isset($_FILES[$name]) && $_FILES[$name]['error'] == UPLOAD_ERR_OK) {
                             $nombreArchivo = basename($_FILES[$name]['name']);
                             $rutaDestino = __DIR__ . '/uploads/' . $nombreArchivo;
@@ -246,10 +258,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
     // --- FIN BLOQUE ARCHIVOS ---
 
-    // ...validaciones y luego...
-    // enviarFormulario($json_file, $formData, $css, $json, $mensajeEnvio, $mensajeEnvioTipo);
-}
-
+    // --- BLOQUE VALIDACIÓN ---
     $mailPara = $json['parametros']['mailPara'] ?? '';
     $mailDe = $json['parametros']['mailDe'] ?? '';
     if (empty($mailPara) || !filter_var($mailPara, FILTER_VALIDATE_EMAIL)) {
@@ -259,23 +268,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $errores[] = "El remitente del correo (mailDe) no es válido.";
     }
 
-    function validarCamposRequeridos($fieldsets, $formData, &$errores) {
-        foreach ($fieldsets as $fieldset) {
-            if (isset($fieldset['fields'])) {
-                foreach ($fieldset['fields'] as $field) {
-                    if (!empty($field['required']) && empty($formData[$field['name']])) {
-                        $label = $field['label'] ?? $field['name'];
-                        $errores[] = "El campo '{$label}' es obligatorio.";
-                    }
-                }
-            }
-            if (isset($fieldset['fieldsets'])) {
-                validarCamposRequeridos($fieldset['fieldsets'], $formData, $errores);
-            }
-        }
-    }
     validarCamposRequeridos($json['fieldsets'], $formData, $errores);
 
+    // --- BLOQUE ENVÍO ---
     if (!empty($errores)) {
         $mensajeEnvio = "<ul>";
         foreach ($errores as $error) {
@@ -287,8 +282,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         enviarFormulario($json_file, $formData, $css, $json, $mensajeEnvio, $mensajeEnvioTipo);
     }
 }
-
- 
 ?>
 
 <!DOCTYPE html>
@@ -298,7 +291,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?php echo htmlspecialchars($json['parametros']['titulo'], ENT_QUOTES, 'UTF-8'); ?></title>
   <link rel="stylesheet" href="css/formulariodinamico.css">
- </style>
   <script>
     var LIMPIAR_FORMULARIO = <?php echo $limpiar; ?>;
   </script>

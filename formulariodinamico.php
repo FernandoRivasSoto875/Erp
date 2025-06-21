@@ -252,7 +252,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     }
     $registroFile = $registroDir . $GLOBALS['nombre_archivo'] . '_ultimo.json';
     file_put_contents($registroFile, json_encode($valoresAdjuntosJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-}
+} // <-- ESTA LLAVE CIERRA enviarFormulario
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $formData = $_POST;
@@ -364,4 +364,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   </main>
   <script src="js/formulariodinamico.js"></script>
   </body>
-</html> 
+</html>

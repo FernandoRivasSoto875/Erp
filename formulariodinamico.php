@@ -54,7 +54,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     $config = $json['parametros'];
     $titulo = isset($config['titulo']) ? preg_replace('/[^a-zA-Z0-9_\-]/', '_', $config['titulo']) : 'formulario';
 
- <?php
+ 
 // Supón que $config['titulo'] es el nombre del formulario y $config['tituloimagen'] es la URL de la imagen
 $htmlForm = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
 $htmlForm .= "<main>";

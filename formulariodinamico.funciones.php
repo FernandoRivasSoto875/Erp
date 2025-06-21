@@ -274,21 +274,26 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                         $html .= "<button type='button' onclick='agregarFilaDatatable(\"dt_$name\")'>Agregar fila</button>";
                         // Agrega el JS necesario para manejar la tabla
                         break;
-                    case 'file':
-                        $multiple = !empty($field['multiple']) ? 'multiple' : '';
-                        $html .= "<input type=\"file\" name=\"$name" . (!empty($field['multiple']) ? '[]' : '') . "\" id=\"$name\" $accept $multiple $required $readonly $disabled $classField $styleField $dataAttrs onchange=\"previewImage(this)\" />";
-                        if (!$soloLectura) {
-                            $html .= "<img id=\"preview_$name\" style=\"max-width:200px;display:none;\">";
-                        }
-                        if ($value && !$soloLectura) {
-                            $ext = strtolower(pathinfo(is_array($value) ? $value[0] : $value, PATHINFO_EXTENSION));
-                            if (in_array($ext, ['jpg','jpeg','png','gif','webp'])) {
-                                $html .= "<br><img src=\"" . htmlspecialchars(is_array($value) ? $value[0] : $value) . "\" style=\"max-width:200px;\">";
-                            } else {
-                                $html .= "<br><a href=\"" . htmlspecialchars(is_array($value) ? $value[0] : $value) . "\">Archivo actual</a>";
-                            }
-                        }
-                        break;
+     
+                    
+                         case 'file':
+                                $multiple = !empty($field['multiple']) ? 'multiple' : '';
+                                $nameAttr = !empty($field['multiple']) ? $name . '[]' : $name;
+                                $html .= "<input type=\"file\" name=\"$nameAttr\" id=\"$name\" $accept $multiple $required $readonly $disabled $classField $styleField $dataAttrs onchange=\"mostrarArchivosSeleccionados(this);previewImage(this);\" />";
+                                $html .= "<div id=\"filelist_$name\" class=\"file-list\"></div>";
+                                if (!$soloLectura) {
+                                    $html .= "<img id=\"preview_$name\" style=\"max-width:200px;display:none;\">";
+                                }
+                                if ($value && !$soloLectura) {
+                                    $fileToShow = is_array($value) ? $value[0] : $value;
+                                    $ext = strtolower(pathinfo($fileToShow, PATHINFO_EXTENSION));
+                                    if (in_array($ext, ['jpg','jpeg','png','gif','webp'])) {
+                                        $html .= "<br><img src=\"" . htmlspecialchars($fileToShow) . "\" style=\"max-width:200px;\">";
+                                    } else {
+                                        $html .= "<br><a href=\"" . htmlspecialchars($fileToShow) . "\">Archivo actual</a>";
+                                    }
+                                }
+                                break;
 
                     default:
                         $html .= "<input type=\"$type\" name=\"$name\" id=\"$name\" value=\"" . htmlspecialchars($value) . "\" placeholder=\"$placeholder\" $required $maxlength $minlength $min $max $step $pattern $accept $autocomplete $autofocus $readonly $disabled $classField $styleField $dataAttrs />";

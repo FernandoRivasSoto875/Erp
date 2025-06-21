@@ -1,5 +1,18 @@
  // ===================== UTILIDADES DE FORMATO Y FÓRMULAS =====================
-
+function mostrarArchivosSeleccionados(input) {
+    var fileListDiv = document.getElementById('filelist_' + input.name.replace('[]',''));
+    if (!fileListDiv) return;
+    fileListDiv.innerHTML = '';
+    if (input.files && input.files.length > 0) {
+        var ul = document.createElement('ul');
+        for (var i = 0; i < input.files.length; i++) {
+            var li = document.createElement('li');
+            li.textContent = input.files[i].name;
+            ul.appendChild(li);
+        }
+        fileListDiv.appendChild(ul);
+    }
+}
 function previewImage(input) {
   if (input.files && input.files[0]) {
     var reader = new FileReader();

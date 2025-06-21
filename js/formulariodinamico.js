@@ -567,41 +567,48 @@ document.addEventListener('DOMContentLoaded', function() {
     })
     .then(response => response.text())
         // ...existing code...
-    .then(data => {
-                if (
-          typeof LIMPIAR_FORMULARIO !== "undefined" &&
-          LIMPIAR_FORMULARIO &&
-          nuevoMensaje &&
-          nuevoMensaje.classList.contains('exito')
-        ) {
-          // Limpiar campos manualmente
-          const form = document.getElementById("formulario");
-          // Limpiar todos los campos del formulario
-          Array.from(form.elements).forEach(field => {
-            if (field.type === "checkbox" || field.type === "radio") {
-              field.checked = false;
-            } else if (field.type === "file") {
-              field.value = '';
-              // Limpiar previsualización de archivos
-              var previewDiv = document.getElementById('filelist_' + field.name.replace('[]',''));
-              if (previewDiv) previewDiv.innerHTML = '';
-            } else if (field.tagName === "SELECT") {
-              field.selectedIndex = 0;
-            } else {
-              field.value = '';
-            }
-            // Limpia errores visuales si existen
-            const container = field.closest(".campo-container");
-            if (container) {
-              const errorSpan = container.querySelector(".mensaje-error");
-              if (errorSpan) errorSpan.textContent = "";
-            }
-          });
-          // También limpia localStorage si usas autosave
-          Array.from(form.elements).forEach(field => localStorage.removeItem(field.name));
+ 
+.then(data => {
+    var tempDiv = document.createElement('div');
+    tempDiv.innerHTML = data;
+    var nuevoMensaje = tempDiv.querySelector('#mensaje-envio');
+    if (nuevoMensaje) {
+      document.getElementById('mensaje-envio').innerHTML = nuevoMensaje.innerHTML;
+      document.getElementById('mensaje-envio').className = nuevoMensaje.className;
+    }
+    // Limpiar formulario solo si LIMPIAR_FORMULARIO es true y el envío fue exitoso
+    if (
+      typeof LIMPIAR_FORMULARIO !== "undefined" &&
+      LIMPIAR_FORMULARIO &&
+      nuevoMensaje &&
+      nuevoMensaje.classList.contains('exito')
+    ) {
+      // Limpiar campos manualmente
+      const form = document.getElementById("formulario");
+      Array.from(form.elements).forEach(field => {
+        if (field.type === "checkbox" || field.type === "radio") {
+          field.checked = false;
+        } else if (field.type === "file") {
+          field.value = '';
+          // Limpiar previsualización de archivos
+          var previewDiv = document.getElementById('filelist_' + field.name.replace('[]',''));
+          if (previewDiv) previewDiv.innerHTML = '';
+        } else if (field.tagName === "SELECT") {
+          field.selectedIndex = 0;
+        } else {
+          field.value = '';
         }
-
-
+        // Limpia errores visuales si existen
+        const container = field.closest(".campo-container");
+        if (container) {
+          const errorSpan = container.querySelector(".mensaje-error");
+          if (errorSpan) errorSpan.textContent = "";
+        }
+      });
+      // También limpia localStorage si usas autosave
+      Array.from(form.elements).forEach(field => localStorage.removeItem(field.name));
+    }
+})
 
     })
     // ...existing code...

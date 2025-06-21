@@ -1,4 +1,75 @@
 <?php
+ 
+function renderFieldsetsReadOnly($fieldsets, $valores = []) {
+    $html = "";
+    foreach ($fieldsets as $fieldset) {
+        if (!empty($fieldset['legend'])) {
+            $html .= "<h3 style='margin-top:20px;'>" . htmlspecialchars($fieldset['legend']) . "</h3>";
+        }
+        $html .= "<table style='width:100%;border-collapse:collapse;margin-bottom:15px;'>";
+        if (isset($fieldset['fields'])) {
+            foreach ($fieldset['fields'] as $field) {
+                $name = $field['name'] ?? '';
+                $label = $field['label'] ?? $name;
+                $type = $field['type'] ?? 'text';
+                $value = $valores[$name] ?? ($field['value'] ?? '');
+                $displayValue = '';
+
+                // Manejo especial para checkbox, radio y select
+                if ($type === 'checkbox' || $type === 'radio' || $type === 'select' || $type === 'selectdata') {
+                    $options = $field['options'] ?? [];
+                    // Para selectdata, obtener opciones desde la base si es necesario
+                    if ($type === 'selectdata' && isset($field['data'])) {
+                        $options = obtenerDatosTabla($field['data']);
+                    }
+                    $selectedLabels = [];
+                    if ($type === 'checkbox') {
+                        $vals = is_array($value) ? $value : (strlen($value) ? array_map('trim', explode(',', $value)) : []);
+                        foreach ($options as $opt) {
+                            $opt_val = is_array($opt) ? ($opt['value'] ?? $opt['label'] ?? $opt) : $opt;
+                            $opt_label = is_array($opt) ? ($opt['label'] ?? $opt['value'] ?? $opt) : $opt;
+                            if (in_array($opt_val, $vals)) {
+                                $selectedLabels[] = $opt_label;
+                            }
+                        }
+                        $displayValue = $selectedLabels ? implode(', ', $selectedLabels) : '-';
+                    } elseif ($type === 'radio' || $type === 'select' || $type === 'selectdata') {
+                        foreach ($options as $opt) {
+                            $opt_val = is_array($opt) ? ($opt['value'] ?? $opt['label'] ?? $opt) : $opt;
+                            $opt_label = is_array($opt) ? ($opt['label'] ?? $opt['value'] ?? $opt) : $opt;
+                            if ($value == $opt_val) {
+                                $selectedLabels[] = $opt_label;
+                            }
+                        }
+                        $displayValue = $selectedLabels ? implode(', ', $selectedLabels) : '-';
+                    }
+                } elseif ($type === 'textarea') {
+                    $displayValue = nl2br(htmlspecialchars($value));
+                } elseif ($type === 'file') {
+                    $displayValue = $value ? htmlspecialchars($value) : '-';
+                } elseif ($type === 'hidden') {
+                    continue; // No mostrar campos ocultos
+                } else {
+                    $displayValue = htmlspecialchars($value);
+                }
+
+                $html .= "<tr style='border-bottom:1px solid #eee;'>";
+                $html .= "<td style='padding:6px 10px;font-weight:bold;width:30%;vertical-align:top;'>" . htmlspecialchars($label) . "</td>";
+                $html .= "<td style='padding:6px 10px;'>" . ($displayValue !== '' ? $displayValue : '-') . "</td>";
+                $html .= "</tr>";
+            }
+        }
+        $html .= "</table>";
+
+        // Sub-fieldsets
+        if (isset($fieldset['fieldsets'])) {
+            $html .= renderFieldsetsReadOnly($fieldset['fieldsets'], $valores);
+        }
+    }
+    return $html;
+}
+
+
 
 function obtenerDatosTabla($data) {
     global $conn;

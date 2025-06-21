@@ -62,7 +62,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
 
     $valoresAdjuntos = normalizaValores($formData, $json, false);
     $valoresAdjuntosJson = normalizaValores($formData, $json, true);
-
+ 
     $htmlForm = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
     $htmlForm .= "<main>";
     $htmlForm .= "<header class='form-header'><h2>" . htmlspecialchars($config['titulo'], ENT_QUOTES, 'UTF-8') . "</h2>";
@@ -71,9 +71,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     }
     $htmlForm .= "</header>";
     $htmlForm .= "<p>" . htmlspecialchars($config['comentario'], ENT_QUOTES, 'UTF-8') . "</p>";
-    $htmlForm .= "<form>";
-    $htmlForm .= generarFieldsets($json['fieldsets'], $valoresAdjuntos, true);
-    $htmlForm .= "</form>";
+    $htmlForm .= renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos); // <-- Aquí la llamas
     $htmlForm .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
     $htmlForm .= "</main></body></html>";
 

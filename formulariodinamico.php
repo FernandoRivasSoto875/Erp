@@ -54,26 +54,23 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     $config = $json['parametros'];
     $titulo = isset($config['titulo']) ? preg_replace('/[^a-zA-Z0-9_\-]/', '_', $config['titulo']) : 'formulario';
 
-    $mailDe = $config['mailDe'] ?? null;
-    $mailPara = $config['mailPara'] ?? null;
-    $mailCc = $config['mailCc'] ?? null;
-    $mailCco = $config['mailCco'] ?? null;
-    $tiposFormatoEnvio = explode(',', strtolower($config['tipoformatoenvio'] ?? 'htmlc'));
-
-    $valoresAdjuntos = normalizaValores($formData, $json, false);
-    $valoresAdjuntosJson = normalizaValores($formData, $json, true);
- 
-    $htmlForm = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
-    $htmlForm .= "<main>";
-    $htmlForm .= "<header class='form-header'><h2>" . htmlspecialchars($config['titulo'], ENT_QUOTES, 'UTF-8') . "</h2>";
-    if (!empty($config['tituloimagen'])) {
-        $htmlForm .= "<img src='" . htmlspecialchars($config['tituloimagen'], ENT_QUOTES, 'UTF-8') . "' alt='Título Imagen'>";
-    }
-    $htmlForm .= "</header>";
-    $htmlForm .= "<p>" . htmlspecialchars($config['comentario'], ENT_QUOTES, 'UTF-8') . "</p>";
-    $htmlForm .= renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos); // <-- Aquí la llamas
-    $htmlForm .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
-    $htmlForm .= "</main></body></html>";
+ <?php
+// Supón que $config['titulo'] es el nombre del formulario y $config['tituloimagen'] es la URL de la imagen
+$htmlForm = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
+$htmlForm .= "<main>";
+$htmlForm .= "<header class='form-header'>";
+$htmlForm .= "<h2>" . htmlspecialchars($config['titulo'], ENT_QUOTES, 'UTF-8') . "</h2>";
+// Mostrar el nombre del archivo adjunto (por ejemplo, el PDF)
+$htmlForm .= "<div style='font-size:1.1em;font-weight:bold;margin-bottom:10px;'>Archivo adjunto: " . htmlspecialchars($pdfFilename ?? $config['titulo'] . '.pdf', ENT_QUOTES, 'UTF-8') . "</div>";
+// Mostrar la imagen debajo del nombre del archivo
+if (!empty($config['tituloimagen'])) {
+    $htmlForm .= "<div style='margin-bottom:15px;'><img src='" . htmlspecialchars($config['tituloimagen'], ENT_QUOTES, 'UTF-8') . "' alt='Imagen Formulario' style='max-width:200px;display:block;'></div>";
+}
+$htmlForm .= "</header>";
+$htmlForm .= "<p>" . htmlspecialchars($config['comentario'], ENT_QUOTES, 'UTF-8') . "</p>";
+$htmlForm .= renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos);
+$htmlForm .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
+$htmlForm .= "</main></body></html>";
 
     $mpdf = new \Mpdf\Mpdf(['tempDir' => __DIR__ . '/tmp']);
     $mpdf->WriteHTML($htmlForm);

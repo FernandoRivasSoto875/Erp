@@ -260,7 +260,20 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                     case 'hidden':
                         $html .= "<input type=\"hidden\" name=\"$name\" id=\"$name\" value=\"" . htmlspecialchars($value) . "\" $dataAttrs />";
                         break;
-
+                    case 'datatable':
+                        $columns = $field['columns'] ?? [];
+                        $minRows = $field['minRows'] ?? 1;
+                        $maxRows = $field['maxRows'] ?? 10;
+                        $html .= "<table class='datatable' id='dt_$name'><thead><tr>";
+                        foreach ($columns as $col) {
+                            $html .= "<th>" . htmlspecialchars($col['label']) . "</th>";
+                        }
+                        $html .= "<th>Acciones</th></tr></thead><tbody>";
+                        // Aquí puedes generar filas iniciales según $minRows
+                        $html .= "</tbody></table>";
+                        $html .= "<button type='button' onclick='agregarFilaDatatable(\"dt_$name\")'>Agregar fila</button>";
+                        // Agrega el JS necesario para manejar la tabla
+                        break;
                     case 'file':
                         $multiple = !empty($field['multiple']) ? 'multiple' : '';
                         $html .= "<input type=\"file\" name=\"$name" . (!empty($field['multiple']) ? '[]' : '') . "\" id=\"$name\" $accept $multiple $required $readonly $disabled $classField $styleField $dataAttrs onchange=\"previewImage(this)\" />";

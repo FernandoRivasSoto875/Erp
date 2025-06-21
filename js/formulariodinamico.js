@@ -14,6 +14,29 @@ function mostrarArchivosSeleccionados(input) {
     }
 }
 
+
+document.querySelectorAll('[data-formula]').forEach(function(input) {
+  let formulaData = input.getAttribute('data-formula');
+  try { formulaData = JSON.parse(formulaData); } catch { }
+  if (typeof formulaData === 'string') {
+    formulaData = formulaData.replace(/^"(.*)"$/, '$1');
+    const campos = formulaData.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) || [];
+    campos.forEach(function(campo) {
+      const campoInput = document.getElementsByName(campo)[0];
+      if (campoInput) {
+        campoInput.addEventListener('input', function() {
+          calcularFormula(input, formulaData, campos);
+        });
+      }
+    });
+    calcularFormula(input, formulaData, campos);
+  }
+  // ...
+});
+
+
+
+
  function previewImage(input) {
     var previewDiv = document.getElementById('filelist_' + input.name.replace('[]',''));
     if (!previewDiv) return;

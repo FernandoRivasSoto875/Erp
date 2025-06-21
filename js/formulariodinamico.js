@@ -14,18 +14,24 @@ function mostrarArchivosSeleccionados(input) {
     }
 }
 
-function previewImage(input) {
-    var img = document.getElementById('preview_' + input.name.replace('[]',''));
-    if (!img) return;
-    if (input.files && input.files[0]) {
-        var reader = new FileReader();
-        reader.onload = function(e) {
-            img.src = e.target.result;
-            img.style.display = 'block';
-        }
-        reader.readAsDataURL(input.files[0]);
-    } else {
-        img.style.display = 'none';
+ function previewImage(input) {
+    var previewDiv = document.getElementById('filelist_' + input.name.replace('[]',''));
+    if (!previewDiv) return;
+    previewDiv.innerHTML = '';
+    if (input.files && input.files.length > 0) {
+        Array.from(input.files).forEach(file => {
+            if (file.type.startsWith('image/')) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.maxWidth = '120px';
+                    img.style.margin = '5px';
+                    previewDiv.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
     }
 }
  
@@ -588,6 +594,7 @@ input.addEventListener('change', function() {
           document.getElementById('mensaje-envio').className = nuevoMensaje.className;
         }
         // Limpiar formulario solo si LIMPIAR_FORMULARIO es true y el envío fue exitoso
+                // ...existing code...
         if (
           typeof LIMPIAR_FORMULARIO !== "undefined" &&
           LIMPIAR_FORMULARIO &&
@@ -597,9 +604,25 @@ input.addEventListener('change', function() {
           // Limpiar campos manualmente
           const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
           fields.forEach(field => {
-            field.value = '';
+            if (field.type === "checkbox" || field.type === "radio") {
+              field.checked = false;
+            } else if (field.type === "file") {
+              field.value = '';
+              // Limpiar previsualización de archivos
+              var previewDiv = document.getElementById('filelist_' + field.name.replace('[]',''));
+              if (previewDiv) previewDiv.innerHTML = '';
+            } else {
+              field.value = '';
+            }
           });
+          // También limpia localStorage si usas autosave
+          fields.forEach(field => localStorage.removeItem(field.name));
         }
+        // ...existing code...
+
+
+
+
     })
     // ...existing code...
     .catch(error => {

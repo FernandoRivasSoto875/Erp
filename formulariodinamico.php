@@ -1,6 +1,7 @@
- <?php
+<?php
 
 ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 require_once 'funcionessql.php';
@@ -50,6 +51,9 @@ $mensajeEnvioTipo = '';
 // Lógica de LIMPIAR: si no existe o es true, limpiar; si es false, no limpiar
 $limpiar = (!isset($json['parametros']['limpiar']) || $json['parametros']['limpiar'] === true) ? 'true' : 'false';
 
+// Obtener baseUrl desde parámetros JSON
+$baseUrl = $json['parametros']['baseurl'] ?? '';
+
 function validarCamposRequeridos($fieldsets, $formData, &$errores) {
     foreach ($fieldsets as $fieldset) {
         if (isset($fieldset['fields'])) {
@@ -64,9 +68,9 @@ function validarCamposRequeridos($fieldsets, $formData, &$errores) {
             validarCamposRequeridos($fieldset['fieldsets'], $formData, $errores);
         }
     }
- }
- 
-function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$mensajeEnvioTipo) {
+}
+
+function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$mensajeEnvioTipo, $baseUrl = '') {
     $config = $json['parametros'];
     $titulo = isset($config['titulo']) ? preg_replace('/[^a-zA-Z0-9_\-]/', '_', $config['titulo']) : 'formulario';
 
@@ -105,7 +109,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     }
     $htmlForm .= "</header>";
     $htmlForm .= "<p>" . htmlspecialchars($config['comentario'], ENT_QUOTES, 'UTF-8') . "</p>";
-    $htmlForm .= renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos); // <-- aquí usará $imagenesInline
+    $htmlForm .= renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos, $baseUrl); // <-- aquí usará $baseUrl
     $htmlForm .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
     $htmlForm .= "</main></body></html>";
 
@@ -250,9 +254,6 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     file_put_contents($registroFile, json_encode($valoresAdjuntosJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
 
- 
-
-
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $formData = $_POST;
     $errores = [];
@@ -313,7 +314,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $mensajeEnvio .= "</ul>";
         $mensajeEnvioTipo = "error";
     } else {
-        enviarFormulario($json_file, $formData, $css, $json, $mensajeEnvio, $mensajeEnvioTipo);
+        enviarFormulario($json_file, $formData, $css, $json, $mensajeEnvio, $mensajeEnvioTipo, $baseUrl);
     }
 }
 ?>
@@ -363,4 +364,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   </main>
   <script src="js/formulariodinamico.js"></script>
   </body>
-</html>
+</html> 

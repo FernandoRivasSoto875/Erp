@@ -1,16 +1,20 @@
-function mostrarArchivosSeleccionados(input) {
+ function mostrarArchivosSeleccionados(input) {
     var fileListDiv = document.getElementById('filelist_' + input.name.replace('[]',''));
     if (!fileListDiv) return;
     fileListDiv.innerHTML = '';
+    let nombres = [];
     if (input.files && input.files.length > 0) {
         var ul = document.createElement('ul');
         for (var i = 0; i < input.files.length; i++) {
             var li = document.createElement('li');
             li.textContent = input.files[i].name;
             ul.appendChild(li);
+            nombres.push(input.files[i].name);
         }
         fileListDiv.appendChild(ul);
     }
+    // Guarda los nombres en localStorage para referencia visual
+    localStorage.setItem(input.name + '_filenames', JSON.stringify(nombres));
 }
 
 function previewImage(input) {
@@ -133,6 +137,13 @@ function guardarCampo(e) {
 function cargarCampos() {
     const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
     fields.forEach(field => {
+        if (field.type === "file") {
+            // No se puede restaurar archivos por seguridad
+            field.value = '';
+            var previewDiv = document.getElementById('filelist_' + field.name.replace('[]',''));
+            if (previewDiv) previewDiv.innerHTML = '';
+            return;
+        }
         let saved = localStorage.getItem(field.name);
         if (saved) {
             field.value = saved;
@@ -144,7 +155,6 @@ function cargarCampos() {
         }
     });
 }
-
 function validarInput(e) {
     const field = e.target;
     if (field.validity && !field.validity.valid) {

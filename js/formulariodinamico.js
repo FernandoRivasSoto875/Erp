@@ -13,7 +13,6 @@
         }
         fileListDiv.appendChild(ul);
     }
-    // Guarda los nombres en localStorage para referencia visual
     localStorage.setItem(input.name + '_filenames', JSON.stringify(nombres));
 }
 
@@ -506,7 +505,16 @@ function initDynamicReordering() {
 
 // ===================== INICIALIZACIÓN DE EVENTOS =====================
 
+ // ...tus funciones arriba...
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Inicializador para archivos
+    document.querySelectorAll('input[type="file"]').forEach(function(input) {
+        input.addEventListener('change', function() {
+            mostrarArchivosSeleccionados(input);
+        });
+    });
+
     // Fórmulas automáticas
     document.querySelectorAll('[data-formula]').forEach(function(input) {
         let formulaData = input.getAttribute('data-formula');
@@ -608,4 +616,4 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('mensaje-envio').className = "error";
         });
     });
-}); 
+});

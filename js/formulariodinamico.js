@@ -1,6 +1,20 @@
  // ===================== UTILIDADES DE FORMATO Y FÓRMULAS =====================
 
-function limpiarNumero(valor) {
+function previewImage(input) {
+  if (input.files && input.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = document.getElementById('preview_' + input.name);
+      if (img) {
+        img.src = e.target.result;
+        img.style.display = 'block';
+      }
+    }
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+ function limpiarNumero(valor) {
   valor = valor.replace(/[^\d,.-]/g, '');
   valor = valor.replace(/\./g, '').replace(',', '.');
   return valor;

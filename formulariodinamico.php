@@ -203,10 +203,31 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     $registroFile = $registroDir . $GLOBALS['nombre_archivo'] . '_ultimo.json';
     file_put_contents($registroFile, json_encode($valoresAdjuntosJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
- 
+  
+
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $formData = $_POST;
     $errores = [];
+
+    // --- GUARDAR ARCHIVOS SUBIDOS ---
+    foreach ($json['fieldsets'] as $fieldset) {
+        if (isset($fieldset['fields'])) {
+            foreach ($fieldset['fields'] as $field) {
+                if (($field['type'] ?? '') === 'file') {
+                    $name = $field['name'];
+                    if (isset($_FILES[$name]) && $_FILES[$name]['error'] == UPLOAD_ERR_OK) {
+                        $nombreArchivo = basename($_FILES[$name]['name']);
+                        $rutaDestino = __DIR__ . '/uploads/' . $nombreArchivo;
+                        if (move_uploaded_file($_FILES[$name]['tmp_name'], $rutaDestino)) {
+                            $formData[$name] = 'uploads/' . $nombreArchivo;
+                        }
+                    }
+                }
+            }
+        }
+        // Si tienes sub-fieldsets anidados, puedes agregar aquí un manejo recursivo si lo necesitas
+    }
+    // --- FIN GUARDAR ARCHIVOS ---
 
     $mailPara = $json['parametros']['mailPara'] ?? '';
     $mailDe = $json['parametros']['mailDe'] ?? '';
@@ -245,7 +266,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         enviarFormulario($json_file, $formData, $css, $json, $mensajeEnvio, $mensajeEnvioTipo);
     }
 }
-
 
  
 ?>

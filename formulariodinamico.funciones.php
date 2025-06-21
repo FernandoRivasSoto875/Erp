@@ -1,6 +1,6 @@
 <?php
  
-function renderFieldsetsReadOnly($fieldsets, $valores = []) {
+ function renderFieldsetsReadOnly($fieldsets, $valores = []) {
     $html = "";
     foreach ($fieldsets as $fieldset) {
         if (!empty($fieldset['legend'])) {
@@ -46,7 +46,16 @@ function renderFieldsetsReadOnly($fieldsets, $valores = []) {
                 } elseif ($type === 'textarea') {
                     $displayValue = nl2br(htmlspecialchars($value));
                 } elseif ($type === 'file') {
-                    $displayValue = $value ? htmlspecialchars($value) : '-';
+                    if ($value) {
+                        $ext = strtolower(pathinfo($value, PATHINFO_EXTENSION));
+                        if (in_array($ext, ['jpg','jpeg','png','gif','webp'])) {
+                            $displayValue = "<img src='" . htmlspecialchars($value) . "' style='max-width:200px;'>";
+                        } else {
+                            $displayValue = "<a href='" . htmlspecialchars($value) . "'>Descargar archivo</a>";
+                        }
+                    } else {
+                        $displayValue = '-';
+                    }
                 } elseif ($type === 'hidden') {
                     continue; // No mostrar campos ocultos
                 } else {
@@ -68,8 +77,6 @@ function renderFieldsetsReadOnly($fieldsets, $valores = []) {
     }
     return $html;
 }
-
-
 
 function obtenerDatosTabla($data) {
     global $conn;

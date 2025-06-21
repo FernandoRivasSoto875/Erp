@@ -50,69 +50,10 @@ $mensajeEnvioTipo = '';
 // Lógica de LIMPIAR: si no existe o es true, limpiar; si es false, no limpiar
 $limpiar = (!isset($json['parametros']['limpiar']) || $json['parametros']['limpiar'] === true) ? 'true' : 'false';
 
+ 
 function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$mensajeEnvioTipo) {
     $config = $json['parametros'];
     $titulo = isset($config['titulo']) ? preg_replace('/[^a-zA-Z0-9_\-]/', '_', $config['titulo']) : 'formulario';
-
- 
-// Supón que $config['titulo'] es el nombre del formulario y $config['tituloimagen'] es la URL de la imagen
-$htmlForm = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
-$htmlForm .= "<main>";
-$htmlForm .= "<header class='form-header'>";
-$htmlForm .= "<h2>" . htmlspecialchars($config['titulo'], ENT_QUOTES, 'UTF-8') . "</h2>";
-// Mostrar el nombre del archivo adjunto (por ejemplo, el PDF)
-$htmlForm .= "<div style='font-size:1.1em;font-weight:bold;margin-bottom:10px;'>Archivo adjunto: " . htmlspecialchars($pdfFilename ?? $config['titulo'] . '.pdf', ENT_QUOTES, 'UTF-8') . "</div>";
-// Mostrar la imagen debajo del nombre del archivo
-if (!empty($config['tituloimagen'])) {
-    $htmlForm .= "<div style='margin-bottom:15px;'><img src='" . htmlspecialchars($config['tituloimagen'], ENT_QUOTES, 'UTF-8') . "' alt='Imagen Formulario' style='max-width:200px;display:block;'></div>";
-}
-$htmlForm .= "</header>";
-$htmlForm .= "<p>" . htmlspecialchars($config['comentario'], ENT_QUOTES, 'UTF-8') . "</p>";
-$htmlForm .= renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos);
-$htmlForm .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
-$htmlForm .= "</main></body></html>";
-
-    $mpdf = new \Mpdf\Mpdf(['tempDir' => __DIR__ . '/tmp']);
-    $mpdf->WriteHTML($htmlForm);
-    $pdfContent = $mpdf->Output('', 'S');
-
-    // Generar XLSX y XLS (xls como CSV pero con extensión .xls)
-    $xlsContent = null;
-    $xlsxContent = null;
-    $csvContent = null;
-    $esXlsx = false;
-    if (class_exists('Shuchkin\SimpleXLSXGen')) {
-        $header = [array_keys($valoresAdjuntos)];
-        $row = [array_values($valoresAdjuntos)];
-        $xlsx = \Shuchkin\SimpleXLSXGen::fromArray(array_merge($header, $row));
-        $tempXlsx = tempnam(sys_get_temp_dir(), 'xlsx_') . '.xlsx';
-        $xlsx->saveAs($tempXlsx);
-        $xlsxContent = file_get_contents($tempXlsx);
-        unlink($tempXlsx);
-        $esXlsx = true;
-    }
-    // CSV siempre disponible
-    $csvRows = [];
-    $csvRows[] = implode(",", array_map(function($k){return '"'.str_replace('"','""',$k).'"';}, array_keys($valoresAdjuntos)));
-    $csvRows[] = implode(",", array_map(function($v){
-        return '"'.str_replace('"','""',$v).'"';
-    }, array_values($valoresAdjuntos)));
-    $csvContent = implode("\r\n", $csvRows);
-    // Para .xls (realmente CSV con extensión .xls)
-    $xlsContent = $csvContent;
-
-    $jsonContent = json_encode($valoresAdjuntosJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-    if ($jsonContent === false) {
-        $jsonContent = '{}';
-    }
-
-    $xml = new SimpleXMLElement('<formulario/>');
-    foreach ($valoresAdjuntos as $key => $value) {
-        $xml->addChild($key, $value);
-    }
-    $xmlContent = $xml->asXML();
-
-    $docContent = "<html><body>" . $htmlForm . "</body></html>";
 
     // Nombres de archivos adjuntos personalizados según el título
     $pdfFilename  = $titulo . '.pdf';
@@ -123,6 +64,73 @@ $htmlForm .= "</main></body></html>";
     $jsonFilename = $titulo . '.json';
     $xmlFilename  = $titulo . '.xml';
     $docFilename  = $titulo . '.doc';
+
+    $mailDe = $config['mailDe'] ?? null;
+    $mailPara = $config['mailPara'] ?? null;
+    $mailCc = $config['mailCc'] ?? null;
+    $mailCco = $config['mailCco'] ?? null;
+    $tiposFormatoEnvio = explode(',', strtolower($config['tipoformatoenvio'] ?? 'htmlc'));
+
+    $valoresAdjuntos = normalizaValores($formData, $json, false);
+    $valoresAdjuntosJson = normalizaValores($formData, $json, true);
+
+    // Generar HTML para todos los formatos
+    $htmlForm = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
+    $htmlForm .= "<main>";
+    $htmlForm .= "<header class='form-header'>";
+    $htmlForm .= "<h2>" . htmlspecialchars($config['titulo'], ENT_QUOTES, 'UTF-8') . "</h2>";
+    $htmlForm .= "<div style='font-size:1.1em;font-weight:bold;margin-bottom:10px;'>Archivo adjunto: " . htmlspecialchars($pdfFilename, ENT_QUOTES, 'UTF-8') . "</div>";
+    if (!empty($config['tituloimagen'])) {
+        $htmlForm .= "<div style='margin-bottom:15px;'><img src='" . htmlspecialchars($config['tituloimagen'], ENT_QUOTES, 'UTF-8') . "' alt='Imagen Formulario' style='max-width:200px;display:block;'></div>";
+    }
+    $htmlForm .= "</header>";
+    $htmlForm .= "<p>" . htmlspecialchars($config['comentario'], ENT_QUOTES, 'UTF-8') . "</p>";
+    $htmlForm .= renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos);
+    $htmlForm .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
+    $htmlForm .= "</main></body></html>";
+
+    // PDF
+    $mpdf = new \Mpdf\Mpdf(['tempDir' => __DIR__ . '/tmp']);
+    $mpdf->WriteHTML($htmlForm);
+    $pdfContent = $mpdf->Output('', 'S');
+
+    // XLSX y XLS
+    $xlsContent = null;
+    $xlsxContent = null;
+    $csvContent = null;
+    if (class_exists('Shuchkin\SimpleXLSXGen')) {
+        $header = [array_keys($valoresAdjuntos)];
+        $row = [array_values($valoresAdjuntos)];
+        $xlsx = \Shuchkin\SimpleXLSXGen::fromArray(array_merge($header, $row));
+        $tempXlsx = tempnam(sys_get_temp_dir(), 'xlsx_') . '.xlsx';
+        $xlsx->saveAs($tempXlsx);
+        $xlsxContent = file_get_contents($tempXlsx);
+        unlink($tempXlsx);
+    }
+    // CSV
+    $csvRows = [];
+    $csvRows[] = implode(",", array_map(function($k){return '"'.str_replace('"','""',$k).'"';}, array_keys($valoresAdjuntos)));
+    $csvRows[] = implode(",", array_map(function($v){
+        return '"'.str_replace('"','""',$v).'"';
+    }, array_values($valoresAdjuntos)));
+    $csvContent = implode("\r\n", $csvRows);
+    $xlsContent = $csvContent;
+
+    // JSON
+    $jsonContent = json_encode($valoresAdjuntosJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    if ($jsonContent === false) {
+        $jsonContent = '{}';
+    }
+
+    // XML
+    $xml = new SimpleXMLElement('<formulario/>');
+    foreach ($valoresAdjuntos as $key => $value) {
+        $xml->addChild($key, $value);
+    }
+    $xmlContent = $xml->asXML();
+
+    // DOC
+    $docContent = "<html><body>" . $htmlForm . "</body></html>";
 
     $asunto = $config['subject'] ?? "Formulario Recibido";
 
@@ -147,43 +155,11 @@ $htmlForm .= "</main></body></html>";
                 case 'xls':
                     if ($xlsContent) {
                         $mail->addStringAttachment($xlsContent, $xlsFilename, 'base64', 'application/vnd.ms-excel');
- 
-                        
                     }
                     break;
                 case 'xlsx':
                     if ($xlsxContent) {
                         $mail->addStringAttachment($xlsxContent, $xlsxFilename, 'base64', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-
-
-                     if (class_exists('Shuchkin\SimpleXLSXGen')) {
-                                $header = [array_keys($valoresAdjuntos)];
-                                $row = [array_values($valoresAdjuntos)];
-                                $xlsx = \Shuchkin\SimpleXLSXGen::fromArray(array_merge($header, $row));
-                                $tempXlsx = tempnam(sys_get_temp_dir(), 'xlsx_') . '.xlsx';
-                                $xlsx->saveAs($tempXlsx);
-                                if (file_exists($tempXlsx)) {
-                                    $xlsxContent = file_get_contents($tempXlsx);
-                                    unlink($tempXlsx);
-                                } else {
-                                    echo "<div style='color:red'>No se pudo crear el archivo temporal XLSX en: $tempXlsx</div>";
-                                }
-                            } else {
-                                echo "<div style='color:red'>La clase SimpleXLSXGen no está disponible.</div>";
-                            }
-
-
-
-
-
-
-
-
-
-
-
-
-
                     }
                     break;
                 case 'csv':
@@ -212,23 +188,6 @@ $htmlForm .= "</main></body></html>";
             $mail->Body = "Adjunto el(los) archivo(s) del formulario.";
         }
 
-
-echo "<pre>";
-echo "Adjuntos solicitados: "; print_r($tiposFormatoEnvio);
-echo "PDF: " . (isset($pdfContent) && $pdfContent ? "OK" : "NO") . "\n";
-echo "XLSX: " . (isset($xlsxContent) && $xlsxContent ? "OK" : "NO") . "\n";
-echo "XLS: " . (isset($xlsContent) && $xlsContent ? "OK" : "NO") . "\n";
-echo "CSV: " . (isset($csvContent) && $csvContent ? "OK" : "NO") . "\n";
-echo "JSON: " . (isset($jsonContent) && $jsonContent ? "OK" : "NO") . "\n";
-echo "XML: " . (isset($xmlContent) && $xmlContent ? "OK" : "NO") . "\n";
-echo "DOC: " . (isset($docContent) && $docContent ? "OK" : "NO") . "\n";
-echo "HTML: " . (isset($htmlForm) && $htmlForm ? "OK" : "NO") . "\n";
-echo "</pre>";
-
-
-
-
-
         $mail->send();
         $mensajeEnvio = "¡Formulario enviado correctamente!";
         $mensajeEnvioTipo = "exito";
@@ -244,11 +203,9 @@ echo "</pre>";
     $registroFile = $registroDir . $GLOBALS['nombre_archivo'] . '_ultimo.json';
     file_put_contents($registroFile, json_encode($valoresAdjuntosJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 }
-
+ 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-
     $formData = $_POST;
-
     $errores = [];
 
     $mailPara = $json['parametros']['mailPara'] ?? '';
@@ -289,6 +246,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 
+
+ 
 ?>
 
 <!DOCTYPE html>

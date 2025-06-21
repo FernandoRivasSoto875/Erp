@@ -295,13 +295,13 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                         break;
       
                     case 'file':
+       
+                  
                         $multiple = !empty($field['multiple']) ? 'multiple' : '';
                         $nameAttr = !empty($field['multiple']) ? $name . '[]' : $name;
                         $html .= "<input type=\"file\" name=\"$nameAttr\" id=\"$name\" $accept $multiple $required $readonly $disabled $classField $styleField $dataAttrs onchange=\"mostrarArchivosSeleccionados(this);previewImage(this);\" />";
                         $html .= "<div id=\"filelist_$name\" class=\"file-list\"></div>";
-                        if (!$soloLectura) {
-                            $html .= "<img id=\"preview_$name\" style=\"max-width:200px;display:none;\">";
-                        }
+                        // No agregues <img id="preview_$name"> aquí, ya que la previsualización múltiple se hace en el div anterior
                         // Mostrar archivos ya cargados (en modo edición, no solo lectura)
                         if ($value && !$soloLectura) {
                             $files = is_array($value) ? $value : [$value];
@@ -315,7 +315,9 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                             }
                         }
                         break;
-                    
+                
+
+
 
                     default:
                         $html .= "<input type=\"$type\" name=\"$name\" id=\"$name\" value=\"" . htmlspecialchars($value) . "\" placeholder=\"$placeholder\" $required $maxlength $minlength $min $max $step $pattern $accept $autocomplete $autofocus $readonly $disabled $classField $styleField $dataAttrs />";

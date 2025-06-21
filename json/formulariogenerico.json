@@ -73,6 +73,53 @@
           "label": "Hora de contacto",
           "type": "time"
         },
+
+
+{
+  "name": "descripcion",
+  "label": "Descripción detallada",
+  "type": "textarea",
+  "placeholder": "Describe tu experiencia...",
+  "maxlength": 1000,
+  "rows": 6,
+  "cols": 60
+},
+{
+  "name": "archivos_adjuntos",
+  "label": "Adjuntar archivos",
+  "type": "file",
+  "accept": ".pdf,.doc,.docx,image/*",
+  "multiple": true,
+  "required": true
+}
+,
+
+
+{
+  "name": "items",
+  "label": "Ítems",
+  "type": "datatable",
+  "columns": [
+    { "name": "codigo", "label": "Código", "type": "text" },
+    { "name": "descripcion", "label": "Descripción", "type": "textarea", "rows": 2 },
+    { "name": "cantidad", "label": "Cantidad", "type": "number", "min": 1 },
+    { "name": "fecha", "label": "Fecha", "type": "date" },
+    { "name": "activo", "label": "Activo", "type": "checkbox" },
+    { "name": "categoria", "label": "Categoría", "type": "select", "options": [
+      { "value": "a", "label": "A" },
+      { "value": "b", "label": "B" }
+    ]}
+  ]
+}
+
+ 
+
+
+
+,
+
+ 
+
         {
           "name": "edad",
           "label": "Edad",

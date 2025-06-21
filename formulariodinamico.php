@@ -208,26 +208,47 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $formData = $_POST;
     $errores = [];
-
-    // --- GUARDAR ARCHIVOS SUBIDOS ---
+ 
+    // --- BLOQUE PARA GUARDAR ARCHIVOS (SOPORTA MULTIPLES) ---
     foreach ($json['fieldsets'] as $fieldset) {
         if (isset($fieldset['fields'])) {
             foreach ($fieldset['fields'] as $field) {
                 if (($field['type'] ?? '') === 'file') {
                     $name = $field['name'];
-                    if (isset($_FILES[$name]) && $_FILES[$name]['error'] == UPLOAD_ERR_OK) {
-                        $nombreArchivo = basename($_FILES[$name]['name']);
-                        $rutaDestino = __DIR__ . '/uploads/' . $nombreArchivo;
-                        if (move_uploaded_file($_FILES[$name]['tmp_name'], $rutaDestino)) {
-                            $formData[$name] = 'uploads/' . $nombreArchivo;
+                    if (!empty($field['multiple'])) {
+                        // Procesar múltiples archivos
+                        if (isset($_FILES[$name]) && is_array($_FILES[$name]['name'])) {
+                            $files = $_FILES[$name];
+                            $formData[$name] = [];
+                            foreach ($files['name'] as $i => $filename) {
+                                if ($files['error'][$i] == UPLOAD_ERR_OK) {
+                                    $nombreArchivo = basename($filename);
+                                    $rutaDestino = __DIR__ . '/uploads/' . $nombreArchivo;
+                                    if (move_uploaded_file($files['tmp_name'][$i], $rutaDestino)) {
+                                        $formData[$name][] = 'uploads/' . $nombreArchivo;
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // Procesar archivo único
+                        if (isset($_FILES[$name]) && $_FILES[$name]['error'] == UPLOAD_ERR_OK) {
+                            $nombreArchivo = basename($_FILES[$name]['name']);
+                            $rutaDestino = __DIR__ . '/uploads/' . $nombreArchivo;
+                            if (move_uploaded_file($_FILES[$name]['tmp_name'], $rutaDestino)) {
+                                $formData[$name] = 'uploads/' . $nombreArchivo;
+                            }
                         }
                     }
                 }
             }
         }
-        // Si tienes sub-fieldsets anidados, puedes agregar aquí un manejo recursivo si lo necesitas
     }
-    // --- FIN GUARDAR ARCHIVOS ---
+    // --- FIN BLOQUE ARCHIVOS ---
+
+    // ...validaciones y luego...
+    // enviarFormulario($json_file, $formData, $css, $json, $mensajeEnvio, $mensajeEnvioTipo);
+}
 
     $mailPara = $json['parametros']['mailPara'] ?? '';
     $mailDe = $json['parametros']['mailDe'] ?? '';

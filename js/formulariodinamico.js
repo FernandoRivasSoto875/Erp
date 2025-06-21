@@ -551,25 +551,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
  
-const input = document.getElementById('fileInput');
-const preview = document.getElementById('preview');
-
-input.addEventListener('change', function() {
-    preview.innerHTML = '';
-    Array.from(this.files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const img = document.createElement('img');
-            img.src = e.target.result;
-            img.style.width = '100px';
-            img.style.margin = '5px';
-            preview.appendChild(img);
-        };
-        reader.readAsDataURL(file);
-    });
-});
  
-
 
 
 
@@ -586,24 +568,16 @@ input.addEventListener('change', function() {
     .then(response => response.text())
         // ...existing code...
     .then(data => {
-        var tempDiv = document.createElement('div');
-        tempDiv.innerHTML = data;
-        var nuevoMensaje = tempDiv.querySelector('#mensaje-envio');
-        if (nuevoMensaje) {
-          document.getElementById('mensaje-envio').innerHTML = nuevoMensaje.innerHTML;
-          document.getElementById('mensaje-envio').className = nuevoMensaje.className;
-        }
-        // Limpiar formulario solo si LIMPIAR_FORMULARIO es true y el envío fue exitoso
-                // ...existing code...
-        if (
+                if (
           typeof LIMPIAR_FORMULARIO !== "undefined" &&
           LIMPIAR_FORMULARIO &&
           nuevoMensaje &&
           nuevoMensaje.classList.contains('exito')
         ) {
           // Limpiar campos manualmente
-          const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
-          fields.forEach(field => {
+          const form = document.getElementById("formulario");
+          // Limpiar todos los campos del formulario
+          Array.from(form.elements).forEach(field => {
             if (field.type === "checkbox" || field.type === "radio") {
               field.checked = false;
             } else if (field.type === "file") {
@@ -611,15 +585,21 @@ input.addEventListener('change', function() {
               // Limpiar previsualización de archivos
               var previewDiv = document.getElementById('filelist_' + field.name.replace('[]',''));
               if (previewDiv) previewDiv.innerHTML = '';
+            } else if (field.tagName === "SELECT") {
+              field.selectedIndex = 0;
             } else {
               field.value = '';
             }
+            // Limpia errores visuales si existen
+            const container = field.closest(".campo-container");
+            if (container) {
+              const errorSpan = container.querySelector(".mensaje-error");
+              if (errorSpan) errorSpan.textContent = "";
+            }
           });
           // También limpia localStorage si usas autosave
-          fields.forEach(field => localStorage.removeItem(field.name));
+          Array.from(form.elements).forEach(field => localStorage.removeItem(field.name));
         }
-        // ...existing code...
-
 
 
 

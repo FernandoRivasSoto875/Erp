@@ -543,6 +543,31 @@ document.addEventListener('DOMContentLoaded', function() {
   configurarCondiciones();
   initDynamicReordering();
 
+
+ 
+const input = document.getElementById('fileInput');
+const preview = document.getElementById('preview');
+
+input.addEventListener('change', function() {
+    preview.innerHTML = '';
+    Array.from(this.files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.style.width = '100px';
+            img.style.margin = '5px';
+            preview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+    });
+});
+ 
+
+
+
+
+
   // ===================== ENVÍO AJAX Y MENSAJE ARRIBA DEL FORMULARIO =====================
   document.getElementById("formulario").addEventListener("submit", function(event) {
     event.preventDefault();

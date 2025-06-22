@@ -1,4 +1,5 @@
- function mostrarArchivosSeleccionados(input) {
+// Muestra y guarda los nombres de los archivos seleccionados
+function mostrarArchivosSeleccionados(input) {
     var fileListDiv = document.getElementById('filelist_' + input.name.replace('[]',''));
     if (!fileListDiv) return;
     fileListDiv.innerHTML = '';
@@ -13,7 +14,74 @@
         }
         fileListDiv.appendChild(ul);
     }
+    // Guarda los nombres en localStorage
     localStorage.setItem(input.name + '_filenames', JSON.stringify(nombres));
+}
+
+// Al cargar el formulario, muestra los nombres guardados en localStorage
+function cargarCampos() {
+    const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
+    fields.forEach(field => {
+        if (field.type === "file") {
+            field.value = '';
+            var previewDiv = document.getElementById('filelist_' + field.name.replace('[]',''));
+            if (previewDiv) {
+                previewDiv.innerHTML = '';
+                // Mostrar nombres guardados si existen
+                let nombres = localStorage.getItem(field.name + '_filenames');
+                if (nombres) {
+                    try {
+                        nombres = JSON.parse(nombres);
+                        if (Array.isArray(nombres) && nombres.length > 0) {
+                            var ul = document.createElement('ul');
+                            nombres.forEach(function(nombre) {
+                                var li = document.createElement('li');
+                                li.textContent = nombre + " (selecciona nuevamente para enviar)";
+                                ul.appendChild(li);
+                            });
+                            previewDiv.appendChild(ul);
+                        }
+                    } catch (e) {}
+                }
+            }
+            return;
+        }
+        let saved = localStorage.getItem(field.name);
+        if (saved) {
+            field.value = saved;
+            const formato = field.getAttribute('data-formato');
+            if (formato) {
+                aplicarFormato(field, formato);
+            }
+            field.dispatchEvent(new Event('input'));
+        }
+    });
+}
+
+// Al limpiar el formulario, borra también los nombres guardados
+function limpiarCamposFormulario(form) {
+    Array.from(form.elements).forEach(field => {
+        if (field.type === "checkbox" || field.type === "radio") {
+            field.checked = false;
+        } else if (field.type === "file") {
+            field.value = '';
+            var previewDiv = document.getElementById('filelist_' + field.name.replace('[]',''));
+            if (previewDiv) previewDiv.innerHTML = '';
+            localStorage.removeItem(field.name + '_filenames');
+        } else if (field.tagName === "SELECT") {
+            field.selectedIndex = 0;
+        } else {
+            field.value = '';
+        }
+        // Limpia errores visuales si existen
+        const container = field.closest(".campo-container");
+        if (container) {
+            const errorSpan = container.querySelector(".mensaje-error");
+            if (errorSpan) errorSpan.textContent = "";
+        }
+    });
+    // Limpia localStorage de autosave
+    Array.from(form.elements).forEach(field => localStorage.removeItem(field.name));
 }
 
 function previewImage(input) {

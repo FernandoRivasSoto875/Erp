@@ -38,6 +38,43 @@
           "autocomplete": "on",
           "autofocus": true
         },
+
+
+       {
+          "name": "ComId",
+          "label": "Código Producto",
+          "type": "text",
+          "placeholder": "Ingrese código"
+        },
+        {
+          "name": "descripcion_producto",
+          "label": "Descripción",
+          "type": "text",
+          "formula": {
+            "busqueda": {
+              "tabla": "Comuna",
+              "campo": "ComDes",
+              "where": "ComId = {ComId}"
+            }
+          },
+          "readonly": false
+        },
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         {
           "name": "total",
           "label": "Total",

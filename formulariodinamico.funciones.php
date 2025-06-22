@@ -280,19 +280,35 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                         $html .= "<input type=\"hidden\" name=\"$name\" id=\"$name\" value=\"" . htmlspecialchars($value) . "\" $dataAttrs />";
                         break;
                     case 'datatable':
-                        $columns = $field['columns'] ?? [];
-                        $minRows = $field['minRows'] ?? 1;
-                        $maxRows = $field['maxRows'] ?? 10;
-                        $html .= "<table class='datatable' id='dt_$name'><thead><tr>";
-                        foreach ($columns as $col) {
-                            $html .= "<th>" . htmlspecialchars($col['label']) . "</th>";
-                        }
-                        $html .= "<th>Acciones</th></tr></thead><tbody>";
-                        // Aquí puedes generar filas iniciales según $minRows
-                        $html .= "</tbody></table>";
-                        $html .= "<button type='button' onclick='agregarFilaDatatable(\"dt_$name\")'>Agregar fila</button>";
-                        // Agrega el JS necesario para manejar la tabla
-                        break;
+     
+      
+            $columns = $field['columns'] ?? [];
+            $minRows = $field['minRows'] ?? 1;
+            $maxRows = $field['maxRows'] ?? 10;
+            $html .= "<table class='datatable' id='dt_$name'><thead><tr>";
+            foreach ($columns as $col) {
+                $html .= "<th>" . htmlspecialchars($col['label']) . "</th>";
+            }
+            $html .= "<th>Acciones</th></tr></thead><tbody>";
+        
+            // Genera filas iniciales con ids y labels únicos
+            for ($row = 0; $row < $minRows; $row++) {
+                $html .= "<tr>";
+                foreach ($columns as $col) {
+                    $inputId = "dt_{$name}_{$col['name']}_{$row}";
+                    $html .= "<td>";
+                    $html .= "<label for='$inputId' style='display:none;'>" . htmlspecialchars($col['label']) . "</label>";
+                    $html .= "<input type='" . htmlspecialchars($col['type']) . "' name='" . htmlspecialchars($col['name']) . "[]' id='$inputId' required>";
+                    $html .= "</td>";
+                }
+                $html .= "<td><button type='button' class='eliminar_fila'>Eliminar</button></td>";
+                $html .= "</tr>";
+            }
+        
+            $html .= "</tbody></table>";
+            $html .= "<button type='button' onclick='agregarFilaDatatable(\"dt_$name\")'>Agregar fila</button>";
+            // Agrega el JS necesario para manejar la tabla
+            break;
       
                     case 'file':
        

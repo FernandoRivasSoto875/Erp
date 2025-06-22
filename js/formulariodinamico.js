@@ -573,10 +573,7 @@ function initDynamicReordering() {
 
 
 // ===================== INICIALIZACIÓN DE EVENTOS =====================
-
- // ...tus funciones arriba...
-
-document.addEventListener('DOMContentLoaded', function() {
+ document.addEventListener('DOMContentLoaded', function() {
     // Inicializador para archivos
     document.querySelectorAll('input[type="file"]').forEach(function(input) {
         input.addEventListener('change', function() {
@@ -615,8 +612,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
     cargarCampos();
 
-    const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
-    fields.forEach(el => {
+    // ========== INICIO BLOQUE DATATABLE DINÁMICO ==========
+    // Asegúrate de tener un array "fields" con la definición de los campos
+    // y un <div id="formulario-dinamico"></div> en tu HTML
+    if (typeof fields !== "undefined") {
+        const formDiv = document.getElementById('formulario-dinamico');
+        fields.forEach(field => {
+            if (field.type === "datatable") {
+                formDiv.innerHTML += renderDatatable(field);
+            }
+        });
+        fields.forEach(field => {
+            if (field.type === "datatable") {
+                initDatatableEvents(field);
+            }
+        });
+    }
+    // ========== FIN BLOQUE DATATABLE DINÁMICO ==========
+
+    const fieldsForm = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
+    fieldsForm.forEach(el => {
         el.addEventListener("input", guardarCampo);
         if (el.getAttribute("pattern")) el.addEventListener("blur", validarInput);
     });

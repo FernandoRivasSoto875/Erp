@@ -353,7 +353,42 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
 }
 
 
+function agregarFilaDatatable(tablaId) {
+    var tabla = document.getElementById(tablaId);
+    var tbody = tabla.querySelector('tbody');
+    var columnas = tabla.querySelectorAll('thead th');
+    var rowCount = tbody.rows.length;
+    var tr = document.createElement('tr');
+    var colCount = columnas.length - 1; // Última columna es "Acciones"
 
+    for (var i = 0; i < colCount; i++) {
+        // Obtén el nombre de la columna desde el input de la primera fila si existe
+        var colName = '';
+        var colType = 'text';
+        if (tbody.rows[0] && tbody.rows[0].cells[i]) {
+            var input = tbody.rows[0].cells[i].querySelector('input');
+            if (input) {
+                colName = input.name.replace('[]', '');
+                colType = input.type;
+            }
+        }
+        // Si no hay filas, puedes definir los nombres de columna manualmente aquí
+        var inputId = tablaId + '_' + colName + '_' + rowCount + '_' + Date.now();
+        tr.innerHTML += `<td>
+            <label for="${inputId}" style="display:none;">${columnas[i].textContent}</label>
+            <input type="${colType}" name="${colName}[]" id="${inputId}" required>
+        </td>`;
+    }
+    tr.innerHTML += `<td><button type="button" class="eliminar_fila">Eliminar</button></td>`;
+    tbody.appendChild(tr);
+}
+
+// Delegación para eliminar filas
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('eliminar_fila')) {
+        e.target.closest('tr').remove();
+    }
+});
 
 
  

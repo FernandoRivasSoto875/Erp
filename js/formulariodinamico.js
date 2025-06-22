@@ -571,6 +571,7 @@ function initDynamicReordering() {
     }
 }
 
+
 // ===================== INICIALIZACIÓN DE EVENTOS =====================
 
  // ...tus funciones arriba...

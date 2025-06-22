@@ -1,3 +1,39 @@
+function agregarFilaDatatable(tablaId) {
+    var tabla = document.getElementById(tablaId);
+    var tbody = tabla.querySelector('tbody');
+    var columnas = tabla.querySelectorAll('thead th');
+    var rowCount = tbody.rows.length;
+    var tr = document.createElement('tr');
+    var colCount = columnas.length - 1; // Última columna es "Acciones"
+
+    for (var i = 0; i < colCount; i++) {
+        // Obtén el nombre de la columna desde el input de la primera fila si existe
+        var colName = '';
+        var colType = 'text';
+        if (tbody.rows[0] && tbody.rows[0].cells[i]) {
+            var input = tbody.rows[0].cells[i].querySelector('input');
+            if (input) {
+                colName = input.name.replace('[]', '');
+                colType = input.type;
+            }
+        }
+        // Si no hay filas, puedes definir los nombres de columna manualmente aquí
+        var inputId = tablaId + '_' + colName + '_' + rowCount + '_' + Date.now();
+        tr.innerHTML += `<td>
+            <label for="${inputId}" style="display:none;">${columnas[i].textContent}</label>
+            <input type="${colType}" name="${colName}[]" id="${inputId}" required>
+        </td>`;
+    }
+    tr.innerHTML += `<td><button type="button" class="eliminar_fila">Eliminar</button></td>`;
+    tbody.appendChild(tr);
+}
+
+
+
+
+
+
+
 // Muestra y guarda los nombres de los archivos seleccionados
 function mostrarArchivosSeleccionados(input) {
     var fileListDiv = document.getElementById('filelist_' + input.name.replace('[]',''));
@@ -700,4 +736,139 @@ function initDynamicReordering() {
             document.getElementById('mensaje-envio').className = "error";
         });
     });
+});// ...existing code...
+
+// ===================== INICIALIZACIÓN DE EVENTOS =====================
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializador para archivos
+    document.querySelectorAll('input[type="file"]').forEach(function(input) {
+        input.addEventListener('change', function() {
+            mostrarArchivosSeleccionados(input);
+        });
+    });
+
+    // Fórmulas automáticas
+    document.querySelectorAll('[data-formula]').forEach(function(input) {
+        let formulaData = input.getAttribute('data-formula');
+        try { formulaData = JSON.parse(formulaData); } catch { }
+        if (typeof formulaData === 'string') {
+            formulaData = formulaData.replace(/^"(.*)"$/, '$1');
+            const campos = formulaData.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) || [];
+            campos.forEach(function(campo) {
+                const campoInput = document.getElementsByName(campo)[0];
+                if (campoInput) {
+                    campoInput.addEventListener('input', function() {
+                        calcularFormula(input, formulaData, campos);
+                    });
+                }
+            });
+            calcularFormula(input, formulaData, campos);
+        } else if (typeof formulaData === 'object' && formulaData.busqueda) {
+            const campoClave = formulaData.busqueda.where.match(/\{(.+?)\}/);
+            if (campoClave) {
+                const campoInput = document.getElementsByName(campoClave[1])[0];
+                if (campoInput) {
+                    campoInput.addEventListener('input', function() {
+                        buscarValor(input, formulaData.busqueda, campoInput.value);
+                    });
+                }
+            }
+        }
+    });
+
+    cargarCampos();
+
+    // ========== INICIO BLOQUE DATATABLE DINÁMICO ==========
+    if (typeof fields !== "undefined") {
+        const formDiv = document.getElementById('formulario-dinamico');
+        fields.forEach(field => {
+            if (field.type === "datatable") {
+                formDiv.innerHTML += renderDatatable(field);
+            }
+        });
+        fields.forEach(field => {
+            if (field.type === "datatable") {
+                initDatatableEvents(field);
+            }
+        });
+    }
+    // ========== FIN BLOQUE DATATABLE DINÁMICO ==========
+
+    const fieldsForm = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
+    fieldsForm.forEach(el => {
+        el.addEventListener("input", guardarCampo);
+        if (el.getAttribute("pattern")) el.addEventListener("blur", validarInput);
+    });
+
+    document.querySelectorAll("input[data-autocompletar='true']").forEach(field => {
+        field.addEventListener("input", autocompleteField);
+    });
+
+    configurarCondiciones();
+    initDynamicReordering();
+
+    // ===================== ENVÍO AJAX Y MENSAJE ARRIBA DEL FORMULARIO =====================
+    document.getElementById("formulario").addEventListener("submit", function(event) {
+        event.preventDefault();
+        const formData = new FormData(this);
+        const nombreArchivo = document.getElementById("formulario").getAttribute("data-archivo");
+        fetch('formulariodinamico.php?archivo=' + nombreArchivo, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.text())
+        .then(data => {
+            var tempDiv = document.createElement('div');
+            tempDiv.innerHTML = data;
+            var nuevoMensaje = tempDiv.querySelector('#mensaje-envio');
+            if (nuevoMensaje) {
+                document.getElementById('mensaje-envio').innerHTML = nuevoMensaje.innerHTML;
+                document.getElementById('mensaje-envio').className = nuevoMensaje.className;
+            }
+            // Limpiar formulario solo si LIMPIAR_FORMULARIO es true y el envío fue exitoso
+            if (
+                typeof LIMPIAR_FORMULARIO !== "undefined" &&
+                LIMPIAR_FORMULARIO &&
+                nuevoMensaje &&
+                nuevoMensaje.classList.contains('exito')
+            ) {
+                // Limpiar campos manualmente
+                const form = document.getElementById("formulario");
+                Array.from(form.elements).forEach(field => {
+                    if (field.type === "checkbox" || field.type === "radio") {
+                        field.checked = false;
+                    } else if (field.type === "file") {
+                        field.value = '';
+                        // Limpiar previsualización de archivos
+                        var previewDiv = document.getElementById('filelist_' + field.name.replace('[]',''));
+                        if (previewDiv) previewDiv.innerHTML = '';
+                    } else if (field.tagName === "SELECT") {
+                        field.selectedIndex = 0;
+                    } else {
+                        field.value = '';
+                    }
+                    // Limpia errores visuales si existen
+                    const container = field.closest(".campo-container");
+                    if (container) {
+                        const errorSpan = container.querySelector(".mensaje-error");
+                        if (errorSpan) errorSpan.textContent = "";
+                    }
+                });
+                // También limpia localStorage si usas autosave
+                Array.from(form.elements).forEach(field => localStorage.removeItem(field.name));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('mensaje-envio').innerHTML = "Error al enviar el formulario.";
+            document.getElementById('mensaje-envio').className = "error";
+        });
+    });
+});
+
+// ===================== DELEGACIÓN PARA ELIMINAR FILAS DE DATATABLES =====================
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('eliminar_fila')) {
+        e.target.closest('tr').remove();
+    }
 });

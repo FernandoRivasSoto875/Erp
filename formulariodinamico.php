@@ -93,6 +93,9 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     $valoresAdjuntos = normalizaValores($formData, $json, false);
     $valoresAdjuntosJson = normalizaValores($formData, $json, true);
 
+    // Inicializa PHPMailer antes de usarlo
+    $mail = new PHPMailer(true);
+
     // --- BLOQUE PARA IMÁGENES INLINE (CID) ---
     global $imagenesInline;
     $imagenesInline = [];
@@ -120,7 +123,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     }
     // --- FIN BLOQUE IMÁGENES INLINE ---
 
-    // *** AHORA genera el HTML, ya con $imagenesInline lleno ***
+    // Genera el HTML del cuerpo del mail (htmlc)
     $htmlForm = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
     $htmlForm .= "<main>";
     $htmlForm .= "<header class='form-header'>";
@@ -180,33 +183,6 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
 
     $asunto = $config['subject'] ?? "Formulario Recibido";
 
-    $mail = new PHPMailer(true);
-
-    // --- BLOQUE PARA EMBEBER IMÁGENES COMO INLINE (CID) ---
-    foreach ($json['fieldsets'] as $fieldset) {
-        if (isset($fieldset['fields'])) {
-            foreach ($fieldset['fields'] as $field) {
-                if (($field['type'] ?? '') === 'file') {
-                    $name = $field['name'];
-                    $files = $formData[$name] ?? [];
-                    if (!is_array($files)) $files = [$files];
-                    foreach ($files as $idx => $file) {
-                        $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-                        if (in_array($ext, ['jpg','jpeg','png','gif','webp'])) {
-                            $rutaAbsoluta = __DIR__ . '/' . $file;
-                            if (file_exists($rutaAbsoluta)) {
-                                $cid = $name . '_' . $idx;
-                                $mail->addEmbeddedImage($rutaAbsoluta, $cid);
-                                $imagenesInline[$file] = $cid;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    // --- FIN BLOQUE IMÁGENES INLINE ---
-
     try {
         $mail->setFrom($mailDe, 'Formulario Web');
         $mail->addAddress($mailPara);
@@ -254,35 +230,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
             }
         }
 
-        // 1. Procesa imágenes y llena $imagenesInline
-        $imagenesInline = [];
-        foreach ($json['fieldsets'] as $fieldset) {
-            if (isset($fieldset['fields'])) {
-                foreach ($fieldset['fields'] as $field) {
-                    if (($field['type'] ?? '') === 'file') {
-                        $name = $field['name'];
-                        $files = $formData[$name] ?? [];
-                        if (!is_array($files)) $files = [$files];
-                        foreach ($files as $idx => $file) {
-                            $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-                            if (in_array($ext, ['jpg','jpeg','png','gif','webp'])) {
-                                $rutaAbsoluta = __DIR__ . '/' . $file;
-                                if (file_exists($rutaAbsoluta)) {
-                                    $cid = $name . '_' . $idx;
-                                    $mail->addEmbeddedImage($rutaAbsoluta, $cid);
-                                    $imagenesInline[$file] = $cid;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // 2. Genera el HTML del cuerpo del mail (htmlc)
-        $htmlForm = renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos, $baseUrl);
-
-        // 3. Asigna el cuerpo del mail
+        // Asigna el cuerpo del mail
         if (in_array('htmlc', $tiposFormatoEnvio)) {
             $mail->Body = $htmlForm;
         } else {

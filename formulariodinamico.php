@@ -1,4 +1,4 @@
- <?php
+<?php
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -232,6 +232,35 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
             }
         }
 
+        // 1. Procesa imágenes y llena $imagenesInline
+        $imagenesInline = [];
+        foreach ($json['fieldsets'] as $fieldset) {
+            if (isset($fieldset['fields'])) {
+                foreach ($fieldset['fields'] as $field) {
+                    if (($field['type'] ?? '') === 'file') {
+                        $name = $field['name'];
+                        $files = $formData[$name] ?? [];
+                        if (!is_array($files)) $files = [$files];
+                        foreach ($files as $idx => $file) {
+                            $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                            if (in_array($ext, ['jpg','jpeg','png','gif','webp'])) {
+                                $rutaAbsoluta = __DIR__ . '/' . $file;
+                                if (file_exists($rutaAbsoluta)) {
+                                    $cid = $name . '_' . $idx;
+                                    $mail->addEmbeddedImage($rutaAbsoluta, $cid);
+                                    $imagenesInline[$file] = $cid;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Genera el HTML del cuerpo del mail (htmlc)
+        $htmlForm = renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos, $baseUrl);
+
+        // 3. Asigna el cuerpo del mail
         if (in_array('htmlc', $tiposFormatoEnvio)) {
             $mail->Body = $htmlForm;
         } else {

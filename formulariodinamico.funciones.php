@@ -1,4 +1,4 @@
- <?php
+<?php
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -8,94 +8,52 @@ error_reporting(E_ALL);
 
 
 
-function renderFieldsetsReadOnly($fieldsets, $valores = [], $baseUrl = '') {
-    $html = "";
+function renderFieldsetsReadOnly($fieldsets, $valores, $baseUrl = '') {
+    global $imagenesInline;
+    $html = '';
     foreach ($fieldsets as $fieldset) {
-        if (!empty($fieldset['legend'])) {
-            $html .= "<h3 style='margin-top:20px;'>" . htmlspecialchars($fieldset['legend']) . "</h3>";
+        if (isset($fieldset['legend'])) {
+            $html .= "<fieldset><legend>" . htmlspecialchars($fieldset['legend']) . "</legend>";
         }
-        $html .= "<table style='width:100%;border-collapse:collapse;margin-bottom:15px;'>";
         if (isset($fieldset['fields'])) {
             foreach ($fieldset['fields'] as $field) {
                 $name = $field['name'] ?? '';
                 $label = $field['label'] ?? $name;
-                $type = $field['type'] ?? 'text';
-                $value = $valores[$name] ?? ($field['value'] ?? '');
-                $displayValue = '';
-
-                switch ($type) {
-                    case 'checkbox':
-                    case 'radio':
-                    case 'select':
-                    case 'selectdata':
-                        $options = $field['options'] ?? [];
-                        if ($type === 'selectdata' && isset($field['data'])) {
-                            $options = obtenerDatosTabla($field['data']);
-                        }
-                        $selectedLabels = [];
-                        if ($type === 'checkbox') {
-                            $vals = is_array($value) ? $value : (strlen($value) ? array_map('trim', explode(',', $value)) : []);
-                            foreach ($options as $opt) {
-                                $opt_val = is_array($opt) ? ($opt['value'] ?? $opt['label'] ?? $opt) : $opt;
-                                $opt_label = is_array($opt) ? ($opt['label'] ?? $opt['value'] ?? $opt) : $opt;
-                                if (in_array($opt_val, $vals)) {
-                                    $selectedLabels[] = $opt_label;
-                                }
+                $value = $valores[$name] ?? '';
+                $html .= "<div class='campo-container'>";
+                $html .= "<label>" . htmlspecialchars($label) . ":</label> ";
+                if ($field['type'] === 'file') {
+                    $files = $value;
+                    if (!is_array($files)) $files = [$files];
+                    foreach ($files as $idx => $file) {
+                        $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                        if (in_array($ext, ['jpg','jpeg','png','gif','webp'])) {
+                            // Mostrar imagen inline si existe el CID
+                            $cid = $imagenesInline[$file] ?? null;
+                            if ($cid) {
+                                $html .= "<img src=\"cid:$cid\" alt=\"Imagen adjunta\" style=\"max-width:200px;\">";
+                            } else {
+                                $src = $baseUrl ? $baseUrl . basename($file) : $file;
+                                $html .= "<img src=\"$src\" alt=\"Imagen adjunta\" style=\"max-width:200px;\">";
                             }
-                            $displayValue = $selectedLabels ? implode(', ', $selectedLabels) : '-';
-                        } else { // radio, select, selectdata
-                            foreach ($options as $opt) {
-                                $opt_val = is_array($opt) ? ($opt['value'] ?? $opt['label'] ?? $opt) : $opt;
-                                $opt_label = is_array($opt) ? ($opt['label'] ?? $opt['value'] ?? $opt) : $opt;
-                                if ($value == $opt_val) {
-                                    $selectedLabels[] = $opt_label;
-                                }
-                            }
-                            $displayValue = $selectedLabels ? implode(', ', $selectedLabels) : '-';
-                        }
-                        break;
-
-                    case 'textarea':
-                        $displayValue = nl2br(htmlspecialchars($value));
-                        break;
-
-                    case 'file':
-                        if ($value) {
-                            $files = is_array($value) ? $value : [$value];
-                            $imgs = [];
-                            foreach ($files as $fileToShow) {
-                                $ext = strtolower(pathinfo($fileToShow, PATHINFO_EXTENSION));
-                                if (in_array($ext, ['jpg','jpeg','png','gif','webp'])) {
-                                    $imgs[] = "<img src='" . $baseUrl . basename($fileToShow) . "' style='max-width:200px;'>";
-                                } else {
-                                    $imgs[] = "<a href='" . $baseUrl . basename($fileToShow) . "'>Descargar archivo</a>";
-                                }
-                            }
-                            $displayValue = implode('<br>', $imgs);
                         } else {
-                            $displayValue = '-';
+                            // Mostrar enlace de descarga
+                            $src = $baseUrl ? $baseUrl . basename($file) : $file;
+                            $html .= "<a href=\"$src\" target=\"_blank\">Descargar archivo</a>";
                         }
-                        break;
-
-                    case 'hidden':
-                        continue 2; // No mostrar campos ocultos
-
-                    default:
-                        $displayValue = htmlspecialchars($value);
-                        break;
+                    }
+                } else {
+                    // Otros tipos de campo
+                    $html .= htmlspecialchars(is_array($value) ? implode(', ', $value) : $value);
                 }
-
-                $html .= "<tr style='border-bottom:1px solid #eee;'>";
-                $html .= "<td style='padding:6px 10px;font-weight:bold;width:30%;vertical-align:top;'>" . htmlspecialchars($label) . "</td>";
-                $html .= "<td style='padding:6px 10px;'>" . ($displayValue !== '' ? $displayValue : '-') . "</td>";
-                $html .= "</tr>";
+                $html .= "</div>";
             }
         }
-        $html .= "</table>";
-
-        // Sub-fieldsets
         if (isset($fieldset['fieldsets'])) {
             $html .= renderFieldsetsReadOnly($fieldset['fieldsets'], $valores, $baseUrl);
+        }
+        if (isset($fieldset['legend'])) {
+            $html .= "</fieldset>";
         }
     }
     return $html;

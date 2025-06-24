@@ -1,6 +1,14 @@
 <?php
 // Autor: Fernando Rivas S.
 // filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\contacto.php
+
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+
+
+
 ?>
 <!DOCTYPE html>
 <html lang="es">

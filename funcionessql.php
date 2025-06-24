@@ -1,4 +1,12 @@
  <?php
+
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+
+
+
 // funcionessql.php
 // Archivo de funciones para la conexión a la base de datos y utilidades SQL
 

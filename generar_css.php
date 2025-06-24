@@ -1,5 +1,15 @@
 <?php
 // Ruta del archivo JSON
+
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+
+
+
+
+
 $archivoJson = __DIR__ . '/json/parametro.json';
 if (!file_exists($archivoJson)) {
     die("Error: No se encuentra el archivo json/parametro.json.");

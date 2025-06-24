@@ -5,9 +5,8 @@
     "comentario": "Por favor, complete todos los campos requeridos.",
     "pie": "Gracias por usar nuestro sistema.",
     "fecha_creacion": "2024-06-20",
- 
     "cantidadMaximaAdjuntos": 2,
-    "limpiar":true,
+    "limpiar": true,
     "destinatario": "fernandorivassoto@gmail.com",
     "remitente": "gestion@saludenterreno.cl",
     "subject": "Nuevo mensaje desde el formulario de contacto",
@@ -15,14 +14,9 @@
     "mailDe": "Intranet@SaludEnterreno.cl",
     "mailPara": "fernandorivassoto@gmail.com",
     "mailCc": "copia@example.com",
-    "mailCco": "copiaoculta@example.com", 
+    "mailCco": "copiaoculta@example.com",
     "tipoformatoenvio": "htmlc,pdf,html,xls,json,cvs,xlsx,doc,xml"
-
-    
-
   },
-
- 
   "fieldsets": [
     {
       "legend": "Datos Personales",
@@ -38,9 +32,7 @@
           "autocomplete": "on",
           "autofocus": true
         },
-
-
-       {
+        {
           "name": "ComId",
           "label": "Código Producto",
           "type": "text",
@@ -50,31 +42,9 @@
           "name": "descripcion_producto",
           "label": "Descripción",
           "type": "text",
-          "formula": {
-            "busqueda": {
-              "tabla": "Comuna",
-              "campo": "ComDes",
-              "where": "ComId = {ComId}"
-            }
-          },
+          "data-formula": "{\"busqueda\":{\"tabla\":\"Comuna\",\"campo\":\"ComDes\",\"where\":\"ComId = {ComId}\"}}",
           "readonly": false
         },
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         {
           "name": "total",
           "label": "Total",
@@ -110,53 +80,44 @@
           "label": "Hora de contacto",
           "type": "time"
         },
-
-
-{
-  "name": "descripcion",
-  "label": "Descripción detallada",
-  "type": "textarea",
-  "placeholder": "Describe tu experiencia...",
-  "maxlength": 1000,
-  "rows": 6,
-  "cols": 60
-},
-{
-  "name": "archivos_adjuntos",
-  "label": "Adjuntar archivos",
-  "type": "file",
-  "accept": ".pdf,.doc,.docx,image/*",
-  "multiple": true,
-  "required": true
-}
-,
-
-
-{
-  "name": "items",
-  "label": "Ítems",
-  "type": "datatable",
-  "columns": [
-    { "name": "codigo", "label": "Código", "type": "text" },
-    { "name": "descripcion", "label": "Descripción", "type": "textarea", "rows": 2 },
-    { "name": "cantidad", "label": "Cantidad", "type": "number", "min": 1 },
-    { "name": "fecha", "label": "Fecha", "type": "date" },
-    { "name": "activo", "label": "Activo", "type": "checkbox" },
-    { "name": "categoria", "label": "Categoría", "type": "select", "options": [
-      { "value": "a", "label": "A" },
-      { "value": "b", "label": "B" }
-    ]}
-  ]
-}
-
- 
-
-
-
-,
-
- 
-
+        {
+          "name": "descripcion",
+          "label": "Descripción detallada",
+          "type": "textarea",
+          "placeholder": "Describe tu experiencia...",
+          "maxlength": 1000,
+          "rows": 6,
+          "cols": 60
+        },
+        {
+          "name": "archivos_adjuntos",
+          "label": "Adjuntar archivos",
+          "type": "file",
+          "accept": ".pdf,.doc,.docx,image/*",
+          "multiple": true,
+          "required": true
+        },
+        {
+          "name": "items",
+          "label": "Ítems",
+          "type": "datatable",
+          "columns": [
+            { "name": "codigo", "label": "Código", "type": "text" },
+            { "name": "descripcion", "label": "Descripción", "type": "textarea", "rows": 2 },
+            { "name": "cantidad", "label": "Cantidad", "type": "number", "min": 1 },
+            { "name": "fecha", "label": "Fecha", "type": "date" },
+            { "name": "activo", "label": "Activo", "type": "checkbox" },
+            {
+              "name": "categoria",
+              "label": "Categoría",
+              "type": "select",
+              "options": [
+                { "value": "a", "label": "A" },
+                { "value": "b", "label": "B" }
+              ]
+            }
+          ]
+        },
         {
           "name": "edad",
           "label": "Edad",
@@ -320,7 +281,7 @@
       ]
     }
   ]
-} 
+}
 
 
 

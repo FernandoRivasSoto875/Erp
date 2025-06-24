@@ -1,3 +1,4 @@
+// ===================== AGREGAR FILA A DATATABLE =====================
 function agregarFilaDatatable(tablaId) {
     var tabla = document.getElementById(tablaId);
     var tbody = tabla.querySelector('tbody');
@@ -28,13 +29,7 @@ function agregarFilaDatatable(tablaId) {
     tbody.appendChild(tr);
 }
 
-
-
-
-
-
-
-// Muestra y guarda los nombres de los archivos seleccionados
+// ===================== MOSTRAR ARCHIVOS SELECCIONADOS Y GUARDAR EN LOCALSTORAGE =====================
 function mostrarArchivosSeleccionados(input) {
     var fileListDiv = document.getElementById('filelist_' + input.name.replace('[]',''));
     if (!fileListDiv) return;
@@ -54,10 +49,204 @@ function mostrarArchivosSeleccionados(input) {
     localStorage.setItem(input.name + '_filenames', JSON.stringify(nombres));
 }
 
-// Al cargar el formulario, muestra los nombres guardados en localStorage
+// ===================== LIMPIAR CAMPOS DEL FORMULARIO =====================
+function limpiarCamposFormulario(form) {
+    Array.from(form.elements).forEach(field => {
+        if (field.type === "checkbox" || field.type === "radio") {
+            field.checked = false;
+        } else if (field.type === "file") {
+            field.value = '';
+            var previewDiv = document.getElementById('filelist_' + field.name.replace('[]',''));
+            if (previewDiv) previewDiv.innerHTML = '';
+            localStorage.removeItem(field.name + '_filenames');
+        } else if (field.tagName === "SELECT") {
+            field.selectedIndex = 0;
+        } else {
+            field.value = '';
+        }
+        // Limpia errores visuales si existen
+        const container = field.closest(".campo-container");
+        if (container) {
+            const errorSpan = container.querySelector(".mensaje-error");
+            if (errorSpan) errorSpan.textContent = "";
+        }
+    });
+    // Limpia localStorage de autosave
+    Array.from(form.elements).forEach(field => localStorage.removeItem(field.name));
+}
+
+// ===================== PREVISUALIZAR IMAGENES SELECCIONADAS =====================
+function previewImage(input) {
+    var previewDiv = document.getElementById('filelist_' + input.name.replace('[]',''));
+    if (!previewDiv) return;
+    previewDiv.innerHTML = '';
+    if (input.files && input.files.length > 0) {
+        Array.from(input.files).forEach(file => {
+            if (file.type.startsWith('image/')) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.maxWidth = '120px';
+                    img.style.margin = '5px';
+                    previewDiv.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+}
+
+// ===================== LIMPIAR VALOR NUMÉRICO PARA CÁLCULOS =====================
+function limpiarNumero(valor) {
+    valor = valor.replace(/[^\d,.-]/g, '');
+    valor = valor.replace(/\./g, '').replace(',', '.');
+    return valor;
+}
+
+// ===================== APLICAR FORMATO DE NÚMERO (MONEDA, ETC) =====================
+function aplicarFormato(input, formato) {
+    let valor = input.value;
+    if (!valor) return;
+    valor = valor.replace(/[^\d,.-]/g, '');
+    let num = parseFloat(valor.replace(/\./g, '').replace(',', '.'));
+    if (isNaN(num)) return;
+
+    if (input.type === "number") {
+        if (formato === "moneda" || formato === "#,##0.00" || formato === "0.00") {
+            input.value = num.toFixed(2);
+        } else if (formato === "0") {
+            input.value = Math.round(num);
+        } else {
+            input.value = num;
+        }
+        return;
+    }
+
+    if (formato === "moneda") {
+        input.value = num.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
+    } else if (formato === "#,##0.00") {
+        input.value = num.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } else if (formato === "0") {
+        input.value = num.toLocaleString('es-CL', { maximumFractionDigits: 0 });
+    } else if (formato === "0.00") {
+        input.value = num.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+}
+
+// ===================== CALCULAR FÓRMULA MATEMÁTICA =====================
+function calcularFormula(input, formulaData, campos) {
+    let expr = formulaData;
+    campos.forEach(function(campo) {
+        let campoInput = document.getElementsByName(campo)[0];
+        let val = 0;
+        if (campoInput) {
+            val = parseFloat(limpiarNumero(campoInput.value)) || 0;
+        }
+        expr = expr.replace(new RegExp("\\b" + campo + "\\b", "g"), val);
+    });
+    try {
+        let resultado = eval(expr);
+        input.value = resultado;
+        const formato = input.getAttribute('data-formato');
+        if (formato) {
+            aplicarFormato(input, formato);
+        }
+        localStorage.setItem(input.name, resultado);
+        if (input.id === "total_calculado") {
+            const total = document.getElementById("total");
+            total.value = resultado;
+            localStorage.setItem("total", resultado);
+        }
+    } catch (e) {
+        console.error("Error al calcular fórmula:", formulaData, e);
+        input.value = '';
+    }
+}
+
+// ===================== BUSCAR VALOR VÍA AJAX (PARA FÓRMULAS DE BÚSQUEDA) =====================
+function buscarValor(input, busqueda, valor) {
+    if (!valor) { input.value = ''; return; }
+    const match = busqueda.where.match(/\{(.+?)\}/);
+    const campoClave = match ? match[1] : null;
+    if (!campoClave) { input.value = ''; return; }
+    fetch('ajax/busqueda_formula.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            tabla: busqueda.tabla,
+            campo: busqueda.campo,
+            where: { [campoClave]: valor }
+        })
+    })
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(data => {
+        if (data && typeof data.resultado !== "undefined" && data.resultado !== null) {
+            input.value = data.resultado;
+            localStorage.setItem(input.name, data.resultado);
+        } else {
+            input.value = '';
+        }
+    })
+    .catch(() => { input.value = ''; });
+}
+
+// ===================== AUTOSAVE Y VALIDACIÓN =====================
+
+/**
+ * Guarda el estado de una datatable en localStorage.
+ * @param {HTMLElement} table - El elemento <table> de la datatable.
+ */
+// ===================== GUARDAR ESTADO DE DATATABLE EN LOCALSTORAGE =====================
+function guardarEstadoDataTable(table) {
+    if (!table) return;
+    const fieldName = table.id.replace('datatable-', '');
+    const data = [];
+    const rows = table.querySelectorAll('tbody tr');
+
+    rows.forEach(tr => {
+        const rowData = {};
+        tr.querySelectorAll('input, textarea, select').forEach(cellInput => {
+            const nameMatch = cellInput.name.match(/\[(\w+)\]$/);
+            if (nameMatch) {
+                const colName = nameMatch[1];
+                switch (cellInput.type) {
+                    case 'checkbox':
+                        rowData[colName] = cellInput.checked;
+                        break;
+                    default:
+                        rowData[colName] = cellInput.value;
+                        break;
+                }
+            }
+        });
+        if (Object.keys(rowData).length > 0) {
+            data.push(rowData);
+        }
+    });
+    localStorage.setItem(fieldName, JSON.stringify(data));
+}
+
+// ===================== GUARDAR CAMPO INDIVIDUAL EN LOCALSTORAGE =====================
+function guardarCampo(e) {
+    const input = e.target;
+    const table = input.closest('table[id^="datatable-"]');
+
+    if (table) {
+        guardarEstadoDataTable(table);
+    } else {
+        localStorage.setItem(input.name, input.value);
+    }
+}
+
+// ===================== CARGAR TODOS LOS CAMPOS DESDE LOCALSTORAGE =====================
 function cargarCampos() {
-    const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
-    fields.forEach(field => {
+    const form = document.getElementById("formulario");
+    // Cargar campos simples, excluyendo los que están dentro de una datatable
+    form.querySelectorAll("input, textarea, select").forEach(field => {
+        if (field.closest('table[id^="datatable-"]')) {
+            return; // Omitir celdas de datatables
+        }
         if (field.type === "file") {
             field.value = '';
             var previewDiv = document.getElementById('filelist_' + field.name.replace('[]',''));
@@ -92,172 +281,55 @@ function cargarCampos() {
             field.dispatchEvent(new Event('input'));
         }
     });
-}
 
-// Al limpiar el formulario, borra también los nombres guardados
-function limpiarCamposFormulario(form) {
-    Array.from(form.elements).forEach(field => {
-        if (field.type === "checkbox" || field.type === "radio") {
-            field.checked = false;
-        } else if (field.type === "file") {
-            field.value = '';
-            var previewDiv = document.getElementById('filelist_' + field.name.replace('[]',''));
-            if (previewDiv) previewDiv.innerHTML = '';
-            localStorage.removeItem(field.name + '_filenames');
-        } else if (field.tagName === "SELECT") {
-            field.selectedIndex = 0;
-        } else {
-            field.value = '';
-        }
-        // Limpia errores visuales si existen
-        const container = field.closest(".campo-container");
-        if (container) {
-            const errorSpan = container.querySelector(".mensaje-error");
-            if (errorSpan) errorSpan.textContent = "";
-        }
-    });
-    // Limpia localStorage de autosave
-    Array.from(form.elements).forEach(field => localStorage.removeItem(field.name));
-}
+    // Cargar estado de las datatables
+    if (typeof fields !== "undefined") {
+        fields.forEach(fieldDef => {
+            if (fieldDef.type === 'datatable') {
+                const savedJSON = localStorage.getItem(fieldDef.name);
+                if (!savedJSON) return;
 
-function previewImage(input) {
-    var previewDiv = document.getElementById('filelist_' + input.name.replace('[]',''));
-    if (!previewDiv) return;
-    previewDiv.innerHTML = '';
-    if (input.files && input.files.length > 0) {
-        Array.from(input.files).forEach(file => {
-            if (file.type.startsWith('image/')) {
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                    var img = document.createElement('img');
-                    img.src = e.target.result;
-                    img.style.maxWidth = '120px';
-                    img.style.margin = '5px';
-                    previewDiv.appendChild(img);
-                };
-                reader.readAsDataURL(file);
+                try {
+                    const data = JSON.parse(savedJSON);
+                    if (Array.isArray(data)) {
+                        const table = document.getElementById(`datatable-${fieldDef.name}`);
+                        const tbody = table ? table.querySelector('tbody') : null;
+                        if (tbody && typeof initDatatableEvents === 'function') {
+                            tbody.innerHTML = ''; // Limpiar filas existentes
+                            data.forEach(rowData => {
+                                // Asumimos que initDatatableEvents puede agregar una fila
+                                // y necesitamos una forma de pasarle los datos.
+                                // Esto puede requerir modificar `initDatatableEvents` o la función que agrega filas.
+                                // Por ahora, simulamos la adición de la fila y el llenado de datos.
+                                const addButton = document.querySelector(`button[data-table-name="${fieldDef.name}"]`);
+                                if(addButton) {
+                                    addButton.click(); // Simula clic en "agregar fila"
+                                    const newRow = tbody.lastElementChild;
+                                    if(newRow) {
+                                        fieldDef.columns.forEach(col => {
+                                            const input = newRow.querySelector(`[name$="[${col.name}]"]`);
+                                            if (input && rowData[col.name] !== undefined) {
+                                                if (input.type === 'checkbox') {
+                                                    input.checked = rowData[col.name];
+                                                } else {
+                                                    input.value = rowData[col.name];
+                                                }
+                                            }
+                                        });
+                                    }
+                                }
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error(`Error al cargar datos de la datatable '${fieldDef.name}' desde localStorage.`, e);
+                }
             }
         });
     }
 }
 
-function limpiarNumero(valor) {
-    valor = valor.replace(/[^\d,.-]/g, '');
-    valor = valor.replace(/\./g, '').replace(',', '.');
-    return valor;
-}
-
-function aplicarFormato(input, formato) {
-    let valor = input.value;
-    if (!valor) return;
-    valor = valor.replace(/[^\d,.-]/g, '');
-    let num = parseFloat(valor.replace(/\./g, '').replace(',', '.'));
-    if (isNaN(num)) return;
-
-    if (input.type === "number") {
-        if (formato === "moneda" || formato === "#,##0.00" || formato === "0.00") {
-            input.value = num.toFixed(2);
-        } else if (formato === "0") {
-            input.value = Math.round(num);
-        } else {
-            input.value = num;
-        }
-        return;
-    }
-
-    if (formato === "moneda") {
-        input.value = num.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
-    } else if (formato === "#,##0.00") {
-        input.value = num.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    } else if (formato === "0") {
-        input.value = num.toLocaleString('es-CL', { maximumFractionDigits: 0 });
-    } else if (formato === "0.00") {
-        input.value = num.toLocaleString('es-CL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-}
-
-function calcularFormula(input, formulaData, campos) {
-    let expr = formulaData;
-    campos.forEach(function(campo) {
-        let campoInput = document.getElementsByName(campo)[0];
-        let val = 0;
-        if (campoInput) {
-            val = parseFloat(limpiarNumero(campoInput.value)) || 0;
-        }
-        expr = expr.replace(new RegExp("\\b" + campo + "\\b", "g"), val);
-    });
-    try {
-        let resultado = eval(expr);
-        input.value = resultado;
-        const formato = input.getAttribute('data-formato');
-        if (formato) {
-            aplicarFormato(input, formato);
-        }
-        localStorage.setItem(input.name, resultado);
-        if (input.id === "total_calculado") {
-            const total = document.getElementById("total");
-            total.value = resultado;
-            localStorage.setItem("total", resultado);
-        }
-    } catch (e) {
-        console.error("Error al calcular fórmula:", formulaData, e);
-        input.value = '';
-    }
-}
-
-function buscarValor(input, busqueda, valor) {
-    if (!valor) { input.value = ''; return; }
-    const match = busqueda.where.match(/\{(.+?)\}/);
-    const campoClave = match ? match[1] : null;
-    if (!campoClave) { input.value = ''; return; }
-    fetch('ajax/busqueda_formula.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            tabla: busqueda.tabla,
-            campo: busqueda.campo,
-            where: { [campoClave]: valor }
-        })
-    })
-    .then(r => r.ok ? r.json() : Promise.reject())
-    .then(data => {
-        if (data && typeof data.resultado !== "undefined" && data.resultado !== null) {
-            input.value = data.resultado;
-            localStorage.setItem(input.name, data.resultado);
-        } else {
-            input.value = '';
-        }
-    })
-    .catch(() => { input.value = ''; });
-}
-
-// ===================== AUTOSAVE Y VALIDACIÓN =====================
-
-function guardarCampo(e) {
-    localStorage.setItem(e.target.name, e.target.value);
-}
-
-function cargarCampos() {
-    const fields = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
-    fields.forEach(field => {
-        if (field.type === "file") {
-            // No se puede restaurar archivos por seguridad
-            field.value = '';
-            var previewDiv = document.getElementById('filelist_' + field.name.replace('[]',''));
-            if (previewDiv) previewDiv.innerHTML = '';
-            return;
-        }
-        let saved = localStorage.getItem(field.name);
-        if (saved) {
-            field.value = saved;
-            const formato = field.getAttribute('data-formato');
-            if (formato) {
-                aplicarFormato(field, formato);
-            }
-            field.dispatchEvent(new Event('input'));
-        }
-    });
-}
+// ===================== VALIDAR INPUT AL PERDER FOCO =====================
 function validarInput(e) {
     const field = e.target;
     if (field.validity && !field.validity.valid) {
@@ -282,7 +354,6 @@ function validarInput(e) {
 }
 
 // ===================== AUTOCOMPLETAR =====================
-
 function autocompleteField(e) {
     const query = e.target.value.toLowerCase();
     const suggestions = ["Santiago", "Valparaíso", "Concepción", "La Serena"];
@@ -302,7 +373,6 @@ function autocompleteField(e) {
 }
 
 // ===================== CAMPOS CONDICIONALES =====================
-
 function evaluarCondiciones() {
     document.querySelectorAll("[data-condicion]").forEach(element => {
         let cond = element.getAttribute("data-condicion");
@@ -651,134 +721,6 @@ function initDynamicReordering() {
     // ========== INICIO BLOQUE DATATABLE DINÁMICO ==========
     // Asegúrate de tener un array "fields" con la definición de los campos
     // y un <div id="formulario-dinamico"></div> en tu HTML
-    if (typeof fields !== "undefined") {
-        const formDiv = document.getElementById('formulario-dinamico');
-        fields.forEach(field => {
-            if (field.type === "datatable") {
-                formDiv.innerHTML += renderDatatable(field);
-            }
-        });
-        fields.forEach(field => {
-            if (field.type === "datatable") {
-                initDatatableEvents(field);
-            }
-        });
-    }
-    // ========== FIN BLOQUE DATATABLE DINÁMICO ==========
-
-    const fieldsForm = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
-    fieldsForm.forEach(el => {
-        el.addEventListener("input", guardarCampo);
-        if (el.getAttribute("pattern")) el.addEventListener("blur", validarInput);
-    });
-
-    document.querySelectorAll("input[data-autocompletar='true']").forEach(field => {
-        field.addEventListener("input", autocompleteField);
-    });
-
-    configurarCondiciones();
-    initDynamicReordering();
-
-    // ===================== ENVÍO AJAX Y MENSAJE ARRIBA DEL FORMULARIO =====================
-    document.getElementById("formulario").addEventListener("submit", function(event) {
-        event.preventDefault();
-        const formData = new FormData(this);
-        const nombreArchivo = document.getElementById("formulario").getAttribute("data-archivo");
-        fetch('formulariodinamico.php?archivo=' + nombreArchivo, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.text())
-        .then(data => {
-            var tempDiv = document.createElement('div');
-            tempDiv.innerHTML = data;
-            var nuevoMensaje = tempDiv.querySelector('#mensaje-envio');
-            if (nuevoMensaje) {
-                document.getElementById('mensaje-envio').innerHTML = nuevoMensaje.innerHTML;
-                document.getElementById('mensaje-envio').className = nuevoMensaje.className;
-            }
-            // Limpiar formulario solo si LIMPIAR_FORMULARIO es true y el envío fue exitoso
-            if (
-                typeof LIMPIAR_FORMULARIO !== "undefined" &&
-                LIMPIAR_FORMULARIO &&
-                nuevoMensaje &&
-                nuevoMensaje.classList.contains('exito')
-            ) {
-                // Limpiar campos manualmente
-                const form = document.getElementById("formulario");
-                Array.from(form.elements).forEach(field => {
-                    if (field.type === "checkbox" || field.type === "radio") {
-                        field.checked = false;
-                    } else if (field.type === "file") {
-                        field.value = '';
-                        // Limpiar previsualización de archivos
-                        var previewDiv = document.getElementById('filelist_' + field.name.replace('[]',''));
-                        if (previewDiv) previewDiv.innerHTML = '';
-                    } else if (field.tagName === "SELECT") {
-                        field.selectedIndex = 0;
-                    } else {
-                        field.value = '';
-                    }
-                    // Limpia errores visuales si existen
-                    const container = field.closest(".campo-container");
-                    if (container) {
-                        const errorSpan = container.querySelector(".mensaje-error");
-                        if (errorSpan) errorSpan.textContent = "";
-                    }
-                });
-                // También limpia localStorage si usas autosave
-                Array.from(form.elements).forEach(field => localStorage.removeItem(field.name));
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            document.getElementById('mensaje-envio').innerHTML = "Error al enviar el formulario.";
-            document.getElementById('mensaje-envio').className = "error";
-        });
-    });
-});// ...existing code...
-
-// ===================== INICIALIZACIÓN DE EVENTOS =====================
-document.addEventListener('DOMContentLoaded', function() {
-    // Inicializador para archivos
-    document.querySelectorAll('input[type="file"]').forEach(function(input) {
-        input.addEventListener('change', function() {
-            mostrarArchivosSeleccionados(input);
-        });
-    });
-
-    // Fórmulas automáticas
-    document.querySelectorAll('[data-formula]').forEach(function(input) {
-        let formulaData = input.getAttribute('data-formula');
-        try { formulaData = JSON.parse(formulaData); } catch { }
-        if (typeof formulaData === 'string') {
-            formulaData = formulaData.replace(/^"(.*)"$/, '$1');
-            const campos = formulaData.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) || [];
-            campos.forEach(function(campo) {
-                const campoInput = document.getElementsByName(campo)[0];
-                if (campoInput) {
-                    campoInput.addEventListener('input', function() {
-                        calcularFormula(input, formulaData, campos);
-                    });
-                }
-            });
-            calcularFormula(input, formulaData, campos);
-        } else if (typeof formulaData === 'object' && formulaData.busqueda) {
-            const campoClave = formulaData.busqueda.where.match(/\{(.+?)\}/);
-            if (campoClave) {
-                const campoInput = document.getElementsByName(campoClave[1])[0];
-                if (campoInput) {
-                    campoInput.addEventListener('input', function() {
-                        buscarValor(input, formulaData.busqueda, campoInput.value);
-                    });
-                }
-            }
-        }
-    });
-
-    cargarCampos();
-
-    // ========== INICIO BLOQUE DATATABLE DINÁMICO ==========
     if (typeof fields !== "undefined") {
         const formDiv = document.getElementById('formulario-dinamico');
         fields.forEach(field => {

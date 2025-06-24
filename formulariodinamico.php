@@ -96,9 +96,31 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     // --- BLOQUE PARA IMÁGENES INLINE (CID) ---
     global $imagenesInline;
     $imagenesInline = [];
-    // Se llenará después de crear $mail
+    foreach ($json['fieldsets'] as $fieldset) {
+        if (isset($fieldset['fields'])) {
+            foreach ($fieldset['fields'] as $field) {
+                if (($field['type'] ?? '') === 'file') {
+                    $name = $field['name'];
+                    $files = $formData[$name] ?? [];
+                    if (!is_array($files)) $files = [$files];
+                    foreach ($files as $idx => $file) {
+                        $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                        if (in_array($ext, ['jpg','jpeg','png','gif','webp'])) {
+                            $rutaAbsoluta = __DIR__ . '/' . $file;
+                            if (file_exists($rutaAbsoluta)) {
+                                $cid = $name . '_' . $idx;
+                                $mail->addEmbeddedImage($rutaAbsoluta, $cid);
+                                $imagenesInline[$file] = $cid;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // --- FIN BLOQUE IMÁGENES INLINE ---
 
-    // Generar HTML para todos los formatos
+    // *** AHORA genera el HTML, ya con $imagenesInline lleno ***
     $htmlForm = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
     $htmlForm .= "<main>";
     $htmlForm .= "<header class='form-header'>";

@@ -153,6 +153,21 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     $htmlFormPDF .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
     $htmlFormPDF .= "</main></body></html>";
 
+    // Genera el HTML para el adjunto .html (igual que el PDF, con rutas relativas)
+    $htmlFormAdjunto = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
+    $htmlFormAdjunto .= "<main>";
+    $htmlFormAdjunto .= "<header class='form-header'>";
+    $htmlFormAdjunto .= "<h2>" . htmlspecialchars($config['titulo'], ENT_QUOTES, 'UTF-8') . "</h2>";
+    $htmlFormAdjunto .= "<div style='font-size:1.1em;font-weight:bold;margin-bottom:10px;'>Archivo adjunto: " . htmlspecialchars($pdfFilename, ENT_QUOTES, 'UTF-8') . "</div>";
+    if (!empty($config['tituloimagen'])) {
+        $htmlFormAdjunto .= "<div style='margin-bottom:15px;'><img src='" . htmlspecialchars($config['tituloimagen'], ENT_QUOTES, 'UTF-8') . "' alt='Imagen Formulario' style='max-width:200px;display:block;'></div>";
+    }
+    $htmlFormAdjunto .= "</header>";
+    $htmlFormAdjunto .= "<p>" . htmlspecialchars($config['comentario'], ENT_QUOTES, 'UTF-8') . "</p>";
+    $htmlFormAdjunto .= renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos, $baseUrl, 'pdf'); // usa rutas relativas
+    $htmlFormAdjunto .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
+    $htmlFormAdjunto .= "</main></body></html>";
+
     // PDF
     $mpdf = new \Mpdf\Mpdf(['tempDir' => __DIR__ . '/tmp']);
     $mpdf->WriteHTML($htmlFormPDF);

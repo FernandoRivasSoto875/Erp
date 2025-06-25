@@ -1,4 +1,3 @@
- 
 <?php
 
 ini_set('display_errors', 1);
@@ -274,8 +273,25 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
 
                     case 'datatable':
                         $columns = $field['columns'] ?? [];
-                        $minRows = $field['minRows'] ?? 1;
-                        $maxRows = $field['maxRows'] ?? 10;
+                        $numRows = 0;
+                        // Calcula el número de filas
+                        foreach ($columns as $col) {
+                            $colName = $col['name'];
+                            if (isset($formData[$colName]) && is_array($formData[$colName])) {
+                                $numRows = max($numRows, count($formData[$colName]));
+                            }
+                        }
+                        $rows = [];
+                        for ($i = 0; $i < $numRows; $i++) {
+                            $row = [];
+                            foreach ($columns as $col) {
+                                $colName = $col['name'];
+                                $row[$colName] = isset($formData[$colName][$i]) ? $formData[$colName][$i] : '';
+                            }
+                            $rows[] = $row;
+                        }
+                        $result[$name] = $rows;
+                        continue;
                         $html .= "<table class='datatable' id='dt_$name'><thead><tr>";
                         foreach ($columns as $col) {
                             $html .= "<th>" . htmlspecialchars($col['label']) . "</th>";

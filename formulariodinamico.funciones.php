@@ -313,7 +313,7 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                         $html .= "</tbody></table>";
                         $html .= "<button type='button' onclick='agregarFilaDatatable(\"dt_$name\")'>Agregar fila</button>";
                         break;
-
+ 
                     case 'file':
                         $multiple = !empty($field['multiple']) ? 'multiple' : '';
                         $nameAttr = !empty($field['multiple']) ? $name . '[]' : $name;

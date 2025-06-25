@@ -273,6 +273,7 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
 
                     case 'datatable':
                         $columns = $field['columns'] ?? [];
+                        $minRows = $field['minRows'] ?? 1; // <-- Agrega esta línea
                         $numRows = 0;
                         // Calcula el número de filas
                         foreach ($columns as $col) {
@@ -291,7 +292,7 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                             $rows[] = $row;
                         }
                         $result[$name] = $rows;
-                       
+
                         $html .= "<table class='datatable' id='dt_$name'><thead><tr>";
                         foreach ($columns as $col) {
                             $html .= "<th>" . htmlspecialchars($col['label']) . "</th>";

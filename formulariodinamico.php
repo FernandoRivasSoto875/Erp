@@ -228,8 +228,8 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
                     $mail->addStringAttachment($pdfContent, $pdfFilename, 'base64', 'application/pdf');
                     break;
                 case 'html':
-                    $mail->addStringAttachment($htmlForm, $htmlFilename, 'base64', 'text/html');
-                    break;
+                 $mail->addStringAttachment($htmlFormAdjunto, $htmlFilename, 'base64', 'text/html');
+         break;
                 case 'xls':
                     if ($xlsContent) {
                         $mail->addStringAttachment($xlsContent, $xlsFilename, 'base64', 'application/vnd.ms-excel');

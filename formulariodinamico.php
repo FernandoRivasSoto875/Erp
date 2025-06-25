@@ -121,7 +121,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
             }
         }
     }
-    // --- FIN BLOQUE IMÁGENES INLINE ---
+    // --- FIN BLOQUE IMÁGENES INLINE --- 
 
     // Genera el HTML del cuerpo del mail (htmlc)
     $htmlForm = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
@@ -134,13 +134,28 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     }
     $htmlForm .= "</header>";
     $htmlForm .= "<p>" . htmlspecialchars($config['comentario'], ENT_QUOTES, 'UTF-8') . "</p>";
-    $htmlForm .= renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos, $baseUrl);
+    $htmlForm .= renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos, $baseUrl, 'mail');
     $htmlForm .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
     $htmlForm .= "</main></body></html>";
 
+    // Genera el HTML para el PDF (usa rutas de archivo, no CIDs)
+    $htmlFormPDF = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
+    $htmlFormPDF .= "<main>";
+    $htmlFormPDF .= "<header class='form-header'>";
+    $htmlFormPDF .= "<h2>" . htmlspecialchars($config['titulo'], ENT_QUOTES, 'UTF-8') . "</h2>";
+    $htmlFormPDF .= "<div style='font-size:1.1em;font-weight:bold;margin-bottom:10px;'>Archivo adjunto: " . htmlspecialchars($pdfFilename, ENT_QUOTES, 'UTF-8') . "</div>";
+    if (!empty($config['tituloimagen'])) {
+        $htmlFormPDF .= "<div style='margin-bottom:15px;'><img src='" . htmlspecialchars($config['tituloimagen'], ENT_QUOTES, 'UTF-8') . "' alt='Imagen Formulario' style='max-width:200px;display:block;'></div>";
+    }
+    $htmlFormPDF .= "</header>";
+    $htmlFormPDF .= "<p>" . htmlspecialchars($config['comentario'], ENT_QUOTES, 'UTF-8') . "</p>";
+    $htmlFormPDF .= renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos, $baseUrl, 'pdf');
+    $htmlFormPDF .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
+    $htmlFormPDF .= "</main></body></html>";
+
     // PDF
     $mpdf = new \Mpdf\Mpdf(['tempDir' => __DIR__ . '/tmp']);
-    $mpdf->WriteHTML($htmlForm);
+    $mpdf->WriteHTML($htmlFormPDF);
     $pdfContent = $mpdf->Output('', 'S');
 
     // XLSX y XLS

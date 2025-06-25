@@ -8,7 +8,7 @@ error_reporting(E_ALL);
 
 
 
-function renderFieldsetsReadOnly($fieldsets, $valores, $baseUrl = '') {
+function renderFieldsetsReadOnly($fieldsets, $valores, $baseUrl = '', $modo = 'mail') {
     global $imagenesInline;
     $html = '';
     foreach ($fieldsets as $fieldset) {
@@ -28,29 +28,31 @@ function renderFieldsetsReadOnly($fieldsets, $valores, $baseUrl = '') {
                     foreach ($files as $idx => $file) {
                         $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
                         if (in_array($ext, ['jpg','jpeg','png','gif','webp'])) {
-                            // Mostrar imagen inline si existe el CID
-                            $cid = $imagenesInline[$file] ?? null;
-                            if ($cid) {
-                                $html .= "<img src=\"cid:$cid\" alt=\"Imagen adjunta\" style=\"max-width:200px;\">";
-                            } else {
+                            if ($modo === 'mail') {
+                                $cid = $imagenesInline[$file] ?? null;
+                                if ($cid) {
+                                    $html .= "<img src=\"cid:$cid\" alt=\"Imagen adjunta\" style=\"max-width:200px;\">";
+                                } else {
+                                    $src = $baseUrl ? $baseUrl . basename($file) : $file;
+                                    $html .= "<img src=\"$src\" alt=\"Imagen adjunta\" style=\"max-width:200px;\">";
+                                }
+                            } else { // PDF u otro
                                 $src = $baseUrl ? $baseUrl . basename($file) : $file;
                                 $html .= "<img src=\"$src\" alt=\"Imagen adjunta\" style=\"max-width:200px;\">";
                             }
                         } else {
-                            // Mostrar enlace de descarga
                             $src = $baseUrl ? $baseUrl . basename($file) : $file;
                             $html .= "<a href=\"$src\" target=\"_blank\">Descargar archivo</a>";
                         }
                     }
                 } else {
-                    // Otros tipos de campo
                     $html .= htmlspecialchars(is_array($value) ? implode(', ', $value) : $value);
                 }
                 $html .= "</div>";
             }
         }
         if (isset($fieldset['fieldsets'])) {
-            $html .= renderFieldsetsReadOnly($fieldset['fieldsets'], $valores, $baseUrl);
+            $html .= renderFieldsetsReadOnly($fieldset['fieldsets'], $valores, $baseUrl, $modo);
         }
         if (isset($fieldset['legend'])) {
             $html .= "</fieldset>";

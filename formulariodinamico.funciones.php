@@ -291,7 +291,7 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                             $rows[] = $row;
                         }
                         $result[$name] = $rows;
-                        continue;
+                       
                         $html .= "<table class='datatable' id='dt_$name'><thead><tr>";
                         foreach ($columns as $col) {
                             $html .= "<th>" . htmlspecialchars($col['label']) . "</th>";

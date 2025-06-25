@@ -212,7 +212,7 @@ function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$m
     $docContent = "<html><body>" . $htmlForm . "</body></html>";
 
     $asunto = $config['subject'] ?? "Formulario Recibido";
-
+ 
     try {
         $mail->setFrom($mailDe, 'Formulario Web');
         $mail->addAddress($mailPara);

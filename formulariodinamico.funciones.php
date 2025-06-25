@@ -1,12 +1,9 @@
+ 
 <?php
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-
-
-
-
 
 function renderFieldsetsReadOnly($fieldsets, $valores, $baseUrl = '', $modo = 'mail') {
     global $imagenesInline;
@@ -22,6 +19,37 @@ function renderFieldsetsReadOnly($fieldsets, $valores, $baseUrl = '', $modo = 'm
                 $value = $valores[$name] ?? '';
                 $html .= "<div class='campo-container'>";
                 $html .= "<label>" . htmlspecialchars($label) . ":</label> ";
+
+                // --- SOPORTE PARA DATATABLE EN SOLO LECTURA ---
+                if ($field['type'] === 'datatable') {
+                    $tableData = $value;
+                    $columns = $field['columns'] ?? [];
+                    $html .= "<table border='1' cellpadding='4' cellspacing='0' style='margin:10px 0;'>";
+                    // Encabezados
+                    $html .= "<tr>";
+                    foreach ($columns as $col) {
+                        $html .= "<th>" . htmlspecialchars($col['label'] ?? $col['name']) . "</th>";
+                    }
+                    $html .= "</tr>";
+                    // Filas
+                    if (is_array($tableData) && count($tableData)) {
+                        foreach ($tableData as $row) {
+                            $html .= "<tr>";
+                            foreach ($columns as $col) {
+                                $colName = $col['name'];
+                                $html .= "<td>" . htmlspecialchars($row[$colName] ?? '') . "</td>";
+                            }
+                            $html .= "</tr>";
+                        }
+                    } else {
+                        $html .= "<tr><td colspan='" . count($columns) . "' style='text-align:center;'>Sin datos</td></tr>";
+                    }
+                    $html .= "</table>";
+                    $html .= "</div>";
+                    continue;
+                }
+                // --- FIN SOPORTE DATATABLE ---
+
                 if ($field['type'] === 'file') {
                     $files = $value;
                     if (!is_array($files)) $files = [$files];
@@ -308,40 +336,3 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
 function generarFieldsetsantiguo($fieldsets, $valores = [], $soloLectura = false) {
     // ...sin cambios, igual que tu versión original...
 }
-
-// --- SOPORTE PARA DATATABLE EN SOLO LECTURA ---
-if ($field['type'] === 'datatable') {
-    $tableData = $valores[$name] ?? [];
-    $columns = $field['columns'] ?? [];
-    $html .= "<table border='1' cellpadding='4' cellspacing='0' style='margin:10px 0;'>";
-    // Encabezados
-    $html .= "<tr>";
-    foreach ($columns as $col) {
-        $html .= "<th>" . htmlspecialchars($col['label'] ?? $col['name']) . "</th>";
-    }
-    $html .= "</tr>";
-    // Filas
-    if (is_array($tableData) && count($tableData)) {
-        foreach ($tableData as $row) {
-            $html .= "<tr>";
-            foreach ($columns as $col) {
-                $colName = $col['name'];
-                $html .= "<td>" . htmlspecialchars($row[$colName] ?? '') . "</td>";
-            }
-            $html .= "</tr>";
-        }
-    } else {
-        $html .= "<tr><td colspan='" . count($columns) . "' style='text-align:center;'>Sin datos</td></tr>";
-    }
-
-
-
-
-
-// --- FIN SOPORTE DATATABLE ---}    continue;    $html .= "</div>";    $html .= "</table>";    $html .= "</table>";
-    $html .= "</div>";
-    continue;
-}
-// --- FIN SOPORTE DATATABLE ---
-
-?>

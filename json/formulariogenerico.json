@@ -32,6 +32,9 @@
           "autocomplete": "on",
           "autofocus": true
         },
+ 
+     
+ 
         {
           "name": "ComId",
           "label": "Código comuna",
@@ -42,39 +45,78 @@
           "name": "descripcion_comuna",
           "label": "Comuna busqueda",
           "type": "text",
-          "data-formula": "{\"busqueda\":{\"tabla\":\"Comuna\",\"campo\":\"ComDes\",\"where\":\"ComId = {ComId}\"}}",
+          "data-formula": {
+            "type": "lookup",
+            "source": {
+              "table": "Comuna",
+              "field": "ComDes"
+            },
+            "where": "ComId = {ComId}"
+          },
+          "readonly": true
+        },
+
+ 
+        {
+          "name": "ComId",
+          "label": "Código comuna",
+          "type": "text",
+          "placeholder": "Ingrese código"
+        },
+        {
+          "name": "descripcion_comuna",
+          "label": "Comuna busqueda",
+          "type": "text",
+          "data-formula": {
+            "type": "lookup",
+            "source": {
+              "table": "Comuna",
+              "field": "ComDes"
+            },
+            "where": "ComId = {ComId}"
+          },
           "readonly": true
         },
 
 
     {
-          "name": "MpsId",
-          "label": "Id. Producto",
-          "type": "text",
-          "placeholder": "Ingrese códigoId"
-        },
+// ...existing code...
+```
+
+### **Paso Final (Muy Importante)**
+
+Ahora que todo tu JSON es consistente, debes asegurarte de que tu **archivo JavaScript** que maneja estas fórmulas esté programado para leer la nueva estructura (buscando las claves `type`, `source`, `table`, etc.) en lugar de la antigua clave `busqueda`.
+
+Si la lógica de `data-formula` sigue sin funcionar después de hacer consistente el JSON, el problema estará 100% en el archivo JavaScript.
 
 
 
 
 
-    {
-          "name": "MpsDescripcion",
-          "label": " Producto ",
-          "type": "text",
-          "data-formula": {
-            "type": "lookup",
-            "source": {
-              "table": "Mps",
-              "field": "MpsDescripcion"
-            },
-            "where": "MpsId = {MpsId}"
-          },
-          "readonly": false
-        },
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
 
 
         {

@@ -78,40 +78,7 @@
           "readonly": true
         },
 
-
-    {
-// ...existing code...
-```
-
-### **Paso Final (Muy Importante)**
-
-Ahora que todo tu JSON es consistente, debes asegurarte de que tu **archivo JavaScript** que maneja estas fórmulas esté programado para leer la nueva estructura (buscando las claves `type`, `source`, `table`, etc.) en lugar de la antigua clave `busqueda`.
-
-Si la lógica de `data-formula` sigue sin funcionar después de hacer consistente el JSON, el problema estará 100% en el archivo JavaScript.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+ 
 
 
 

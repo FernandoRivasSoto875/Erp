@@ -214,7 +214,10 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                 $type = $field['type'] ?? 'text';
                 $value = $valores[$name] ?? ($field['value'] ?? '');
                 $required = !empty($field['required']) ? 'required' : '';
-                $placeholder = $field['placeholder'] ?? '';
+                
+                // --- ESTA ES LA LÍNEA A CORREGIR ---
+                $placeholder = isset($field['placeholder']) ? 'placeholder="' . htmlspecialchars($field['placeholder'], ENT_QUOTES, 'UTF-8') . '"' : '';
+                
                 $classField = isset($field['class']) ? 'class="'.$field['class'].'"' : '';
                 $styleField = isset($field['style']) ? 'style="'.$field['style'].'"' : '';
                 $readonly = !empty($field['readonly']) || $soloLectura ? 'readonly' : '';

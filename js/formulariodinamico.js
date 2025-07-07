@@ -692,9 +692,9 @@ function initDynamicReordering() {
     // Fórmulas automáticas
     document.querySelectorAll('[data-formula]').forEach(function(input) {
         let formulaData = input.getAttribute('data-formula');
-        try { formulaData = JSON.parse(formulaData); } catch (e) { /* No es un JSON válido, se tratará como string */ }
+        try { formulaData = JSON.parse(formulaData); } catch (e) { /* No es JSON, se tratará como string */ }
 
-        // Caso 1: La fórmula es una expresión matemática (string)
+        // Caso 1: Fórmula matemática (string)
         if (typeof formulaData === 'string') {
             formulaData = formulaData.replace(/^"(.*)"$/, '$1');
             const campos = formulaData.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) || [];
@@ -708,27 +708,36 @@ function initDynamicReordering() {
             });
             calcularFormula(input, formulaData, campos);
         
-        // Caso 2: La fórmula es un objeto de búsqueda (NUEVO FORMATO)
+        // Caso 2: Fórmula de búsqueda (NUEVO FORMATO)
         } else if (typeof formulaData === 'object' && formulaData.type === 'lookup') {
+            console.log("--- DEBUG: Iniciando búsqueda para el campo:", input.name, "---");
             const campoClave = formulaData.where.match(/\{(.+?)\}/);
-            if (campoClave) {
-                const campoInput = document.getElementsByName(campoClave[1])[0];
+            if (campoClave && campoClave[1]) {
+                const nombreCampoClave = campoClave[1];
+                console.log("DEBUG: El campo que debe disparar la búsqueda es:", nombreCampoClave);
+                
+                const campoInput = document.getElementsByName(nombreCampoClave)[0];
+                
                 if (campoInput) {
+                    console.log("DEBUG: ¡ÉXITO! Se encontró el campo disparador en el HTML.");
                     campoInput.addEventListener('input', function() {
-                        // Pasamos el objeto `source` y el `where`
+                        console.log("DEBUG: Escribiendo en el campo disparador. ¡Llamando a fetch!");
                         buscarValor(input, formulaData.source, formulaData.where, campoInput.value);
                     });
+                } else {
+                    console.error("ERROR CRÍTICO: No se encontró en el HTML un campo con name='" + nombreCampoClave + "'. La búsqueda no funcionará.");
                 }
+            } else {
+                 console.error("ERROR: La cláusula 'where' para '" + input.name + "' no tiene un formato válido como '{nombre_campo}'.");
             }
 
-        // Caso 3: La fórmula es un objeto de búsqueda (FORMATO ANTIGUO - por compatibilidad)
+        // Caso 3: Fórmula de búsqueda (FORMATO ANTIGUO)
         } else if (typeof formulaData === 'object' && formulaData.busqueda) {
             const campoClave = formulaData.busqueda.where.match(/\{(.+?)\}/);
             if (campoClave) {
                 const campoInput = document.getElementsByName(campoClave[1])[0];
                 if (campoInput) {
                     campoInput.addEventListener('input', function() {
-                        // Pasamos el objeto `busqueda` y el `where`
                         buscarValor(input, formulaData.busqueda, formulaData.busqueda.where, campoInput.value);
                     });
                 }

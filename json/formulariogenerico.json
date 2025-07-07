@@ -59,8 +59,8 @@
 
 
     {
-          "name": "descripcion_producto",
-          "label": "Descripción Producto ",
+          "name": "MpsDescripcion",
+          "label": " Producto ",
           "type": "text",
           "data-formula": {
             "type": "lookup",

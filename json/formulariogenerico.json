@@ -43,20 +43,32 @@
           "label": "Comuna busqueda",
           "type": "text",
           "data-formula": "{\"busqueda\":{\"tabla\":\"Comuna\",\"campo\":\"ComDes\",\"where\":\"ComId = {ComId}\"}}",
-          "readonly": false
+          "readonly": true
         },
+
+
+    {
+          "name": "MpsId",
+          "label": "Id. Producto",
+          "type": "text",
+          "placeholder": "Ingrese códigoId"
+        },
+
+
+
+
 
     {
           "name": "descripcion_producto",
-          "label": "Descripción",
+          "label": "Descripción Producto ",
           "type": "text",
           "data-formula": {
             "type": "lookup",
             "source": {
-              "table": "Comuna",
-              "field": "ComDes"
+              "table": "Mps",
+              "field": "MpsDescripcion"
             },
-            "where": "ComId = {ComId}"
+            "where": "MpsId = {MpsId}"
           },
           "readonly": false
         },

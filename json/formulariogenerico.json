@@ -34,17 +34,37 @@
         },
         {
           "name": "ComId",
-          "label": "Código Producto",
+          "label": "Código comuna",
           "type": "text",
           "placeholder": "Ingrese código"
         },
         {
-          "name": "descripcion_producto",
-          "label": "Descripción",
+          "name": "descripcion_comuna",
+          "label": "Comuna busqueda",
           "type": "text",
           "data-formula": "{\"busqueda\":{\"tabla\":\"Comuna\",\"campo\":\"ComDes\",\"where\":\"ComId = {ComId}\"}}",
           "readonly": false
         },
+
+    {
+          "name": "descripcion_producto",
+          "label": "Descripción",
+          "type": "text",
+          "data-formula": {
+            "type": "lookup",
+            "source": {
+              "table": "Comuna",
+              "field": "ComDes"
+            },
+            "where": "ComId = {ComId}"
+          },
+          "readonly": false
+        },
+
+
+
+
+
         {
           "name": "total",
           "label": "Total",

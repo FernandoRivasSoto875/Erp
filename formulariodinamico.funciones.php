@@ -213,7 +213,12 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                 $dataAttrs = '';
                 foreach ($field as $k => $v) {
                     if (strpos($k, 'data-') === 0) {
-                        $dataAttrs .= ' ' . $k . '="' . htmlspecialchars($v) . '"';
+                        // Si el valor es un array u objeto, lo convertimos a JSON.
+                        if (is_array($v) || is_object($v)) {
+                            $dataAttrs .= ' ' . $k . '="' . htmlspecialchars(json_encode($v)) . '"';
+                        } else {
+                            $dataAttrs .= ' ' . $k . '="' . htmlspecialchars($v) . '"';
+                        }
                     }
                 }
 

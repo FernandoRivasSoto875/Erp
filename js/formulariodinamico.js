@@ -696,6 +696,7 @@ function initDynamicReordering() {
 
         // Caso 1: Fórmula matemática (string)
         if (typeof formulaData === 'string') {
+            // ... (esta parte ya funciona, la dejamos igual) ...
             formulaData = formulaData.replace(/^"(.*)"$/, '$1');
             const campos = formulaData.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) || [];
             campos.forEach(function(campo) {
@@ -733,6 +734,7 @@ function initDynamicReordering() {
 
         // Caso 3: Fórmula de búsqueda (FORMATO ANTIGUO)
         } else if (typeof formulaData === 'object' && formulaData.busqueda) {
+            // ... (lógica para el formato antiguo) ...
             const campoClave = formulaData.busqueda.where.match(/\{(.+?)\}/);
             if (campoClave) {
                 const campoInput = document.getElementsByName(campoClave[1])[0];

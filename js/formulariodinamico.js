@@ -747,7 +747,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     console.log("--- PROCESADOR DE FÓRMULAS FINALIZADO ---");
 
-    cargarCampos();
+    // cargarCampos(); // <-- ELIMINA ESTA LÍNEA DE AQUÍ
 
     // ========== INICIO BLOQUE DATATABLE DINÁMICO ==========
     // Asegúrate de tener un array "fields" con la definición de los campos
@@ -779,6 +779,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     configurarCondiciones();
     initDynamicReordering();
+
+    cargarCampos(); // <-- Y PÉGALA AQUÍ, JUSTO ANTES DEL ENVÍO AJAX
 
     // ===================== ENVÍO AJAX Y MENSAJE ARRIBA DEL FORMULARIO =====================
     document.getElementById("formulario").addEventListener("submit", function(event) {

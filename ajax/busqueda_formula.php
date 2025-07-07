@@ -1,37 +1,88 @@
-<?php
- 
-require_once '../funcionessql.php';
-$conn = conexionBd();
+ <?php
+// filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\ajax\busqueda_formula.php
 
-$data = json_decode(file_get_contents('php://input'), true);
+// --- 1. INCLUIR DEPENDENCIAS Y CONFIGURAR RESPUESTA ---
+require_once '../funcionessql.php'; // Asegúrate de que esta ruta es correcta
+header('Content-Type: application/json');
 
-// DEBUG: Guarda los datos recibidos
-file_put_contents(__DIR__ . '/debug_busqueda.txt', print_r($data, true));
+$response = ['resultado' => null, 'error' => null];
+$conn = null; // Inicializar la conexión como nula
 
-// Validar nombres de tabla y campo (solo letras, números y guion bajo)
-$tabla = preg_replace('/\W/', '', $data['tabla']);
-$campo = preg_replace('/\W/', '', $data['campo']);
-$where = $data['where'];
+try {
+    // --- 2. CONECTAR A LA BD ---
+    $conn = conexionBd();
+    if (!$conn) {
+        throw new Exception("No se pudo establecer conexión con la base de datos.");
+    }
 
-$condiciones = [];
-$valores = [];
-foreach ($where as $k => $v) {
-    $condiciones[] = "$k = ?";
-    $valores[] = $v;
-}
-$whereSql = implode(' AND ', $condiciones);
+    // --- 3. OBTENER Y VALIDAR DATOS DE ENTRADA ---
+    $data = json_decode(file_get_contents('php://input'), true);
 
-// DEBUG: Guarda la consulta SQL y los valores
-file_put_contents(__DIR__ . '/debug_sql.txt', "SELECT $campo FROM $tabla WHERE $whereSql LIMIT 1\n" . print_r($valores, true));
+    if (!$data || !isset($data['tabla']) || !isset($data['campo']) || !isset($data['where']) || !is_array($data['where'])) {
+        throw new Exception("Datos de búsqueda inválidos o incompletos.");
+    }
 
-$stmt = $conn->prepare("SELECT $campo FROM $tabla WHERE $whereSql LIMIT 1");
-if ($valores) {
-    $tipos = str_repeat('s', count($valores));
+    // --- 4. LISTA BLANCA DE SEGURIDAD (¡MUY IMPORTANTE!) ---
+    // Define aquí las tablas y campos que se pueden consultar a través de esta API.
+    // Esto previene que alguien intente consultar tablas sensibles como 'usuarios'.
+    $tablas_permitidas = ['Comuna', 'Mps', 'productos', 'clientes']; // <-- ¡AÑADE TUS TABLAS AQUÍ!
+    
+    $tabla = $data['tabla'];
+    $campo = $data['campo'];
+
+    if (!in_array($tabla, $tablas_permitidas)) {
+        throw new Exception("Acceso a la tabla no permitido.");
+    }
+    // Podrías hacer lo mismo para los campos si quieres ser aún más estricto.
+
+    // --- 5. CONSTRUIR CONSULTA PREPARADA DE FORMA SEGURA ---
+    $where_array = $data['where'];
+    $condiciones = [];
+    $valores = [];
+    $tipos = '';
+
+    foreach ($where_array as $columna => $valor) {
+        // Seguridad: Asegurarse de que el nombre de la columna es seguro.
+        $columna_segura = preg_replace('/[^a-zA-Z0-9_]/', '', $columna);
+        $condiciones[] = "`" . $columna_segura . "` = ?";
+        $valores[] = $valor;
+        $tipos .= 's'; // Asumimos string por defecto. Cambia si manejas números ('i' o 'd').
+    }
+
+    if (empty($condiciones)) {
+        throw new Exception("No se especificaron condiciones de búsqueda.");
+    }
+    
+    $whereSql = implode(' AND ', $condiciones);
+
+    // Los nombres de tabla y campo se validaron con la lista blanca, ahora es seguro usarlos.
+    $sql = "SELECT `" . $campo . "` FROM `" . $tabla . "` WHERE " . $whereSql . " LIMIT 1";
+
+    $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        throw new Exception("Error al preparar la consulta: " . $conn->error);
+    }
+
     $stmt->bind_param($tipos, ...$valores);
-}
-$stmt->execute();
-$stmt->bind_result($resultado);
-$found = $stmt->fetch();
-$stmt->close();
+    $stmt->execute();
+    $stmt->bind_result($resultado_db);
 
-echo json_encode(['resultado' => $found ? $resultado : null]);
+    if ($stmt->fetch()) {
+        $response['resultado'] = $resultado_db;
+    }
+    
+    $stmt->close();
+
+} catch (Exception $e) {
+    // --- 6. MANEJO CENTRALIZADO DE ERRORES ---
+    http_response_code(400); // Bad Request
+    $response['error'] = $e->getMessage();
+
+} finally {
+    // --- 7. CERRAR CONEXIÓN Y ENVIAR RESPUESTA ---
+    if ($conn) {
+        $conn->close();
+    }
+    echo json_encode($response);
+}
+?>

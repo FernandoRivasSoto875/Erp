@@ -165,17 +165,19 @@ function calcularFormula(input, formulaData, campos) {
 }
 
 // ===================== BUSCAR VALOR VÍA AJAX (PARA FÓRMULAS DE BÚSQUEDA) =====================
-function buscarValor(input, busqueda, valor) {
+function buscarValor(input, source, whereClause, valor) {
     if (!valor) { input.value = ''; return; }
-    const match = busqueda.where.match(/\{(.+?)\}/);
+    
+    const match = whereClause.match(/\{(.+?)\}/);
     const campoClave = match ? match[1] : null;
     if (!campoClave) { input.value = ''; return; }
+
     fetch('ajax/busqueda_formula.php', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-            tabla: busqueda.tabla,
-            campo: busqueda.campo,
+            tabla: source.table || source.tabla, // Acepta 'table' (nuevo) o 'tabla' (antiguo)
+            campo: source.field || source.campo, // Acepta 'field' (nuevo) o 'campo' (antiguo)
             where: { [campoClave]: valor }
         })
     })
@@ -690,7 +692,9 @@ function initDynamicReordering() {
     // Fórmulas automáticas
     document.querySelectorAll('[data-formula]').forEach(function(input) {
         let formulaData = input.getAttribute('data-formula');
-        try { formulaData = JSON.parse(formulaData); } catch { }
+        try { formulaData = JSON.parse(formulaData); } catch (e) { /* No es un JSON válido, se tratará como string */ }
+
+        // Caso 1: La fórmula es una expresión matemática (string)
         if (typeof formulaData === 'string') {
             formulaData = formulaData.replace(/^"(.*)"$/, '$1');
             const campos = formulaData.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) || [];
@@ -703,13 +707,29 @@ function initDynamicReordering() {
                 }
             });
             calcularFormula(input, formulaData, campos);
+        
+        // Caso 2: La fórmula es un objeto de búsqueda (NUEVO FORMATO)
+        } else if (typeof formulaData === 'object' && formulaData.type === 'lookup') {
+            const campoClave = formulaData.where.match(/\{(.+?)\}/);
+            if (campoClave) {
+                const campoInput = document.getElementsByName(campoClave[1])[0];
+                if (campoInput) {
+                    campoInput.addEventListener('input', function() {
+                        // Pasamos el objeto `source` y el `where`
+                        buscarValor(input, formulaData.source, formulaData.where, campoInput.value);
+                    });
+                }
+            }
+
+        // Caso 3: La fórmula es un objeto de búsqueda (FORMATO ANTIGUO - por compatibilidad)
         } else if (typeof formulaData === 'object' && formulaData.busqueda) {
             const campoClave = formulaData.busqueda.where.match(/\{(.+?)\}/);
             if (campoClave) {
                 const campoInput = document.getElementsByName(campoClave[1])[0];
                 if (campoInput) {
                     campoInput.addEventListener('input', function() {
-                        buscarValor(input, formulaData.busqueda, campoInput.value);
+                        // Pasamos el objeto `busqueda` y el `where`
+                        buscarValor(input, formulaData.busqueda, formulaData.busqueda.where, campoInput.value);
                     });
                 }
             }

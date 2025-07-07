@@ -232,9 +232,11 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                 foreach ($field as $k => $v) {
                     if (strpos($k, 'data-') === 0) {
                         if (is_array($v) || is_object($v)) {
-                            // Usamos htmlspecialchars para evitar problemas con el HTML
-                            $dataAttrs .= ' ' . $k . '="' . htmlspecialchars(json_encode($v), ENT_QUOTES, 'UTF-8') . '"';
+                            // --- CAMBIO CLAVE ---
+                            // Usamos comillas simples para el atributo, así el JSON no necesita escaparse.
+                            $dataAttrs .= " " . $k . "='" . json_encode($v) . "'";
                         } else {
+                            // Para strings normales, mantenemos la seguridad de htmlspecialchars.
                             $dataAttrs .= ' ' . $k . '="' . htmlspecialchars($v, ENT_QUOTES, 'UTF-8') . '"';
                         }
                     }

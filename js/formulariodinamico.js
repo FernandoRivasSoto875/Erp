@@ -691,16 +691,9 @@ function initDynamicReordering() {
 
     // Fórmulas automáticas
     document.querySelectorAll('[data-formula]').forEach(function(input) {
-        let formulaString = input.getAttribute('data-formula');
-        
-        // --- ¡NUEVO PASO DE DECODIFICACIÓN! ---
-        // Creamos un elemento temporal para que el navegador decodifique entidades HTML como &quot;
-        const decoder = document.createElement('textarea');
-        decoder.innerHTML = formulaString;
-        let formulaData = decoder.value;
-        // --- FIN DEL NUEVO PASO ---
-
-        try { formulaData = JSON.parse(formulaData); } catch (e) { /* No es JSON, se tratará como string */ }
+        let formulaData = input.getAttribute('data-formula');
+        // ¡SIN DECODIFICADOR! Directo al parse.
+        try { formulaData = JSON.parse(formulaData); } catch (e) { /* No es JSON */ }
 
         // Caso 1: Fórmula matemática (string)
         if (typeof formulaData === 'string') {

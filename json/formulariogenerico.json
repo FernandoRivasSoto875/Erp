@@ -57,27 +57,7 @@
         },
 
  
-        {
-          "name": "ComId",
-          "label": "Código comuna",
-          "type": "text",
-          "placeholder": "Ingrese código"
-        },
-        {
-          "name": "descripcion_comuna",
-          "label": "Comuna busqueda",
-          "type": "text",
-          "data-formula": {
-            "type": "lookup",
-            "source": {
-              "table": "Comuna",
-              "field": "ComDes"
-            },
-            "where": "ComId = {ComId}"
-          },
-          "readonly": true
-        },
- 
+    
 
         {
           "name": "total",

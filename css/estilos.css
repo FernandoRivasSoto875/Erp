@@ -221,11 +221,13 @@ section p {
 .label-pos-top-left label, .label-pos-bottom-left label, .label-pos-top label, .label-pos-bottom label { text-align: left; }
 .label-pos-top-right label, .label-pos-bottom-right label { text-align: right; }
 
-/* --- CORRECCIÓN PARA CENTER --- */
-.label-pos-top-center label, .label-pos-bottom-center label,
-.label-pos-top-center .grupo-label, .label-pos-bottom-center .grupo-label {
-    width: 100%; /* <-- ESTA ES LA LÍNEA CLAVE */
-    text-align: center;
+/* --- CORRECCIÓN DEFINITIVA PARA CENTER --- */
+section .label-pos-top-center label,
+section .label-pos-bottom-center label,
+section .label-pos-top-center .grupo-label,
+section .label-pos-bottom-center .grupo-label {
+    width: 100%;
+    text-align: center !important; /* <-- Asegura la anulación de otros estilos */
 }
 /* --- FIN DE LA CORRECCIÓN --- */
 

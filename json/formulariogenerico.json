@@ -114,7 +114,7 @@
           "label": "Ítems",
           "type": "datatable",
           "columns": [
-            { "name": "MpdId", "label": "Código", "type": "text" },
+            { "name": "MpsId", "label": "Código", "type": "text" },
 
 
          

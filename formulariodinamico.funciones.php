@@ -5,6 +5,7 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 /**
+ * Refisar
  * Renderiza los fieldsets y sus campos en modo de solo lectura.
  * Ideal para correos, PDFs o vistas de resumen.
  */

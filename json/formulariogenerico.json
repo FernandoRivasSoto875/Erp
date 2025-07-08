@@ -114,8 +114,31 @@
           "label": "Ítems",
           "type": "datatable",
           "columns": [
-            { "name": "codigo", "label": "Código", "type": "text" },
-            { "name": "descripcion", "label": "Descripción", "type": "textarea", "rows": 2 },
+            { "name": "MpdId", "label": "Código", "type": "text" },
+
+
+         
+   {
+          "name": "MpsDescripcion",
+          "label": "Producto",
+                  "type": "text",
+          "data-formula": {
+            "type": "lookup",
+            "source": {
+              "table": "Mps",
+              "field": "MpsDescripcion"
+            },
+            "where": "MpsId= {MpsId}"
+          },
+          "readonly": true
+        },
+ 
+
+
+
+
+
+
             { "name": "cantidad", "label": "Cantidad", "type": "number", "min": 1 },
             { "name": "fecha", "label": "Fecha", "type": "date" },
             { "name": "activo", "label": "Activo", "type": "checkbox" },

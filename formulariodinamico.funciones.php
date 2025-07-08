@@ -227,24 +227,18 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                 $attrs = [
                     'maxlength' => $field['maxlength'] ?? null, 'minlength' => $field['minlength'] ?? null,
                     'min' => $field['min'] ?? null, 'max' => $field['max'] ?? null, 'step' => $field['step'] ?? null,
-                    'pattern' => $field['pattern'] ?? null, 'accept' => $field['accept'] ?? null,
+                    'pattern' => $field['pattern'] ?? null,
                     'autocomplete' => $field['autocomplete'] ?? null, 'autofocus' => !empty($field['autofocus']) ? 'autofocus' : null,
                     'rows' => $field['rows'] ?? null, 'cols' => $field['cols'] ?? null
                 ];
 
                 $dataAttrs = '';
-                // --- LÍNEA DE PRUEBA ---
-                // Añadimos un atributo de prueba para ver si el archivo se actualiza en el servidor.
-                $dataAttrs .= ' data-test-version="v4-final"';
-
                 foreach ($field as $k => $v) {
                     if (strpos($k, 'data-') === 0) {
                         if (is_array($v) || is_object($v)) {
-                            // --- CAMBIO CLAVE ---
-                            // Usamos comillas simples para el atributo, así el JSON no necesita escaparse.
+                            // Usamos comillas simples para el atributo, así el JSON interno no necesita escaparse.
                             $dataAttrs .= " " . $k . "='" . json_encode($v) . "'";
                         } else {
-                            // Para strings normales, mantenemos la seguridad de htmlspecialchars.
                             $dataAttrs .= ' ' . $k . '="' . htmlspecialchars($v, ENT_QUOTES, 'UTF-8') . '"';
                         }
                     }
@@ -255,16 +249,25 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                     if ($val !== null) $commonAttrs .= " $attr=\"$val\"";
                 }
 
-                // --- INICIO: LÓGICA DE POSICIÓN DE ETIQUETA ---
-                $labelPosition = $field['labelPosition'] ?? 'top'; // 'top' es el valor por defecto
+                // Gestiona la posición de la etiqueta añadiendo una clase CSS al contenedor.
+                $labelPosition = $field['labelPosition'] ?? 'top'; // 'top' es el valor por defecto.
                 $containerClass = "campo-container label-pos-" . htmlspecialchars($labelPosition);
-                // --- FIN: LÓGICA DE POSICIÓN DE ETIQUETA ---
 
                 $html .= "<div class='$containerClass'>";
 
-                // Modificado para ocultar la etiqueta si la posición es 'none'
+                // Renderiza la etiqueta, a menos que se especifique 'none' o sea un campo oculto.
+                // Para 'checkbox' y 'radio', la etiqueta principal es un título de grupo.
                 if ($label && $type !== 'hidden' && $labelPosition !== 'none') {
-                    $html .= "<label for=\"$name\">$label</label>";
+                    if ($type === 'checkbox' || $type === 'radio') {
+                        $html .= "<div class=\"grupo-label\">$label</div>";
+                    } else {
+                        $html .= "<label for=\"$name\">$label</label>";
+                    }
+                }
+
+                // Para 'checkbox' y 'radio', se crea un sub-contenedor para las opciones.
+                if ($type === 'checkbox' || $type === 'radio') {
+                    $html .= "<div class='opciones-container'>";
                 }
 
                 switch ($type) {
@@ -295,7 +298,8 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                             $opt_val = is_array($opt) ? $opt['value'] : $opt;
                             $opt_label = is_array($opt) ? $opt['label'] : $opt;
                             $is_checked = ($type === 'checkbox' && is_array($value) && in_array($opt_val, $value)) || ($value == $opt_val);
-                            $html .= "<label><input type=\"$type\" name=\"$name" . ($type === 'checkbox' ? '[]' : '') . "\" value=\"" . htmlspecialchars($opt_val) . "\" " . ($is_checked ? 'checked' : '') . " $commonAttrs> " . htmlspecialchars($opt_label) . "</label> ";
+                            // Se añade una clase al label de la opción para poder darle estilo si es necesario
+                            $html .= "<label class='opcion-label'><input type=\"$type\" name=\"$name" . ($type === 'checkbox' ? '[]' : '') . "\" value=\"" . htmlspecialchars($opt_val) . "\" " . ($is_checked ? 'checked' : '') . " $commonAttrs> " . htmlspecialchars($opt_label) . "</label> ";
                         }
                         break;
 
@@ -353,7 +357,13 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                         $html .= "<input type=\"$type\" name=\"$name\" id=\"$name\" value=\"" . htmlspecialchars($value) . "\" $commonAttrs />";
                         break;
                 }
-                $html .= "</div>";
+
+                // Cerramos el contenedor de opciones si fue abierto
+                if ($type === 'checkbox' || $type === 'radio') {
+                    $html .= "</div>"; // Cierre de .opciones-container
+                }
+
+                $html .= "</div>"; // Cierre de .campo-container
             }
         }
 

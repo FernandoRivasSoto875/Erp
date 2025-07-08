@@ -6,7 +6,6 @@ error_reporting(E_ALL);
 
 /**
  * Renderiza los fieldsets en modo de solo lectura (para correos, PDFs).
- * Refactorizado para ser más robusto.
  */
 function renderFieldsetsReadOnly($fieldsets, $valores, $baseUrl = '', $modo = 'mail') {
     global $imagenesInline;
@@ -109,7 +108,6 @@ function obtenerDatosTabla($data) {
 
 /**
  * Normaliza los datos del formulario (ej. $_POST) para guardarlos.
- * ¡CORREGIDO para manejar datatables correctamente!
  */
 function normalizaValores($formData, $json, $paraJson = false) {
     $result = [];
@@ -121,12 +119,10 @@ function normalizaValores($formData, $json, $paraJson = false) {
 
                 if ($type === 'datatable') {
                     $result[$name] = [];
-                    // Los datos del datatable llegan como un array anidado: $formData['items']
                     if (isset($formData[$name]) && is_array($formData[$name])) {
                         foreach ($formData[$name] as $row) {
                             $isEmptyRow = true;
                             $processedRow = [];
-                            // Procesa cada columna de la fila
                             foreach ($field['columns'] as $col) {
                                 $colName = $col['name'];
                                 $cellValue = isset($row[$colName]) ? trim($row[$colName]) : '';
@@ -135,7 +131,6 @@ function normalizaValores($formData, $json, $paraJson = false) {
                                     $isEmptyRow = false;
                                 }
                             }
-                            // Solo agrega la fila si al menos un campo tiene valor
                             if (!$isEmptyRow) {
                                 $result[$name][] = $processedRow;
                             }
@@ -189,7 +184,6 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
         $style = $fieldset['style'] ?? '';
         $class = $fieldset['class'] ?? '';
         $fieldsetAttrs = ($class ? ' class="' . htmlspecialchars($class) . '"' : '') . ($style ? ' style="' . htmlspecialchars($style) . '"' : '');
-
         $html .= "<fieldset$fieldsetAttrs>";
         if ($legend) $html .= "<legend>$legend</legend>";
 
@@ -199,7 +193,6 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                 $label = $field['label'] ?? '';
                 $type = $field['type'] ?? 'text';
                 $value = $valores[$name] ?? ($field['value'] ?? '');
-                
                 $labelPosition = $field['labelPosition'] ?? 'top';
                 $containerClass = "campo-container label-pos-" . htmlspecialchars($labelPosition);
                 $html .= "<div class='$containerClass'>";
@@ -214,13 +207,11 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                     $html .= "<div class='opciones-container'>";
                 }
 
-                // Función auxiliar para construir la cadena de atributos HTML
                 $buildAttrs = function($attrs) {
                     $str = '';
                     foreach ($attrs as $k => $v) {
                         if ($v === false || $v === null || $v === '') continue;
                         if ($v === true) { $str .= " $k"; continue; }
-                        // Para data-attributes que son arrays/objetos (ej. lookups)
                         if (is_array($v) || is_object($v)) {
                             $str .= " $k='" . json_encode($v, JSON_UNESCAPED_UNICODE) . "'";
                         } else {
@@ -230,59 +221,7 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                     return $str;
                 };
 
-                // Atributos base para todos los campos
-                $baseAttrs = [
-                    'name' => $name, 'id' => $name,
-                    'class' => $field['class'] ?? null, 'style' => $field['style'] ?? null,
-                    'required' => !empty($field['required']), 'readonly' => !empty($field['readonly']) || $soloLectura,
-                    'disabled' => !empty($field['disabled']) || $soloLectura,
-                ];
-                
-                // Recolecta todos los atributos data-* del JSON del campo
-                foreach ($field as $k => $v) {
-                    if (strpos($k, 'data-') === 0) {
-                        $baseAttrs[$k] = $v;
-                    }
-                }
-
                 switch ($type) {
-                    case 'textarea':
-                        $attrs = array_merge($baseAttrs, ['rows' => $field['rows'] ?? null, 'cols' => $field['cols'] ?? null]);
-                        $html .= "<textarea " . $buildAttrs($attrs) . ">" . htmlspecialchars($value) . "</textarea>";
-                        break;
-
-                    case 'select':
-                    case 'selectdata':
-                        $options = $field['options'] ?? [];
-                        if ($type === 'selectdata' && isset($field['data'])) {
-                            $options = obtenerDatosTabla($field['data']);
-                        }
-                        $html .= "<select " . $buildAttrs($baseAttrs) . ">";
-                        foreach ($options as $opt) {
-                            $opt_val = is_array($opt) ? ($opt['value'] ?? '') : $opt;
-                            $opt_label = is_array($opt) ? ($opt['label'] ?? '') : $opt;
-                            $sel = ($value == $opt_val) ? 'selected' : '';
-                            $html .= "<option value=\"" . htmlspecialchars($opt_val) . "\" $sel>" . htmlspecialchars($opt_label) . "</option>";
-                        }
-                        $html .= "</select>";
-                        break;
-
-                    case 'checkbox':
-                    case 'radio':
-                        $options = $field['options'] ?? [];
-                        foreach ($options as $opt) {
-                            $opt_val = is_array($opt) ? $opt['value'] : $opt;
-                            $opt_label = is_array($opt) ? $opt['label'] : $opt;
-                            $is_checked = ($type === 'checkbox' && is_array($value) && in_array($opt_val, $value)) || ($value == $opt_val);
-                            $inputName = $name . ($type === 'checkbox' ? '[]' : '');
-                            $html .= "<label class='opcion-label'><input type=\"$type\" name=\"$inputName\" value=\"" . htmlspecialchars($opt_val) . "\" " . ($is_checked ? 'checked' : '') . "> " . htmlspecialchars($opt_label) . "</label> ";
-                        }
-                        break;
-
-                    case 'hidden':
-                        $html .= "<input type=\"hidden\" name=\"$name\" id=\"$name\" value=\"" . htmlspecialchars($value) . "\">";
-                        break;
-
                     case 'datatable':
                         $columns = $field['columns'] ?? [];
                         $tableData = is_array($value) ? $value : [];
@@ -300,8 +239,6 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                             foreach ($columns as $col) {
                                 $colName = $col['name'];
                                 
-                                // ¡CORRECCIÓN FINAL! Se construye un array de atributos para cada celda
-                                // que incluye los atributos data-* de la columna.
                                 $colAttrs = [
                                     'type' => $col['type'] ?? 'text',
                                     'name' => "{$name}[{$i}][{$colName}]",
@@ -311,13 +248,12 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                                     'readonly' => !empty($col['readonly']),
                                 ];
 
-                                // Se buscan los data-attributes específicos de la columna y se añaden
                                 foreach ($col as $k => $v) {
                                     if (strpos($k, 'data-') === 0) {
                                         $colAttrs[$k] = $v;
                                     }
                                 }
-
+                                
                                 $html .= "<td><input " . $buildAttrs($colAttrs) . "></td>";
                             }
                             $html .= "<td><button type='button' class='eliminar_fila btn btn-danger btn-sm'>Eliminar</button></td></tr>";
@@ -327,13 +263,18 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                         $html .= "<button type='button' id='btn-add-row-{$name}' class='btn btn-primary mt-2'>Agregar Fila</button>";
                         break;
 
-                    case 'file':
-                        $attrs = array_merge($baseAttrs, ['name' => $name . (!empty($field['multiple']) ? '[]' : ''), 'multiple' => !empty($field['multiple'])]);
-                        $html .= "<input type=\"file\" " . $buildAttrs($attrs) . " onchange=\"mostrarArchivosSeleccionados(this);previewImage(this);\">";
-                        $html .= "<div id=\"filelist_$name\" class=\"file-list mt-2\"></div>";
-                        break;
-
-                    default: // Para text, number, email, etc.
+                    default:
+                        $baseAttrs = [
+                            'name' => $name, 'id' => $name,
+                            'class' => $field['class'] ?? null, 'style' => $field['style'] ?? null,
+                            'required' => !empty($field['required']), 'readonly' => !empty($field['readonly']) || $soloLectura,
+                            'disabled' => !empty($field['disabled']) || $soloLectura,
+                        ];
+                        foreach ($field as $k => $v) {
+                            if (strpos($k, 'data-') === 0) {
+                                $baseAttrs[$k] = $v;
+                            }
+                        }
                         $attrs = array_merge($baseAttrs, [
                             'type' => $type,
                             'value' => $value,

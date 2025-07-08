@@ -1,33 +1,10 @@
 // ===================== AGREGAR FILA A DATATABLE =====================
+// ESTA FUNCIÓN SERÁ REEMPLAZADA POR UNA LÓGICA MÁS POTENTE EN LA SECCIÓN DE INICIALIZACIÓN
+/*
 function agregarFilaDatatable(tablaId) {
-    var tabla = document.getElementById(tablaId);
-    var tbody = tabla.querySelector('tbody');
-    var columnas = tabla.querySelectorAll('thead th');
-    var rowCount = tbody.rows.length;
-    var tr = document.createElement('tr');
-    var colCount = columnas.length - 1; // Última columna es "Acciones"
-
-    for (var i = 0; i < colCount; i++) {
-        // Obtén el nombre de la columna desde el input de la primera fila si existe
-        var colName = '';
-        var colType = 'text';
-        if (tbody.rows[0] && tbody.rows[0].cells[i]) {
-            var input = tbody.rows[0].cells[i].querySelector('input');
-            if (input) {
-                colName = input.name.replace('[]', '');
-                colType = input.type;
-            }
-        }
-        // Si no hay filas, puedes definir los nombres de columna manualmente aquí
-        var inputId = tablaId + '_' + colName + '_' + rowCount + '_' + Date.now();
-        tr.innerHTML += `<td>
-            <label for="${inputId}" style="display:none;">${columnas[i].textContent}</label>
-            <input type="${colType}" name="${colName}[]" id="${inputId}" required>
-        </td>`;
-    }
-    tr.innerHTML += `<td><button type="button" class="eliminar_fila">Eliminar</button></td>`;
-    tbody.appendChild(tr);
+    // ... tu código antiguo ...
 }
+*/
 
 // ===================== MOSTRAR ARCHIVOS SELECCIONADOS Y GUARDAR EN LOCALSTORAGE =====================
 function mostrarArchivosSeleccionados(input) {
@@ -99,6 +76,7 @@ function previewImage(input) {
 
 // ===================== LIMPIAR VALOR NUMÉRICO PARA CÁLCULOS =====================
 function limpiarNumero(valor) {
+    if (typeof valor !== 'string') valor = String(valor); // Añadido para seguridad
     valor = valor.replace(/[^\d,.-]/g, '');
     valor = valor.replace(/\./g, '').replace(',', '.');
     return valor;
@@ -135,63 +113,102 @@ function aplicarFormato(input, formato) {
 }
 
 // ===================== CALCULAR FÓRMULA MATEMÁTICA =====================
+// ESTA FUNCIÓN Y LA SIGUIENTE (buscarValor) SERÁN REEMPLAZADAS POR la nueva función 'activarLogicaFila'
+/*
 function calcularFormula(input, formulaData, campos) {
-    let expr = formulaData;
-    campos.forEach(function(campo) {
-        let campoInput = document.getElementsByName(campo)[0];
-        let val = 0;
-        if (campoInput) {
-            val = parseFloat(limpiarNumero(campoInput.value)) || 0;
-        }
-        expr = expr.replace(new RegExp("\\b" + campo + "\\b", "g"), val);
-    });
-    try {
-        let resultado = eval(expr);
-        input.value = resultado;
-        const formato = input.getAttribute('data-formato');
-        if (formato) {
-            aplicarFormato(input, formato);
-        }
-        localStorage.setItem(input.name, resultado);
-        if (input.id === "total_calculado") {
-            const total = document.getElementById("total");
-            total.value = resultado;
-            localStorage.setItem("total", resultado);
-        }
-    } catch (e) {
-        console.error("Error al calcular fórmula:", formulaData, e);
-        input.value = '';
-    }
+    // ... tu código antiguo ...
 }
+*/
 
 // ===================== BUSCAR VALOR VÍA AJAX (PARA FÓRMULAS DE BÚSQUEDA) =====================
+/*
 function buscarValor(input, source, whereClause, valor) {
-    if (!valor) { input.value = ''; return; }
-    
-    const match = whereClause.match(/\{(.+?)\}/);
-    const campoClave = match ? match[1] : null;
-    if (!campoClave) { input.value = ''; return; }
-
-    fetch('ajax/busqueda_formula.php', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            tabla: source.table || source.tabla, // Acepta 'table' (nuevo) o 'tabla' (antiguo)
-            campo: source.field || source.campo, // Acepta 'field' (nuevo) o 'campo' (antiguo)
-            where: { [campoClave]: valor }
-        })
-    })
-    .then(r => r.ok ? r.json() : Promise.reject())
-    .then(data => {
-        if (data && typeof data.resultado !== "undefined" && data.resultado !== null) {
-            input.value = data.resultado;
-            localStorage.setItem(input.name, data.resultado);
-        } else {
-            input.value = '';
-        }
-    })
-    .catch(() => { input.value = ''; });
+    // ... tu código antiguo ...
 }
+*/
+
+// ===================== NUEVA LÓGICA DE FÓRMULAS UNIFICADA =====================
+/**
+ * Activa toda la lógica (fórmulas, lookups) para un contexto específico.
+ * Reemplaza a calcularFormula y buscarValor.
+ * @param {HTMLTableRowElement|Document} context - La fila (<tr>) o el documento entero.
+ */
+function activarLogicaFila(context) {
+    const inputsConFormula = context.querySelectorAll('[data-formula]');
+    const rowData = {};
+
+    // 1. Recolectar datos del contexto (fila o formulario global)
+    context.querySelectorAll('input, select, textarea').forEach(input => {
+        let name = input.name;
+        const nameMatch = name.match(/\[(\w+)\]$/); // Para datatables, extrae el nombre de la columna.
+        if (nameMatch) {
+            name = nameMatch[1];
+        }
+        rowData[name] = input.value;
+    });
+
+    // 2. Procesar cada campo con fórmula dentro del contexto
+    inputsConFormula.forEach(input => {
+        let formulaAttr = input.getAttribute('data-formula');
+        let formulaData;
+        try {
+            // Permite que el JSON en el atributo use comillas simples o dobles
+            formulaData = JSON.parse(formulaAttr.replace(/'/g, '"'));
+        } catch (e) {
+            formulaData = formulaAttr; // Si no es JSON, es una fórmula matemática string
+        }
+
+        // Lógica para Búsquedas (Lookup)
+        if (typeof formulaData === 'object' && formulaData.type === 'lookup') {
+            const placeholders = (formulaData.where.match(/\{(.+?)\}/g) || []);
+            placeholders.forEach(placeholder => {
+                const triggerFieldName = placeholder.replace(/[{}]/g, '');
+                // Busca el campo disparador dentro del mismo contexto (fila) o globalmente
+                const triggerInput = context.querySelector(`[name$="[${triggerFieldName}]"]`) || document.getElementsByName(triggerFieldName)[0];
+                if (triggerInput && !triggerInput.dataset.lookupAttached) {
+                    triggerInput.addEventListener('input', () => activarLogicaFila(context));
+                    triggerInput.dataset.lookupAttached = 'true'; // Evita añadir el evento múltiples veces
+                }
+            });
+            
+            // Lógica de búsqueda AJAX
+            let whereFinal = formulaData.where;
+            for (const placeholder of placeholders) {
+                const fieldName = placeholder.replace(/[{}]/g, '');
+                const valor = rowData[fieldName] || '';
+                if (valor === '') { input.value = ''; return; } // Si un campo clave está vacío, no buscar.
+                whereFinal = whereFinal.replace(placeholder, `'${valor}'`);
+            }
+            fetch('ajax/busqueda_formula.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    tabla: formulaData.source.table,
+                    campo: formulaData.source.field,
+                    where: whereFinal
+                })
+            })
+            .then(r => r.ok ? r.json() : Promise.reject())
+            .then(data => { input.value = (data && data.resultado !== null) ? data.resultado : ''; })
+            .catch(() => { input.value = ''; });
+        
+        // Lógica para Fórmulas Matemáticas
+        } else if (typeof formulaData === 'string') {
+            let expr = formulaData;
+            for (const key in rowData) {
+                const val = parseFloat(limpiarNumero(rowData[key])) || 0;
+                expr = expr.replace(new RegExp(`\\b${key}\\b`, 'g'), val);
+            }
+            try {
+                const resultado = eval(expr);
+                input.value = Number.isFinite(resultado) ? resultado.toFixed(2) : '0.00';
+            } catch (e) {
+                input.value = 'Error';
+            }
+        }
+    });
+}
+
 
 // ===================== AUTOSAVE Y VALIDACIÓN =====================
 
@@ -680,92 +697,69 @@ function initDynamicReordering() {
 }
 
 
-// ===================== INICIALIZACIÓN DE EVENTOS =====================
+// ===================== INICIALIZACIÓN DE EVENTOS (BLOQUE ÚNICO Y CORREGIDO) =====================
 document.addEventListener('DOMContentLoaded', function() {
-    // Inicializador para archivos
-    document.querySelectorAll('input[type="file"]').forEach(function(input) {
-        input.addEventListener('change', function() {
-            mostrarArchivosSeleccionados(input);
-        });
-    });
 
-    // Fórmulas automáticas
-    console.log("--- INICIANDO PROCESADOR DE FÓRMULAS ---");
-    document.querySelectorAll('[data-formula]').forEach(function(input) {
-        console.log("Procesando campo:", input.name);
-        let formulaAttr = input.getAttribute('data-formula');
-        let formulaData = formulaAttr;
+    // --- Lógica de Datatable ---
+    function inicializarDataTables() {
+        document.querySelectorAll('table.datatable-container').forEach(table => {
+            const fieldName = table.id;
+            const formField = window.fields?.find(f => f.name === fieldName);
+            if (!formField) return;
+            const tbody = table.querySelector('tbody');
+            
+            // Activa la lógica para las filas ya existentes (cargadas por PHP).
+            tbody.querySelectorAll('tr').forEach(row => activarLogicaFila(row));
 
-        // Intenta convertir el atributo a un objeto JSON
-        try {
-            formulaData = JSON.parse(formulaAttr);
-            console.log("-> Atributo es un JSON válido.");
-        } catch (e) {
-            console.log("-> Atributo NO es un JSON, se tratará como string.");
-        }
-
-        // Ahora, verifica el tipo de fórmula
-        if (typeof formulaData === 'object' && formulaData.type === 'lookup') {
-            console.log("-> TIPO: Búsqueda (lookup).");
-            const whereClause = formulaData.where;
-            const match = whereClause.match(/\{(.+?)\}/);
-
-            if (match && match[1]) {
-                const triggerFieldName = match[1];
-                console.log("-> Campo disparador requerido:", triggerFieldName);
-                const triggerField = document.getElementsByName(triggerFieldName)[0];
-
-                if (triggerField) {
-                    console.log("-> ¡ÉXITO! Campo disparador encontrado. Añadiendo evento.");
-                    triggerField.addEventListener('input', function() {
-                        console.log("-> EVENTO: Disparando búsqueda para valor:", triggerField.value);
-                        buscarValor(input, formulaData.source, whereClause, triggerField.value);
-                    });
-                } else {
-                    console.error("-> ¡ERROR CRÍTICO! No se encontró el campo disparador con name='" + triggerFieldName + "' en el HTML.");
-                }
-            } else {
-                console.error("-> ¡ERROR! La cláusula 'where' no tiene un formato válido: " + whereClause);
-            }
-
-        } else if (typeof formulaData === 'string') {
-            console.log("-> TIPO: Fórmula matemática.");
-            // ... (lógica de fórmula matemática que ya funciona) ...
-            const campos = formulaData.match(/\b[a-zA-Z_][a-zA-Z0-9_]*\b/g) || [];
-            campos.forEach(function(campo) {
-                const campoInput = document.getElementsByName(campo)[0];
-                if (campoInput) {
-                    campoInput.addEventListener('input', function() {
-                        calcularFormula(input, formulaData, campos);
-                    });
+            // Evento para recalcular cuando se modifica un campo en cualquier fila.
+            tbody.addEventListener('input', e => {
+                const row = e.target.closest('tr');
+                if (row) {
+                    activarLogicaFila(row);
+                    guardarEstadoDataTable(table); // Guarda en localStorage al editar
                 }
             });
-            calcularFormula(input, formulaData, campos);
-        } else {
-            console.warn("-> ADVERTENCIA: Campo con data-formula no reconocido.", input.name, formulaData);
-        }
-    });
-    console.log("--- PROCESADOR DE FÓRMULAS FINALIZADO ---");
 
-    // cargarCampos(); // <-- ELIMINA ESTA LÍNEA DE AQUÍ
-
-    // ========== INICIO BLOQUE DATATABLE DINÁMICO ==========
-    // Asegúrate de tener un array "fields" con la definición de los campos
-    // y un <div id="formulario-dinamico"></div> en tu HTML
-    if (typeof fields !== "undefined") {
-        const formDiv = document.getElementById('formulario-dinamico');
-        fields.forEach(field => {
-            if (field.type === "datatable") {
-                formDiv.innerHTML += renderDatatable(field);
-            }
-        });
-        fields.forEach(field => {
-            if (field.type === "datatable") {
-                initDatatableEvents(field);
-            }
+            // Reemplaza la funcionalidad de 'agregarFilaDatatable' con esta lógica más potente
+            document.getElementById(`btn-add-row-${fieldName}`)?.addEventListener('click', function() {
+                const newRow = tbody.insertRow();
+                const rowIndex = Array.from(tbody.rows).indexOf(newRow);
+                formField.columns.forEach(col => {
+                    const cell = newRow.insertCell();
+                    const input = document.createElement('input');
+                    input.type = col.type || 'text';
+                    input.name = `${fieldName}[${rowIndex}][${col.name}]`;
+                    input.className = 'form-control';
+                    if (col.placeholder) input.placeholder = col.placeholder;
+                    if (col.readonly) input.readOnly = true;
+                    if (col['data-formula']) {
+                        const formula = typeof col['data-formula'] === 'object' ? JSON.stringify(col['data-formula']) : col['data-formula'];
+                        input.setAttribute('data-formula', formula);
+                    }
+                    cell.appendChild(input);
+                });
+                const actionCell = newRow.insertCell();
+                actionCell.innerHTML = `<button type="button" class="btn-remove-row eliminar_fila">Eliminar</button>`;
+                
+                // Activa la lógica para la fila recién creada.
+                activarLogicaFila(newRow);
+            });
         });
     }
-    // ========== FIN BLOQUE DATATABLE DINÁMICO ==========
+
+    // --- Delegación de eventos para eliminar filas ---
+    document.addEventListener('click', function(e) {
+        if (e.target?.classList.contains('eliminar_fila')) {
+            const table = e.target.closest('table.datatable-container');
+            e.target.closest('tr').remove();
+            if(table) guardarEstadoDataTable(table); // Guarda al eliminar
+        }
+    });
+
+    // --- Cableado de eventos y funciones ---
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+        input.addEventListener('change', () => mostrarArchivosSeleccionados(input));
+    });
 
     const fieldsForm = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
     fieldsForm.forEach(el => {
@@ -777,195 +771,40 @@ document.addEventListener('DOMContentLoaded', function() {
         field.addEventListener("input", autocompleteField);
     });
 
+    // --- Ejecución de inicializadores en el orden correcto ---
     configurarCondiciones();
     initDynamicReordering();
+    activarLogicaFila(document); // Activa fórmulas en campos normales
+    inicializarDataTables();     // Activa la lógica de datatables
+    cargarCampos();              // Carga datos guardados al final
 
-    cargarCampos(); // <-- Y PÉGALA AQUÍ, JUSTO ANTES DEL ENVÍO AJAX
-
-    // ===================== ENVÍO AJAX Y MENSAJE ARRIBA DEL FORMULARIO =====================
-    document.getElementById("formulario").addEventListener("submit", function(event) {
+    // --- Envío del formulario ---
+    document.getElementById("formulario")?.addEventListener("submit", function(event) {
         event.preventDefault();
         const formData = new FormData(this);
-        const nombreArchivo = document.getElementById("formulario").getAttribute("data-archivo");
-        fetch('formulariodinamico.php?archivo=' + nombreArchivo, {
+        const nombreArchivo = this.getAttribute("data-archivo");
+        fetch(`formulariodinamico.php?archivo=${nombreArchivo}`, {
             method: 'POST',
             body: formData
         })
         .then(response => response.text())
         .then(data => {
-            var tempDiv = document.createElement('div');
+            const tempDiv = document.createElement('div');
             tempDiv.innerHTML = data;
-            var nuevoMensaje = tempDiv.querySelector('#mensaje-envio');
-            if (nuevoMensaje) {
-                document.getElementById('mensaje-envio').innerHTML = nuevoMensaje.innerHTML;
-                document.getElementById('mensaje-envio').className = nuevoMensaje.className;
-            }
-            // Limpiar formulario solo si LIMPIAR_FORMULARIO es true y el envío fue exitoso
-            if (
-                typeof LIMPIAR_FORMULARIO !== "undefined" &&
-                LIMPIAR_FORMULARIO &&
-                nuevoMensaje &&
-                nuevoMensaje.classList.contains('exito')
-            ) {
-                // Limpiar campos manualmente
-                const form = document.getElementById("formulario");
-                Array.from(form.elements).forEach(field => {
-                    if (field.type === "checkbox" || field.type === "radio") {
-                        field.checked = false;
-                    } else if (field.type === "file") {
-                        field.value = '';
-                        // Limpiar previsualización de archivos
-                        var previewDiv = document.getElementById('filelist_' + field.name.replace('[]',''));
-                        if (previewDiv) previewDiv.innerHTML = '';
-                    } else if (field.tagName === "SELECT") {
-                        field.selectedIndex = 0;
-                    } else {
-                        field.value = '';
-                    }
-                    // Limpia errores visuales si existen
-                    const container = field.closest(".campo-container");
-                    if (container) {
-                        const errorSpan = container.querySelector(".mensaje-error");
-                        if (errorSpan) errorSpan.textContent = "";
-                    }
-                });
-                // También limpia localStorage si usas autosave
-                Array.from(form.elements).forEach(field => localStorage.removeItem(field.name));
+            const nuevoMensaje = tempDiv.querySelector('#mensaje-envio');
+            const mensajeContenedor = document.getElementById('mensaje-envio');
+            if (nuevoMensaje && mensajeContenedor) {
+                mensajeContenedor.innerHTML = nuevoMensaje.innerHTML;
+                mensajeContenedor.className = nuevoMensaje.className;
+                if (window.LIMPIAR_FORMULARIO && nuevoMensaje.classList.contains('exito')) {
+                    limpiarCamposFormulario(this);
+                }
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            document.getElementById('mensaje-envio').innerHTML = "Error al enviar el formulario.";
-            document.getElementById('mensaje-envio').className = "error";
         });
     });
 });
 
-// ===================== DELEGACIÓN PARA ELIMINAR FILAS DE DATATABLES =====================
-document.addEventListener('click', function(e) {
-    if (e.target.classList.contains('eliminar_fila')) {
-        e.target.closest('tr').remove();
-    }
-});
-document.addEventListener('DOMContentLoaded', function() {
-    
-    // ===================================================================
-    // == INICIO: LÓGICA MEJORADA PARA DATATABLE
-    // ===================================================================
-
-    /**
-     * Calcula las fórmulas para una fila específica de un datatable.
-     * @param {HTMLTableRowElement} row - El elemento <tr> que se debe calcular.
-     */
-    function calcularFormulasFila(row) {
-        const inputs = row.querySelectorAll('input, select, textarea');
-        const rowData = {};
-
-        // 1. Recolecta todos los valores de la fila actual en un objeto.
-        inputs.forEach(input => {
-            const nameMatch = input.name.match(/\[(\w+)\]$/);
-            if (nameMatch) {
-                const colName = nameMatch[1];
-                rowData[colName] = parseFloat(input.value) || 0;
-            }
-        });
-
-        // 2. Itera de nuevo y calcula las fórmulas usando los valores recolectados.
-        inputs.forEach(input => {
-            const formula = input.getAttribute('data-formula');
-            if (formula) {
-                let expr = formula;
-                // Reemplaza cada nombre de campo en la fórmula con su valor de la fila.
-                for (const key in rowData) {
-                    expr = expr.replace(new RegExp(`\\b${key}\\b`, 'g'), rowData[key]);
-                }
-                try {
-                    // Evalúa la expresión y actualiza el campo.
-                    input.value = eval(expr).toFixed(2);
-                } catch (e) {
-                    console.error("Error al evaluar la fórmula en la fila:", expr, e);
-                    input.value = 'Error';
-                }
-            }
-        });
-    }
-
-    /**
-     * Inicializa todos los datatables presentes en el formulario.
-     */
-    function inicializarDataTables() {
-        document.querySelectorAll('table.datatable-container').forEach(table => {
-            const fieldName = table.id;
-            const formField = window.fields.find(f => f.name === fieldName);
-            if (!formField) return;
-
-            const tbody = table.querySelector('tbody');
-
-            // 1. Calcula las fórmulas para las filas que ya existen (cargadas por PHP).
-            tbody.querySelectorAll('tr').forEach(row => calcularFormulasFila(row));
-
-            // 2. Evento para recalcular cuando se modifica un campo en cualquier fila.
-            tbody.addEventListener('input', function(e) {
-                if (e.target.tagName === 'INPUT') {
-                    const row = e.target.closest('tr');
-                    if (row) {
-                        calcularFormulasFila(row);
-                    }
-                }
-            });
-
-            // 3. Evento para el botón "Añadir Fila".
-            const addButton = document.getElementById(`btn-add-row-${fieldName}`);
-            if (addButton) {
-                addButton.addEventListener('click', function() {
-                    const newRow = document.createElement('tr');
-                    const rowIndex = tbody.rows.length;
-
-                    // Crea una celda para cada columna definida en el JSON.
-                    formField.columns.forEach(col => {
-                        const cell = document.createElement('td');
-                        const input = document.createElement('input');
-                        input.type = col.type || 'text';
-                        input.name = `${fieldName}[${rowIndex}][${col.name}]`;
-                        input.className = 'form-control';
-                        if (col.placeholder) input.placeholder = col.placeholder;
-                        if (col.readonly) input.readOnly = true;
-                        if (col['data-formula']) input.setAttribute('data-formula', col['data-formula']);
-                        
-                        cell.appendChild(input);
-                        newRow.appendChild(cell);
-                    });
-
-                    // Añade la celda con el botón de eliminar.
-                    const actionCell = document.createElement('td');
-                    actionCell.innerHTML = `<button type="button" class="btn-remove-row">Eliminar</button>`;
-                    newRow.appendChild(actionCell);
-
-                    tbody.appendChild(newRow);
-                });
-            }
-        });
-    }
-
-    // Delegación de eventos para los botones "Eliminar".
-    document.addEventListener('click', function(e) {
-        if (e.target && e.target.classList.contains('btn-remove-row')) {
-            e.target.closest('tr').remove();
-        }
-    });
-
-    // Llama a la función de inicialización.
-    inicializarDataTables();
-
-    // ===================================================================
-    // == FIN: LÓGICA MEJORADA PARA DATATABLE
-    // ===================================================================
-
-
-    // ... (El resto de tu código JS, como guardarCampo, cargarCampos, etc., puede permanecer aquí)
-    // Asegúrate de que la función cargarCampos NO intente manipular el datatable,
-    // ya que ahora se carga directamente desde el PHP.
-
-});
-
-// ... (El resto de tus funciones globales como limpiarNumero, aplicarFormato, etc.)
+// SE ELIMINA EL SEGUNDO BLOQUE DOMContentLoaded Y LA LÓGICA AHORA ESTÁ CENTRALIZADA EN UN ÚNICO BLOQUE

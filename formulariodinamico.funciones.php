@@ -232,6 +232,10 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                 ];
 
                 $dataAttrs = '';
+                // --- LÍNEA DE PRUEBA ---
+                // Añadimos un atributo de prueba para ver si el archivo se actualiza en el servidor.
+                $dataAttrs .= ' data-test-version="v4-final"';
+
                 foreach ($field as $k => $v) {
                     if (strpos($k, 'data-') === 0) {
                         if (is_array($v) || is_object($v)) {

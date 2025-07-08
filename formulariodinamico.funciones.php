@@ -5,9 +5,8 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 /**
- * Refisar... 
- * Renderiza los fieldsets y sus campos en modo de solo lectura.
- * Ideal para correos, PDFs o vistas de resumen.
+ * Renderiza los fieldsets en modo de solo lectura (para correos, PDFs).
+ * Refactorizado para ser más robusto.
  */
 function renderFieldsetsReadOnly($fieldsets, $valores, $baseUrl = '', $modo = 'mail') {
     global $imagenesInline;
@@ -21,58 +20,50 @@ function renderFieldsetsReadOnly($fieldsets, $valores, $baseUrl = '', $modo = 'm
                 $name = $field['name'] ?? '';
                 $label = $field['label'] ?? $name;
                 $value = $valores[$name] ?? '';
-                $html .= "<div class='campo-container'>";
-                $html .= "<label>" . htmlspecialchars($label) . ":</label> ";
+                $html .= "<div class='campo-container' style='margin-bottom: 10px;'>";
+                $html .= "<label style='font-weight: bold;'>" . htmlspecialchars($label) . ":</label> ";
 
-                // --- SOPORTE PARA DATATABLE EN SOLO LECTURA ---
-                if ($field['type'] === 'datatable') {
-                    $tableData = $value;
+                if (($field['type'] ?? '') === 'datatable') {
+                    $tableData = is_array($value) ? $value : [];
                     $columns = $field['columns'] ?? [];
-                    $html .= "<table border='1' cellpadding='4' cellspacing='0' style='margin:10px 0; border-collapse: collapse; width: 100%;'>";
-                    $html .= "<thead><tr style='background-color: #f2f2f2;'>";
+                    $html .= "<table border='1' cellpadding='5' cellspacing='0' style='margin-top: 5px; border-collapse: collapse; width: 100%; font-size: 0.9em;'>";
+                    $html .= "<thead style='background-color: #f2f2f2;'><tr>";
                     foreach ($columns as $col) {
-                        $html .= "<th style='padding: 8px; text-align: left;'>" . htmlspecialchars($col['label'] ?? $col['name']) . "</th>";
+                        $html .= "<th style='padding: 8px; text-align: left;'>" . htmlspecialchars($col['label'] ?? '') . "</th>";
                     }
-                    $html .= "</tr></thead>";
-                    $html .= "<tbody>";
-                    if (is_array($tableData) && count($tableData) > 0) {
+                    $html .= "</tr></thead><tbody>";
+                    if (!empty($tableData)) {
                         foreach ($tableData as $row) {
                             $html .= "<tr>";
                             foreach ($columns as $col) {
-                                $colName = $col['name'];
-                                $cellValue = $row[$colName] ?? '';
+                                $cellValue = $row[$col['name']] ?? '';
                                 $html .= "<td style='padding: 8px; border-top: 1px solid #ddd;'>" . htmlspecialchars($cellValue) . "</td>";
                             }
                             $html .= "</tr>";
                         }
                     } else {
-                        $html .= "<tr><td colspan='" . count($columns) . "' style='text-align:center; padding: 8px;'>Sin datos</td></tr>";
+                        $html .= "<tr><td colspan='" . count($columns) . "' style='text-align:center; padding: 8px;'> (Sin datos) </td></tr>";
                     }
                     $html .= "</tbody></table>";
-                    $html .= "</div>";
-                    continue; // Pasa al siguiente campo
-                }
-                // --- FIN SOPORTE DATATABLE ---
-
-                if ($field['type'] === 'file') {
+                } elseif (($field['type'] ?? '') === 'file') {
                     $files = is_array($value) ? $value : ($value ? [$value] : []);
-                    foreach ($files as $file) {
-                        $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-                        if (in_array($ext, ['jpg','jpeg','png','gif','webp'])) {
-                            if ($modo === 'mail' && isset($imagenesInline[$file])) {
-                                $html .= "<img src='cid:{$imagenesInline[$file]}' alt='Imagen adjunta' style='max-width:200px; display:block; margin-top:5px;'>";
+                    if (empty($files)) {
+                        $html .= "<span>(No se adjuntó archivo)</span>";
+                    } else {
+                        foreach ($files as $file) {
+                            $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+                            if (in_array($ext, ['jpg','jpeg','png','gif','webp'])) {
+                                $src = ($modo === 'mail' && isset($imagenesInline[$file])) ? "cid:{$imagenesInline[$file]}" : ($baseUrl ? $baseUrl . basename($file) : $file);
+                                $html .= "<img src='$src' alt='Imagen adjunta' style='max-width:200px; display:block; margin-top:5px;'>";
                             } else {
                                 $src = $baseUrl ? $baseUrl . basename($file) : $file;
-                                $html .= "<img src='$src' alt='Imagen adjunta' style='max-width:200px; display:block; margin-top:5px;'>";
+                                $html .= "<a href='$src' target='_blank' style='display:block; margin-top:5px;'>Descargar " . htmlspecialchars(basename($file)) . "</a>";
                             }
-                        } else {
-                            $src = $baseUrl ? $baseUrl . basename($file) : $file;
-                            $html .= "<a href='$src' target='_blank' style='display:block; margin-top:5px;'>Descargar archivo</a>";
                         }
                     }
                 } else {
-                    $displayValue = is_array($value) ? implode(', ', $value) : $value;
-                    $html .= htmlspecialchars($displayValue);
+                    $displayValue = is_array($value) ? implode(', ', $value) : (string)$value;
+                    $html .= "<span>" . ($displayValue !== '' ? htmlspecialchars($displayValue) : '(No especificado)') . "</span>";
                 }
                 $html .= "</div>";
             }
@@ -117,8 +108,8 @@ function obtenerDatosTabla($data) {
 }
 
 /**
- * Normaliza los datos del formulario (ej. $_POST) para guardarlos en la BD.
- * Crucial para manejar datatables y checkboxes.
+ * Normaliza los datos del formulario (ej. $_POST) para guardarlos.
+ * ¡CORREGIDO para manejar datatables correctamente!
  */
 function normalizaValores($formData, $json, $paraJson = false) {
     $result = [];
@@ -129,36 +120,30 @@ function normalizaValores($formData, $json, $paraJson = false) {
                 $type = $field['type'];
 
                 if ($type === 'datatable') {
-                    $columns = $field['columns'] ?? [];
-                    $numRows = 0;
-                    // Calcula el número de filas basado en el primer campo de la tabla
-                    if (!empty($columns) && isset($formData[$columns[0]['name']])) {
-                        $numRows = count($formData[$columns[0]['name']]);
-                    }
-                    
-                    $rows = [];
-                    for ($i = 0; $i < $numRows; $i++) {
-                        $row = [];
-                        $isEmptyRow = true;
-                        foreach ($columns as $col) {
-                            $colName = $col['name'];
-                            $cellValue = isset($formData[$colName][$i]) ? trim($formData[$colName][$i]) : '';
-                            $row[$colName] = $cellValue;
-                            if ($cellValue !== '') {
-                                $isEmptyRow = false;
+                    $result[$name] = [];
+                    // Los datos del datatable llegan como un array anidado: $formData['items']
+                    if (isset($formData[$name]) && is_array($formData[$name])) {
+                        foreach ($formData[$name] as $row) {
+                            $isEmptyRow = true;
+                            $processedRow = [];
+                            // Procesa cada columna de la fila
+                            foreach ($field['columns'] as $col) {
+                                $colName = $col['name'];
+                                $cellValue = isset($row[$colName]) ? trim($row[$colName]) : '';
+                                $processedRow[$colName] = $cellValue;
+                                if ($cellValue !== '') {
+                                    $isEmptyRow = false;
+                                }
+                            }
+                            // Solo agrega la fila si al menos un campo tiene valor
+                            if (!$isEmptyRow) {
+                                $result[$name][] = $processedRow;
                             }
                         }
-                        // Solo agrega la fila si no está completamente vacía
-                        if (!$isEmptyRow) {
-                            $rows[] = $row;
-                        }
                     }
-                    $result[$name] = $rows;
-
                 } elseif ($type === 'checkbox') {
                     $valor = $formData[$name] ?? [];
                     $result[$name] = $paraJson ? $valor : implode(', ', $valor);
-
                 } else {
                     $valor = $formData[$name] ?? '';
                     $result[$name] = is_array($valor) ? implode(', ', $valor) : $valor;
@@ -174,7 +159,6 @@ function normalizaValores($formData, $json, $paraJson = false) {
 
 /**
  * Prepara los valores guardados para mostrarlos en el formulario.
- * Principalmente para formatear checkboxes y radios.
  */
 function prepararValoresGuardados($json, $valoresGuardados) {
     foreach ($json['fieldsets'] as $fieldset) {
@@ -195,7 +179,8 @@ function prepararValoresGuardados($json, $valoresGuardados) {
 }
 
 /**
- * Genera el HTML del formulario dinámico para ser llenado por el usuario.
+ * Genera el HTML del formulario dinámico.
+ * ¡MEJORADO para soportar minRows en datatables!
  */
 function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
     $html = "";
@@ -309,30 +294,52 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
 
                     case 'datatable':
                         $columns = $field['columns'] ?? [];
-                        $minRows = $field['minRows'] ?? 1;
                         $tableData = is_array($value) ? $value : [];
-                        $numRows = max($minRows, count($tableData));
-
-                        $html .= "<table class='datatable' id='dt_$name'><thead><tr>";
+                        
+                        $html .= "<table class='datatable-container' id='$name'><thead><tr>";
                         foreach ($columns as $col) {
-                            $html .= "<th>" . htmlspecialchars($col['label']) . "</th>";
+                            $html .= "<th>" . htmlspecialchars($col['label'] ?? '') . "</th>";
                         }
                         $html .= "<th>Acciones</th></tr></thead><tbody>";
                         
-                        for ($i = 0; $i < $numRows; $i++) {
-                            $html .= "<tr>";
-                            foreach ($columns as $col) {
-                                $colName = $col['name'];
-                                $cellValue = $tableData[$i][$colName] ?? '';
-                                $html .= "<td><input type='" . htmlspecialchars($col['type']) . "' name='" . htmlspecialchars($colName) . "[]' class='form-control' value='" . htmlspecialchars($cellValue) . "'></td>";
+                        // Genera las filas con los datos existentes
+                        if (!empty($tableData)) {
+                            foreach ($tableData as $rowIndex => $rowData) {
+                                $html .= "<tr>";
+                                foreach ($columns as $col) {
+                                    $colName = $col['name'];
+                                    $cellValue = $rowData[$colName] ?? '';
+                                    $colType = $col['type'] ?? 'text';
+                                    $colReadonly = !empty($col['readonly']) ? 'readonly' : '';
+                                    $colPlaceholder = isset($col['placeholder']) ? 'placeholder="' . htmlspecialchars($col['placeholder']) . '"' : '';
+                                    $colDataFormula = '';
+                                    if (isset($col['data-formula'])) {
+                                        $formula = $col['data-formula'];
+                                        $colDataFormula = "data-formula='" . (is_array($formula) ? json_encode($formula) : htmlspecialchars($formula)) . "'";
+                                    }
+                                    $inputName = "{$name}[{$rowIndex}][{$colName}]";
+                                    $html .= "<td><input type='$colType' name='$inputName' value='" . htmlspecialchars($cellValue) . "' class='form-control' $colReadonly $colPlaceholder $colDataFormula></td>";
+                                }
+                                $html .= "<td><button type='button' class='eliminar_fila btn btn-danger btn-sm'>Eliminar</button></td></tr>";
                             }
-                            $html .= "<td><button type='button' class='eliminar_fila btn btn-danger btn-sm'>Eliminar</button></td>";
-                            $html .= "</tr>";
                         }
+                        // Genera filas vacías si se especifica minRows y no hay datos
+                        elseif (isset($field['minRows']) && $field['minRows'] > 0) {
+                            for ($i = 0; $i < $field['minRows']; $i++) {
+                                $html .= "<tr>";
+                                foreach ($columns as $col) {
+                                    $inputName = "{$name}[{$i}][{$col['name']}]";
+                                    // ... (código para generar input vacío) ...
+                                    $html .= "<td><input type='{$col['type']}' name='$inputName' class='form-control' placeholder='{$col['placeholder']}'></td>";
+                                }
+                                $html .= "<td><button type='button' class='eliminar_fila btn btn-danger btn-sm'>Eliminar</button></td></tr>";
+                            }
+                        }
+                        
                         $html .= "</tbody></table>";
-                        $html .= "<button type='button' onclick='agregarFilaDatatable(\"dt_$name\")' class='btn btn-primary mt-2'>Agregar Fila</button>";
+                        $html .= "<button type='button' id='btn-add-row-{$name}' class='btn btn-primary mt-2'>Agregar Fila</button>";
                         break;
- 
+
                     case 'file':
                         $multiple = !empty($field['multiple']);
                         $nameAttr = $multiple ? $name . '[]' : $name;

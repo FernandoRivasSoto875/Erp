@@ -393,16 +393,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   </main>
 
   <?php
-    // --- INICIO DE LA MODIFICACIÓN CRÍTICA ---
-    // Expone la definición de los campos a JavaScript para que el datatable sepa qué columnas crear.
+    // --- INICIO DEL CÓDIGO FALTANTE ---
+    // Expone la definición de todos los campos a JavaScript.
+    // Esto es INDISPENSABLE para que el datatable sepa qué columnas crear.
     $all_fields = [];
-    foreach ($json['fieldsets'] as $fieldset) {
-        if (isset($fieldset['fields'])) {
-            $all_fields = array_merge($all_fields, $fieldset['fields']);
+    if (isset($json['fieldsets']) && is_array($json['fieldsets'])) {
+        foreach ($json['fieldsets'] as $fieldset) {
+            if (isset($fieldset['fields'])) {
+                $all_fields = array_merge($all_fields, $fieldset['fields']);
+            }
         }
     }
     echo "<script>window.fields = " . json_encode($all_fields) . ";</script>";
-    // --- FIN DE LA MODIFICACIÓN CRÍTICA ---
+    // --- FIN DEL CÓDIGO FALTANTE ---
   ?>
 
   <script src="js/formulariodinamico.js"></script>

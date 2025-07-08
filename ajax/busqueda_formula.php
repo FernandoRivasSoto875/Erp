@@ -1,4 +1,4 @@
- <?php
+<?php
 // filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\ajax\busqueda_formula.php
 
 // --- 1. INCLUIR DEPENDENCIAS Y CONFIGURAR RESPUESTA ---
@@ -7,6 +7,11 @@ header('Content-Type: application/json');
 
 $response = ['resultado' => null, 'error' => null];
 $conn = null; // Inicializar la conexión como nula
+
+// --- INICIO: LÍNEAS DE DEPURACIÓN ---
+$log_file = __DIR__ . '/debug_busqueda.log';
+file_put_contents($log_file, "--- Nueva Petición: " . date('Y-m-d H:i:s') . " ---\n", FILE_APPEND);
+// --- FIN: LÍNEAS DE DEPURACIÓN ---
 
 try {
     // --- 2. CONECTAR A LA BD ---
@@ -58,8 +63,18 @@ try {
     // Los nombres de tabla y campo se validaron con la lista blanca, ahora es seguro usarlos.
     $sql = "SELECT `" . $campo . "` FROM `" . $tabla . "` WHERE " . $whereSql . " LIMIT 1";
 
+    // --- INICIO: LÍNEAS DE DEPURACIÓN ---
+    $log_message = "SQL: " . $sql . "\n";
+    $log_message .= "Tipos: " . $tipos . "\n";
+    $log_message .= "Valores: " . json_encode($valores) . "\n";
+    file_put_contents($log_file, $log_message, FILE_APPEND);
+    // --- FIN: LÍNEAS DE DEPURACIÓN ---
+
     $stmt = $conn->prepare($sql);
     if ($stmt === false) {
+        // --- INICIO: LÍNEAS DE DEPURACIÓN ---
+        file_put_contents($log_file, "Error al preparar: " . $conn->error . "\n", FILE_APPEND);
+        // --- FIN: LÍNEAS DE DEPURACIÓN ---
         throw new Exception("Error al preparar la consulta: " . $conn->error);
     }
 

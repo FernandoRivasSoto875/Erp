@@ -255,8 +255,17 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                     if ($val !== null) $commonAttrs .= " $attr=\"$val\"";
                 }
 
-                $html .= "<div class='campo-container'>";
-                if ($label && $type !== 'hidden') $html .= "<label for=\"$name\">$label</label>";
+                // --- INICIO: LÓGICA DE POSICIÓN DE ETIQUETA ---
+                $labelPosition = $field['labelPosition'] ?? 'top'; // 'top' es el valor por defecto
+                $containerClass = "campo-container label-pos-" . htmlspecialchars($labelPosition);
+                // --- FIN: LÓGICA DE POSICIÓN DE ETIQUETA ---
+
+                $html .= "<div class='$containerClass'>";
+
+                // Modificado para ocultar la etiqueta si la posición es 'none'
+                if ($label && $type !== 'hidden' && $labelPosition !== 'none') {
+                    $html .= "<label for=\"$name\">$label</label>";
+                }
 
                 switch ($type) {
                     case 'textarea':

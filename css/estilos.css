@@ -193,3 +193,97 @@ section p {
     display: none;
 }
 
+/* ================================================== */
+/* == LÓGICA DE POSICIONAMIENTO DE ETIQUETAS (LABEL) == */
+/* ================================================== */
+
+/* --- Base para todos los contenedores --- */
+.campo-container {
+    display: flex;
+    margin-bottom: 1rem; /* Espacio entre campos */
+}
+
+.campo-container label {
+    padding: 0.25rem;
+    box-sizing: border-box;
+}
+
+/* --- Posiciones ARRIBA (Top) --- */
+.label-pos-top,
+.label-pos-top-center,
+.label-pos-top-left,
+.label-pos-top-right {
+    flex-direction: column;
+}
+.label-pos-top label,
+.label-pos-top-left label {
+    text-align: left;
+}
+.label-pos-top-center label {
+    text-align: center;
+}
+.label-pos-top-right label {
+    text-align: right;
+}
+
+/* --- Posiciones ABAJO (Bottom) --- */
+.label-pos-bottom,
+.label-pos-bottom-center,
+.label-pos-bottom-left,
+.label-pos-bottom-right {
+    flex-direction: column-reverse; /* Magia: invierte el orden vertical */
+}
+.label-pos-bottom label,
+.label-pos-bottom-left label {
+    text-align: left;
+    margin-top: 5px;
+}
+.label-pos-bottom-center label {
+    text-align: center;
+    margin-top: 5px;
+}
+.label-pos-bottom-right label {
+    text-align: right;
+    margin-top: 5px;
+}
+
+/* --- Posición IZQUIERDA (Left) --- */
+.label-pos-left {
+    flex-direction: row;
+    align-items: center;
+}
+.label-pos-left label {
+    margin-right: 10px;
+    flex-shrink: 0; /* Evita que la etiqueta se encoja */
+    width: 150px; /* Opcional: define un ancho fijo para las etiquetas */
+    text-align: right;
+}
+.label-pos-left input,
+.label-pos-left select,
+.label-pos-left textarea {
+    flex-grow: 1; /* El campo ocupa el resto del espacio */
+}
+
+/* --- Posición DERECHA (Right) --- */
+.label-pos-right {
+    flex-direction: row-reverse; /* Magia: invierte el orden horizontal */
+    align-items: center;
+    justify-content: flex-end; /* Alinea los elementos a la derecha del contenedor */
+}
+.label-pos-right label {
+    margin-left: 10px;
+    flex-shrink: 0;
+    text-align: left;
+}
+.label-pos-right input,
+.label-pos-right select,
+.label-pos-right textarea {
+    flex-grow: 1; /* El campo ocupa el resto del espacio */
+}
+
+/* --- Posición NINGUNA (None) --- */
+/* No se necesita CSS, el PHP ya evita que se renderice la etiqueta. */
+/* El contenedor sigue existiendo para mantener el espaciado. */
+.label-pos-none {
+    margin-bottom: 1rem;
+}

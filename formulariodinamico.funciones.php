@@ -180,7 +180,7 @@ function prepararValoresGuardados($json, $valoresGuardados) {
 
 /**
  * Genera el HTML del formulario dinámico.
- * ¡VERSIÓN FINAL CORREGIDA!
+ * ¡VERSIÓN FINAL Y VERIFICADA!
  */
 function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
     $html = "";
@@ -230,8 +230,7 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                     return $str;
                 };
 
-                // ¡CORRECCIÓN CRÍTICA! Se construye un array de atributos para CADA tipo de campo
-                // para asegurar que los data-attributes siempre se incluyan.
+                // Atributos base para todos los campos
                 $baseAttrs = [
                     'name' => $name, 'id' => $name,
                     'class' => $field['class'] ?? null, 'style' => $field['style'] ?? null,
@@ -300,6 +299,9 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                             $html .= "<tr>";
                             foreach ($columns as $col) {
                                 $colName = $col['name'];
+                                
+                                // ¡CORRECCIÓN FINAL! Se construye un array de atributos para cada celda
+                                // que incluye los atributos data-* de la columna.
                                 $colAttrs = [
                                     'type' => $col['type'] ?? 'text',
                                     'name' => "{$name}[{$i}][{$colName}]",
@@ -307,8 +309,15 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                                     'class' => 'form-control',
                                     'placeholder' => $col['placeholder'] ?? null,
                                     'readonly' => !empty($col['readonly']),
-                                    'data-formula' => $col['data-formula'] ?? null,
                                 ];
+
+                                // Se buscan los data-attributes específicos de la columna y se añaden
+                                foreach ($col as $k => $v) {
+                                    if (strpos($k, 'data-') === 0) {
+                                        $colAttrs[$k] = $v;
+                                    }
+                                }
+
                                 $html .= "<td><input " . $buildAttrs($colAttrs) . "></td>";
                             }
                             $html .= "<td><button type='button' class='eliminar_fila btn btn-danger btn-sm'>Eliminar</button></td></tr>";

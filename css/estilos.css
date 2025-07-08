@@ -208,7 +208,6 @@ section p {
     font-weight: bold;
 }
 
-
 /* --- 1. Posiciones Verticales (Top y Bottom) --- */
 .label-pos-top, .label-pos-top-left, .label-pos-top-center, .label-pos-top-right,
 .label-pos-bottom, .label-pos-bottom-left, .label-pos-bottom-center, .label-pos-bottom-right {
@@ -218,17 +217,68 @@ section p {
     flex-direction: column-reverse;
 }
 
-/* Alineación de texto para etiquetas verticales */
-.label-pos-top-left label, .label-pos-bottom-left label, .label-pos-top label, .label-pos-bottom label { text-align: left; }
-.label-pos-top-right label, .label-pos-bottom-right label { text-align: right; }
-
-/* --- CORRECCIÓN DEFINITIVA PARA CENTER --- */
-section .label-pos-top-center label,
-section .label-pos-bottom-center label,
-section .label-pos-top-center .grupo-label,
-section .label-pos-bottom-center .grupo-label {
-    width: 100%;
-    text-align: center !important; /* <-- Asegura la anulación de otros estilos */
+/* --- 2. Posiciones Horizontales (Left y Right) --- */
+.label-pos-left, .label-pos-right {
+    flex-direction: row;
+    align-items: center;
 }
-/* --- FIN DE LA CORRECCIÓN --- */
+.label-pos-left label {
+    margin-right: 10px;
+    flex-shrink: 0;
+    width: 150px;
+    text-align: right;
+}
+.label-pos-right {
+    flex-direction: row-reverse;
+}
+.label-pos-right label {
+    margin-left: 10px;
+    flex-shrink: 0;
+    text-align: left;
+}
+.label-pos-left > *, .label-pos-right > * {
+    flex-grow: 1;
+}
+.label-pos-left > label, .label-pos-right > label {
+    flex-grow: 0;
+}
+
+/* --- 3. Alineación de Texto y Elementos --- */
+/* Alineación Izquierda (por defecto, no necesita regla) */
+/* Alineación Derecha */
+.label-pos-top-right > label, .label-pos-bottom-right > label { align-self: flex-end; }
+/* Alineación Centro (LA SOLUCIÓN FLEXBOX) */
+.label-pos-top-center > label, .label-pos-bottom-center > label,
+.label-pos-top-center > .grupo-label, .label-pos-bottom-center > .grupo-label {
+    align-self: center;
+}
+.label-pos-top-center > .opciones-container, .label-pos-bottom-center > .opciones-container {
+    justify-content: center;
+}
+
+/* --- 4. Estilos para Checkbox y Radio --- */
+.grupo-label {
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+}
+.opciones-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+.opcion-label {
+    display: flex;
+    align-items: center;
+    font-weight: normal;
+}
+.opcion-label input {
+    margin-right: 5px;
+}
+
+/* --- 5. Posición NINGUNA (None) --- */
+.label-pos-none {
+    margin-bottom: 1rem;
+}
+
+/* ... resto del código ... */
 

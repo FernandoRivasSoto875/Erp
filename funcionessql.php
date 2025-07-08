@@ -4,9 +4,6 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-
-
-
 // funcionessql.php
 // Archivo de funciones para la conexión a la base de datos y utilidades SQL
 
@@ -31,31 +28,30 @@ function conexionBd() {
     if ($conn->connect_error) {
         die("Error de conexión: " . $conn->connect_error);
     }
+    $conn->set_charset("utf8");
     return $conn;
 }
 
 // Ejemplo de función auxiliar para obtener una descripción según un código
 function obtenerClienteDescripcion($codigo) {
     $conn = conexionBd();
-    if ($conn->connect_error) {
-        die("Error de conexión: " . $conn->connect_error);
-    }
+    $descripcion = "Código no encontrado."; // Valor por defecto
+    
     $sql = "SELECT CiuDes FROM Ciudad WHERE CiuCod = ?";
     $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        die("Error al preparar la consulta: " . $conn->error);
+    if ($stmt) {
+        $stmt->bind_param("s", $codigo);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        if ($result->num_rows > 0) {
+            $row = $result->fetch_assoc();
+            $descripcion = $row['CiuDes'];
+        }
+        $stmt->close();
     }
-    $stmt->bind_param("s", $codigo);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    if ($result->num_rows > 0) {
-        $row = $result->fetch_assoc();
-        $descripcion = $row['CiuDes'];
-    } else {
-        $descripcion = "No se encontró la descripción para el código proporcionado.";
-    }
-    $stmt->close();
     $conn->close();
+    
+    // ¡CORRECCIÓN CRÍTICA! Faltaba devolver el valor encontrado.
     return $descripcion;
 }
 ?>

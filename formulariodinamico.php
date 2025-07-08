@@ -409,5 +409,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   ?>
 
   <script src="js/formulariodinamico.js"></script>
-  </body>
+
+</body>
 </html>

@@ -847,3 +847,125 @@ document.addEventListener('click', function(e) {
         e.target.closest('tr').remove();
     }
 });
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // ===================================================================
+    // == INICIO: LÓGICA MEJORADA PARA DATATABLE
+    // ===================================================================
+
+    /**
+     * Calcula las fórmulas para una fila específica de un datatable.
+     * @param {HTMLTableRowElement} row - El elemento <tr> que se debe calcular.
+     */
+    function calcularFormulasFila(row) {
+        const inputs = row.querySelectorAll('input, select, textarea');
+        const rowData = {};
+
+        // 1. Recolecta todos los valores de la fila actual en un objeto.
+        inputs.forEach(input => {
+            const nameMatch = input.name.match(/\[(\w+)\]$/);
+            if (nameMatch) {
+                const colName = nameMatch[1];
+                rowData[colName] = parseFloat(input.value) || 0;
+            }
+        });
+
+        // 2. Itera de nuevo y calcula las fórmulas usando los valores recolectados.
+        inputs.forEach(input => {
+            const formula = input.getAttribute('data-formula');
+            if (formula) {
+                let expr = formula;
+                // Reemplaza cada nombre de campo en la fórmula con su valor de la fila.
+                for (const key in rowData) {
+                    expr = expr.replace(new RegExp(`\\b${key}\\b`, 'g'), rowData[key]);
+                }
+                try {
+                    // Evalúa la expresión y actualiza el campo.
+                    input.value = eval(expr).toFixed(2);
+                } catch (e) {
+                    console.error("Error al evaluar la fórmula en la fila:", expr, e);
+                    input.value = 'Error';
+                }
+            }
+        });
+    }
+
+    /**
+     * Inicializa todos los datatables presentes en el formulario.
+     */
+    function inicializarDataTables() {
+        document.querySelectorAll('table.datatable-container').forEach(table => {
+            const fieldName = table.id;
+            const formField = window.fields.find(f => f.name === fieldName);
+            if (!formField) return;
+
+            const tbody = table.querySelector('tbody');
+
+            // 1. Calcula las fórmulas para las filas que ya existen (cargadas por PHP).
+            tbody.querySelectorAll('tr').forEach(row => calcularFormulasFila(row));
+
+            // 2. Evento para recalcular cuando se modifica un campo en cualquier fila.
+            tbody.addEventListener('input', function(e) {
+                if (e.target.tagName === 'INPUT') {
+                    const row = e.target.closest('tr');
+                    if (row) {
+                        calcularFormulasFila(row);
+                    }
+                }
+            });
+
+            // 3. Evento para el botón "Añadir Fila".
+            const addButton = document.getElementById(`btn-add-row-${fieldName}`);
+            if (addButton) {
+                addButton.addEventListener('click', function() {
+                    const newRow = document.createElement('tr');
+                    const rowIndex = tbody.rows.length;
+
+                    // Crea una celda para cada columna definida en el JSON.
+                    formField.columns.forEach(col => {
+                        const cell = document.createElement('td');
+                        const input = document.createElement('input');
+                        input.type = col.type || 'text';
+                        input.name = `${fieldName}[${rowIndex}][${col.name}]`;
+                        input.className = 'form-control';
+                        if (col.placeholder) input.placeholder = col.placeholder;
+                        if (col.readonly) input.readOnly = true;
+                        if (col['data-formula']) input.setAttribute('data-formula', col['data-formula']);
+                        
+                        cell.appendChild(input);
+                        newRow.appendChild(cell);
+                    });
+
+                    // Añade la celda con el botón de eliminar.
+                    const actionCell = document.createElement('td');
+                    actionCell.innerHTML = `<button type="button" class="btn-remove-row">Eliminar</button>`;
+                    newRow.appendChild(actionCell);
+
+                    tbody.appendChild(newRow);
+                });
+            }
+        });
+    }
+
+    // Delegación de eventos para los botones "Eliminar".
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('btn-remove-row')) {
+            e.target.closest('tr').remove();
+        }
+    });
+
+    // Llama a la función de inicialización.
+    inicializarDataTables();
+
+    // ===================================================================
+    // == FIN: LÓGICA MEJORADA PARA DATATABLE
+    // ===================================================================
+
+
+    // ... (El resto de tu código JS, como guardarCampo, cargarCampos, etc., puede permanecer aquí)
+    // Asegúrate de que la función cargarCampos NO intente manipular el datatable,
+    // ya que ahora se carga directamente desde el PHP.
+
+});
+
+// ... (El resto de tus funciones globales como limpiarNumero, aplicarFormato, etc.)

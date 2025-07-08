@@ -187,7 +187,7 @@ function activarLogicaFila(context) {
                     campo: formulaData.source.field,
                     where: whereFinal
                 })
-            })
+            )
             .then(r => r.ok ? r.json() : Promise.reject())
             .then(data => { input.value = (data && data.resultado !== null) ? data.resultado : ''; })
             .catch(() => { input.value = ''; });
@@ -249,7 +249,7 @@ function guardarEstadoDataTable(table) {
 // ===================== GUARDAR CAMPO INDIVIDUAL EN LOCALSTORAGE =====================
 function guardarCampo(e) {
     const input = e.target;
-    const table = input.closest('table[id^="datatable-"]');
+    const table = input.closest('table.datatable-container');
 
     if (table) {
         guardarEstadoDataTable(table);
@@ -260,12 +260,11 @@ function guardarCampo(e) {
 
 // ===================== CARGAR TODOS LOS CAMPOS DESDE LOCALSTORAGE =====================
 function cargarCampos() {
-    const form = document.getElementById("formulario");
-    // Cargar campos simples, excluyendo los que están dentro de una datatable
-    form.querySelectorAll("input, textarea, select").forEach(field => {
-        if (field.closest('table[id^="datatable-"]')) {
-            return; // Omitir celdas de datatables
-        }
+    // Se modifica para ignorar completamente los campos de datatable,
+    // ya que su estado se carga en inicializarDataTables.
+    document.querySelectorAll("#formulario input, #formulario textarea, #formulario select").forEach(field => {
+        if (field.closest('table.datatable-container')) return; // IGNORAR CAMPOS DE DATATABLE
+
         if (field.type === "file") {
             field.value = '';
             var previewDiv = document.getElementById('filelist_' + field.name.replace('[]',''));
@@ -293,60 +292,11 @@ function cargarCampos() {
         let saved = localStorage.getItem(field.name);
         if (saved) {
             field.value = saved;
-            const formato = field.getAttribute('data-formato');
-            if (formato) {
-                aplicarFormato(field, formato);
-            }
             field.dispatchEvent(new Event('input'));
         }
     });
-
-    // Cargar estado de las datatables
-    if (typeof fields !== "undefined") {
-        fields.forEach(fieldDef => {
-            if (fieldDef.type === 'datatable') {
-                const savedJSON = localStorage.getItem(fieldDef.name);
-                if (!savedJSON) return;
-
-                try {
-                    const data = JSON.parse(savedJSON);
-                    if (Array.isArray(data)) {
-                        const table = document.getElementById(`datatable-${fieldDef.name}`);
-                        const tbody = table ? table.querySelector('tbody') : null;
-                        if (tbody && typeof initDatatableEvents === 'function') {
-                            tbody.innerHTML = ''; // Limpiar filas existentes
-                            data.forEach(rowData => {
-                                // Asumimos que initDatatableEvents puede agregar una fila
-                                // y necesitamos una forma de pasarle los datos.
-                                // Esto puede requerir modificar `initDatatableEvents` o la función que agrega filas.
-                                // Por ahora, simulamos la adición de la fila y el llenado de datos.
-                                const addButton = document.querySelector(`button[data-table-name="${fieldDef.name}"]`);
-                                if(addButton) {
-                                    addButton.click(); // Simula clic en "agregar fila"
-                                    const newRow = tbody.lastElementChild;
-                                    if(newRow) {
-                                        fieldDef.columns.forEach(col => {
-                                            const input = newRow.querySelector(`[name$="[${col.name}]"]`);
-                                            if (input && rowData[col.name] !== undefined) {
-                                                if (input.type === 'checkbox') {
-                                                    input.checked = rowData[col.name];
-                                                } else {
-                                                    input.value = rowData[col.name];
-                                                }
-                                            }
-                                        });
-                                    }
-                                }
-                            });
-                        }
-                    }
-                } catch (e) {
-                    console.error(`Error al cargar datos de la datatable '${fieldDef.name}' desde localStorage.`, e);
-                }
-            }
-        });
-    }
 }
+
 
 // ===================== VALIDAR INPUT AL PERDER FOCO =====================
 function validarInput(e) {
@@ -705,22 +655,25 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('table.datatable-container').forEach(table => {
             const fieldName = table.id;
             const formField = window.fields?.find(f => f.name === fieldName);
-            if (!formField) return;
+            if (!formField) {
+                console.error(`Definición para datatable '${fieldName}' no encontrada en window.fields. Asegúrate de que PHP la está proveyendo.`);
+                return;
+            }
             const tbody = table.querySelector('tbody');
-            
-            // Activa la lógica para las filas ya existentes (cargadas por PHP).
+
+            // 1. Activa la lógica para las filas ya existentes (cargadas por PHP).
             tbody.querySelectorAll('tr').forEach(row => activarLogicaFila(row));
 
-            // Evento para recalcular cuando se modifica un campo en cualquier fila.
+            // 2. Evento para recalcular cuando se modifica un campo en cualquier fila.
             tbody.addEventListener('input', e => {
                 const row = e.target.closest('tr');
                 if (row) {
                     activarLogicaFila(row);
-                    guardarEstadoDataTable(table); // Guarda en localStorage al editar
+                    guardarEstadoDataTable(table);
                 }
             });
 
-            // Reemplaza la funcionalidad de 'agregarFilaDatatable' con esta lógica más potente
+            // 3. Lógica para "Añadir Fila" que lee las columnas del JSON.
             document.getElementById(`btn-add-row-${fieldName}`)?.addEventListener('click', function() {
                 const newRow = tbody.insertRow();
                 const rowIndex = Array.from(tbody.rows).indexOf(newRow);
@@ -741,7 +694,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const actionCell = newRow.insertCell();
                 actionCell.innerHTML = `<button type="button" class="btn-remove-row eliminar_fila">Eliminar</button>`;
                 
-                // Activa la lógica para la fila recién creada.
+                // ¡CRÍTICO! Activa la lógica para la fila recién creada.
                 activarLogicaFila(newRow);
             });
         });
@@ -752,31 +705,26 @@ document.addEventListener('DOMContentLoaded', function() {
         if (e.target?.classList.contains('eliminar_fila')) {
             const table = e.target.closest('table.datatable-container');
             e.target.closest('tr').remove();
-            if(table) guardarEstadoDataTable(table); // Guarda al eliminar
+            if(table) guardarEstadoDataTable(table);
         }
     });
 
     // --- Cableado de eventos y funciones ---
-    document.querySelectorAll('input[type="file"]').forEach(input => {
-        input.addEventListener('change', () => mostrarArchivosSeleccionados(input));
-    });
-
-    const fieldsForm = document.querySelectorAll("#formulario input, #formulario textarea, #formulario select");
-    fieldsForm.forEach(el => {
-        el.addEventListener("input", guardarCampo);
+    document.querySelectorAll('input[type="file"]').forEach(input => input.addEventListener('change', () => mostrarArchivosSeleccionados(input)));
+    document.querySelectorAll("#formulario input, #formulario textarea, #formulario select").forEach(el => {
+        if (!el.closest('table.datatable-container')) { // No añadir doble listener a datatables
+            el.addEventListener("input", guardarCampo);
+        }
         if (el.getAttribute("pattern")) el.addEventListener("blur", validarInput);
     });
-
-    document.querySelectorAll("input[data-autocompletar='true']").forEach(field => {
-        field.addEventListener("input", autocompleteField);
-    });
+    document.querySelectorAll("input[data-autocompletar='true']").forEach(field => field.addEventListener("input", autocompleteField));
 
     // --- Ejecución de inicializadores en el orden correcto ---
     configurarCondiciones();
     initDynamicReordering();
-    activarLogicaFila(document); // Activa fórmulas en campos normales
-    inicializarDataTables();     // Activa la lógica de datatables
-    cargarCampos();              // Carga datos guardados al final
+    cargarCampos();              // Carga datos de campos simples
+    inicializarDataTables();     // Activa la lógica de datatables (incluye carga de datos si la tienes)
+    activarLogicaFila(document); // Pasada final para activar fórmulas globales
 
     // --- Envío del formulario ---
     document.getElementById("formulario")?.addEventListener("submit", function(event) {

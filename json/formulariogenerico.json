@@ -28,20 +28,20 @@
           "type": "text",
           "placeholder": "Ingrese su nombre",
           "required": true,
-          "labelPosition": "top-left" // Etiqueta arriba, alineada a la izquierda
+          "labelPosition": "top-left"  
         },
         {
           "name": "ComId",
           "label": "Código comuna",
           "type": "text",
           "placeholder": "Ingrese código",
-          "labelPosition": "left" // Etiqueta a la izquierda del campo
+          "labelPosition": "left"  
         },
         {
           "name": "descripcion_comuna",
           "label": "Comuna busqueda",
           "type": "text",
-          "labelPosition": "none", // No mostrar la etiqueta
+          "labelPosition": "none",
           "data-formula": {
             "type": "lookup",
             "source": {
@@ -173,33 +173,32 @@
           "minlength": 6,
           "maxlength": 32
         }
-      ],
-      "fieldsets": [
+      ]
+    },
+    {
+      "legend": "Dirección",
+      "style": "border:1px solid #17a2b8; padding:10px; background:#f0f9fa;",
+      "fields": [
         {
-          "legend": "Dirección",
-          "fields": [
-            {
-              "name": "calle",
-              "label": "Calle",
-              "type": "text"
-            },
-            {
-              "name": "ciudad",
-              "label": "Ciudad",
-              "type": "text"
-            },
-            {
-              "name": "pais",
-              "label": "País",
-              "type": "select",
-              "options": [
-                { "value": "", "label": "Seleccione un país" },
-                { "value": "cl", "label": "Chile" },
-                { "value": "ar", "label": "Argentina" },
-                { "value": "pe", "label": "Perú" },
-                { "value": "br", "label": "Brasil" }
-              ]
-            }
+          "name": "calle",
+          "label": "Calle",
+          "type": "text"
+        },
+        {
+          "name": "ciudad",
+          "label": "Ciudad",
+          "type": "text"
+        },
+        {
+          "name": "pais",
+          "label": "País",
+          "type": "select",
+          "options": [
+            { "value": "", "label": "Seleccione un país" },
+            { "value": "cl", "label": "Chile" },
+            { "value": "ar", "label": "Argentina" },
+            { "value": "pe", "label": "Perú" },
+            { "value": "br", "label": "Brasil" }
           ]
         }
       ]

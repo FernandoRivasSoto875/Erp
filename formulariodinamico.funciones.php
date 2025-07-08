@@ -180,7 +180,7 @@ function prepararValoresGuardados($json, $valoresGuardados) {
 
 /**
  * Genera el HTML del formulario dinámico.
- * ¡VERSIÓN CORREGIDA Y REFACTORIZADA!
+ * ¡VERSIÓN FINAL CORREGIDA!
  */
 function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
     $html = "";
@@ -214,47 +214,42 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                     $html .= "<div class='opciones-container'>";
                 }
 
-                // Atributos base para todos los campos
+                // Función auxiliar para construir la cadena de atributos HTML
+                $buildAttrs = function($attrs) {
+                    $str = '';
+                    foreach ($attrs as $k => $v) {
+                        if ($v === false || $v === null || $v === '') continue;
+                        if ($v === true) { $str .= " $k"; continue; }
+                        // Para data-attributes que son arrays/objetos (ej. lookups)
+                        if (is_array($v) || is_object($v)) {
+                            $str .= " $k='" . json_encode($v, JSON_UNESCAPED_UNICODE) . "'";
+                        } else {
+                            $str .= " $k=\"" . htmlspecialchars((string)$v) . "\"";
+                        }
+                    }
+                    return $str;
+                };
+
+                // ¡CORRECCIÓN CRÍTICA! Se construye un array de atributos para CADA tipo de campo
+                // para asegurar que los data-attributes siempre se incluyan.
                 $baseAttrs = [
                     'name' => $name, 'id' => $name,
                     'class' => $field['class'] ?? null, 'style' => $field['style'] ?? null,
                     'required' => !empty($field['required']), 'readonly' => !empty($field['readonly']) || $soloLectura,
                     'disabled' => !empty($field['disabled']) || $soloLectura,
                 ];
-
-                // Atributos específicos del tipo de campo
-                $specificAttrs = [
-                    'placeholder' => $field['placeholder'] ?? null, 'maxlength' => $field['maxlength'] ?? null,
-                    'minlength' => $field['minlength'] ?? null, 'min' => $field['min'] ?? null,
-                    'max' => $field['max'] ?? null, 'step' => $field['step'] ?? null,
-                    'pattern' => $field['pattern'] ?? null, 'autocomplete' => $field['autocomplete'] ?? null,
-                    'autofocus' => !empty($field['autofocus']), 'rows' => $field['rows'] ?? null,
-                    'cols' => $field['cols'] ?? null,
-                ];
-
-                // Atributos de datos (data-*)
-
-
-                // Función auxiliar para construir la cadena de atributos HTML
-                $buildAttrs = function($attrs) {
-                    $str = '';
-                    foreach ($attrs as $k => $v) {
-                        if ($v === false || $v === null) continue;
-                        if ($v === true) { $str .= " $k"; continue; }
-                        if (is_array($v) || is_object($v)) {
-                            $str .= " $k='" . json_encode($v) . "'";
-                        } else {
-                            $str .= " $k=\"" . htmlspecialchars($v) . "\"";
-                        }
+                
+                // Recolecta todos los atributos data-* del JSON del campo
+                foreach ($field as $k => $v) {
+                    if (strpos($k, 'data-') === 0) {
+                        $baseAttrs[$k] = $v;
                     }
-                    return $str;
-                };
-
-                $commonAttrs = $buildAttrs(array_merge($baseAttrs, $specificAttrs));
+                }
 
                 switch ($type) {
                     case 'textarea':
-                        $html .= "<textarea $commonAttrs>" . htmlspecialchars($value) . "</textarea>";
+                        $attrs = array_merge($baseAttrs, ['rows' => $field['rows'] ?? null, 'cols' => $field['cols'] ?? null]);
+                        $html .= "<textarea " . $buildAttrs($attrs) . ">" . htmlspecialchars($value) . "</textarea>";
                         break;
 
                     case 'select':
@@ -263,7 +258,7 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                         if ($type === 'selectdata' && isset($field['data'])) {
                             $options = obtenerDatosTabla($field['data']);
                         }
-                        $html .= "<select $commonAttrs>";
+                        $html .= "<select " . $buildAttrs($baseAttrs) . ">";
                         foreach ($options as $opt) {
                             $opt_val = is_array($opt) ? ($opt['value'] ?? '') : $opt;
                             $opt_label = is_array($opt) ? ($opt['label'] ?? '') : $opt;
@@ -324,15 +319,19 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                         break;
 
                     case 'file':
-                        $multiple = !empty($field['multiple']);
-                        $fileAttrs = $buildAttrs(array_merge($baseAttrs, ['name' => $name . ($multiple ? '[]' : ''), 'multiple' => $multiple]));
-                        $html .= "<input type=\"file\" $fileAttrs onchange=\"mostrarArchivosSeleccionados(this);previewImage(this);\">";
+                        $attrs = array_merge($baseAttrs, ['name' => $name . (!empty($field['multiple']) ? '[]' : ''), 'multiple' => !empty($field['multiple'])]);
+                        $html .= "<input type=\"file\" " . $buildAttrs($attrs) . " onchange=\"mostrarArchivosSeleccionados(this);previewImage(this);\">";
                         $html .= "<div id=\"filelist_$name\" class=\"file-list mt-2\"></div>";
-                        // ... (lógica para mostrar archivos existentes) ...
                         break;
 
-                    default:
-                        $html .= "<input type=\"$type\" value=\"" . htmlspecialchars($value) . "\" $commonAttrs>";
+                    default: // Para text, number, email, etc.
+                        $attrs = array_merge($baseAttrs, [
+                            'type' => $type,
+                            'value' => $value,
+                            'placeholder' => $field['placeholder'] ?? null,
+                            'pattern' => $field['pattern'] ?? null,
+                        ]);
+                        $html .= "<input " . $buildAttrs($attrs) . ">";
                         break;
                 }
 

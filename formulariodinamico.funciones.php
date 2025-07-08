@@ -295,45 +295,38 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                     case 'datatable':
                         $columns = $field['columns'] ?? [];
                         $tableData = is_array($value) ? $value : [];
-                        
+                        $minRows = $field['minRows'] ?? 0;
+                        $numRowsToRender = max(count($tableData), $minRows);
+
                         $html .= "<table class='datatable-container' id='$name'><thead><tr>";
                         foreach ($columns as $col) {
                             $html .= "<th>" . htmlspecialchars($col['label'] ?? '') . "</th>";
                         }
                         $html .= "<th>Acciones</th></tr></thead><tbody>";
-                        
-                        // Genera las filas con los datos existentes
-                        if (!empty($tableData)) {
-                            foreach ($tableData as $rowIndex => $rowData) {
-                                $html .= "<tr>";
-                                foreach ($columns as $col) {
-                                    $colName = $col['name'];
-                                    $cellValue = $rowData[$colName] ?? '';
-                                    $colType = $col['type'] ?? 'text';
-                                    $colReadonly = !empty($col['readonly']) ? 'readonly' : '';
-                                    $colPlaceholder = isset($col['placeholder']) ? 'placeholder="' . htmlspecialchars($col['placeholder']) . '"' : '';
-                                    $colDataFormula = '';
-                                    if (isset($col['data-formula'])) {
-                                        $formula = $col['data-formula'];
-                                        $colDataFormula = "data-formula='" . (is_array($formula) ? json_encode($formula) : htmlspecialchars($formula)) . "'";
-                                    }
-                                    $inputName = "{$name}[{$rowIndex}][{$colName}]";
-                                    $html .= "<td><input type='$colType' name='$inputName' value='" . htmlspecialchars($cellValue) . "' class='form-control' $colReadonly $colPlaceholder $colDataFormula></td>";
+
+                        // Bucle unificado para renderizar todas las filas necesarias (con datos o vacías)
+                        for ($i = 0; $i < $numRowsToRender; $i++) {
+                            $rowData = $tableData[$i] ?? []; // Obtiene datos si existen para esta fila
+                            $html .= "<tr>";
+                            foreach ($columns as $col) {
+                                $colName = $col['name'];
+                                $cellValue = $rowData[$colName] ?? ''; // Usa el valor del dato o vacío
+                                $colType = $col['type'] ?? 'text';
+                                $colReadonly = !empty($col['readonly']) ? 'readonly' : '';
+                                $colPlaceholder = isset($col['placeholder']) ? 'placeholder="' . htmlspecialchars($col['placeholder']) . '"' : '';
+                                
+                                // ¡CORRECCIÓN CRÍTICA! Se asegura de que data-formula se aplique a TODAS las filas
+                                $colDataFormula = '';
+                                if (isset($col['data-formula'])) {
+                                    $formula = $col['data-formula'];
+                                    // Usa comillas simples para el atributo para que el JSON interno no cause problemas
+                                    $colDataFormula = "data-formula='" . (is_array($formula) ? json_encode($formula) : htmlspecialchars($formula)) . "'";
                                 }
-                                $html .= "<td><button type='button' class='eliminar_fila btn btn-danger btn-sm'>Eliminar</button></td></tr>";
+                                
+                                $inputName = "{$name}[{$i}][{$colName}]";
+                                $html .= "<td><input type='$colType' name='$inputName' value='" . htmlspecialchars($cellValue) . "' class='form-control' $colReadonly $colPlaceholder $colDataFormula></td>";
                             }
-                        }
-                        // Genera filas vacías si se especifica minRows y no hay datos
-                        elseif (isset($field['minRows']) && $field['minRows'] > 0) {
-                            for ($i = 0; $i < $field['minRows']; $i++) {
-                                $html .= "<tr>";
-                                foreach ($columns as $col) {
-                                    $inputName = "{$name}[{$i}][{$col['name']}]";
-                                    // ... (código para generar input vacío) ...
-                                    $html .= "<td><input type='{$col['type']}' name='$inputName' class='form-control' placeholder='{$col['placeholder']}'></td>";
-                                }
-                                $html .= "<td><button type='button' class='eliminar_fila btn btn-danger btn-sm'>Eliminar</button></td></tr>";
-                            }
+                            $html .= "<td><button type='button' class='eliminar_fila btn btn-danger btn-sm'>Eliminar</button></td></tr>";
                         }
                         
                         $html .= "</tbody></table>";

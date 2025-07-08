@@ -121,7 +121,7 @@
    {
           "name": "MpsDescripcion",
           "label": "Producto",
-                  "type": "text",
+          "type": "text",
           "data-formula": {
             "type": "lookup",
             "source": {

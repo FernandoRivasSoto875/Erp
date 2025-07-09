@@ -393,19 +393,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   </main>
 
   <?php
-    // --- INICIO DEL CÓDIGO FALTANTE ---
-    // Expone la definición de todos los campos a JavaScript.
+    // --- INICIO DEL CÓDIGO CORREGIDO ---
+    // Expone la definición de todos los campos a JavaScript de forma recursiva.
     // Esto es INDISPENSABLE para que el datatable sepa qué columnas crear.
-    $all_fields = [];
-    if (isset($json['fieldsets']) && is_array($json['fieldsets'])) {
-        foreach ($json['fieldsets'] as $fieldset) {
+    
+    function obtenerTodosLosCampos($fieldsets) {
+        $todosLosCampos = [];
+        foreach ($fieldsets as $fieldset) {
             if (isset($fieldset['fields'])) {
-                $all_fields = array_merge($all_fields, $fieldset['fields']);
+                $todosLosCampos = array_merge($todosLosCampos, $fieldset['fields']);
+            }
+            if (isset($fieldset['fieldsets'])) {
+                $todosLosCampos = array_merge($todosLosCampos, obtenerTodosLosCampos($fieldset['fieldsets']));
             }
         }
+        return $todosLosCampos;
     }
+
+    $all_fields = isset($json['fieldsets']) ? obtenerTodosLosCampos($json['fieldsets']) : [];
     echo "<script>window.fields = " . json_encode($all_fields) . ";</script>";
-    // --- FIN DEL CÓDIGO FALTANTE ---
+    // --- FIN DEL CÓDIGO CORREGIDO ---
   ?>
 
   <script src="js/formulariodinamico.js"></script>

@@ -222,6 +222,19 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                 };
 
                 switch ($type) {
+                    // ¡¡CORRECCIÓN!! SE AÑADE LA LÓGICA PARA CHECKBOX Y RADIO
+                    case 'checkbox':
+                    case 'radio':
+                        $options = $field['options'] ?? [];
+                        foreach ($options as $opt) {
+                            $opt_val = is_array($opt) ? $opt['value'] : $opt;
+                            $opt_label = is_array($opt) ? $opt['label'] : $opt;
+                            $is_checked = ($type === 'checkbox' && is_array($value) && in_array($opt_val, $value)) || ($type === 'radio' && $value == $opt_val);
+                            $inputName = $name . ($type === 'checkbox' ? '[]' : '');
+                            $html .= "<label class='opcion-label'><input type=\"$type\" name=\"$inputName\" value=\"" . htmlspecialchars($opt_val) . "\" " . ($is_checked ? 'checked' : '') . "> " . htmlspecialchars($opt_label) . "</label> ";
+                        }
+                        break;
+
                     case 'datatable':
                         $columns = $field['columns'] ?? [];
                         $tableData = is_array($value) ? $value : [];
@@ -238,7 +251,6 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                             $html .= "<tr>";
                             foreach ($columns as $col) {
                                 $colName = $col['name'];
-                                
                                 $colAttrs = [
                                     'type' => $col['type'] ?? 'text',
                                     'name' => "{$name}[{$i}][{$colName}]",
@@ -247,13 +259,11 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                                     'placeholder' => $col['placeholder'] ?? null,
                                     'readonly' => !empty($col['readonly']),
                                 ];
-
                                 foreach ($col as $k => $v) {
                                     if (strpos($k, 'data-') === 0) {
                                         $colAttrs[$k] = $v;
                                     }
                                 }
-                                
                                 $html .= "<td><input " . $buildAttrs($colAttrs) . "></td>";
                             }
                             $html .= "<td><button type='button' class='eliminar_fila btn btn-danger btn-sm'>Eliminar</button></td></tr>";
@@ -270,7 +280,7 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                             'required' => !empty($field['required']), 'readonly' => !empty($field['readonly']) || $soloLectura,
                             'disabled' => !empty($field['disabled']) || $soloLectura,
                         ];
-                        foreach ($field as $k => $v) {
+                        foreach $field as $k => $v) {
                             if (strpos($k, 'data-') === 0) {
                                 $baseAttrs[$k] = $v;
                             }

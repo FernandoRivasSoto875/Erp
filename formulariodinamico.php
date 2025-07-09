@@ -82,5 +82,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </form>
 
 <?php
+// Expone la definición de los campos a JavaScript para la creación de filas en el datatable
 echo "<script>window.fields = " . json_encode($all_fields) . ";</script>";
 ?>
+
+<!-- SCRIPT DE JAVASCRIPT RESTAURADO -->
+<script src="js/formulariodinamico.js"></script>

@@ -43,11 +43,20 @@ function prepararValoresGuardados($postData, $allFields) {
  */
 function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
     $html = '';
+    
+    // --- FUNCIÓN INTERNA MODIFICADA PARA MANEJAR ARRAYS ---
     $buildAttrs = function($attrs) {
         $str = '';
         foreach ($attrs as $k => $v) {
-            if ($v === true) $str .= " " . htmlspecialchars($k);
-            elseif ($v !== false && $v !== null) $str .= " " . htmlspecialchars($k) . "=\"" . htmlspecialchars($v) . "\"";
+            if ($v === true) {
+                $str .= " " . htmlspecialchars($k);
+            } elseif ($v !== false && $v !== null) {
+                // Si el valor es un array (como data-formula), lo convertimos a JSON.
+                if (is_array($v)) {
+                    $v = json_encode($v);
+                }
+                $str .= " " . htmlspecialchars($k) . "='" . htmlspecialchars($v, ENT_QUOTES, 'UTF-8') . "'";
+            }
         }
         return $str;
     };
@@ -64,7 +73,6 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                 $value = $valores[$name] ?? $field['value'] ?? '';
                 $labelPosition = $field['labelPosition'] ?? 'top';
 
-                // --- MODIFICACIÓN 1: Leer y aplicar 'style' a cada campo ---
                 $fieldStyle = !empty($field['style']) ? htmlspecialchars($field['style']) : '';
                 $classes = "campo-container label-{$labelPosition}";
                 $html .= "<div class='{$classes}' style='{$fieldStyle}'>";
@@ -87,13 +95,12 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                         $options = $field['options'] ?? [];
                         if (empty($options)) break;
 
-                        // --- MODIFICACIÓN 2: Leer 'layout' para la disposición ---
                         $layout = $field['layout'] ?? 'vertical';
                         $html .= "<div class='options-container layout-{$layout}'>";
 
                         foreach ($options as $option) {
-                            $optionValue = $option['value'];
-                            $optionLabel = $option['label'];
+                            $optionValue = $option['value'] ?? '';
+                            $optionLabel = $option['label'] ?? '';
                             $currentName = ($type === 'checkbox' && count($options) > 1) ? "{$name}[]" : $name;
                             $optionId = "{$id}-{$optionValue}";
                             $checked = '';
@@ -140,7 +147,6 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                         }
                         break;
 
-                    // --- LÓGICA DEL DATATABLE RESTAURADA ---
                     case 'datatable':
                         $columns = $field['columns'] ?? [];
                         $tableData = is_array($value) ? $value : [];

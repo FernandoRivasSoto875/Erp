@@ -13,6 +13,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const formulario = document.getElementById('formulario');
     if (!formulario) return;
 
+    // Usar la copia 'fieldsConfig' en lugar de 'window.fields' para la lógica inicial.
+    const firstField = fieldsConfig.length > 0 ? fieldsConfig[0] : null;
+
     let isCalculating = false;
     let debounceTimer;
 
@@ -298,7 +301,7 @@ function fillForm(data) {
 }
 
 /**
- * Limpia el formulario, incluyendo los datatables.
+ * Limpia el formulario, incluyendo los datatables. (VERSIÓN CORREGIDA)
  * @param {HTMLFormElement} formElement - El elemento del formulario.
  * @param {HTMLInputElement|null} firstFieldElement - El primer campo (clave), para preservar su valor.
  */
@@ -307,21 +310,10 @@ function clearForm(formElement, firstFieldElement) {
     formElement.reset();
     if (firstFieldElement) firstFieldElement.value = key;
     
-    // --- INICIO: MODIFICACIÓN ---
     // Limpiar visualmente todas las tablas
     document.querySelectorAll('[data-datatable-name] tbody').forEach(tbody => {
         tbody.innerHTML = '';
     });
-
-    // Eliminar los valores por defecto del objeto de configuración en memoria
-    if (window.fields) {
-        window.fields.forEach(field => {
-            if (field.type === 'datatable' && field.value) {
-                delete field.value;
-            }
-        });
-    }
-    // --- FIN: MODIFICACIÓN ---
 
     // Dispara un evento 'input' para que los totales se recalculen a cero.
     formElement.dispatchEvent(new Event('input', { bubbles: true }));

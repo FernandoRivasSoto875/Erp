@@ -4,7 +4,6 @@
  * Autor: GitHub Copilot (verificado y corregido)
  */
 document.addEventListener('DOMContentLoaded', function() {
-
     const formulario = document.getElementById('formulario');
     if (!formulario) return;
 
@@ -33,34 +32,8 @@ document.addEventListener('DOMContentLoaded', function() {
      * La función de recálculo principal. Orquesta todo en el orden correcto.
      */
     async function recalculateAll() {
-        // Paso 1: Calcular todas las filas de los datatables de forma aislada.
-        document.querySelectorAll('table.datatable-container tbody tr').forEach(row => {
-            const rowValues = {};
-            row.querySelectorAll('input, select, textarea').forEach(input => {
-                const name = input.name.match(/\[(\w+)\]$/)?.[1];
-                if (name) rowValues[name] = input.value;
-            });
-
-            row.querySelectorAll('[data-formula]').forEach(field => {
-                let expr = field.getAttribute('data-formula');
-                try {
-                    // Reemplazar variables dentro de la fila
-                    Object.keys(rowValues).forEach(key => {
-                        const value = parseFloat(rowValues[key]) || 0;
-                        expr = expr.replace(new RegExp(`\\b${key}\\b`, 'g'), value);
-                    });
-                    const result = eval(expr);
-                    if (Number.isFinite(result)) {
-                        field.value = result.toFixed(2);
-                    }
-                } catch (e) { /* Ignorar errores de cálculo en fila */ }
-            });
-        });
-
-        // Paso 2: Ejecutar todas las búsquedas (lookups) y esperar a que terminen.
         const lookupPromises = [];
-        const allFormValues = getFormValues();
-        
+        const initialValues = new FormData(formulario);
         formulario.querySelectorAll('[data-formula*="lookup"]').forEach(field => {
             try {
                 const formulaObj = JSON.parse(field.getAttribute('data-formula'));
@@ -68,14 +41,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     let whereClause = formulaObj.where;
                     const placeholders = whereClause.match(/\{(.+?)\}/g) || [];
                     let isReady = true;
-
                     placeholders.forEach(ph => {
                         const fieldName = ph.replace(/[{}]/g, '');
-                        const value = allFormValues[fieldName];
-                        if (value === undefined || value === '') isReady = false;
+                        const value = initialValues.get(fieldName);
+                        if (value === null || value === '') isReady = false;
                         whereClause = whereClause.replace(ph, value);
                     });
-
                     if (isReady) {
                         const promise = fetch('ajax/busqueda_formula.php', {
                             method: 'POST',
@@ -89,16 +60,35 @@ document.addEventListener('DOMContentLoaded', function() {
                         field.value = '';
                     }
                 }
-            } catch (e) { /* No es un JSON de lookup válido */ }
+            } catch (e) { /* Ignorar */ }
         });
         
-        // Esperar a que TODAS las búsquedas se completen antes de continuar.
         await Promise.all(lookupPromises);
 
-        // Paso 3: Calcular todas las fórmulas matemáticas restantes (globales y de agregación).
-        const finalValues = getFormValues(); // Obtener valores actualizados después de los lookups.
+        document.querySelectorAll('table.datatable-container tbody tr').forEach(row => {
+            const rowValues = {};
+            row.querySelectorAll('input, select, textarea').forEach(input => {
+                const name = input.name.match(/\[(\w+)\]$/)?.[1];
+                if (name) rowValues[name] = input.value;
+            });
+            row.querySelectorAll('[data-formula]').forEach(field => {
+                if (!field.getAttribute('data-formula').includes('lookup')) {
+                    let expr = field.getAttribute('data-formula');
+                    try {
+                        Object.keys(rowValues).forEach(key => {
+                            const value = parseFloat(rowValues[key]) || 0;
+                            expr = expr.replace(new RegExp(`\\b${key}\\b`, 'g'), value);
+                        });
+                        const result = eval(expr);
+                        if (Number.isFinite(result)) field.value = result.toFixed(2);
+                    } catch (e) { /* Ignorar */ }
+                }
+            });
+        });
+
+        const finalFormValues = new FormData(formulario);
+        const finalValues = Object.fromEntries(finalFormValues.entries());
         formulario.querySelectorAll('[data-formula]').forEach(field => {
-            // Solo procesar si NO es un lookup (ya se hizo) y NO está en un datatable (ya se hizo).
             if (!field.getAttribute('data-formula').includes('lookup') && !field.closest('table')) {
                 let expr = field.getAttribute('data-formula');
                 try {

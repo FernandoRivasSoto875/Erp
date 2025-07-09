@@ -45,23 +45,28 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
     $html = "";
     foreach ($fieldsets as $fieldset) {
         $legend = $fieldset['legend'] ?? '';
-        $style = $fieldset['style'] ?? '';
-        $html .= "<fieldset style='" . htmlspecialchars($style, ENT_QUOTES) . "'>";
-        if ($legend) $html .= "<legend>$legend</legend>";
-
+        $html .= "<fieldset><legend>" . htmlspecialchars($legend) . "</legend>";
         if (isset($fieldset['fields'])) {
             foreach ($fieldset['fields'] as $field) {
                 $name = $field['name'] ?? '';
                 $label = $field['label'] ?? '';
                 $type = $field['type'] ?? 'text';
                 $value = $valores[$name] ?? ($field['value'] ?? '');
-                $labelPosition = $field['labelPosition'] ?? 'top';
-
-                $html .= "<div class='campo-container label-{$labelPosition}'>";
+                
+                // --- LÓGICA DE LABELPOSITION RESTAURADA ---
+                $labelPosition = $field['labelPosition'] ?? 'top'; // 'top' es el valor por defecto
+                
+                $html .= "<div class='campo-container label-{$labelPosition}'>"; // Se aplica la clase dinámica
+                
+                // Solo mostrar la etiqueta si existe y el campo no es de tipo 'hidden'
                 if ($label && $type !== 'hidden') {
-                    $html .= "<label for=\"$name\">$label</label>";
+                    $html .= "<label for=\"" . htmlspecialchars($name) . "\">" . htmlspecialchars($label) . "</label>";
                 }
+                // --- FIN DE LA LÓGICA RESTAURADA ---
 
+
+                $html .= "<div class='input-wrapper'>";
+                
                 $buildAttrs = function($attrs) {
                     $str = '';
                     foreach ($attrs as $k => $v) {
@@ -72,7 +77,7 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                     return $str;
                 };
 
-                $html .= "<div class='input-wrapper'>";
+                // El switch con todos los tipos de campo (datatable, etc.) no necesita cambios
                 switch ($type) {
                     // --- LÓGICA RESTAURADA PARA RADIO Y CHECKBOX ---
                     case 'radio':
@@ -139,20 +144,13 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                         }
                         $html .= "</tbody></table><button type='button' id='btn-add-row-{$name}' class='btn btn-primary mt-2'>Agregar Fila</button>";
                         break;
-
-                    case 'textarea':
-                        $attrs = ['name' => $name, 'id' => $name];
-                        foreach ($field as $k => $v) { if (in_array($k, ['placeholder', 'rows', 'readonly', 'required'])) { $attrs[$k] = $v; } }
-                        $html .= "<textarea " . $buildAttrs($attrs) . ">" . htmlspecialchars($value) . "</textarea>";
-                        break;
-
                     default:
                         $attrs = ['type' => $type, 'name' => $name, 'id' => $name, 'value' => $value];
-                        foreach ($field as $k => $v) { if (in_array($k, ['placeholder', 'readonly', 'required', 'multiple', 'min', 'max', 'step', 'pattern']) || strpos($k, 'data-') === 0) { $attrs[$k] = $v; } }
+                        foreach ($field as $k => $v) { if (in_array($k, ['placeholder', 'readonly', 'required']) || strpos($k, 'data-') === 0) { $attrs[$k] = $v; } }
                         $html .= "<input " . $buildAttrs($attrs) . ">";
                         break;
                 }
-                $html .= "</div></div>";
+                $html .= "</div></div>"; // Cierre de input-wrapper y campo-container
             }
         }
         $html .= "</fieldset>";

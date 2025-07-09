@@ -118,7 +118,7 @@
               "type": "number", 
               "placeholder": "0.00", 
               "readonly": true, 
-              "data-formula": "cantidad * precio_unitario" 
+              "data-formula": "cantidad * precio_unitario + total" 
             }
           ],
           "value": [

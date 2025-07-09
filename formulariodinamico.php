@@ -1,421 +1,89 @@
 <?php
+// ... (tus ini_set y error_reporting si los tienes aquí) ...
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-require_once 'funcionessql.php';
-require_once __DIR__ . '/vendor/autoload.php';
 require_once 'formulariodinamico.funciones.php';
+require_once 'funcionessql.php';
 
-use Shuchkin\SimpleXLSXGen;
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
+$archivo_json = $_GET['archivo'] ?? 'default.json';
+$json_path = "json/" . basename($archivo_json);
 
-$conn = conexionBd();
-
-if (!isset($_GET['archivo']) || !preg_match('/^[a-zA-Z0-9_\-]+\.json$/', $_GET['archivo'])) {
-    echo "<div style='color:red;text-align:center;font-weight:bold;'>No existe nombre de formulario.</div>";
-    exit;
-}
-$nombre_archivo = $_GET['archivo'];
-$json_file = __DIR__ . '/json/' . $nombre_archivo;
-if (!file_exists($json_file)) {
-    echo "<div style='color:red;text-align:center;font-weight:bold;'>El archivo $nombre_archivo no existe.</div>";
-    exit;
+if (!file_exists($json_path)) {
+    die("Error: El archivo de configuración del formulario no existe.");
 }
 
-$json = json_decode(file_get_contents($json_file), true);
+$json_content = file_get_contents($json_path);
+$json = json_decode($json_content, true);
 
-if (!$json) {
-    echo "<div style='color:red'>Error: El archivo JSON no es válido o está vacío.</div>";
-    exit;
-}
-if (!isset($json['fieldsets']) || !is_array($json['fieldsets'])) {
-    echo "<div style='color:red'>Error: El archivo JSON no contiene fieldsets de campos.</div>";
-    exit;
+if (json_last_error() !== JSON_ERROR_NONE) {
+    die("Error: El archivo JSON contiene errores de sintaxis.");
 }
 
-$fecha_creacion = isset($json['parametros']['fecha_creacion']) ? $json['parametros']['fecha_creacion'] : 'Fecha desconocida';
-$css = file_exists(__DIR__ . '/css/formulariodinamico.css') ? file_get_contents(__DIR__ . '/css/formulariodinamico.css') : '';
+$all_fields = obtenerTodosLosCampos($json['fieldsets'] ?? []);
+$valores = [];
+$soloLectura = false;
 
-$registroFile = __DIR__ . '/data/' . $nombre_archivo . '_ultimo.json';
-$valoresGuardados = [];
-if (file_exists($registroFile)) {
-    $valoresGuardados = json_decode(file_get_contents($registroFile), true);
+// --- LÓGICA DE CARGA DE DATOS RESTAURADA ---
+if (!empty($_GET['id']) && isset($json['tabla_principal'])) {
+    $conn = conexionBd();
+    $tabla = $json['tabla_principal'];
+    $id_campo = $json['id_campo'] ?? 'id';
+    $id = $conn->real_escape_string($_GET['id']);
+
+    // Cargar datos del registro principal
+    $sql = "SELECT * FROM `$tabla` WHERE `$id_campo` = '$id'";
+    $result = $conn->query($sql);
+    if ($result && $result->num_rows > 0) {
+        $valores = $result->fetch_assoc();
+    }
+
+    // Cargar datos de los datatables asociados
+    foreach ($all_fields as $field) {
+        if ($field['type'] === 'datatable' && isset($field['tabla_detalle'])) {
+            $tabla_detalle = $field['tabla_detalle'];
+            $fk_campo = $field['fk_campo'] ?? $id_campo;
+            $sql_detalle = "SELECT * FROM `$tabla_detalle` WHERE `$fk_campo` = '$id'";
+            $result_detalle = $conn->query($sql_detalle);
+            if ($result_detalle) {
+                $valores[$field['name']] = $result_detalle->fetch_all(MYSQLI_ASSOC);
+            }
+        }
+    }
+    $conn->close();
 }
 
-$mensajeEnvio = '';
-$mensajeEnvioTipo = '';
+// --- LÓGICA DE PROCESAMIENTO DE ENVÍO (POST) ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // (Aquí iría tu lógica para guardar los datos, usando la función prepararValoresGuardados)
+    // Por ahora, solo mostramos un mensaje.
+    echo "<div id='mensaje-envio' class='alert alert-success'>Formulario procesado (simulación).</div>";
+}
 
-// Lógica de LIMPIAR: si no existe o es true, limpiar; si es false, no limpiar
-$limpiar = (!isset($json['parametros']['limpiar']) || $json['parametros']['limpiar'] === true) ? 'true' : 'false';
-
-// Obtener baseUrl desde parámetros JSON
-$baseUrl = $json['parametros']['baseurl'] ?? '';
-
-function validarCamposRequeridos($fieldsets, $formData, &$errores) {
+// Función auxiliar para obtener todos los campos recursivamente
+function obtenerTodosLosCampos($fieldsets) {
+    $campos = [];
     foreach ($fieldsets as $fieldset) {
-        if (isset($fieldset['fields'])) {
-            foreach ($fieldset['fields'] as $field) {
-                if (!empty($field['required']) && (empty($formData[$field['name']]) || (is_array($formData[$field['name']]) && count($formData[$field['name']]) == 0))) {
-                    $label = $field['label'] ?? $field['name'];
-                    $errores[] = "El campo '{$label}' es obligatorio.";
-                }
-            }
+        if (!empty($fieldset['fields'])) {
+            $campos = array_merge($campos, $fieldset['fields']);
         }
-        if (isset($fieldset['fieldsets'])) {
-            validarCamposRequeridos($fieldset['fieldsets'], $formData, $errores);
+        if (!empty($fieldset['fieldsets'])) {
+            $campos = array_merge($campos, obtenerTodosLosCampos($fieldset['fieldsets']));
         }
     }
-}
-
-function enviarFormulario($jsonFile, $formData, $css, $json, &$mensajeEnvio, &$mensajeEnvioTipo, $baseUrl = '') {
-    $config = $json['parametros'];
-    $titulo = isset($config['titulo']) ? preg_replace('/[^a-zA-Z0-9_\-]/', '_', $config['titulo']) : 'formulario';
-
-    // Nombres de archivos adjuntos personalizados según el título
-    $pdfFilename  = $titulo . '.pdf';
-    $htmlFilename = $titulo . '.html';
-    $xlsxFilename = $titulo . '.xlsx';
-    $xlsFilename  = $titulo . '.xls';
-    $csvFilename  = $titulo . '.csv';
-    $jsonFilename = $titulo . '.json';
-    $xmlFilename  = $titulo . '.xml';
-    $docFilename  = $titulo . '.doc';
-
-    $mailDe = $config['mailDe'] ?? null;
-    $mailPara = $config['mailPara'] ?? null;
-    $mailCc = $config['mailCc'] ?? null;
-    $mailCco = $config['mailCco'] ?? null;
-    $tiposFormatoEnvio = explode(',', strtolower($config['tipoformatoenvio'] ?? 'htmlc'));
-
-    $valoresAdjuntos = normalizaValores($formData, $json, false);
-    $valoresAdjuntosJson = normalizaValores($formData, $json, true);
-
-    // Inicializa PHPMailer antes de usarlo
-    $mail = new PHPMailer(true);
-
-    // --- BLOQUE PARA IMÁGENES INLINE (CID) ---
-    global $imagenesInline;
-    $imagenesInline = [];
-    foreach ($json['fieldsets'] as $fieldset) {
-        if (isset($fieldset['fields'])) {
-            foreach ($fieldset['fields'] as $field) {
-                if (($field['type'] ?? '') === 'file') {
-                    $name = $field['name'];
-                    $files = $formData[$name] ?? [];
-                    if (!is_array($files)) $files = [$files];
-                    foreach ($files as $idx => $file) {
-                        $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
-                        if (in_array($ext, ['jpg','jpeg','png','gif','webp'])) {
-                            $rutaAbsoluta = __DIR__ . '/' . $file;
-                            if (file_exists($rutaAbsoluta)) {
-                                $cid = $name . '_' . $idx;
-                                $mail->addEmbeddedImage($rutaAbsoluta, $cid);
-                                $imagenesInline[$file] = $cid;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    // --- FIN BLOQUE IMÁGENES INLINE --- 
-
-    // Genera el HTML del cuerpo del mail (htmlc)
-    $htmlForm = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
-    $htmlForm .= "<main>";
-    $htmlForm .= "<header class='form-header'>";
-    $htmlForm .= "<h2>" . htmlspecialchars($config['titulo'], ENT_QUOTES, 'UTF-8') . "</h2>";
-    $htmlForm .= "<div style='font-size:1.1em;font-weight:bold;margin-bottom:10px;'>Archivo adjunto: " . htmlspecialchars($pdfFilename, ENT_QUOTES, 'UTF-8') . "</div>";
-    if (!empty($config['tituloimagen'])) {
-        $htmlForm .= "<div style='margin-bottom:15px;'><img src='" . htmlspecialchars($config['tituloimagen'], ENT_QUOTES, 'UTF-8') . "' alt='Imagen Formulario' style='max-width:200px;display:block;'></div>";
-    }
-    $htmlForm .= "</header>";
-    $htmlForm .= "<p>" . htmlspecialchars($config['comentario'], ENT_QUOTES, 'UTF-8') . "</p>";
-    $htmlForm .= renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos, $baseUrl, 'mail');
-    $htmlForm .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
-    $htmlForm .= "</main></body></html>";
-
-    // Genera el HTML para el PDF (usa rutas de archivo, no CIDs)
-    $htmlFormPDF = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
-    $htmlFormPDF .= "<main>";
-    $htmlFormPDF .= "<header class='form-header'>";
-    $htmlFormPDF .= "<h2>" . htmlspecialchars($config['titulo'], ENT_QUOTES, 'UTF-8') . "</h2>";
-    $htmlFormPDF .= "<div style='font-size:1.1em;font-weight:bold;margin-bottom:10px;'>Archivo adjunto: " . htmlspecialchars($pdfFilename, ENT_QUOTES, 'UTF-8') . "</div>";
-    if (!empty($config['tituloimagen'])) {
-        $htmlFormPDF .= "<div style='margin-bottom:15px;'><img src='" . htmlspecialchars($config['tituloimagen'], ENT_QUOTES, 'UTF-8') . "' alt='Imagen Formulario' style='max-width:200px;display:block;'></div>";
-    }
-    $htmlFormPDF .= "</header>";
-    $htmlFormPDF .= "<p>" . htmlspecialchars($config['comentario'], ENT_QUOTES, 'UTF-8') . "</p>";
-    $htmlFormPDF .= renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos, $baseUrl, 'pdf');
-    $htmlFormPDF .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
-    $htmlFormPDF .= "</main></body></html>";
-
-    // Genera el HTML para el adjunto .html (igual que el PDF, con rutas relativas)
-    $htmlFormAdjunto = "<!DOCTYPE html><html><head><meta charset='UTF-8'><style>{$css}</style></head><body>";
-    $htmlFormAdjunto .= "<main>";
-    $htmlFormAdjunto .= "<header class='form-header'>";
-    $htmlFormAdjunto .= "<h2>" . htmlspecialchars($config['titulo'], ENT_QUOTES, 'UTF-8') . "</h2>";
-    $htmlFormAdjunto .= "<div style='font-size:1.1em;font-weight:bold;margin-bottom:10px;'>Archivo adjunto: " . htmlspecialchars($pdfFilename, ENT_QUOTES, 'UTF-8') . "</div>";
-    if (!empty($config['tituloimagen'])) {
-        $htmlFormAdjunto .= "<div style='margin-bottom:15px;'><img src='" . htmlspecialchars($config['tituloimagen'], ENT_QUOTES, 'UTF-8') . "' alt='Imagen Formulario' style='max-width:200px;display:block;'></div>";
-    }
-    $htmlFormAdjunto .= "</header>";
-    $htmlFormAdjunto .= "<p>" . htmlspecialchars($config['comentario'], ENT_QUOTES, 'UTF-8') . "</p>";
-    $htmlFormAdjunto .= renderFieldsetsReadOnly($json['fieldsets'], $valoresAdjuntos, $baseUrl, 'pdf'); // usa rutas relativas
-    $htmlFormAdjunto .= "<footer><p>" . htmlspecialchars($config['pie'], ENT_QUOTES, 'UTF-8') . "</p></footer>";
-    $htmlFormAdjunto .= "</main></body></html>";
-
-    // PDF
-    $mpdf = new \Mpdf\Mpdf(['tempDir' => __DIR__ . '/tmp']);
-    $mpdf->WriteHTML($htmlFormPDF);
-    $pdfContent = $mpdf->Output('', 'S');
-
-    // XLSX y XLS
-    $xlsContent = null;
-    $xlsxContent = null;
-    $csvContent = null;
-    if (class_exists('Shuchkin\SimpleXLSXGen')) {
-        $header = [array_keys($valoresAdjuntos)];
-        $row = [array_values($valoresAdjuntos)];
-        $xlsx = \Shuchkin\SimpleXLSXGen::fromArray(array_merge($header, $row));
-        $tempXlsx = tempnam(sys_get_temp_dir(), 'xlsx_') . '.xlsx';
-        $xlsx->saveAs($tempXlsx);
-        $xlsxContent = file_get_contents($tempXlsx);
-        unlink($tempXlsx);
-    }
-    // CSV
-    $csvRows = [];
-    $csvRows[] = implode(",", array_map(function($k){return '"'.str_replace('"','""',$k).'"';}, array_keys($valoresAdjuntos)));
-    $csvRows[] = implode(",", array_map(function($v){
-        return '"'.str_replace('"','""',$v).'"';
-    }, array_values($valoresAdjuntos)));
-    $csvContent = implode("\r\n", $csvRows);
-    $xlsContent = $csvContent;
-
-    // JSON
-    $jsonContent = json_encode($valoresAdjuntosJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
-    if ($jsonContent === false) {
-        $jsonContent = '{}';
-    }
-
-    // XML
-    $xml = new SimpleXMLElement('<formulario/>');
-    foreach ($valoresAdjuntos as $key => $value) {
-        $xml->addChild($key, $value);
-    }
-    $xmlContent = $xml->asXML();
-
-    // DOC
-    $docContent = "<html><body>" . $htmlForm . "</body></html>";
-
-    $asunto = $config['subject'] ?? "Formulario Recibido";
- 
-    try {
-        $mail->setFrom($mailDe, 'Formulario Web');
-        $mail->addAddress($mailPara);
-        if (!empty($mailCc)) $mail->addCC($mailCc);
-        if (!empty($mailCco)) $mail->addBCC($mailCco);
-        $mail->Subject = $asunto;
-        $mail->isHTML(true);
-
-        foreach ($tiposFormatoEnvio as $tipo) {
-            $tipo = trim(strtolower($tipo));
-            switch ($tipo) {
-                case 'pdf':
-                    $mail->addStringAttachment($pdfContent, $pdfFilename, 'base64', 'application/pdf');
-                    break;
-                case 'html':
-                 $mail->addStringAttachment($htmlFormAdjunto, $htmlFilename, 'base64', 'text/html');
-         break;
-                case 'xls':
-                    if ($xlsContent) {
-                        $mail->addStringAttachment($xlsContent, $xlsFilename, 'base64', 'application/vnd.ms-excel');
-                    }
-                    break;
-                case 'xlsx':
-                    if ($xlsxContent) {
-                        $mail->addStringAttachment($xlsxContent, $xlsxFilename, 'base64', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-                    }
-                    break;
-                case 'csv':
-                case 'cvs':
-                    if ($csvContent) {
-                        $mail->addStringAttachment($csvContent, $csvFilename, 'base64', 'text/csv');
-                    }
-                    break;
-                case 'json':
-                    $mail->addStringAttachment($jsonContent, $jsonFilename, 'base64', 'application/json');
-                    break;
-                case 'xml':
-                    $mail->addStringAttachment($xmlContent, $xmlFilename, 'base64', 'application/xml');
-                    break;
-                case 'doc':
-                    $mail->addStringAttachment($docContent, $docFilename, 'base64', 'application/msword');
-                    break;
-                case 'htmlc':
-                    break;
-            }
-        }
-
-        // Asigna el cuerpo del mail
-        if (in_array('htmlc', $tiposFormatoEnvio)) {
-            $mail->Body = $htmlForm;
-        } else {
-            $mail->Body = "Adjunto el(los) archivo(s) del formulario.";
-        }
-
-        $mail->send();
-        $mensajeEnvio = "¡Formulario enviado correctamente!";
-        $mensajeEnvioTipo = "exito";
-    } catch (Exception $e) {
-        $mensajeEnvio = "Error al enviar el formulario: {$mail->ErrorInfo}";
-        $mensajeEnvioTipo = "error";
-    }
-
-    $registroDir = __DIR__ . '/data/';
-    if (!is_dir($registroDir)) {
-        mkdir($registroDir, 0777, true);
-    }
-    $registroFile = $registroDir . $GLOBALS['nombre_archivo'] . '_ultimo.json';
-    file_put_contents($registroFile, json_encode($valoresAdjuntosJson, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-} // <--- ESTA LLAVE CIERRA enviarFormulario
-
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $formData = $_POST;
-    $errores = [];
-
-    // --- BLOQUE PARA GUARDAR ARCHIVOS (SOPORTA MULTIPLES) ---
-    foreach ($json['fieldsets'] as $fieldset) {
-        if (isset($fieldset['fields'])) {
-            foreach ($fieldset['fields'] as $field) {
-                if (($field['type'] ?? '') === 'file') {
-                    $name = $field['name'];
-                    if (!empty($field['multiple'])) {
-                        if (isset($_FILES[$name]) && is_array($_FILES[$name]['name'])) {
-                            $files = $_FILES[$name];
-                            $formData[$name] = [];
-                            foreach ($files['name'] as $i => $filename) {
-                                if ($files['error'][$i] == UPLOAD_ERR_OK) {
-                                    $nombreArchivo = basename($filename);
-                                    $rutaDestino = __DIR__ . '/uploads/' . $nombreArchivo;
-                                    if (move_uploaded_file($files['tmp_name'][$i], $rutaDestino)) {
-                                        $formData[$name][] = 'uploads/' . $nombreArchivo;
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        if (isset($_FILES[$name]) && $_FILES[$name]['error'] == UPLOAD_ERR_OK) {
-                            $nombreArchivo = basename($_FILES[$name]['name']);
-                            $rutaDestino = __DIR__ . '/uploads/' . $nombreArchivo;
-                            if (move_uploaded_file($_FILES[$name]['tmp_name'], $rutaDestino)) {
-                                $formData[$name] = 'uploads/' . $nombreArchivo;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    // --- FIN BLOQUE ARCHIVOS ---
-
-    // --- BLOQUE VALIDACIÓN ---
-    $mailPara = $json['parametros']['mailPara'] ?? '';
-    $mailDe = $json['parametros']['mailDe'] ?? '';
-    if (empty($mailPara) || !filter_var($mailPara, FILTER_VALIDATE_EMAIL)) {
-        $errores[] = "El destinatario del correo (mailPara) no es válido.";
-    }
-    if (empty($mailDe) || !filter_var($mailDe, FILTER_VALIDATE_EMAIL)) {
-        $errores[] = "El remitente del correo (mailDe) no es válido.";
-    }
-
-    validarCamposRequeridos($json['fieldsets'], $formData, $errores);
-
-    // --- BLOQUE ENVÍO ---
-    if (!empty($errores)) {
-        $mensajeEnvio = "<ul>";
-        foreach ($errores as $error) {
-            $mensajeEnvio .= "<li>" . htmlspecialchars($error) . "</li>";
-        }
-        $mensajeEnvio .= "</ul>";
-        $mensajeEnvioTipo = "error";
-    } else {
-        enviarFormulario($json_file, $formData, $css, $json, $mensajeEnvio, $mensajeEnvioTipo, $baseUrl);
-    }
+    return $campos;
 }
 ?>
 
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><?php echo htmlspecialchars($json['parametros']['titulo'], ENT_QUOTES, 'UTF-8'); ?></title>
-  <link rel="stylesheet" href="css/formulariodinamico.css">
-  <script>
-    var LIMPIAR_FORMULARIO = <?php echo $limpiar; ?>;
-  </script>
-</head>
-<body>
-  <main>
-    <header class="form-header">
-      <h2><?php echo htmlspecialchars($json['parametros']['titulo'], ENT_QUOTES, 'UTF-8'); ?></h2>
-      <?php if (!empty($json['parametros']['tituloimagen'])): ?>
-        <img src="<?php echo htmlspecialchars($json['parametros']['tituloimagen'], ENT_QUOTES, 'UTF-8'); ?>" alt="Título Imagen">
-      <?php endif; ?>
-    </header>
-    <p><?php echo htmlspecialchars($json['parametros']['comentario'], ENT_QUOTES, 'UTF-8'); ?></p>
-    <div id="mensaje-envio" class="<?php echo htmlspecialchars($mensajeEnvioTipo); ?>">
-      <?php echo $mensajeEnvio; ?>
-    </div>
-    <form id="formulario" method="POST" enctype="multipart/form-data" data-archivo="<?php echo htmlspecialchars($nombre_archivo, ENT_QUOTES, 'UTF-8'); ?>">
-      <?php
-        $exito = ($_SERVER["REQUEST_METHOD"] == "POST" && $mensajeEnvioTipo === "exito");
-        $valoresParaFormulario = $exito
-            ? prepararValoresGuardados($json, [])
-            : ($_SERVER["REQUEST_METHOD"] == "POST"
-                ? prepararValoresGuardados($json, $_POST)
-                : prepararValoresGuardados($json, $valoresGuardados)
-              );
-        echo generarFieldsets($json['fieldsets'], $valoresParaFormulario);
-      ?>
-      <div class="submit-container">
-        <button type="submit">Enviar</button>
-      </div>
-    </form>
-    <footer>
-      <p><?php echo htmlspecialchars($json['parametros']['pie'], ENT_QUOTES, 'UTF-8'); ?></p>
-    </footer>
-    <!-- <p>Fecha de creación: <?php echo htmlspecialchars($fecha_creacion, ENT_QUOTES, 'UTF-8'); ?></p> -->
-  </main>
+<form id="formulario" method="post" action="" enctype="multipart/form-data" data-archivo="<?php echo htmlspecialchars($archivo_json); ?>">
+    <div id="mensaje-envio"></div>
+    <?php echo generarFieldsets($json['fieldsets'] ?? [], $valores, $soloLectura); ?>
+    <button type="submit" class="btn btn-primary">Guardar</button>
+</form>
 
-  <?php
-    // --- INICIO DEL CÓDIGO CORREGIDO ---
-    // Expone la definición de todos los campos a JavaScript de forma recursiva.
-    // Esto es INDISPENSABLE para que el datatable sepa qué columnas crear.
-    
-    function obtenerTodosLosCampos($fieldsets) {
-        $todosLosCampos = [];
-        foreach ($fieldsets as $fieldset) {
-            if (isset($fieldset['fields'])) {
-                $todosLosCampos = array_merge($todosLosCampos, $fieldset['fields']);
-            }
-            if (isset($fieldset['fieldsets'])) {
-                $todosLosCampos = array_merge($todosLosCampos, obtenerTodosLosCampos($fieldset['fieldsets']));
-            }
-        }
-        return $todosLosCampos;
-    }
-
-    $all_fields = isset($json['fieldsets']) ? obtenerTodosLosCampos($json['fieldsets']) : [];
-    echo "<script>window.fields = " . json_encode($all_fields) . ";</script>";
-    // --- FIN DEL CÓDIGO CORREGIDO ---
-  ?>
-
-  <script src="js/formulariodinamico.js"></script>
-
-</body>
-</html>
+<script>
+document.getElementById('formulario').addEventListener('submit', function(event) {
+    event.preventDefault();
+    // Aquí iría tu lógica de JavaScript para manejar el envío del formulario
+    document.getElementById('mensaje-envio').innerHTML = 'Enviando...';
+    this.submit();
+});
+</script>

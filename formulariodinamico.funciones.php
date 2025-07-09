@@ -222,7 +222,6 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                 };
 
                 switch ($type) {
-                    // ¡¡CORRECCIÓN!! SE AÑADE LA LÓGICA PARA CHECKBOX Y RADIO
                     case 'checkbox':
                     case 'radio':
                         $options = $field['options'] ?? [];
@@ -280,7 +279,7 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                             'required' => !empty($field['required']), 'readonly' => !empty($field['readonly']) || $soloLectura,
                             'disabled' => !empty($field['disabled']) || $soloLectura,
                         ];
-                        foreach $field as $k => $v) {
+                        foreach ($field as $k => $v) {
                             if (strpos($k, 'data-') === 0) {
                                 $baseAttrs[$k] = $v;
                             }

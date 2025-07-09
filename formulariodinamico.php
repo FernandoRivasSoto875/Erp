@@ -63,37 +63,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $formatosAgenerar = array_map('trim', explode(',', $params['tipoformatoenvio'] ?? ''));
         $formatosGenerados = [];
-        $archivosAdjuntar = []; // Array para guardar las rutas de los archivos a adjuntar
+        $archivosAdjuntar = [];
         $baseFilename = $uploadsDir . 'formulario_' . date('Ymd_His');
         
-        // Preparar contenido HTML (sin cambios)
+        // --- INICIO DE LA CORRECCIÓN ---
+        $datosParaArchivos = []; // 1. INICIALIZAR EL ARRAY
         $cuerpoHtml = "<h1>" . htmlspecialchars($params['subject'] ?? 'Datos del Formulario') . "</h1>";
-        // ... (el bucle que genera el $cuerpoHtml es el mismo de la versión anterior) ...
+        
         foreach ($formData as $key => $value) {
             $fieldInfo = getFieldInfo($key, $all_fields);
             if (!$fieldInfo) continue;
+
             $label = $fieldInfo['label'] ?? ucfirst($key);
             $displayValue = '';
+            $valorParaArchivo = '';
+
             if ($fieldInfo['type'] === 'datatable' && is_array($value)) {
                 $displayValue .= "<table border='1' cellpadding='5' style='width:100%; border-collapse:collapse; margin-top:5px;'><thead><tr>";
                 foreach($fieldInfo['columns'] as $col) { $displayValue .= "<th>" . htmlspecialchars($col['label']) . "</th>"; }
                 $displayValue .= "</tr></thead><tbody>";
                 foreach($value as $row) { $displayValue .= "<tr>"; foreach($fieldInfo['columns'] as $col) { $displayValue .= "<td>" . htmlspecialchars($row[$col['name']] ?? '') . "</td>"; } $displayValue .= "</tr>"; }
                 $displayValue .= "</tbody></table>";
+                $valorParaArchivo = json_encode($value); // Para CSV/XML, guardamos la tabla como JSON
             } else {
                 $displayValue = is_array($value) ? implode(', ', array_map('htmlspecialchars', $value)) : nl2br(htmlspecialchars($value));
+                $valorParaArchivo = is_array($value) ? implode(', ', $value) : $value;
             }
+            
+            $datosParaArchivos[] = ['label' => $label, 'value' => $valorParaArchivo]; // 2. POBLAR EL ARRAY
             $cuerpoHtml .= "<h3>" . htmlspecialchars($label) . "</h3><div>{$displayValue}</div><hr>";
         }
+        // --- FIN DE LA CORRECCIÓN ---
 
-        // --- PASO 1: GENERAR TODOS LOS ARCHIVOS PRIMERO ---
+        // --- PASO 1: GENERAR TODOS LOS ARCHIVOS PRIMERO (CÓDIGO CORREGIDO) ---
         if (in_array('html', $formatosAgenerar)) { $path = $baseFilename . '.html'; file_put_contents($path, $cuerpoHtml); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'HTML'; }
         if (in_array('json', $formatosAgenerar)) { $path = $baseFilename . '.json'; file_put_contents($path, json_encode($formData, JSON_PRETTY_PRINT)); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'JSON'; }
         if (in_array('pdf', $formatosAgenerar)) { $path = $baseFilename . '.pdf.txt'; file_put_contents($path, "Simulación de PDF..."); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'PDF (simulado)'; }
         if (in_array('xls', $formatosAgenerar) || in_array('xlsx', $formatosAgenerar)) { $path = $baseFilename . '.xlsx.txt'; file_put_contents($path, "Simulación de Excel con los datos:\n\n" . print_r($datosParaArchivos, true)); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'XLSX (simulado)'; }
         if (in_array('doc', $formatosAgenerar)) { $path = $baseFilename . '.doc.txt'; file_put_contents($path, "Simulación de DOC con los datos:\n\n" . print_r($datosParaArchivos, true)); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'DOC (simulado)'; }
-        if (in_array('csv', $formatosAgenerar) || in_array('cvs', $formatosAgenerar)) { $fp = fopen($baseFilename . '.csv', 'w'); fputcsv($fp, ['Campo', 'Valor']); foreach ($datosParaArchivos as $dato) { fputcsv($fp, [$dato['label'], $dato['value']]); } fclose($fp); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'CSV'; }
-        if (in_array('xml', $formatosAgenerar)) { $xml = new SimpleXMLElement('<formulario/>'); foreach ($datosParaArchivos as $dato) { $xml->addChild(preg_replace('/[^A-Za-z0-9_]/', '', $dato['label']), htmlspecialchars($dato['value'])); } $xml->asXML($baseFilename . '.xml'); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'XML'; }
+        if (in_array('csv', $formatosAgenerar) || in_array('cvs', $formatosAgenerar)) { $path = $baseFilename . '.csv'; $fp = fopen($path, 'w'); fputcsv($fp, ['Campo', 'Valor']); foreach ($datosParaArchivos as $dato) { fputcsv($fp, [$dato['label'], $dato['value']]); } fclose($fp); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'CSV'; }
+        if (in_array('xml', $formatosAgenerar)) { $path = $baseFilename . '.xml'; $xml = new SimpleXMLElement('<formulario/>'); foreach ($datosParaArchivos as $dato) { $xml->addChild(preg_replace('/[^A-Za-z0-9_]/', '', $dato['label']), htmlspecialchars($dato['value'])); } $xml->asXML($path); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'XML'; }
 
         // --- PASO 2: SI SE PIDE CORREO, ENVIARLO CON LOS ADJUNTOS ---
         if (in_array('htmlc', $formatosAgenerar) && !empty($params['destinatario'])) {

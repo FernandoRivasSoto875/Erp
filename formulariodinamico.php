@@ -55,19 +55,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $uploadsDir = 'uploads/';
     if (!is_dir($uploadsDir)) mkdir($uploadsDir, 0755, true);
 
-    // --- INICIO: Guardar datos en la sesión ---
+    // --- REQUISITO 1: Guardar todos los valores del formulario ---
     $firstField = reset($all_fields);
     if ($firstField && isset($formData[$firstField['name']])) {
         $key = $formData[$firstField['name']];
         if (!empty($key)) {
             $sessionKey = 'form_data_' . $archivo_json . '_' . $key;
-            $_SESSION[$sessionKey] = $formData;
+            $_SESSION[$sessionKey] = $formData; // $formData contiene TODOS los campos, incluyendo datatables
         }
     }
-    // --- FIN: Guardar datos en la sesión ---
-
+    
     try {
-        // --- INICIO: LÓGICA DE GENERACIÓN DE ARCHIVOS Y CORREO (SIN CAMBIOS) ---
+        // --- LÓGICA DE GENERACIÓN DE ARCHIVOS Y CORREO (SIN CAMBIOS) ---
         $formatosAgenerar = array_map('trim', explode(',', $params['tipoformatoenvio'] ?? ''));
         $formatosGenerados = [];
         $archivosAdjuntar = [];
@@ -117,14 +116,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         // --- FIN: LÓGICA DE GENERACIÓN DE ARCHIVOS Y CORREO ---
 
-        $mensaje_envio = "<div class='alert alert-success'>Formulario procesado. Formatos generados: " . implode(', ', $formatosGenerados) . "</div>";
-        if ($params['limpiar'] ?? false) { 
-            $valores = []; // Esta variable se usa para la recarga de la página
-        }
+        // --- REQUISITO 2: Limpiar todo después de guardar ---
+        // Al final del procesamiento exitoso, guardamos un mensaje de éxito en la sesión
+        // y redirigimos para asegurar una recarga 100% limpia (Patrón Post-Redirect-Get).
+        $_SESSION['mensaje_flash'] = "Formulario guardado y procesado con éxito.";
+        header("Location: " . $_SERVER['PHP_SELF'] . "?archivo=" . urlencode($archivo_json));
+        exit;
 
     } catch (Exception $e) {
-        $mensaje_envio = "<div class='alert alert-danger'>Error: " . $e->getMessage() . "</div>";
+        // Si hay un error, no redirigimos, mostramos el error en el formulario actual
+        $mensaje_envio = "<div class='alert alert-danger'>Error al procesar: " . $e->getMessage() . "</div>";
+        $valores = $formData; // Mantenemos los datos para que el usuario pueda corregir
     }
+}
+
+// --- Lógica para mostrar mensajes flash después de la redirección ---
+if (isset($_SESSION['mensaje_flash'])) {
+    $mensaje_envio = "<div class='alert alert-success'>" . $_SESSION['mensaje_flash'] . "</div>";
+    unset($_SESSION['mensaje_flash']); // Limpiar el mensaje para que no se muestre de nuevo
 }
 // --- FIN: LÓGICA DE PROCESAMIENTO ---
 ?>
@@ -150,14 +159,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="js/formulariodinamico.js"></script>
 
-<!-- INICIO: SCRIPT PARA RECUPERACIÓN DE DATOS (VERSIÓN FINAL Y CORREGIDA) -->
+<!-- INICIO: SCRIPT PARA RECUPERACIÓN Y LIMPIEZA (VERSIÓN DEFINITIVA) -->
 <script>
 function fillForm(data) {
-    // Limpia el formulario y las tablas antes de rellenar
     document.getElementById('formulario').reset();
-    document.querySelectorAll('[data-datatable-name] tbody').forEach(tbody => {
-        tbody.innerHTML = '';
-    });
+    document.querySelectorAll('[data-datatable-name] tbody').forEach(tbody => { tbody.innerHTML = ''; });
 
     for (const fieldName in data) {
         const value = data[fieldName];
@@ -178,7 +184,6 @@ function fillForm(data) {
                     input.value = rowData[col.name] || '';
                     cell.appendChild(input);
                 });
-                // Añadir botón de eliminar si es necesario
                 const actionCell = newRow.insertCell();
                 actionCell.innerHTML = `<button type="button" class="eliminar_fila btn btn-danger btn-sm">Eliminar</button>`;
             });
@@ -193,18 +198,16 @@ function fillForm(data) {
             });
         }
     }
-    // Disparar un evento para que la lógica de cálculo en formulariodinamico.js se ejecute
     document.getElementById('formulario').dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 function clearForm(formElement, firstFieldElement) {
-    const key = firstFieldElement.value;
+    const key = firstFieldElement ? firstFieldElement.value : '';
     formElement.reset();
-    firstFieldElement.value = key; // Restaurar la clave que el usuario escribió
+    if (firstFieldElement) firstFieldElement.value = key;
     document.querySelectorAll('[data-datatable-name] tbody').forEach(tbody => {
         tbody.innerHTML = '';
     });
-    // Disparar un evento para que los totales se recalculen a cero
     formElement.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
@@ -247,8 +250,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 clearForm(formElement, firstFieldElement);
             });
     });
+
+    // --- INICIO: Lógica para el botón "Eliminar Fila" del Datatable ---
+    formElement.addEventListener('click', function(e) {
+        if (e.target && e.target.classList.contains('eliminar_fila')) {
+            e.preventDefault(); // Prevenir cualquier acción por defecto del botón
+            const row = e.target.closest('tr');
+            if (row) {
+                row.remove();
+                // Disparar un evento para que los cálculos se actualicen
+                formElement.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }
+    });
+    // --- FIN: Lógica para el botón "Eliminar Fila" ---
+
 });
 </script>
-<!-- FIN: SCRIPT PARA RECUPERACIÓN DE DATOS -->
+<!-- FIN: SCRIPT PARA RECUPERACIÓN Y LIMPIEZA -->
 </body>
 </html>

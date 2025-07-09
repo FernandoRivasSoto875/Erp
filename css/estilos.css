@@ -280,5 +280,64 @@ section p {
     margin-bottom: 1rem;
 }
 
-/* ... resto del código ... */
+/* Estilos generales para los contenedores de campos */
+.campo-container {
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+
+.campo-container label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    display: block; /* Por defecto, la etiqueta está arriba */
+}
+
+.campo-container .input-wrapper {
+    /* Contenedor para el input/select/etc */
+}
+
+/* --- ESTILOS PARA LABELPOSITION --- */
+
+/* Posición: Izquierda (label-left) */
+.campo-container.label-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.campo-container.label-left label {
+    margin-bottom: 0; /* Quitar margen inferior en modo flex */
+    flex-shrink: 0; /* Evitar que la etiqueta se encoja */
+    width: 150px; /* Ancho fijo para la etiqueta, ajústalo a tu gusto */
+}
+
+.campo-container.label-left .input-wrapper {
+    flex-grow: 1; /* El input ocupa el resto del espacio */
+}
+
+/* Posición: Arriba (label-top) - Es el comportamiento por defecto */
+.campo-container.label-top {
+    /* No se necesitan reglas especiales, usa el estilo por defecto */
+}
+
+/* Posición: Ninguna (label-none) */
+.campo-container.label-none label {
+    display: none; /* Oculta la etiqueta */
+}
+
+/* Estilos para inputs y otros elementos para que se vean bien */
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+select,
+textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box; /* Importante para que el padding no afecte el ancho total */
+}
 

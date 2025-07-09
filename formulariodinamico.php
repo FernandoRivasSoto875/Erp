@@ -72,6 +72,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 ?>
 
+<!-- Hoja de estilos enlazada -->
+<link rel="stylesheet" href="css/formulariodinamo.css">
+
 <form id="formulario" method="post" action="" enctype="multipart/form-data" data-archivo="<?php echo htmlspecialchars($archivo_json); ?>">
     <div id="mensaje-envio"></div>
     <?php echo generarFieldsets($json['fieldsets'] ?? [], $valores, $soloLectura); ?>

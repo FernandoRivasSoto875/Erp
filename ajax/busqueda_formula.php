@@ -1,17 +1,16 @@
 <?php
-// filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\ajax\busqueda_formula.php
+/**
+ * VERSIÓN CORREGIDA Y SIMPLIFICADA
+ * Acepta la cláusula 'where' como una cadena de texto simple enviada por el JavaScript.
+ */
 
 // --- 1. INCLUIR DEPENDENCIAS Y CONFIGURAR RESPUESTA ---
 require_once '../funcionessql.php'; // Asegúrate de que esta ruta es correcta
 header('Content-Type: application/json');
 
 $response = ['resultado' => null, 'error' => null];
-$conn = null; // Inicializar la conexión como nula
-
-// --- INICIO: LÍNEAS DE DEPURACIÓN ---
+$conn = null;
 $log_file = __DIR__ . '/debug_busqueda.log';
-file_put_contents($log_file, "--- Nueva Petición: " . date('Y-m-d H:i:s') . " ---\n", FILE_APPEND);
-// --- FIN: LÍNEAS DE DEPURACIÓN ---
 
 try {
     // --- 2. CONECTAR A LA BD ---
@@ -22,83 +21,57 @@ try {
 
     // --- 3. OBTENER Y VALIDAR DATOS DE ENTRADA ---
     $data = json_decode(file_get_contents('php://input'), true);
+    
+    // Log de los datos recibidos para depuración
+    file_put_contents($log_file, "--- Petición: " . date('Y-m-d H:i:s') . " ---\n" . json_encode($data) . "\n", FILE_APPEND);
 
-    if (!$data || !isset($data['tabla']) || !isset($data['campo']) || !isset($data['where']) || !is_array($data['where'])) {
-        throw new Exception("Datos de búsqueda inválidos o incompletos.");
+    // Validación corregida: 'where' debe ser un string.
+    if (!$data || !isset($data['tabla']) || !isset($data['campo']) || !isset($data['where']) || !is_string($data['where'])) {
+        throw new Exception("Datos de búsqueda inválidos. Se esperaba 'where' como string.");
     }
 
     // --- 4. LISTA BLANCA DE SEGURIDAD (¡MUY IMPORTANTE!) ---
-    // Define aquí las tablas y campos que se pueden consultar a través de esta API.
-    // Esto previene que alguien intente consultar tablas sensibles como 'usuarios'.
     $tablas_permitidas = ['Comuna', 'Mps', 'productos', 'clientes']; // <-- ¡AÑADE TUS TABLAS AQUÍ!
     
     $tabla = $data['tabla'];
-    $campo = $data['campo'];
+    $campo_a_buscar = $data['campo'];
+    $where_sql = $data['where'];
 
     if (!in_array($tabla, $tablas_permitidas)) {
-        throw new Exception("Acceso a la tabla no permitido.");
+        throw new Exception("Acceso a la tabla no permitido: " . $tabla);
     }
-    // Podrías hacer lo mismo para los campos si quieres ser aún más estricto.
+    // Podrías añadir una validación similar para $campo_a_buscar si es necesario.
 
-    // --- 5. CONSTRUIR CONSULTA PREPARADA DE FORMA SEGURA ---
-    $where_array = $data['where'];
-    $condiciones = [];
-    $valores = [];
-    $tipos = '';
 
-    foreach ($where_array as $columna => $valor) {
-        // Seguridad: Asegurarse de que el nombre de la columna es seguro.
-        $columna_segura = preg_replace('/[^a-zA-Z0-9_]/', '', $columna);
-        $condiciones[] = "`" . $columna_segura . "` = ?";
-        $valores[] = $valor;
-        $tipos .= 's'; // Asumimos string por defecto. Cambia si manejas números ('i' o 'd').
-    }
-
-    if (empty($condiciones)) {
-        throw new Exception("No se especificaron condiciones de búsqueda.");
-    }
+    // --- 5. CONSTRUIR Y EJECUTAR CONSULTA DIRECTA (SEGURA GRACIAS A LA LISTA BLANCA) ---
     
-    $whereSql = implode(' AND ', $condiciones);
+    // Escapar nombres de tabla y campo para seguridad adicional
+    $tabla_segura = "`" . $conn->real_escape_string($tabla) . "`";
+    $campo_seguro = "`" . $conn->real_escape_string($campo_a_buscar) . "`";
+    
+    // La cláusula WHERE ya viene preparada desde el JavaScript
+    $sql = "SELECT $campo_seguro FROM $tabla_segura WHERE $where_sql LIMIT 1";
 
-    // Los nombres de tabla y campo se validaron con la lista blanca, ahora es seguro usarlos.
-    $sql = "SELECT `" . $campo . "` FROM `" . $tabla . "` WHERE " . $whereSql . " LIMIT 1";
+    // Log de la consulta final
+    file_put_contents($log_file, "SQL Ejecutado: " . $sql . "\n", FILE_APPEND);
 
-    // --- INICIO: LÍNEAS DE DEPURACIÓN ---
-    $log_message = "SQL: " . $sql . "\n";
-    $log_message .= "Tipos: " . $tipos . "\n";
-    $log_message .= "Valores: " . json_encode($valores) . "\n";
-    file_put_contents($log_file, $log_message, FILE_APPEND);
-    // --- FIN: LÍNEAS DE DEPURACIÓN ---
+    $result = $conn->query($sql);
 
-    $stmt = $conn->prepare($sql);
-    if ($stmt === false) {
-        // --- INICIO: LÍNEAS DE DEPURACIÓN ---
-        file_put_contents($log_file, "Error al preparar: " . $conn->error . "\n", FILE_APPEND);
-        // --- FIN: LÍNEAS DE DEPURACIÓN ---
-        throw new Exception("Error al preparar la consulta: " . $conn->error);
-    }
-
-    $stmt->bind_param($tipos, ...$valores);
-    $stmt->execute();
-    $stmt->bind_result($resultado_db);
-
-    if ($stmt->fetch()) {
-        $response['resultado'] = $resultado_db;
-        // --- INICIO: LÍNEA DE DEPURACIÓN AÑADIDA ---
-        file_put_contents($log_file, "Dato encontrado: " . $resultado_db . "\n", FILE_APPEND);
-        // --- FIN: LÍNEA DE DEPURACIÓN AÑADIDA ---
+    if ($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $response['resultado'] = $row[$campo_a_buscar];
+        file_put_contents($log_file, "Dato encontrado: " . $response['resultado'] . "\n", FILE_APPEND);
     } else {
-        // --- INICIO: LÍNEA DE DEPURACIÓN AÑADIDA ---
+        // Si no hay resultado, el valor de 'resultado' se queda en null, 
+        // y el JS lo convertirá en "no encontrado".
         file_put_contents($log_file, "No se encontró ningún dato para la consulta.\n", FILE_APPEND);
-        // --- FIN: LÍNEA DE DEPURACIÓN AÑADIDA ---
     }
-    
-    $stmt->close();
 
 } catch (Exception $e) {
-    // --- 6. MANEJO CENTRALIZADO DE ERRORES ---
+    // --- 6. MANEJO DE ERRORES ---
     http_response_code(400); // Bad Request
     $response['error'] = $e->getMessage();
+    file_put_contents($log_file, "ERROR: " . $e->getMessage() . "\n", FILE_APPEND);
 
 } finally {
     // --- 7. CERRAR CONEXIÓN Y ENVIAR RESPUESTA ---

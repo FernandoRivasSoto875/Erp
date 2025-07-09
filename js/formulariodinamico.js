@@ -1,6 +1,6 @@
  /**
- * Formulario Dinámico - Versión Final Estable
- * Reescrito para eliminar conflictos de contexto y asegurar un orden de cálculo correcto.
+ * Formulario Dinámico - Versión Final Estable y Simplificada
+ * Reescrito desde cero para garantizar el orden de ejecución y la estabilidad.
  * Autor: GitHub Copilot (verificado y corregido)
  */
 document.addEventListener('DOMContentLoaded', function() {
@@ -9,135 +9,133 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!formulario) return;
 
     /**
-     * Recolecta todos los valores de un ámbito de búsqueda (form, tr, etc.).
-     * @param {HTMLElement} scope - El elemento del cual extraer valores.
-     * @returns {Object} - Un objeto con los nombres y valores de los campos.
+     * Recolecta todos los valores del formulario en un objeto simple.
+     * @returns {Object} Un objeto donde las claves son los nombres de los campos.
      */
-    function getValuesFromScope(scope) {
+    function getFormValues() {
         const values = {};
-        scope.querySelectorAll('input, select, textarea').forEach(input => {
-            // Para datatables, usa el nombre corto (ej: 'cantidad'). Para otros, el nombre completo.
-            const name = input.name.match(/\[(\w+)\]$/)?.[1] || input.name;
-            if (name) {
-                // Para campos con el mismo nombre (ej: subtotales), crea un array
-                if (values.hasOwnProperty(name)) {
-                    if (!Array.isArray(values[name])) {
-                        values[name] = [values[name]];
-                    }
-                    values[name].push(input.value);
-                } else {
-                    values[name] = input.value;
+        const formData = new FormData(formulario);
+        for (const [name, value] of formData.entries()) {
+            // Para campos que pueden tener múltiples valores (como checkboxes o subtotales de datatable)
+            if (values.hasOwnProperty(name)) {
+                if (!Array.isArray(values[name])) {
+                    values[name] = [values[name]];
                 }
+                values[name].push(value);
+            } else {
+                values[name] = value;
             }
-        });
+        }
         return values;
     }
 
     /**
-     * Procesa una única fórmula (matemática o de búsqueda).
-     * @param {HTMLElement} field - El campo del formulario a calcular.
-     * @param {Object} values - El conjunto de valores disponibles para el cálculo.
+     * La función de recálculo principal. Orquesta todo en el orden correcto.
      */
-    function processSingleFormula(field, values) {
-        const formulaAttr = field.getAttribute('data-formula');
-
-        // 1. INTENTAR PROCESAR COMO BÚSQUEDA (LOOKUP)
-        try {
-            const formulaObj = JSON.parse(formulaAttr);
-            if (formulaObj.type === 'lookup') {
-                let whereClause = formulaObj.where;
-                const placeholders = whereClause.match(/\{(.+?)\}/g) || [];
-                let isReady = true;
-
-                placeholders.forEach(ph => {
-                    const fieldName = ph.replace(/[{}]/g, '');
-                    const value = values[fieldName];
-                    if (value === undefined || value === '') isReady = false;
-                    whereClause = whereClause.replace(ph, value);
-                });
-
-                if (isReady) {
-                    fetch('ajax/busqueda_formula.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ tabla: formulaObj.source.table, campo: formulaObj.source.field, where: whereClause })
-                    })
-                    .then(r => r.ok ? r.json() : Promise.resolve({ resultado: '' }))
-                    .then(data => { field.value = data.resultado ?? ''; })
-                    .catch(() => { field.value = ''; });
-                } else {
-                    field.value = '';
-                }
-                return; // Es un lookup, no continuar.
-            }
-        } catch (e) { /* No es JSON, continuar al siguiente paso. */ }
-
-        // 2. PROCESAR COMO FÓRMULA MATEMÁTICA
-        try {
-            let expr = formulaAttr;
-            
-            // Manejar funciones de agregación como SUM
-            const sumMatch = expr.match(/SUM\((.+?)\)/);
-            if (sumMatch) {
-                const fieldToSum = sumMatch[1];
-                const sumValues = Array.isArray(values[fieldToSum]) ? values[fieldToSum] : [0];
-                const totalSum = sumValues.reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
-                expr = expr.replace(sumMatch[0], totalSum);
-            }
-
-            // Reemplazar variables simples
-            const variables = expr.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
-            variables.forEach(variable => {
-                if (values.hasOwnProperty(variable)) {
-                    const value = parseFloat(String(values[variable]).replace(/,/g, '.')) || 0;
-                    expr = expr.replace(new RegExp(`\\b${variable}\\b`, 'g'), value);
-                }
+    async function recalculateAll() {
+        // Paso 1: Calcular todas las filas de los datatables de forma aislada.
+        document.querySelectorAll('table.datatable-container tbody tr').forEach(row => {
+            const rowValues = {};
+            row.querySelectorAll('input, select, textarea').forEach(input => {
+                const name = input.name.match(/\[(\w+)\]$/)?.[1];
+                if (name) rowValues[name] = input.value;
             });
 
-            if (!/[a-zA-Z]/.test(expr)) {
-                const result = eval(expr);
-                if (Number.isFinite(result)) {
-                    field.value = result.toFixed(2);
-                }
-            }
-        } catch (mathError) { /* La fórmula matemática falló. */ }
-    }
-
-    /**
-     * La función de recálculo principal y única.
-     * Garantiza el orden correcto: primero las filas, luego el resto.
-     */
-    function recalculateAll() {
-        // 1. Calcular cada fila de cada datatable de forma aislada.
-        document.querySelectorAll('table.datatable-container tbody tr').forEach(row => {
-            const rowValues = getValuesFromScope(row);
             row.querySelectorAll('[data-formula]').forEach(field => {
-                processSingleFormula(field, rowValues);
+                let expr = field.getAttribute('data-formula');
+                try {
+                    // Reemplazar variables dentro de la fila
+                    Object.keys(rowValues).forEach(key => {
+                        const value = parseFloat(rowValues[key]) || 0;
+                        expr = expr.replace(new RegExp(`\\b${key}\\b`, 'g'), value);
+                    });
+                    const result = eval(expr);
+                    if (Number.isFinite(result)) {
+                        field.value = result.toFixed(2);
+                    }
+                } catch (e) { /* Ignorar errores de cálculo en fila */ }
             });
         });
 
-        // 2. Calcular todas las demás fórmulas usando los valores actualizados de todo el formulario.
-        const allFormValues = getValuesFromScope(formulario);
-        formulario.querySelectorAll('fieldset [data-formula]').forEach(field => {
-            // Solo procesar si NO está dentro de un datatable (ya se hizo).
-            if (!field.closest('table.datatable-container')) {
-                processSingleFormula(field, allFormValues);
+        // Paso 2: Ejecutar todas las búsquedas (lookups) y esperar a que terminen.
+        const lookupPromises = [];
+        const allFormValues = getFormValues();
+        
+        formulario.querySelectorAll('[data-formula*="lookup"]').forEach(field => {
+            try {
+                const formulaObj = JSON.parse(field.getAttribute('data-formula'));
+                if (formulaObj.type === 'lookup') {
+                    let whereClause = formulaObj.where;
+                    const placeholders = whereClause.match(/\{(.+?)\}/g) || [];
+                    let isReady = true;
+
+                    placeholders.forEach(ph => {
+                        const fieldName = ph.replace(/[{}]/g, '');
+                        const value = allFormValues[fieldName];
+                        if (value === undefined || value === '') isReady = false;
+                        whereClause = whereClause.replace(ph, value);
+                    });
+
+                    if (isReady) {
+                        const promise = fetch('ajax/busqueda_formula.php', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ tabla: formulaObj.source.table, campo: formulaObj.source.field, where: whereClause })
+                        })
+                        .then(r => r.ok ? r.json() : { resultado: '' })
+                        .then(data => { field.value = data.resultado ?? ''; });
+                        lookupPromises.push(promise);
+                    } else {
+                        field.value = '';
+                    }
+                }
+            } catch (e) { /* No es un JSON de lookup válido */ }
+        });
+        
+        // Esperar a que TODAS las búsquedas se completen antes de continuar.
+        await Promise.all(lookupPromises);
+
+        // Paso 3: Calcular todas las fórmulas matemáticas restantes (globales y de agregación).
+        const finalValues = getFormValues(); // Obtener valores actualizados después de los lookups.
+        formulario.querySelectorAll('[data-formula]').forEach(field => {
+            // Solo procesar si NO es un lookup (ya se hizo) y NO está en un datatable (ya se hizo).
+            if (!field.getAttribute('data-formula').includes('lookup') && !field.closest('table')) {
+                let expr = field.getAttribute('data-formula');
+                try {
+                    // Manejar SUMA
+                    const sumMatch = expr.match(/SUM\((.+?)\)/);
+                    if (sumMatch) {
+                        const fieldToSum = sumMatch[1]; // ej: "items[subtotal]"
+                        const sumValues = Array.isArray(finalValues[fieldToSum]) ? finalValues[fieldToSum] : [finalValues[fieldToSum] || 0];
+                        const totalSum = sumValues.reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
+                        expr = expr.replace(sumMatch[0], totalSum);
+                    }
+
+                    // Reemplazar variables simples
+                    Object.keys(finalValues).forEach(key => {
+                        if (typeof finalValues[key] === 'string') {
+                             const value = parseFloat(finalValues[key]) || 0;
+                             expr = expr.replace(new RegExp(`\\b${key}\\b`, 'g'), value);
+                        }
+                    });
+
+                    const result = eval(expr);
+                    if (Number.isFinite(result)) {
+                        field.value = result.toFixed(2);
+                    }
+                } catch (e) { /* Ignorar errores de cálculo final */ }
             }
         });
     }
 
     // --- LÓGICA DE INICIALIZACIÓN Y EVENTOS ---
-
-    // Configurar DataTables (Agregar Fila)
     document.querySelectorAll('table.datatable-container').forEach(table => {
         document.getElementById(`btn-add-row-${table.id}`)?.addEventListener('click', function() {
             const tbody = table.querySelector('tbody');
             const formField = window.fields?.find(f => f.name === table.id);
             if (!formField || !formField.columns) return;
-
             const newRow = tbody.insertRow();
-            const rowIndex = tbody.rows.length - 1;
-
+            const rowIndex = newRow.rowIndex - 1;
             formField.columns.forEach(col => {
                 const cell = newRow.insertCell();
                 const input = document.createElement('input');
@@ -145,9 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 input.name = `${table.id}[${rowIndex}][${col.name}]`;
                 if (col.placeholder) input.placeholder = col.placeholder;
                 if (col.readonly) input.readOnly = true;
-                if (col['data-formula']) {
-                    input.setAttribute('data-formula', col['data-formula']);
-                }
+                if (col['data-formula']) input.setAttribute('data-formula', col['data-formula']);
                 cell.appendChild(input);
             });
             const actionCell = newRow.insertCell();
@@ -155,17 +151,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Evento de input: simple, solo llama a la función de recálculo principal.
     formulario.addEventListener('input', recalculateAll);
-
-    // Evento de click para eliminar filas.
     formulario.addEventListener('click', function(e) {
         if (e.target?.classList.contains('eliminar_fila')) {
             e.target.closest('tr').remove();
-            recalculateAll(); // Recalcular todo después de eliminar.
+            recalculateAll();
         }
     });
 
-    // Cálculo inicial al cargar la página.
     recalculateAll();
 });

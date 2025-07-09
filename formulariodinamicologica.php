@@ -67,7 +67,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } 
         // Si no existe (ej. un checkbox desmarcado), lo añadimos como nulo para limpiar el valor guardado.
         else {
-            // Excluimos los datatables de esta lógica, ya que su nombre no está en el nivel superior.
             if ($field['type'] !== 'datatable') {
                  $formData[$fieldName] = null;
             }
@@ -143,6 +142,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // --- FIN: LÓGICA DE GENERACIÓN DE ARCHIVOS Y CORREO ---
 
         $_SESSION['mensaje_flash'] = "Formulario guardado y procesado con éxito.";
+        
+        // --- INICIO: LÍNEA DE DEPURACIÓN TEMPORAL ---
+        // Descomenta la siguiente línea para ver qué se guarda exactamente.
+        // die('<pre>Datos guardados en sesión: ' . print_r($formData, true) . '</pre>');
+        // --- FIN: LÍNEA DE DEPURACIÓN TEMPORAL ---
+
         header("Location: formulariodinamico.php?archivo=" . urlencode($archivo_json) . "&status=saved");
         exit;
 

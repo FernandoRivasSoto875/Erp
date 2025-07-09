@@ -4,7 +4,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use Dompdf\Dompdf; // Activado para la generación de PDF
 
-// Si usas Composer, esta es la línea.
+// Asegúrate de que esta ruta sea correcta para tu instalación de Composer
 require 'vendor/autoload.php'; 
 // --- FIN: Integración con Librerías ---
 
@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $cuerpoHtml .= "<h3>" . htmlspecialchars($label) . "</h3><div>{$displayValue}</div><hr>";
         }
 
-        // --- PASO 1: GENERAR TODOS LOS ARCHIVOS PRIMERO (VERSIÓN FINAL ACTIVADA) ---
+        // --- PASO 1: GENERAR TODOS LOS ARCHIVOS REALES ---
         if (in_array('html', $formatosAgenerar)) { $path = $baseFilename . '.html'; file_put_contents($path, $cuerpoHtml); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'HTML'; }
         if (in_array('json', $formatosAgenerar)) { $path = $baseFilename . '.json'; file_put_contents($path, json_encode($formData, JSON_PRETTY_PRINT)); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'JSON'; }
         if (in_array('csv', $formatosAgenerar) || in_array('cvs', $formatosAgenerar)) { $path = $baseFilename . '.csv'; $fp = fopen($path, 'w'); fputcsv($fp, ['Campo', 'Valor']); foreach ($datosParaArchivos as $dato) { fputcsv($fp, [$dato['label'], $dato['value']]); } fclose($fp); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'CSV'; }
@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // --- PASO 2: ENVIAR CORREO CON ADJUNTOS (sin cambios) ---
+        // --- PASO 2: ENVIAR CORREO CON ADJUNTOS ---
         if (in_array('htmlc', $formatosAgenerar) && !empty($params['destinatario'])) {
             $mail = new PHPMailer(true);
             $mail->isSendmail();

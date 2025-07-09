@@ -1,44 +1,27 @@
 <?php
+// --- INICIO: Integración con PHPMailer ---
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+// Si usas Composer, esta es la línea. Si no, ajusta la ruta a tu archivo.
+require 'vendor/autoload.php'; 
+// require 'lib/PHPMailer/src/Exception.php';
+// require 'lib/PHPMailer/src/PHPMailer.php';
+// require 'lib/PHPMailer/src/SMTP.php';
+// --- FIN: Integración con PHPMailer ---
+
 require_once 'formulariodinamico.funciones.php';
 require_once 'funcionessql.php';
 
-// --- FUNCIONES AUXILIARES ---
-function obtenerTodosLosCampos($fieldsets) {
-    $campos = [];
-    foreach ($fieldsets as $fieldset) {
-        if (!empty($fieldset['fields'])) {
-            $campos = array_merge($campos, $fieldset['fields']);
-        }
-        if (!empty($fieldset['fieldsets'])) {
-            $campos = array_merge($campos, obtenerTodosLosCampos($fieldset['fieldsets']));
-        }
-    }
-    return $campos;
-}
-
-function getFieldInfo($fieldName, $all_fields) {
-    foreach ($all_fields as $field) {
-        if (isset($field['name']) && $field['name'] === $fieldName) {
-            return $field;
-        }
-    }
-    return null;
-}
-// --- FIN FUNCIONES AUXILIARES ---
+// --- FUNCIONES AUXILIARES (sin cambios) ---
+function obtenerTodosLosCampos($fieldsets) { $campos = []; foreach ($fieldsets as $fieldset) { if (!empty($fieldset['fields'])) { $campos = array_merge($campos, $fieldset['fields']); } if (!empty($fieldset['fieldsets'])) { $campos = array_merge($campos, obtenerTodosLosCampos($fieldset['fieldsets'])); } } return $campos; }
+function getFieldInfo($fieldName, $all_fields) { foreach ($all_fields as $field) { if (isset($field['name']) && $field['name'] === $fieldName) { return $field; } } return null; }
 
 $archivo_json = $_GET['archivo'] ?? 'formulariogenerico.json';
 $json_path = "json/" . basename($archivo_json);
-
-if (!file_exists($json_path)) {
-    die("Error: El archivo de configuración del formulario '$json_path' no existe.");
-}
-
-$json_content = file_get_contents($json_path);
-$json = json_decode($json_content, true);
-
-if (json_last_error() !== JSON_ERROR_NONE) {
-    die("Error: El archivo JSON contiene errores de sintaxis. " . json_last_error_msg());
-}
+if (!file_exists($json_path)) { die("Error: El archivo de configuración '$json_path' no existe."); }
+$json = json_decode(file_get_contents($json_path), true);
+if (json_last_error() !== JSON_ERROR_NONE) { die("Error: El archivo JSON contiene errores. " . json_last_error_msg()); }
 
 $all_fields = obtenerTodosLosCampos($json['fieldsets'] ?? []);
 $valores = [];
@@ -80,69 +63,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $formatosAgenerar = array_map('trim', explode(',', $params['tipoformatoenvio'] ?? ''));
         $formatosGenerados = [];
+        $archivosAdjuntar = []; // Array para guardar las rutas de los archivos a adjuntar
         $baseFilename = $uploadsDir . 'formulario_' . date('Ymd_His');
         
-        $datosParaArchivos = [];
+        // Preparar contenido HTML (sin cambios)
         $cuerpoHtml = "<h1>" . htmlspecialchars($params['subject'] ?? 'Datos del Formulario') . "</h1>";
-
-        // --- BUCLE DE PROCESAMIENTO CORREGIDO ---
+        // ... (el bucle que genera el $cuerpoHtml es el mismo de la versión anterior) ...
         foreach ($formData as $key => $value) {
             $fieldInfo = getFieldInfo($key, $all_fields);
-            if (!$fieldInfo) continue; // Ignorar campos no definidos en el JSON
-
+            if (!$fieldInfo) continue;
             $label = $fieldInfo['label'] ?? ucfirst($key);
             $displayValue = '';
-
-            // Manejo especial para DataTables
             if ($fieldInfo['type'] === 'datatable' && is_array($value)) {
                 $displayValue .= "<table border='1' cellpadding='5' style='width:100%; border-collapse:collapse; margin-top:5px;'><thead><tr>";
-                foreach($fieldInfo['columns'] as $col) {
-                    $displayValue .= "<th>" . htmlspecialchars($col['label']) . "</th>";
-                }
+                foreach($fieldInfo['columns'] as $col) { $displayValue .= "<th>" . htmlspecialchars($col['label']) . "</th>"; }
                 $displayValue .= "</tr></thead><tbody>";
-                foreach($value as $row) {
-                    $displayValue .= "<tr>";
-                    foreach($fieldInfo['columns'] as $col) {
-                        $displayValue .= "<td>" . htmlspecialchars($row[$col['name']] ?? '') . "</td>";
-                    }
-                    $displayValue .= "</tr>";
-                }
+                foreach($value as $row) { $displayValue .= "<tr>"; foreach($fieldInfo['columns'] as $col) { $displayValue .= "<td>" . htmlspecialchars($row[$col['name']] ?? '') . "</td>"; } $displayValue .= "</tr>"; }
                 $displayValue .= "</tbody></table>";
-                $datosParaArchivos[] = ['label' => $label, 'value' => json_encode($value)]; // Guardar como JSON para otros formatos
-            } 
-            // Manejo para campos normales y checkboxes
-            else {
+            } else {
                 $displayValue = is_array($value) ? implode(', ', array_map('htmlspecialchars', $value)) : nl2br(htmlspecialchars($value));
-                $datosParaArchivos[] = ['label' => $label, 'value' => is_array($value) ? implode(', ', $value) : $value];
             }
-            
             $cuerpoHtml .= "<h3>" . htmlspecialchars($label) . "</h3><div>{$displayValue}</div><hr>";
         }
-        // --- FIN DEL BUCLE CORREGIDO ---
 
-        // Generación de formatos (sin cambios en esta parte)
+        // --- PASO 1: GENERAR TODOS LOS ARCHIVOS PRIMERO ---
+        if (in_array('html', $formatosAgenerar)) { $path = $baseFilename . '.html'; file_put_contents($path, $cuerpoHtml); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'HTML'; }
+        if (in_array('json', $formatosAgenerar)) { $path = $baseFilename . '.json'; file_put_contents($path, json_encode($formData, JSON_PRETTY_PRINT)); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'JSON'; }
+        if (in_array('pdf', $formatosAgenerar)) { $path = $baseFilename . '.pdf.txt'; file_put_contents($path, "Simulación de PDF..."); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'PDF (simulado)'; }
+        if (in_array('xls', $formatosAgenerar) || in_array('xlsx', $formatosAgenerar)) { $path = $baseFilename . '.xlsx.txt'; file_put_contents($path, "Simulación de Excel con los datos:\n\n" . print_r($datosParaArchivos, true)); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'XLSX (simulado)'; }
+        if (in_array('doc', $formatosAgenerar)) { $path = $baseFilename . '.doc.txt'; file_put_contents($path, "Simulación de DOC con los datos:\n\n" . print_r($datosParaArchivos, true)); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'DOC (simulado)'; }
+        if (in_array('csv', $formatosAgenerar) || in_array('cvs', $formatosAgenerar)) { $fp = fopen($baseFilename . '.csv', 'w'); fputcsv($fp, ['Campo', 'Valor']); foreach ($datosParaArchivos as $dato) { fputcsv($fp, [$dato['label'], $dato['value']]); } fclose($fp); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'CSV'; }
+        if (in_array('xml', $formatosAgenerar)) { $xml = new SimpleXMLElement('<formulario/>'); foreach ($datosParaArchivos as $dato) { $xml->addChild(preg_replace('/[^A-Za-z0-9_]/', '', $dato['label']), htmlspecialchars($dato['value'])); } $xml->asXML($baseFilename . '.xml'); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'XML'; }
+
+        // --- PASO 2: SI SE PIDE CORREO, ENVIARLO CON LOS ADJUNTOS ---
         if (in_array('htmlc', $formatosAgenerar) && !empty($params['destinatario'])) {
-            $headers = "MIME-Version: 1.0\r\nContent-type:text/html;charset=UTF-8\r\nFrom: <" . ($params['mailDe'] ?? 'noreply@example.com') . ">\r\n";
-            mail($params['destinatario'], $params['subject'], $cuerpoHtml, $headers);
-            $formatosGenerados[] = 'Correo (htmlc)';
-        }
-        if (in_array('html', $formatosAgenerar)) { file_put_contents($baseFilename . '.html', $cuerpoHtml); $formatosGenerados[] = 'HTML'; }
-        if (in_array('json', $formatosAgenerar)) { file_put_contents($baseFilename . '.json', json_encode($formData, JSON_PRETTY_PRINT)); $formatosGenerados[] = 'JSON'; }
-        if (in_array('csv', $formatosAgenerar) || in_array('cvs', $formatosAgenerar)) { $fp = fopen($baseFilename . '.csv', 'w'); fputcsv($fp, ['Campo', 'Valor']); foreach ($datosParaArchivos as $dato) { fputcsv($fp, [$dato['label'], $dato['value']]); } fclose($fp); $formatosGenerados[] = 'CSV'; }
-        if (in_array('xml', $formatosAgenerar)) { $xml = new SimpleXMLElement('<formulario/>'); foreach ($datosParaArchivos as $dato) { $xml->addChild(preg_replace('/[^A-Za-z0-9_]/', '', $dato['label']), htmlspecialchars($dato['value'])); } $xml->asXML($baseFilename . '.xml'); $formatosGenerados[] = 'XML'; }
-        if (in_array('pdf', $formatosAgenerar)) { file_put_contents($baseFilename . '.pdf.txt', "Simulación de PDF con los datos:\n\n" . print_r($datosParaArchivos, true)); $formatosGenerados[] = 'PDF (simulado)'; }
-        if (in_array('xls', $formatosAgenerar) || in_array('xlsx', $formatosAgenerar)) { file_put_contents($baseFilename . '.xlsx.txt', "Simulación de Excel con los datos:\n\n" . print_r($datosParaArchivos, true)); $formatosGenerados[] = 'XLSX (simulado)'; }
-        if (in_array('doc', $formatosAgenerar)) { file_put_contents($baseFilename . '.doc.txt', "Simulación de DOC con los datos:\n\n" . print_r($datosParaArchivos, true)); $formatosGenerados[] = 'DOC (simulado)'; }
+            $mail = new PHPMailer(true);
+            
+            // Configuración del servidor (ejemplo simple, puedes usar SMTP)
+            $mail->isSendmail();
+            $mail->CharSet = 'UTF-8';
 
+            // Destinatarios
+            $mail->setFrom($params['mailDe'] ?? 'noreply@example.com', 'Formulario Web');
+            $mail->addAddress($params['destinatario']);
+            if (!empty($params['mailCc'])) { $mail->addCC($params['mailCc']); }
 
-        $mensaje_envio = "<div class='alert alert-success'>Formulario procesado con éxito. Formatos generados: " . implode(', ', $formatosGenerados) . "</div>";
-        
-        if ($params['limpiar'] ?? false) {
-            $valores = [];
+            // Contenido
+            $mail->isHTML(true);
+            $mail->Subject = $params['subject'] ?? 'Nuevo Envío de Formulario';
+            $mail->Body    = $cuerpoHtml;
+            $mail->AltBody = 'Para ver este mensaje, por favor use un cliente de correo compatible con HTML.';
+
+            // Adjuntar los archivos generados
+            foreach ($archivosAdjuntar as $rutaArchivo) {
+                if (file_exists($rutaArchivo)) {
+                    $mail->addAttachment($rutaArchivo);
+                }
+            }
+
+            $mail->send();
+            $formatosGenerados[] = 'Correo (htmlc) con ' . count($archivosAdjuntar) . ' adjuntos';
         }
+
+        $mensaje_envio = "<div class='alert alert-success'>Formulario procesado. Formatos generados: " . implode(', ', $formatosGenerados) . "</div>";
+        if ($params['limpiar'] ?? false) { $valores = []; }
 
     } catch (Exception $e) {
-        $mensaje_envio = "<div class='alert alert-danger'>Error al procesar: " . $e->getMessage() . "</div>";
+        $mensaje_envio = "<div class='alert alert-danger'>No se pudo enviar el mensaje. Error de PHPMailer: {$mail->ErrorInfo}</div>";
     }
 }
 // --- FIN: LÓGICA DE PROCESAMIENTO ---
@@ -159,21 +146,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body>
 <div class="container mt-4">
     <h2>Formulario: <?php echo htmlspecialchars($archivo_json); ?></h2>
-
     <form id="formulario" method="post" action="" enctype="multipart/form-data">
-        <?php 
-        if (!empty($mensaje_envio)) {
-            echo "<div id='mensaje-envio'>{$mensaje_envio}</div>";
-        }
-        ?>
+        <?php if (!empty($mensaje_envio)) { echo "<div id='mensaje-envio'>{$mensaje_envio}</div>"; } ?>
         <?php echo generarFieldsets($json['fieldsets'] ?? [], $valores, $soloLectura); ?>
         <button type="submit" class="btn btn-success mt-3">Guardar</button>
     </form>
 </div>
-
-<?php
-echo "<script>window.fields = " . json_encode($all_fields) . ";</script>";
-?>
+<script>window.fields = <?php echo json_encode($all_fields); ?>;</script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="js/formulariodinamico.js"></script>
 </body>

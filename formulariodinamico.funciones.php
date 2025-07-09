@@ -99,29 +99,60 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                         break;
 
                     case 'selectdata':
-                        // ... (código de selectdata, ya es correcto) ...
+                        $dataConfig = $field['data'] ?? null;
+                        if ($dataConfig) {
+                            $tabla = $dataConfig['tabla']; $campo = $dataConfig['campo']; $filtro = $dataConfig['filtro'] ?? '1=1';
+                            $html .= "<select name='$name' id='$name'><option value=''>Seleccione...</option>";
+                            $conn = conexionBd();
+                            $sql = "SELECT DISTINCT " . $conn->real_escape_string($campo) . " FROM " . $conn->real_escape_string($tabla) . " WHERE " . $filtro . " ORDER BY " . $conn->real_escape_string($campo);
+                            $result = $conn->query($sql);
+                            if ($result && $result->num_rows > 0) {
+                                while($row = $result->fetch_assoc()) {
+                                    $optionValue = htmlspecialchars($row[$campo], ENT_QUOTES);
+                                    $selected = ($value == $row[$campo]) ? ' selected' : '';
+                                    $html .= "<option value=\"$optionValue\"$selected>$optionValue</option>";
+                                }
+                            }
+                            $conn->close();
+                            $html .= "</select>";
+                        }
                         break;
 
+                    // --- LÓGICA DEL DATATABLE RESTAURADA ---
                     case 'datatable':
-                        // ... (código de datatable, ya es correcto) ...
-                        break;
-                    
-                    case 'textarea':
-                        // ... (código de textarea, ya es correcto) ...
-                        break;
-
-                    default: // text, number, email, password, etc.
-                        $attrs = ['type' => $type, 'name' => $name, 'id' => $name, 'value' => $value];
-                        foreach ($field as $k => $v) {
-                            if (in_array($k, ['placeholder', 'readonly', 'required', 'multiple', 'min', 'max', 'step', 'pattern']) || strpos($k, 'data-') === 0) {
-                                $attrs[$k] = $v;
+                        $columns = $field['columns'] ?? [];
+                        $tableData = is_array($value) ? $value : [];
+                        $html .= "<table class='datatable-container' id='$name'><thead><tr>";
+                        foreach ($columns as $col) { $html .= "<th>" . htmlspecialchars($col['label'] ?? '') . "</th>"; }
+                        $html .= "<th>Acciones</th></tr></thead><tbody>";
+                        if (!empty($tableData)) {
+                            foreach ($tableData as $i => $rowData) {
+                                $html .= "<tr>";
+                                foreach ($columns as $col) {
+                                    $colName = $col['name'];
+                                    $colAttrs = ['type' => $col['type'] ?? 'text', 'name' => "{$name}[{$i}][{$colName}]", 'value' => $rowData[$colName] ?? '', 'class' => 'form-control'];
+                                    foreach ($col as $k => $v) { if (in_array($k, ['placeholder', 'readonly']) || strpos($k, 'data-') === 0) { $colAttrs[$k] = $v; } }
+                                    $html .= "<td><input " . $buildAttrs($colAttrs) . "></td>";
+                                }
+                                $html .= "<td><button type='button' class='eliminar_fila btn btn-danger btn-sm'>Eliminar</button></td></tr>";
                             }
                         }
+                        $html .= "</tbody></table><button type='button' id='btn-add-row-{$name}' class='btn btn-primary mt-2'>Agregar Fila</button>";
+                        break;
+
+                    case 'textarea':
+                        $attrs = ['name' => $name, 'id' => $name];
+                        foreach ($field as $k => $v) { if (in_array($k, ['placeholder', 'rows', 'readonly', 'required'])) { $attrs[$k] = $v; } }
+                        $html .= "<textarea " . $buildAttrs($attrs) . ">" . htmlspecialchars($value) . "</textarea>";
+                        break;
+
+                    default:
+                        $attrs = ['type' => $type, 'name' => $name, 'id' => $name, 'value' => $value];
+                        foreach ($field as $k => $v) { if (in_array($k, ['placeholder', 'readonly', 'required', 'multiple', 'min', 'max', 'step', 'pattern']) || strpos($k, 'data-') === 0) { $attrs[$k] = $v; } }
                         $html .= "<input " . $buildAttrs($attrs) . ">";
                         break;
                 }
-                $html .= "</div>"; // Cierre de input-wrapper
-                $html .= "</div>"; // Cierre de campo-container
+                $html .= "</div></div>";
             }
         }
         $html .= "</fieldset>";

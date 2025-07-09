@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -154,3 +154,111 @@
     </script>
 </body>
 </html>
+
+<?php
+header('Content-Type: application/json');
+
+// --- FUNCIONES AUXILIARES ---
+function getFieldLabel($fieldName, $fieldsets) {
+    foreach ($fieldsets as $fieldset) {
+        foreach ($fieldset['fields'] as $field) {
+            if ($field['name'] === $fieldName) {
+                return $field['label'] ?? ucfirst($fieldName);
+            }
+        }
+    }
+    return ucfirst($fieldName);
+}
+
+$response = ['success' => false, 'message' => 'Error desconocido.'];
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['json_file'])) {
+    $jsonFile = basename($_POST['json_file']);
+    $jsonPath = 'json/' . $jsonFile;
+
+    if (!file_exists($jsonPath)) {
+        $response['message'] = 'Archivo de configuración no encontrado.';
+        echo json_encode($response);
+        exit;
+    }
+
+    $config = json_decode(file_get_contents($jsonPath), true);
+    $params = $config['parametros'] ?? [];
+    $formData = $_POST;
+    $fieldsets = $config['fieldsets'] ?? [];
+    $uploadsDir = 'uploads/';
+    if (!is_dir($uploadsDir)) mkdir($uploadsDir, 0755, true);
+
+    try {
+        $formatosAgenerar = array_map('trim', explode(',', $params['tipoformatoenvio'] ?? ''));
+        $formatosGenerados = [];
+        $baseFilename = $uploadsDir . 'formulario_' . date('Ymd_His');
+
+        // --- Preparar contenido común ---
+        $datosParaArchivos = [];
+        $cuerpoHtml = "<h1>" . htmlspecialchars($params['subject'] ?? 'Datos del Formulario') . "</h1><table border='1' cellpadding='5' cellspacing='0' style='border-collapse:collapse; width:100%;'>";
+        foreach ($formData as $key => $value) {
+            if ($key === 'json_file') continue;
+            $label = getFieldLabel($key, $fieldsets);
+            $displayValue = is_array($value) ? implode(', ', $value) : nl2br(htmlspecialchars($value));
+            $datosParaArchivos[] = ['label' => $label, 'value' => is_array($value) ? implode(', ', $value) : $value];
+            $cuerpoHtml .= "<tr><td style='width:30%;'><strong>" . htmlspecialchars($label) . "</strong></td><td>{$displayValue}</td></tr>";
+        }
+        $cuerpoHtml .= "</table><hr><p>" . htmlspecialchars($params['pie'] ?? '') . "</p>";
+
+        // --- Generar Formatos ---
+        if (in_array('htmlc', $formatosAgenerar) && !empty($params['destinatario'])) {
+            $headers = "MIME-Version: 1.0\r\nContent-type:text/html;charset=UTF-8\r\n";
+            $headers .= 'From: <' . ($params['mailDe'] ?? 'noreply@example.com') . ">\r\n";
+            mail($params['destinatario'], $params['subject'], $cuerpoHtml, $headers);
+            $formatosGenerados[] = 'Correo (htmlc)';
+        }
+        if (in_array('html', $formatosAgenerar)) {
+            file_put_contents($baseFilename . '.html', $cuerpoHtml);
+            $formatosGenerados[] = 'HTML';
+        }
+        if (in_array('json', $formatosAgenerar)) {
+            file_put_contents($baseFilename . '.json', json_encode($formData, JSON_PRETTY_PRINT));
+            $formatosGenerados[] = 'JSON';
+        }
+        if (in_array('csv', $formatosAgenerar) || in_array('cvs', $formatosAgenerar)) { // Corregido 'cvs'
+            $fp = fopen($baseFilename . '.csv', 'w');
+            fputcsv($fp, ['Campo', 'Valor']); // Cabeceras
+            foreach ($datosParaArchivos as $dato) { fputcsv($fp, [$dato['label'], $dato['value']]); }
+            fclose($fp);
+            $formatosGenerados[] = 'CSV';
+        }
+        // --- Simuladores para formatos complejos ---
+        if (in_array('pdf', $formatosAgenerar)) {
+            file_put_contents($baseFilename . '.pdf.txt', "Aquí se generaría el PDF con los datos.\n\n" . print_r($datosParaArchivos, true));
+            $formatosGenerados[] = 'PDF (simulado)';
+        }
+        if (in_array('xls', $formatosAgenerar) || in_array('xlsx', $formatosAgenerar)) {
+            file_put_contents($baseFilename . '.xlsx.txt', "Aquí se generaría el Excel con los datos.\n\n" . print_r($datosParaArchivos, true));
+            $formatosGenerados[] = 'XLSX (simulado)';
+        }
+        if (in_array('doc', $formatosAgenerar)) {
+            file_put_contents($baseFilename . '.doc.txt', "Aquí se generaría el DOC con los datos.\n\n" . print_r($datosParaArchivos, true));
+            $formatosGenerados[] = 'DOC (simulado)';
+        }
+        if (in_array('xml', $formatosAgenerar)) {
+            $xml = new SimpleXMLElement('<formulario/>');
+            foreach ($datosParaArchivos as $dato) { $xml->addChild(preg_replace('/[^A-Za-z0-9_]/', '', $dato['label']), htmlspecialchars($dato['value'])); }
+            $xml->asXML($baseFilename . '.xml');
+            $formatosGenerados[] = 'XML';
+        }
+
+        $response['success'] = true;
+        $response['message'] = 'Procesado correctamente.';
+        $response['formats_generated'] = $formatosGenerados;
+        $response['limpiar_formulario'] = $params['limpiar'] ?? false;
+
+    } catch (Exception $e) {
+        $response['message'] = 'Excepción: ' . $e->getMessage();
+    }
+} else {
+    $response['message'] = 'Método no permitido o falta archivo de configuración.';
+}
+
+echo json_encode($response);
+?>

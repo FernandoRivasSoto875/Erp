@@ -177,3 +177,54 @@ document.addEventListener('DOMContentLoaded', function() {
 
     handleRecalculate();
 });
+
+$(document).ready(function() {
+    $('#miFormularioDinamico').on('submit', function(e) {
+        e.preventDefault();
+
+        var form = $(this);
+        var formData = new FormData(form[0]);
+        var submitButton = $('#btn-enviar-formulario');
+        var messages = $('#form-messages');
+
+        formData.append('json_file', 'formulariogenerico.json');
+
+        submitButton.prop('disabled', true).text('Enviando...');
+        messages.html('').removeClass('success error').hide();
+
+        $.ajax({
+            url: 'procesar_formulario.php',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    let successMsg = 'Formulario enviado con éxito.';
+                    if (response.formats_generated && response.formats_generated.length > 0) {
+                        successMsg += ' Formatos generados: ' + response.formats_generated.join(', ');
+                    }
+                    messages.html(successMsg).addClass('success').show();
+                    if (response.limpiar_formulario) {
+                        form[0].reset();
+                    }
+                } else {
+                    messages.html('Error: ' + response.message).addClass('error').show();
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                messages.html('Error de comunicación con el servidor: ' + textStatus).addClass('error').show();
+            },
+            complete: function() {
+                submitButton.prop('disabled', false).text('Enviar Formulario');
+            }
+        });
+    });
+});
+
+// Añade este CSS a tu hoja de estilos o en un tag <style> para los mensajes
+/*
+.success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+*/

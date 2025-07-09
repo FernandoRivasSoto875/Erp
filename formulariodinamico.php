@@ -1,5 +1,5 @@
 <?php
-<?php
+
 require_once 'formulariodinamico.funciones.php';
 require_once 'funcionessql.php';
 

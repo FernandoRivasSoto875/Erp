@@ -1,7 +1,41 @@
- 
 <?php
 // Asegúrate de que la conexión a la BD esté disponible
 require_once 'funcionessql.php';
+
+// --- INICIO DE LA FUNCIÓN FALTANTE ---
+/**
+ * Prepara los datos recibidos por POST para ser guardados,
+ * manejando la estructura de los datatables.
+ * @param array $postData Los datos de $_POST.
+ * @param array $allFields La definición de todos los campos del JSON.
+ * @return array Un array con dos claves: 'main' para los campos principales y 'datatables' para los datos de las tablas.
+ */
+function prepararValoresGuardados($postData, $allFields) {
+    $valoresPrincipales = [];
+    $valoresDataTables = [];
+
+    // Identificar los nombres de los campos que son datatables
+    $nombresDataTables = [];
+    foreach ($allFields as $field) {
+        if (isset($field['type']) && $field['type'] === 'datatable') {
+            $nombresDataTables[] = $field['name'];
+        }
+    }
+
+    foreach ($postData as $key => $value) {
+        if (in_array($key, $nombresDataTables) && is_array($value)) {
+            // Es un datatable, lo guardamos en su propio array
+            $valoresDataTables[$key] = $value;
+        } else {
+            // Es un campo normal
+            $valoresPrincipales[$key] = $value;
+        }
+    }
+
+    return ['main' => $valoresPrincipales, 'datatables' => $valoresDataTables];
+}
+// --- FIN DE LA FUNCIÓN FALTANTE ---
+
 
 /**
  * Genera el HTML del formulario dinámico.

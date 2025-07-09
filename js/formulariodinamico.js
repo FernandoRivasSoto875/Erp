@@ -189,7 +189,7 @@ function activarLogicaFila(context) {
                 })
             )
             .then(r => r.ok ? r.json() : Promise.reject())
-            .then(data => { input.value = (data && data.resultado !== null) ? data.resultado : ''; })
+            .then data => { input.value = (data && data.resultado !== null) ? data.resultado : ''; })
             .catch(() => { input.value = ''; });
         
         // Lógica para Fórmulas Matemáticas
@@ -650,33 +650,119 @@ function initDynamicReordering() {
 // ===================== INICIALIZACIÓN DE EVENTOS (BLOQUE ÚNICO Y CORREGIDO) =====================
 document.addEventListener('DOMContentLoaded', function() {
 
-    // --- Lógica de Datatable ---
-    function inicializarDataTables() {
-        document.querySelectorAll('table.datatable-container').forEach(table => {
-            const fieldName = table.id;
-            const formField = window.fields?.find(f => f.name === fieldName);
-            if (!formField) {
-                console.error(`Definición para datatable '${fieldName}' no encontrada en window.fields. Asegúrate de que PHP la está proveyendo.`);
-                return;
+    /**
+     * Calcula todas las fórmulas dentro de un contexto dado (una fila de tabla o todo el formulario).
+     * ¡VERSIÓN FINAL CORREGIDA Y VERIFICADA!
+     * @param {HTMLElement} context - El elemento dentro del cual buscar y calcular fórmulas.
+     */
+    function calcularFormulas(context) {
+        const formulasEnContexto = context.querySelectorAll('[data-formula]');
+        if (formulasEnContexto.length === 0) return;
+
+        // 1. Determinar el ámbito de búsqueda de valores.
+        // Si el contexto es una fila de tabla (TR), solo buscamos valores dentro de esa fila.
+        // Si no, buscamos en todo el formulario.
+        const ambitoBusqueda = context.tagName === 'TR' ? context : document.getElementById('formulario');
+        const valores = {};
+
+        // 2. Recolectar todos los valores disponibles en el ámbito de búsqueda.
+        ambitoBusqueda.querySelectorAll('input, select, textarea').forEach(input => {
+            // Para datatables, extrae el nombre corto (ej: 'cantidad'). Para otros, usa el nombre completo.
+            const nombre = input.name.match(/\[(\w+)\]$/)?.[1] || input.name;
+            if (nombre) {
+                valores[nombre] = input.value;
             }
-            const tbody = table.querySelector('tbody');
+        });
 
-            // 1. Activa la lógica para las filas ya existentes (cargadas por PHP).
-            tbody.querySelectorAll('tr').forEach(row => activarLogicaFila(row));
+        // 3. Iterar sobre cada campo con fórmula y calcular su valor.
+        formulasEnContexto.forEach(campoFormula => {
+            const formulaAttr = campoFormula.getAttribute('data-formula');
+            
+            // Intenta procesar como fórmula matemática simple primero.
+            try {
+                let expr = formulaAttr;
+                let listoParaCalcular = true;
 
-            // 2. Evento para recalcular cuando se modifica un campo en cualquier fila.
-            tbody.addEventListener('input', e => {
-                const row = e.target.closest('tr');
-                if (row) {
-                    activarLogicaFila(row);
-                    guardarEstadoDataTable(table);
+                // Reemplaza cada variable en la fórmula con su valor numérico.
+                Object.keys(valores).forEach(key => {
+                    const regex = new RegExp(`\\b${key}\\b`, 'g');
+                    if (expr.match(regex)) {
+                        const valor = parseFloat(String(valores[key]).replace(/,/g, '.')) || 0;
+                        expr = expr.replace(regex, valor);
+                    }
+                });
+
+                // Si después de reemplazar aún quedan letras, la fórmula no está completa.
+                if (/[a-zA-Z]/.test(expr)) {
+                    listoParaCalcular = false;
                 }
-            });
 
-            // 3. Lógica para "Añadir Fila" que lee las columnas del JSON.
+                if (listoParaCalcular) {
+                    // Evalúa la expresión matemática.
+                    const resultado = eval(expr);
+                    if (Number.isFinite(resultado)) {
+                        campoFormula.value = resultado.toFixed(2);
+                    }
+                }
+            } catch (e) {
+                // Si falla como fórmula matemática, podría ser un lookup JSON.
+                try {
+                    const formulaObj = JSON.parse(formulaAttr.replace(/'/g, '"'));
+                    if (formulaObj.type === 'lookup') {
+                        let whereFinal = formulaObj.where;
+                        const placeholders = whereFinal.match(/\{(.+?)\}/g) || [];
+                        let canExecute = true;
+                        
+                        placeholders.forEach(ph => {
+                            const fieldName = ph.replace(/[{}]/g, '');
+                            const valor = valores[fieldName] || '';
+                            if (valor === '') canExecute = false;
+                            whereFinal = whereFinal.replace(ph, `'${valor}'`);
+                        });
+
+                        if (canExecute) {
+                            fetch('ajax/busqueda_formula.php', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({ tabla: formulaObj.source.table, campo: formulaObj.source.field, where: whereFinal })
+                            })
+                            .then(r => r.ok ? r.json() : Promise.reject({resultado: ''}))
+                            .then(data => { campoFormula.value = data.resultado ?? ''; })
+                            .catch(() => { campoFormula.value = ''; });
+                        } else {
+                            campoFormula.value = '';
+                        }
+                    }
+                } catch (jsonError) {
+                    // No es ni matemática ni JSON válido, no hacer nada.
+                }
+            }
+        });
+    }
+
+    /**
+     * Inicializa toda la lógica del formulario.
+     */
+    function inicializarFormulario() {
+        const formulario = document.getElementById('formulario');
+        if (!formulario) return;
+
+        // --- Lógica para DataTable ---
+        document.querySelectorAll('table.datatable-container').forEach(table => {
+            const tbody = table.querySelector('tbody');
+            const fieldName = table.id;
+
+            // Activa la lógica para cada fila existente al cargar.
+            tbody.querySelectorAll('tr').forEach(row => calcularFormulas(row));
+
+            // Agrega el listener para el botón "Agregar Fila".
             document.getElementById(`btn-add-row-${fieldName}`)?.addEventListener('click', function() {
+                const formField = window.fields?.find(f => f.name === fieldName);
+                if (!formField || !formField.columns) return;
+
                 const newRow = tbody.insertRow();
-                const rowIndex = Array.from(tbody.rows).indexOf(newRow);
+                const rowIndex = tbody.rows.length - 1;
+
                 formField.columns.forEach(col => {
                     const cell = newRow.insertCell();
                     const input = document.createElement('input');
@@ -686,73 +772,78 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (col.placeholder) input.placeholder = col.placeholder;
                     if (col.readonly) input.readOnly = true;
                     if (col['data-formula']) {
-                        const formula = typeof col['data-formula'] === 'object' ? JSON.stringify(col['data-formula']) : col['data-formula'];
-                        input.setAttribute('data-formula', formula);
+                        const formula = col['data-formula'];
+                        input.setAttribute('data-formula', typeof formula === 'object' ? JSON.stringify(formula) : formula);
                     }
                     cell.appendChild(input);
                 });
+
                 const actionCell = newRow.insertCell();
-                actionCell.innerHTML = `<button type="button" class="btn-remove-row eliminar_fila">Eliminar</button>`;
-                
-                // ¡CRÍTICO! Activa la lógica para la fila recién creada.
-                activarLogicaFila(newRow);
+                actionCell.innerHTML = `<button type="button" class="eliminar_fila btn btn-danger btn-sm">Eliminar</button>`;
+            });
+        });
+
+        // --- Lógica de Cálculo Global ---
+        // Escucha cualquier cambio en el formulario.
+        formulario.addEventListener('input', function(e) {
+            const target = e.target;
+            // Si el cambio fue en una fila de la tabla, recalcula solo esa fila.
+            const fila = target.closest('tr');
+            if (fila) {
+                calcularFormulas(fila);
+            } else {
+                // Si no, recalcula en todo el formulario.
+                calcularFormulas(formulario);
+            }
+        });
+
+        // --- Otras inicializaciones ---
+        document.querySelectorAll('input[type="file"]').forEach(input => input.addEventListener('change', () => mostrarArchivosSeleccionados(input)));
+        document.querySelectorAll("#formulario input, #formulario textarea, #formulario select").forEach(el => {
+            if (!el.closest('table.datatable-container')) { // No añadir doble listener a datatables
+                el.addEventListener("input", guardarCampo);
+            }
+            if (el.getAttribute("pattern")) el.addEventListener("blur", validarInput);
+        });
+        document.querySelectorAll("input[data-autocompletar='true']").forEach(field => field.addEventListener("input", autocompleteField));
+
+        // --- Ejecución de inicializadores en el orden correcto ---
+        configurarCondiciones();
+        initDynamicReordering();
+        cargarCampos();              // Carga datos de campos simples
+        inicializarDataTables();     // Activa la lógica de datatables (incluye carga de datos si la tienes)
+        activarLogicaFila(document); // Pasada final para activar fórmulas globales
+
+        // --- Envío del formulario ---
+        document.getElementById("formulario")?.addEventListener("submit", function(event) {
+            event.preventDefault();
+            const formData = new FormData(this);
+            const nombreArchivo = this.getAttribute("data-archivo");
+            fetch(`formulariodinamico.php?archivo=${nombreArchivo}`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.text())
+            .then(data => {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = data;
+                const nuevoMensaje = tempDiv.querySelector('#mensaje-envio');
+                const mensajeContenedor = document.getElementById('mensaje-envio');
+                if (nuevoMensaje && mensajeContenedor) {
+                    mensajeContenedor.innerHTML = nuevoMensaje.innerHTML;
+                    mensajeContenedor.className = nuevoMensaje.className;
+                    if (window.LIMPIAR_FORMULARIO && nuevoMensaje.classList.contains('exito')) {
+                        limpiarCamposFormulario(this);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
             });
         });
     }
 
-    // --- Delegación de eventos para eliminar filas ---
-    document.addEventListener('click', function(e) {
-        if (e.target?.classList.contains('eliminar_fila')) {
-            const table = e.target.closest('table.datatable-container');
-            e.target.closest('tr').remove();
-            if(table) guardarEstadoDataTable(table);
-        }
-    });
-
-    // --- Cableado de eventos y funciones ---
-    document.querySelectorAll('input[type="file"]').forEach(input => input.addEventListener('change', () => mostrarArchivosSeleccionados(input)));
-    document.querySelectorAll("#formulario input, #formulario textarea, #formulario select").forEach(el => {
-        if (!el.closest('table.datatable-container')) { // No añadir doble listener a datatables
-            el.addEventListener("input", guardarCampo);
-        }
-        if (el.getAttribute("pattern")) el.addEventListener("blur", validarInput);
-    });
-    document.querySelectorAll("input[data-autocompletar='true']").forEach(field => field.addEventListener("input", autocompleteField));
-
-    // --- Ejecución de inicializadores en el orden correcto ---
-    configurarCondiciones();
-    initDynamicReordering();
-    cargarCampos();              // Carga datos de campos simples
-    inicializarDataTables();     // Activa la lógica de datatables (incluye carga de datos si la tienes)
-    activarLogicaFila(document); // Pasada final para activar fórmulas globales
-
-    // --- Envío del formulario ---
-    document.getElementById("formulario")?.addEventListener("submit", function(event) {
-        event.preventDefault();
-        const formData = new FormData(this);
-        const nombreArchivo = this.getAttribute("data-archivo");
-        fetch(`formulariodinamico.php?archivo=${nombreArchivo}`, {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.text())
-        .then(data => {
-            const tempDiv = document.createElement('div');
-            tempDiv.innerHTML = data;
-            const nuevoMensaje = tempDiv.querySelector('#mensaje-envio');
-            const mensajeContenedor = document.getElementById('mensaje-envio');
-            if (nuevoMensaje && mensajeContenedor) {
-                mensajeContenedor.innerHTML = nuevoMensaje.innerHTML;
-                mensajeContenedor.className = nuevoMensaje.className;
-                if (window.LIMPIAR_FORMULARIO && nuevoMensaje.classList.contains('exito')) {
-                    limpiarCamposFormulario(this);
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-        });
-    });
+    inicializarFormulario();
 });
 
 // SE ELIMINA EL SEGUNDO BLOQUE DOMContentLoaded Y LA LÓGICA AHORA ESTÁ CENTRALIZADA EN UN ÚNICO BLOQUE

@@ -20,57 +20,58 @@ body {
   color: var(--secondary-color);
 }
 
+/* --- INICIO: LÓGICA DE POSICIONAMIENTO DE CAMPOS Y ETIQUETAS --- */
+
 .campo-container {
   border: 1px solid #ddd;
   padding: var(--small-spacing);
   background: var(--white);
   border-radius: var(--border-radius);
   margin-bottom: var(--medium-spacing);
+  display: flex;
+  flex-direction: column; /* Por defecto: etiqueta arriba */
 }
 
 .campo-container label {
-  display: block;
+  font-weight: bold;
   margin-bottom: 4px;
-  font-weight: bold;
-  text-align: left;
 }
 
-.campo-container.label-izquierdo {
-  display: flex;
+/* Posiciones ARRIBA (top, top-left, top-center, top-right) */
+.campo-container.label-top-center { align-items: center; }
+.campo-container.label-top-right { align-items: flex-end; }
+
+/* Posiciones ABAJO (bottom, bottom-left, bottom-center, bottom-right) */
+.campo-container.label-bottom,
+.campo-container.label-bottom-left,
+.campo-container.label-bottom-center,
+.campo-container.label-bottom-right {
+  flex-direction: column-reverse; /* Invierte el orden visual */
+}
+.campo-container.label-bottom label { margin-bottom: 0; margin-top: 4px; }
+.campo-container.label-bottom-center { align-items: center; }
+.campo-container.label-bottom-right { align-items: flex-end; }
+
+/* Posiciones LATERALES (left, right) */
+.campo-container.label-left,
+.campo-container.label-right {
+  flex-direction: row;
   align-items: center;
+  gap: 10px;
 }
-.campo-container.label-izquierdo label {
-  margin-right: 10px;
-  min-width: 120px;
-  display: inline-block;
+.campo-container.label-left label,
+.campo-container.label-right label {
   margin-bottom: 0;
-  text-align: left;
+  flex-shrink: 0; /* Evita que la etiqueta se encoja */
+}
+.campo-container.label-right label {
+  order: 1; /* Mueve la etiqueta a la derecha del campo */
 }
 
-.campo-container.label-derecho {
-  display: flex;
-  align-items: center;
-  flex-direction: row-reverse;
-}
-.campo-container.label-derecho label {
-  margin-left: 10px;
-  min-width: 120px;
-  display: inline-block;
-  margin-bottom: 0;
-  text-align: left;
-}
+/* --- FIN: LÓGICA DE POSICIONAMIENTO --- */
 
-.campo-container .alinear-izquierdo { text-align: left; }
-.campo-container .alinear-derecho { text-align: right; }
-.campo-container .alinear-centro { text-align: center; }
 
-.campo-container .etiqueta-abajo {
-  margin-top: 4px;
-  display: block;
-  font-weight: bold;
-  text-align: left;
-}
-
+/* Estilos generales para todos los inputs */
 .campo-container input[type="text"],
 .campo-container input[type="email"],
 .campo-container input[type="password"],
@@ -96,33 +97,6 @@ body {
   font-size: var(--base-font-size);
 }
 
-/* Ajuste de ancho para alineaciones: los campos NO ocupan todo el ancho */
-.campo-container .alinear-izquierdo input,
-.campo-container .alinear-izquierdo textarea,
-.campo-container .alinear-izquierdo select,
-.campo-container .alinear-derecho input,
-.campo-container .alinear-derecho textarea,
-.campo-container .alinear-derecho select,
-.campo-container .alinear-centro input,
-.campo-container .alinear-centro textarea,
-.campo-container .alinear-centro select {
-  width: auto;
-  min-width: 200px;
-  display: inline-block;
-}
-
-.campo-container .alinear-derecho input,
-.campo-container .alinear-derecho textarea,
-.campo-container .alinear-derecho select {
-  float: right;
-}
-
-.campo-container .alinear-centro input,
-.campo-container .alinear-centro textarea,
-.campo-container .alinear-centro select {
-  float: none;
-}
-
 button {
   padding: 0.625rem 1.25rem;
   background: var(--primary-color);
@@ -141,76 +115,53 @@ button:hover {
   margin-top: var(--large-spacing);
 }
 
-@media screen and (max-width: 768px) {
-  .campo-container.label-izquierdo,
-  .campo-container.label-derecho {
-    flex-direction: column !important;
-    align-items: flex-start !important;
-  }
-  .campo-container.label-izquierdo label,
-  .campo-container.label-derecho label {
-    margin: 0 0 4px 0 !important;
-    min-width: 0 !important;
-  }
-  .campo-container .alinear-izquierdo input,
-  .campo-container .alinear-izquierdo textarea,
-  .campo-container .alinear-izquierdo select,
-  .campo-container .alinear-derecho input,
-  .campo-container .alinear-derecho textarea,
-  .campo-container .alinear-derecho select,
-  .campo-container .alinear-centro input,
-  .campo-container .alinear-centro textarea,
-  .campo-container .alinear-centro select {
-    width: 100% !important;
-    min-width: 0 !important;
-    float: none !important;
-  }
-}
-
 /* --- INICIO: ESTILOS PARA CHECKBOX Y RADIO --- */
 
-/* Contenedor de todas las opciones */
 .options-container {
-    padding-top: 5px;
+  padding-top: 5px;
 }
-
-/* Item individual (input + label) */
 .option-item {
-    display: flex;
-    align-items: center;
+  display: flex;
+  align-items: center;
 }
-
-/* La etiqueta de cada opción no debe ser negrita y debe tener un margen */
 .option-item label {
-    font-weight: normal;
-    margin-left: 8px;
-    margin-bottom: 0; /* Anula el margen por defecto de las etiquetas */
+  font-weight: normal;
+  margin-left: 8px;
+  margin-bottom: 0;
 }
-
-/* El input de radio/checkbox no debe ocupar todo el ancho */
 .option-item input[type="radio"],
 .option-item input[type="checkbox"] {
-    width: auto;
+  width: auto;
 }
-
-/* Disposición Vertical (por defecto) */
 .options-container.layout-vertical {
-    display: flex;
-    flex-direction: column;
-    gap: 5px; /* Espacio entre opciones verticales */
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
-
-/* Disposición Horizontal */
 .options-container.layout-horizontal {
-    display: flex;
-    flex-wrap: nowrap; /* Fuerza a que todo esté en una sola línea */
-    gap: 20px; /* Espacio entre cada opción horizontal */
-    overflow-x: auto; /* Añade scroll si las opciones se desbordan */
-    padding: 5px 0;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 20px;
+  overflow-x: auto;
+  padding: 5px 0;
 }
-
 .options-container.layout-horizontal .option-item {
-    flex-shrink: 0; /* Evita que las opciones se encojan */
+  flex-shrink: 0;
 }
 
 /* --- FIN: ESTILOS PARA CHECKBOX Y RADIO --- */
+
+
+@media screen and (max-width: 768px) {
+  .campo-container.label-left,
+  .campo-container.label-right {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0;
+  }
+  .campo-container.label-left label,
+  .campo-container.label-right label {
+    margin: 0 0 4px 0 !important;
+    order: 0; /* Resetea el orden en móvil */
+  }
+}

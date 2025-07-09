@@ -78,53 +78,46 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                 $html .= "<div class='{$classes}' style='{$fieldStyle}'>";
 
                 $label = $field['label'] ?? ucfirst($name);
-                $placeholder = $field['placeholder'] ?? '';
                 $id = "field-{$name}-" . uniqid();
 
-                if ($labelPosition === 'top' || $labelPosition === 'top-left' || $labelPosition === 'top-center' || $labelPosition === 'top-right' || $labelPosition === 'left') {
-                    if ($label) $html .= "<label for='$id'>$label</label>";
+                // --- INICIO DE LA CORRECCIÓN ---
+                // La etiqueta siempre se imprime primero en el HTML. El CSS se encargará de la posición.
+                if ($label) {
+                    $html .= "<label for='$id'>$label</label>";
                 }
 
+                $inputHtml = ''; // Generamos el input por separado
                 switch ($type) {
                     case 'textarea':
-                        $html .= "<textarea name='$name' id='$id' placeholder='$placeholder' rows='" . ($field['rows'] ?? 3) . "'>$value</textarea>";
+                        $inputHtml = "<textarea name='$name' id='$id' placeholder='" . ($field['placeholder'] ?? '') . "' rows='" . ($field['rows'] ?? 3) . "'>$value</textarea>";
                         break;
                     
                     case 'radio':
                     case 'checkbox':
                         $options = $field['options'] ?? [];
-                        if (empty($options)) break;
-
-                        $layout = $field['layout'] ?? 'vertical';
-                        $html .= "<div class='options-container layout-{$layout}'>";
-
-                        foreach ($options as $option) {
-                            $optionValue = $option['value'] ?? '';
-                            $optionLabel = $option['label'] ?? '';
-                            $currentName = ($type === 'checkbox' && count($options) > 1) ? "{$name}[]" : $name;
-                            $optionId = "{$id}-{$optionValue}";
-                            $checked = '';
-                            if (is_array($value) ? in_array($optionValue, $value) : $value == $optionValue) {
-                                $checked = ' checked';
+                        if (!empty($options)) {
+                            $layout = $field['layout'] ?? 'vertical';
+                            $inputHtml .= "<div class='options-container layout-{$layout}'>";
+                            foreach ($options as $option) {
+                                $optionValue = $option['value'] ?? '';
+                                $optionLabel = $option['label'] ?? '';
+                                $currentName = ($type === 'checkbox' && count($options) > 1) ? "{$name}[]" : $name;
+                                $optionId = "{$id}-{$optionValue}";
+                                $checked = is_array($value) ? (in_array($optionValue, $value) ? ' checked' : '') : ($value == $optionValue ? ' checked' : '');
+                                $inputHtml .= "<div class='option-item'><input type='{$type}' name='{$currentName}' id='{$optionId}' value='{$optionValue}'{$checked}><label for='{$optionId}'>{$optionLabel}</label></div>";
                             }
-                            $html .= "<div class='option-item'>";
-                            $html .= "<input type='{$type}' name='{$currentName}' id='{$optionId}' value='{$optionValue}'{$checked}>";
-                            if ($optionLabel) {
-                                $html .= "<label for='{$optionId}'>{$optionLabel}</label>";
-                            }
-                            $html .= "</div>";
+                            $inputHtml .= "</div>";
                         }
-                        $html .= "</div>";
                         break;
 
                     case 'select':
                         $options = $field['options'] ?? [];
-                        $html .= "<select name='$name' id='$id'>";
+                        $inputHtml .= "<select name='$name' id='$id'>";
                         foreach ($options as $option) {
                             $selected = ($value == $option['value']) ? ' selected' : '';
-                            $html .= "<option value='" . htmlspecialchars($option['value']) . "'$selected>" . htmlspecialchars($option['label']) . "</option>";
+                            $inputHtml .= "<option value='" . htmlspecialchars($option['value']) . "'$selected>" . htmlspecialchars($option['label']) . "</option>";
                         }
-                        $html .= "</select>";
+                        $inputHtml .= "</select>";
                         break;
 
                     case 'selectdata':
@@ -169,15 +162,15 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                         break;
                     
                     default:
-                        $attrs = ['type' => $type, 'name' => $name, 'id' => $id, 'value' => $value, 'placeholder' => $placeholder];
+                        $attrs = ['type' => $type, 'name' => $name, 'id' => $id, 'value' => $value, 'placeholder' => ($field['placeholder'] ?? '')];
                         foreach ($field as $k => $v) { if (in_array($k, ['required', 'readonly', 'multiple', 'min', 'max', 'step']) || strpos($k, 'data-') === 0) { $attrs[$k] = $v; } }
-                        $html .= "<input" . $buildAttrs($attrs) . ">";
+                        $inputHtml = "<input" . $buildAttrs($attrs) . ">";
                         break;
                 }
+                
+                $html .= $inputHtml; // Añadimos el input al HTML
+                // --- FIN DE LA CORRECCIÓN ---
 
-                if ($labelPosition === 'bottom' || $labelPosition === 'bottom-left' || $labelPosition === 'bottom-center' || $labelPosition === 'bottom-right' || $labelPosition === 'right') {
-                    if ($label) $html .= "<label for='$id'>$label</label>";
-                }
                 $html .= "</div>";
             }
         }

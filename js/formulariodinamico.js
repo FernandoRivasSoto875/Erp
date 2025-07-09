@@ -5,6 +5,45 @@
  */
 document.addEventListener('DOMContentLoaded', function() {
 
+    // --- INICIO: Bloque de código a insertar ---
+    const allFields = window.fields || [];
+    const firstField = allFields.length > 0 ? allFields[0] : null;
+    const firstFieldElement = firstField ? document.querySelector(`[name="${firstField.name}"]`) : null;
+    const formName = new URLSearchParams(window.location.search).get('archivo') || 'formulariogenerico.json';
+
+    // Romper el ciclo de recarga después de un guardado exitoso.
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('status') === 'saved') {
+        if (firstFieldElement) firstFieldElement.value = '';
+        history.replaceState(null, '', window.location.pathname + '?archivo=' + encodeURIComponent(formName));
+    }
+
+    // Escuchar el evento 'blur' en el primer campo para cargar datos.
+    if (firstFieldElement) {
+        firstFieldElement.addEventListener('blur', function () {
+            const key = this.value.trim();
+            if (key === '') {
+                clearForm(formulario, null);
+                firstFieldElement.value = '';
+                return;
+            }
+            fetch(`logica_formulario.php?action=load_data&form_name=${encodeURIComponent(formName)}&key=${encodeURIComponent(key)}`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success && result.data) {
+                        fillForm(result.data);
+                    } else {
+                        clearForm(formulario, firstFieldElement);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al recuperar datos:', error);
+                    clearForm(formulario, firstFieldElement);
+                });
+        });
+    }
+    // --- FIN: Bloque de código a insertar ---
+
     const formulario = document.getElementById('formulario');
     if (!formulario) return;
 
@@ -241,3 +280,69 @@ $(document).ready(function() {
 .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
 .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 */
+
+// --- INICIO: Bloque de código a insertar al final del archivo ---
+
+/**
+ * Rellena el formulario completo con los datos proporcionados.
+ * @param {object} data - Objeto con los datos del formulario.
+ */
+function fillForm(data) {
+    const formElement = document.getElementById('formulario');
+    formElement.reset();
+    document.querySelectorAll('[data-datatable-name] tbody').forEach(tbody => { tbody.innerHTML = ''; });
+
+    for (const fieldName in data) {
+        const value = data[fieldName];
+        const fieldInfo = window.fields.find(f => f.name === fieldName);
+
+        if (fieldInfo && fieldInfo.type === 'datatable' && Array.isArray(value)) {
+            const tableBody = document.querySelector(`[data-datatable-name="${fieldName}"] tbody`);
+            if (!tableBody) continue;
+
+            value.forEach((rowData, rowIndex) => {
+                const newRow = tableBody.insertRow();
+                fieldInfo.columns.forEach(col => {
+                    const cell = newRow.insertCell();
+                    const input = document.createElement('input');
+                    input.type = col.type || 'text';
+                    input.name = `${fieldName}[${rowIndex}][${col.name}]`;
+                    input.className = 'form-control';
+                    input.value = rowData[col.name] || '';
+                    if (col['data-formula']) input.setAttribute('data-formula', col['data-formula']);
+                    if (col.readonly) input.readOnly = true;
+                    cell.appendChild(input);
+                });
+                const actionCell = newRow.insertCell();
+                actionCell.innerHTML = `<button type="button" class="eliminar_fila btn btn-danger btn-sm">Eliminar</button>`;
+            });
+        } else {
+            const elements = document.querySelectorAll(`[name="${fieldName}"]`);
+            elements.forEach(element => {
+                if (element.type === 'checkbox' || element.type === 'radio') {
+                    element.checked = Array.isArray(value) ? value.includes(element.value) : value === element.value;
+                } else {
+                    element.value = value;
+                }
+            });
+        }
+    }
+    // Dispara un evento 'input' para que tu lógica de cálculo se ejecute.
+    formElement.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+/**
+ * Limpia el formulario, incluyendo los datatables.
+ * @param {HTMLFormElement} formElement - El elemento del formulario.
+ * @param {HTMLInputElement|null} firstFieldElement - El primer campo (clave), para preservar su valor.
+ */
+function clearForm(formElement, firstFieldElement) {
+    const key = firstFieldElement ? firstFieldElement.value : '';
+    formElement.reset();
+    if (firstFieldElement) firstFieldElement.value = key;
+    document.querySelectorAll('[data-datatable-name] tbody').forEach(tbody => {
+        tbody.innerHTML = '';
+    });
+    // Dispara un evento 'input' para que tus totales se recalculen a 0.
+    formElement.dispatchEvent(new Event('input', { bubbles: true }));
+}

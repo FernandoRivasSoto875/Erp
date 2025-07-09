@@ -1,5 +1,5 @@
 <?php
-// filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\formulariodinamicologica.php
+// filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\formulariodinamicophp.php
 session_start();
 
 // --- INICIO: Integración con Librerías ---
@@ -53,51 +53,55 @@ $mensaje_envio = '';
 // --- INICIO: LÓGICA DE PROCESAMIENTO DEL FORMULARIO (POST) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $params = $json['parametros'] ?? [];
-    $postData = $_POST; // Datos crudos del POST
+    $postData = $_POST; // Renombramos para mayor claridad
     $uploadsDir = 'uploads/';
     if (!is_dir($uploadsDir)) mkdir($uploadsDir, 0755, true);
 
-    // --- INICIO: FUSIÓN Y MEJORA - Lógica robusta para capturar todos los campos ---
-    $formData = []; // Aquí construiremos los datos limpios y completos
+    // --- INICIO: MODIFICACIÓN EXPERTA PARA CAPTURAR TODOS LOS CAMPOS ---
+    $formData = [];
     foreach ($all_fields as $field) {
         $fieldName = $field['name'];
+
         // Si el campo existe en el POST, usamos su valor.
         if (isset($postData[$fieldName])) {
             $formData[$fieldName] = $postData[$fieldName];
         } 
-        // Si no existe (ej. un checkbox desmarcado), lo añadimos como nulo para limpiar el valor guardado.
+        // Si no existe (ej. un checkbox desmarcado), lo añadimos explícitamente como nulo.
+        // Esto asegura que al guardar, se borre un valor que antes existía.
         else {
-            // Excluimos los datatables de esta lógica, ya que su nombre no está en el nivel superior.
+            // Para los datatables, el nombre del campo no está en el nivel superior del POST,
+            // así que no lo establecemos como nulo aquí. Se maneja por su presencia en $postData.
             if ($field['type'] !== 'datatable') {
                  $formData[$fieldName] = null;
             }
         }
     }
-    // Añadimos los datatables que sí vienen en el POST.
+    // Para los datatables, que sí vienen en el POST si existen, los añadimos ahora.
     foreach ($postData as $key => $value) {
         $fieldInfo = getFieldInfo($key, $all_fields);
         if ($fieldInfo && $fieldInfo['type'] === 'datatable') {
             $formData[$key] = $value;
         }
     }
-    // --- FIN: FUSIÓN Y MEJORA ---
+    // --- FIN: MODIFICACIÓN EXPERTA ---
 
     $firstField = reset($all_fields);
     if ($firstField && isset($formData[$firstField['name']])) {
         $key = $formData[$firstField['name']];
         if (!empty($key)) {
             $sessionKey = 'form_data_' . $archivo_json . '_' . $key;
-            // Guardamos el formData reconstruido, no el $_POST original.
+            // Guardamos el formData reconstruido y completo, no el $_POST original.
             $_SESSION[$sessionKey] = $formData;
         }
     }
     
     try {
-        // --- LÓGICA DE GENERACIÓN DE ARCHIVOS Y CORREO (SIN CAMBIOS) ---
-        // Esta sección se mantiene intacta, pero ahora usa el $formData mejorado.
+        // --- INICIO: LÓGICA DE GENERACIÓN DE ARCHIVOS Y CORREO ---
         $formatosAgenerar = array_map('trim', explode(',', $params['tipoformatoenvio'] ?? ''));
+        $formatosGenerados = [];
         $archivosAdjuntar = [];
         $baseFilename = $uploadsDir . 'formulario_' . date('Ymd_His');
+        $datosParaArchivos = [];
         $cuerpoHtml = "<h1>" . htmlspecialchars($params['subject'] ?? 'Datos del Formulario') . "</h1>";
         foreach ($formData as $key => $value) {
             $fieldInfo = getFieldInfo($key, $all_fields);
@@ -148,7 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     } catch (Exception $e) {
         $mensaje_envio = "<div class='alert alert-danger'>Error al procesar: " . $e->getMessage() . "</div>";
-        $valores = $formData; // Mantenemos los datos para que el usuario corrija
+        $valores = $formData;
     }
 }
 

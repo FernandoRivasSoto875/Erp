@@ -1,4 +1,27 @@
 <?php
+session_start(); // INICIAR SESIÓN PARA GUARDAR Y RECUPERAR DATOS
+
+// --- INICIO: Endpoint AJAX para recuperar datos ---
+if (isset($_GET['action']) && $_GET['action'] === 'load_data') {
+    header('Content-Type: application/json');
+    $formName = $_GET['form_name'] ?? '';
+    $key = $_GET['key'] ?? '';
+
+    if (empty($formName) || empty($key)) {
+        echo json_encode(['error' => 'Faltan parámetros.']);
+        exit;
+    }
+
+    $sessionKey = 'form_data_' . $formName . '_' . $key;
+    if (isset($_SESSION[$sessionKey])) {
+        echo json_encode(['success' => true, 'data' => $_SESSION[$sessionKey]]);
+    } else {
+        echo json_encode(['success' => false]);
+    }
+    exit;
+}
+// --- FIN: Endpoint AJAX ---
+
 // --- INICIO: Integración con Librerías ---
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -25,10 +48,16 @@ $valores = [];
 $soloLectura = false;
 $mensaje_envio = '';
 
-// Lógica para cargar datos existentes (sin cambios)
-if (!empty($_GET['id']) && isset($json['tabla_principal'])) {
-    // ... tu código para cargar datos existentes ...
+// --- INICIO: Lógica para cargar datos de sesión al inicio ---
+$firstField = reset($all_fields);
+if ($firstField && !empty($_GET[$firstField['name']])) {
+    $key = $_GET[$firstField['name']];
+    $sessionKey = 'form_data_' . $archivo_json . '_' . $key;
+    if (isset($_SESSION[$sessionKey])) {
+        $valores = $_SESSION[$sessionKey];
+    }
 }
+// --- FIN: Lógica para cargar datos de sesión al inicio ---
 
 // --- INICIO: LÓGICA DE PROCESAMIENTO DEL FORMULARIO (POST) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -37,15 +66,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $uploadsDir = 'uploads/';
     if (!is_dir($uploadsDir)) mkdir($uploadsDir, 0755, true);
 
+    // --- INICIO: Guardar datos en la sesión ---
+    if ($firstField && isset($formData[$firstField['name']])) {
+        $key = $formData[$firstField['name']];
+        if (!empty($key)) {
+            $sessionKey = 'form_data_' . $archivo_json . '_' . $key;
+            $_SESSION[$sessionKey] = $formData;
+        }
+    }
+    // --- FIN: Guardar datos en la sesión ---
+
     try {
+        // --- INICIO: LÓGICA DE GENERACIÓN DE ARCHIVOS Y CORREO (SIN CAMBIOS) ---
         $formatosAgenerar = array_map('trim', explode(',', $params['tipoformatoenvio'] ?? ''));
         $formatosGenerados = [];
         $archivosAdjuntar = [];
         $baseFilename = $uploadsDir . 'formulario_' . date('Ymd_His');
-        
         $datosParaArchivos = [];
         $cuerpoHtml = "<h1>" . htmlspecialchars($params['subject'] ?? 'Datos del Formulario') . "</h1>";
-        
         foreach ($formData as $key => $value) {
             $fieldInfo = getFieldInfo($key, $all_fields);
             if (!$fieldInfo) continue;
@@ -66,100 +104,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $datosParaArchivos[] = ['label' => $label, 'value' => $valorParaArchivo, 'type' => $fieldInfo['type'], 'columns' => $fieldInfo['columns'] ?? []];
             $cuerpoHtml .= "<h3>" . htmlspecialchars($label) . "</h3><div>{$displayValue}</div><hr>";
         }
-
-        // --- PASO 1: GENERAR TODOS LOS ARCHIVOS REALES ---
         if (in_array('html', $formatosAgenerar)) { $path = $baseFilename . '.html'; file_put_contents($path, $cuerpoHtml); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'HTML'; }
         if (in_array('json', $formatosAgenerar)) { $path = $baseFilename . '.json'; file_put_contents($path, json_encode($formData, JSON_PRETTY_PRINT)); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'JSON'; }
         if (in_array('csv', $formatosAgenerar) || in_array('cvs', $formatosAgenerar)) { $path = $baseFilename . '.csv'; $fp = fopen($path, 'w'); fputcsv($fp, ['Campo', 'Valor']); foreach ($datosParaArchivos as $dato) { fputcsv($fp, [$dato['label'], $dato['value']]); } fclose($fp); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'CSV'; }
         if (in_array('xml', $formatosAgenerar)) { $path = $baseFilename . '.xml'; $xml = new SimpleXMLElement('<formulario/>'); foreach ($datosParaArchivos as $dato) { $xml->addChild(preg_replace('/[^A-Za-z0-9_]/', '', $dato['label']), htmlspecialchars($dato['value'])); } $xml->asXML($path); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'XML'; }
         if (in_array('doc', $formatosAgenerar)) { $path = $baseFilename . '.doc'; file_put_contents($path, $cuerpoHtml); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'DOC'; }
-        
-        // --- INICIO: Generación de XLS (Excel) PURO y CORREGIDO ---
-        if (in_array('xls', $formatosAgenerar) || in_array('xlsx', $formatosAgenerar)) {
-            $path = $baseFilename . '.xls';
-            $xlsContent = "<html xmlns:x='urn:schemas-microsoft-com:office:excel'><head><meta charset='UTF-8'></head><body>";
-            
-            // Tabla para los campos principales
-            $xlsContent .= "<h3>Datos Principales</h3><table border='1'>";
-            $xlsContent .= "<tr><th>Campo</th><th>Valor</th></tr>";
-            foreach ($datosParaArchivos as $dato) {
-                if ($dato['type'] !== 'datatable') {
-                    $xlsContent .= "<tr><td>" . htmlspecialchars($dato['label']) . "</td><td>" . htmlspecialchars($dato['value']) . "</td></tr>";
-                }
-            }
-            $xlsContent .= "</table><br/><br/>";
-
-            // Tabla separada para cada DataTable
-            foreach ($datosParaArchivos as $dato) {
-                if ($dato['type'] === 'datatable') {
-                    $xlsContent .= "<h3>" . htmlspecialchars($dato['label']) . "</h3><table border='1'>";
-                    $tableData = json_decode($dato['value'], true);
-                    
-                    // Encabezados de la tabla
-                    $xlsContent .= "<tr>";
-                    foreach($dato['columns'] as $col) {
-                        $xlsContent .= "<th>" . htmlspecialchars($col['label']) . "</th>";
-                    }
-                    $xlsContent .= "</tr>";
-
-                    // Filas de la tabla
-                    foreach($tableData as $row) {
-                        $xlsContent .= "<tr>";
-                        foreach($dato['columns'] as $col) {
-                            $xlsContent .= "<td>" . htmlspecialchars($row[$col['name']] ?? '') . "</td>";
-                        }
-                        $xlsContent .= "</tr>";
-                    }
-                    $xlsContent .= "</table><br/>";
-                }
-            }
-            
-            $xlsContent .= "</body></html>";
-            file_put_contents($path, $xlsContent);
-            $archivosAdjuntar[] = $path;
-            $formatosGenerados[] = 'XLS';
-        }
-        // --- FIN: Generación de XLS (Excel) PURO y CORREGIDO ---
-
-        // --- Generación de PDF con FPDF (sin cambios) ---
-        if (in_array('pdf', $formatosAgenerar)) {
-            try {
-                $path = $baseFilename . '.pdf';
-                $pdf = new FPDF('P', 'mm', 'A4');
-                $pdf->AddPage();
-                $pdf->SetFont('Arial', 'B', 16);
-                $pdf->Cell(0, 10, utf8_decode($params['subject'] ?? 'Datos del Formulario'), 0, 1, 'C');
-                $pdf->Ln(10);
-                foreach ($datosParaArchivos as $dato) {
-                    $pdf->SetFont('Arial', 'B', 12);
-                    $pdf->Cell(50, 8, utf8_decode($dato['label'] . ':'), 0, 0);
-                    $pdf->SetFont('Arial', '', 12);
-                    if ($dato['type'] === 'datatable') {
-                        $pdf->Ln(10);
-                        $tableData = json_decode($dato['value'], true);
-                        $pdf->SetFont('Arial', 'B', 10);
-                        foreach($dato['columns'] as $col) { $pdf->Cell(40, 7, utf8_decode($col['label']), 1); }
-                        $pdf->Ln();
-                        $pdf->SetFont('Arial', '', 10);
-                        foreach($tableData as $row) {
-                            foreach($dato['columns'] as $col) { $pdf->Cell(40, 7, utf8_decode($row[$col['name']] ?? ''), 1); }
-                            $pdf->Ln();
-                        }
-                        $pdf->Ln(5);
-                    } else {
-                        $pdf->MultiCell(0, 8, utf8_decode($dato['value']));
-                        $pdf->Ln(2);
-                    }
-                }
-                $pdf->Output('F', $path);
-                $archivosAdjuntar[] = $path;
-                $formatosGenerados[] = 'PDF';
-            } catch (Exception $e) {
-                $formatosGenerados[] = 'PDF (fallido: ' . $e->getMessage() . ')';
-            }
-        }
-
-        // --- PASO 2: ENVIAR CORREO CON ADJUNTOS (sin cambios) ---
+        if (in_array('xls', $formatosAgenerar) || in_array('xlsx', $formatosAgenerar)) { $path = $baseFilename . '.xls'; $xlsContent = "<html xmlns:x='urn:schemas-microsoft-com:office:excel'><head><meta charset='UTF-8'></head><body>"; $xlsContent .= "<h3>Datos Principales</h3><table border='1'>"; $xlsContent .= "<tr><th>Campo</th><th>Valor</th></tr>"; foreach ($datosParaArchivos as $dato) { if ($dato['type'] !== 'datatable') { $xlsContent .= "<tr><td>" . htmlspecialchars($dato['label']) . "</td><td>" . htmlspecialchars($dato['value']) . "</td></tr>"; } } $xlsContent .= "</table><br/><br/>"; foreach ($datosParaArchivos as $dato) { if ($dato['type'] === 'datatable') { $xlsContent .= "<h3>" . htmlspecialchars($dato['label']) . "</h3><table border='1'>"; $tableData = json_decode($dato['value'], true); $xlsContent .= "<tr>"; foreach($dato['columns'] as $col) { $xlsContent .= "<th>" . htmlspecialchars($col['label']) . "</th>"; } $xlsContent .= "</tr>"; foreach($tableData as $row) { $xlsContent .= "<tr>"; foreach($dato['columns'] as $col) { $xlsContent .= "<td>" . htmlspecialchars($row[$col['name']] ?? '') . "</td>"; } $xlsContent .= "</tr>"; } $xlsContent .= "</table><br/>"; } } $xlsContent .= "</body></html>"; file_put_contents($path, $xlsContent); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'XLS'; }
+        if (in_array('pdf', $formatosAgenerar)) { try { $path = $baseFilename . '.pdf'; $pdf = new FPDF('P', 'mm', 'A4'); $pdf->AddPage(); $pdf->SetFont('Arial', 'B', 16); $pdf->Cell(0, 10, utf8_decode($params['subject'] ?? 'Datos del Formulario'), 0, 1, 'C'); $pdf->Ln(10); foreach ($datosParaArchivos as $dato) { $pdf->SetFont('Arial', 'B', 12); $pdf->Cell(50, 8, utf8_decode($dato['label'] . ':'), 0, 0); $pdf->SetFont('Arial', '', 12); if ($dato['type'] === 'datatable') { $pdf->Ln(10); $tableData = json_decode($dato['value'], true); $pdf->SetFont('Arial', 'B', 10); foreach($dato['columns'] as $col) { $pdf->Cell(40, 7, utf8_decode($col['label']), 1); } $pdf->Ln(); $pdf->SetFont('Arial', '', 10); foreach($tableData as $row) { foreach($dato['columns'] as $col) { $pdf->Cell(40, 7, utf8_decode($row[$col['name']] ?? ''), 1); } $pdf->Ln(); } $pdf->Ln(5); } else { $pdf->MultiCell(0, 8, utf8_decode($dato['value'])); $pdf->Ln(2); } } $pdf->Output('F', $path); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'PDF'; } catch (Exception $e) { $formatosGenerados[] = 'PDF (fallido: ' . $e->getMessage() . ')'; } }
         if (in_array('htmlc', $formatosAgenerar) && !empty($params['destinatario'])) {
             $mail = new PHPMailer(true);
             $mail->isSendmail();
@@ -174,6 +125,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mail->send();
             $formatosGenerados[] = 'Correo (htmlc) con ' . count($archivosAdjuntar) . ' adjuntos';
         }
+        // --- FIN: LÓGICA DE GENERACIÓN DE ARCHIVOS Y CORREO ---
 
         $mensaje_envio = "<div class='alert alert-success'>Formulario procesado. Formatos generados: " . implode(', ', $formatosGenerados) . "</div>";
         if ($params['limpiar'] ?? false) { $valores = []; }
@@ -205,5 +157,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script>window.fields = <?php echo json_encode($all_fields); ?>;</script>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="js/formulariodinamico.js"></script>
+
+<!-- INICIO: SCRIPT PARA RECUPERACIÓN DE DATOS (VERSIÓN CORREGIDA) -->
+<script>
+$(document).ready(function() {
+    // Función para cargar datos desde la sesión
+    function cargarDatos(formName, key) {
+        $.getJSON('', { action: 'load_data', form_name: formName, key: key }, function(response) {
+            if (response.success) {
+                // Llenar el formulario con los datos recuperados
+                for (const [nombreCampo, valorCampo] of Object.entries(response.data)) {
+                    const campo = window.fields.find(f => f.name === nombreCampo);
+                    if (campo) {
+                        if (campo.type === 'datatable' && Array.isArray(valorCampo)) {
+                            // Para campos de tipo datatable, reconstruir la tabla
+                            const datatableHtml = `<table class="table table-bordered"><thead><tr>${campo.columns.map(col => `<th>${col.label}</th>`).join('')}</tr></thead><tbody>${
+                                valorCampo.map(row => `<tr>${campo.columns.map(col => `<td>${row[col.name]}</td>`).join('')}</tr>`).join('')
+                            }</tbody></table>`;
+                            $(`[name="${nombreCampo}"]`).closest('.form-group').find('.datatable-container').html(datatableHtml);
+                        } else {
+                            $(`[name="${nombreCampo}"]`).val(valorCampo);
+                        }
+                    }
+                }
+            } else {
+                console.log('No se encontraron datos para la clave proporcionada.');
+            }
+        });
+    }
+
+    // Ejemplo: Cargar datos para el formulario con nombre 'mi_formulario' y clave '123'
+    // Puedes modificar esto según tus necesidades, por ejemplo, usando valores dinámicos
+    cargarDatos('<?php echo htmlspecialchars($archivo_json); ?>', '<?php echo htmlspecialchars($valores[$firstField['name']] ?? ''); ?>');
+});
+</script>
+<!-- FIN: SCRIPT PARA RECUPERACIÓN DE DATOS -->
 </body>
 </html>

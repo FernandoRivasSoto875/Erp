@@ -55,12 +55,35 @@
     },
     {
       "legend": "Preferencias y Otros",
+
+      
       "style": "border:1px solid #28a745; padding:10px; background:#f5fff5;",
       "fields": [
-        { "name": "genero", "label": "Género (top-center)", "type": "radio", "required": true, "labelPosition": "top-center", "options": [ { "value": "masculino", "label": "Masculino" }, { "value": "femenino", "label": "Femenino" } ] },
-            { "name": "cantidadhijos", "label": "Cantidadhijos", "type": "number", "min": 1, "placeholder": "1" },
-              { "name": "Atrab", "label": "Años.", "type": "number", "step": "0.01", "placeholder": "10000" },
-        { "name": "intereses", "label": "Intereses (top-left)", "type": "checkbox", "labelPosition": "top-left", "options": [ { "value": "deportes", "label": "Deportes" }, { "value": "musica", "label": "Música" }, { "value": "tecnologia", "label": "Tecnología" } ] },
+        { 
+          "name": "genero", 
+          "label": "Género (top-center)", 
+          "type": "radio", 
+          "required": true, 
+          "labelPosition": "top-center", 
+          "layout": "horizontal", 
+          "options": [ 
+            { "value": "masculino", "label": "Masculino" }, 
+            { "value": "femenino", "label": "Femenino" } 
+          ] 
+        },
+        { "name": "cantidadhijos", "label": "Cantidadhijos", "type": "number", "min": 1, "placeholder": "1" },
+        { "name": "Atrab", "label": "Años.", "type": "number", "step": "0.01", "placeholder": "10000" },
+        { 
+          "name": "intereses", 
+          "label": "Intereses (top-left)", 
+          "type": "checkbox", 
+          "labelPosition": "top-left", 
+          "options": [ 
+            { "value": "deportes", "label": "Deportes" }, 
+            { "value": "musica", "label": "Música" }, 
+            { "value": "tecnologia", "label": "Tecnología" } 
+          ] 
+        },
         { "name": "acepta_terminos", "label": "Acepto los términos (right)", "type": "checkbox", "required": true, "labelPosition": "right", "options": [ { "value": "si", "label": "" } ] },
         { "name": "rango_satisfaccion", "label": "Satisfacción (top-right)", "type": "range", "min": 1, "max": 10, "labelPosition": "top-right" },
         { "name": "oculto", "type": "hidden", "value": "valor_oculto" },

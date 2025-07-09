@@ -5,44 +5,10 @@
  */
 document.addEventListener('DOMContentLoaded', function() {
 
-    // --- INICIO: Bloque de código a insertar ---
-    const allFields = window.fields || [];
-    const firstField = allFields.length > 0 ? allFields[0] : null;
-    const firstFieldElement = firstField ? document.querySelector(`[name="${firstField.name}"]`) : null;
-    const formName = new URLSearchParams(window.location.search).get('archivo') || 'formulariogenerico.json';
-
-    // Romper el ciclo de recarga después de un guardado exitoso.
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('status') === 'saved') {
-        if (firstFieldElement) firstFieldElement.value = '';
-        history.replaceState(null, '', window.location.pathname + '?archivo=' + encodeURIComponent(formName));
-    }
-
-    // Escuchar el evento 'blur' en el primer campo para cargar datos.
-    if (firstFieldElement) {
-        firstFieldElement.addEventListener('blur', function () {
-            const key = this.value.trim();
-            if (key === '') {
-                clearForm(formulario, null);
-                firstFieldElement.value = '';
-                return;
-            }
-            fetch(`logica_formulario.php?action=load_data&form_name=${encodeURIComponent(formName)}&key=${encodeURIComponent(key)}`)
-                .then(response => response.json())
-                .then(result => {
-                    if (result.success && result.data) {
-                        fillForm(result.data);
-                    } else {
-                        clearForm(formulario, firstFieldElement);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error al recuperar datos:', error);
-                    clearForm(formulario, firstFieldElement);
-                });
-        });
-    }
-    // --- FIN: Bloque de código a insertar ---
+    // --- INICIO: MODIFICACIÓN ---
+    // Crear una copia profunda de la configuración para poder manipularla sin afectar el original.
+    const fieldsConfig = JSON.parse(JSON.stringify(window.fields || []));
+    // --- FIN: MODIFICACIÓN ---
 
     const formulario = document.getElementById('formulario');
     if (!formulario) return;
@@ -54,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const allPromises = [];
 
         // --- PASO 1: RECOLECTAR TODOS LOS VALORES Y EJECUTAR TODAS LAS BÚSQUEDAS ---
-        
+
         // Obtener todos los valores del formulario una sola vez al inicio.
         const allFormValues = new FormData(formulario);
         const globalValues = Object.fromEntries(allFormValues.entries());

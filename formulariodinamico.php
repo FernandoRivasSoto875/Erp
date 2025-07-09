@@ -2,10 +2,12 @@
 // --- INICIO: Integración con Librerías ---
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
-use Dompdf\Dompdf; // Activado para la generación de PDF
 
-// Asegúrate de que esta ruta sea correcta para tu instalación de Composer
-require 'vendor/autoload.php'; 
+// Usamos FPDF en lugar de Dompdf
+require_once 'fpdf/fpdf.php'; // <-- ¡IMPORTANTE! Asegúrate de que esta ruta sea correcta.
+
+// El autoloader de Composer para PHPMailer
+require __DIR__ . '/vendor/autoload.php'; 
 // --- FIN: Integración con Librerías ---
 
 require_once 'formulariodinamico.funciones.php';
@@ -64,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $displayValue = is_array($value) ? implode(', ', array_map('htmlspecialchars', $value)) : nl2br(htmlspecialchars($value));
                 $valorParaArchivo = is_array($value) ? implode(', ', $value) : $value;
             }
-            $datosParaArchivos[] = ['label' => $label, 'value' => $valorParaArchivo];
+            $datosParaArchivos[] = ['label' => $label, 'value' => $valorParaArchivo, 'type' => $fieldInfo['type'], 'columns' => $fieldInfo['columns'] ?? []];
             $cuerpoHtml .= "<h3>" . htmlspecialchars($label) . "</h3><div>{$displayValue}</div><hr>";
         }
 
@@ -73,18 +75,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (in_array('json', $formatosAgenerar)) { $path = $baseFilename . '.json'; file_put_contents($path, json_encode($formData, JSON_PRETTY_PRINT)); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'JSON'; }
         if (in_array('csv', $formatosAgenerar) || in_array('cvs', $formatosAgenerar)) { $path = $baseFilename . '.csv'; $fp = fopen($path, 'w'); fputcsv($fp, ['Campo', 'Valor']); foreach ($datosParaArchivos as $dato) { fputcsv($fp, [$dato['label'], $dato['value']]); } fclose($fp); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'CSV'; }
         if (in_array('xml', $formatosAgenerar)) { $path = $baseFilename . '.xml'; $xml = new SimpleXMLElement('<formulario/>'); foreach ($datosParaArchivos as $dato) { $xml->addChild(preg_replace('/[^A-Za-z0-9_]/', '', $dato['label']), htmlspecialchars($dato['value'])); } $xml->asXML($path); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'XML'; }
-        
         if (in_array('doc', $formatosAgenerar)) { $path = $baseFilename . '.doc'; file_put_contents($path, $cuerpoHtml); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'DOC'; }
         if (in_array('xls', $formatosAgenerar) || in_array('xlsx', $formatosAgenerar)) { $path = $baseFilename . '.xls'; $xlsContent = "<html xmlns:x='urn:schemas-microsoft-com:office:excel'><head><meta charset='UTF-8'></head><body><table border='1'>"; $xlsContent .= "<tr><th>Campo</th><th>Valor</th></tr>"; foreach ($datosParaArchivos as $dato) { $xlsContent .= "<tr><td>" . htmlspecialchars($dato['label']) . "</td><td>" . htmlspecialchars($dato['value']) . "</td></tr>"; } $xlsContent .= "</table></body></html>"; file_put_contents($path, $xlsContent); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'XLS'; }
 
+        // --- Generación de PDF con FPDF ---
         if (in_array('pdf', $formatosAgenerar)) {
             try {
                 $path = $baseFilename . '.pdf';
-                $dompdf = new Dompdf();
-                $dompdf->loadHtml($cuerpoHtml);
-                $dompdf->setPaper('A4', 'portrait');
-                $dompdf->render();
-                file_put_contents($path, $dompdf->output());
+                $pdf = new FPDF('P', 'mm', 'A4');
+                $pdf->AddPage();
+                $pdf->SetFont('Arial', 'B', 16);
+                $pdf->Cell(0, 10, utf8_decode($params['subject'] ?? 'Datos del Formulario'), 0, 1, 'C');
+                $pdf->Ln(10);
+
+                foreach ($datosParaArchivos as $dato) {
+                    $pdf->SetFont('Arial', 'B', 12);
+                    $pdf->Cell(50, 8, utf8_decode($dato['label'] . ':'), 0, 0);
+                    $pdf->SetFont('Arial', '', 12);
+
+                    if ($dato['type'] === 'datatable') {
+                        $pdf->Ln(10);
+                        $tableData = json_decode($dato['value'], true);
+                        // Encabezados de la tabla
+                        $pdf->SetFont('Arial', 'B', 10);
+                        foreach($dato['columns'] as $col) { $pdf->Cell(40, 7, utf8_decode($col['label']), 1); }
+                        $pdf->Ln();
+                        // Filas de la tabla
+                        $pdf->SetFont('Arial', '', 10);
+                        foreach($tableData as $row) {
+                            foreach($dato['columns'] as $col) {
+                                $pdf->Cell(40, 7, utf8_decode($row[$col['name']] ?? ''), 1);
+                            }
+                            $pdf->Ln();
+                        }
+                        $pdf->Ln(5);
+                    } else {
+                        $pdf->MultiCell(0, 8, utf8_decode($dato['value']));
+                        $pdf->Ln(2);
+                    }
+                }
+                $pdf->Output('F', $path);
                 $archivosAdjuntar[] = $path;
                 $formatosGenerados[] = 'PDF';
             } catch (Exception $e) {

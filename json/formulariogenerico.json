@@ -23,8 +23,25 @@
       "style": "border:1px solid #007BFF; padding:10px; background:#f9f9f9;",
       "fields": [
         { "name": "nombre", "label": "Nombre (top-left)", "type": "text", "placeholder": "Ingrese su nombre completo", "required": true, "labelPosition": "top-left" },
-        { "name": "ComId", "label": "Código (left)", "type": "text", "placeholder": "Ingrese código", "labelPosition": "left" },
-        { "name": "descripcion_comuna", "label": "Comuna (none)", "type": "text", "placeholder": "Descripción de la comuna aparecerá aquí", "labelPosition": "none", "data-formula": { "type": "lookup", "source": { "table": "Comuna", "field": "ComDes" }, "where": "ComId = {ComId}" }, "readonly": true },
+        
+      
+        { "name": "ComId", "label": "Código", "type": "text", "placeholder": "Ingrese código", "labelPosition": "left" },
+        
+   
+        { 
+          "name": "descripcion_comuna", 
+          "label": "Comuna", 
+          "type": "text", 
+          "placeholder": "Descripción de la comuna aparecerá aquí", 
+          "labelPosition": "left", 
+          "readonly": true, 
+          "data-formula": { 
+            "type": "lookup", 
+            "source": { "table": "Comuna", "field": "ComDes" }, 
+            "where": "ComId = {ComId}" 
+          }
+        },
+
         { "name": "total", "label": "Total (right)", "type": "number", "placeholder": "0", "readonly": true, "labelPosition": "right", "data-formula": "10 + 10 * edad" },
         { "name": "email", "label": "Correo (top - por defecto)", "type": "email", "placeholder": "ejemplo@correo.com", "required": true, "labelPosition": "top" },
         { "name": "telefono", "label": "Teléfono (top-center)", "type": "tel", "placeholder": "Ej: +56912345678", "labelPosition": "top-center" },

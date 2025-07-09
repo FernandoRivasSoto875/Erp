@@ -127,14 +127,6 @@
           }
         },
 
-
-
-
-
-
-
-
-
             
             { "name": "descripcion", "label": "Descripción", "type": "text", "placeholder": "Nombre del producto" },
             { "name": "cantidad", "label": "Cantidad", "type": "number", "placeholder": "0" },
@@ -150,7 +142,7 @@
               "type": "number", 
               "placeholder": "0.00", 
               "readonly": true, 
-              "data-formula": "cantidad * precio_unitario + total" 
+              "data-formula": "cantidad * precio_unitario * total" 
             }
           ],
           "value": [

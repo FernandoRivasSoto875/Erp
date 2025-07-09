@@ -3,11 +3,8 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// Usamos FPDF en lugar de Dompdf
-require_once 'fpdf/fpdf.php'; // <-- ¡IMPORTANTE! Asegúrate de que esta ruta sea correcta.
-
-// El autoloader de Composer para PHPMailer
-require __DIR__ . '/vendor/autoload.php'; 
+require_once 'fpdf/fpdf.php'; // Asegúrate de que esta ruta sea correcta
+require __DIR__ . '/vendor/autoload.php'; // Para PHPMailer
 // --- FIN: Integración con Librerías ---
 
 require_once 'formulariodinamico.funciones.php';
@@ -76,9 +73,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (in_array('csv', $formatosAgenerar) || in_array('cvs', $formatosAgenerar)) { $path = $baseFilename . '.csv'; $fp = fopen($path, 'w'); fputcsv($fp, ['Campo', 'Valor']); foreach ($datosParaArchivos as $dato) { fputcsv($fp, [$dato['label'], $dato['value']]); } fclose($fp); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'CSV'; }
         if (in_array('xml', $formatosAgenerar)) { $path = $baseFilename . '.xml'; $xml = new SimpleXMLElement('<formulario/>'); foreach ($datosParaArchivos as $dato) { $xml->addChild(preg_replace('/[^A-Za-z0-9_]/', '', $dato['label']), htmlspecialchars($dato['value'])); } $xml->asXML($path); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'XML'; }
         if (in_array('doc', $formatosAgenerar)) { $path = $baseFilename . '.doc'; file_put_contents($path, $cuerpoHtml); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'DOC'; }
-        if (in_array('xls', $formatosAgenerar) || in_array('xlsx', $formatosAgenerar)) { $path = $baseFilename . '.xls'; $xlsContent = "<html xmlns:x='urn:schemas-microsoft-com:office:excel'><head><meta charset='UTF-8'></head><body><table border='1'>"; $xlsContent .= "<tr><th>Campo</th><th>Valor</th></tr>"; foreach ($datosParaArchivos as $dato) { $xlsContent .= "<tr><td>" . htmlspecialchars($dato['label']) . "</td><td>" . htmlspecialchars($dato['value']) . "</td></tr>"; } $xlsContent .= "</table></body></html>"; file_put_contents($path, $xlsContent); $archivosAdjuntar[] = $path; $formatosGenerados[] = 'XLS'; }
+        
+        // --- INICIO: Generación de XLS (Excel) PURO y CORREGIDO ---
+        if (in_array('xls', $formatosAgenerar) || in_array('xlsx', $formatosAgenerar)) {
+            $path = $baseFilename . '.xls';
+            $xlsContent = "<html xmlns:x='urn:schemas-microsoft-com:office:excel'><head><meta charset='UTF-8'></head><body>";
+            
+            // Tabla para los campos principales
+            $xlsContent .= "<h3>Datos Principales</h3><table border='1'>";
+            $xlsContent .= "<tr><th>Campo</th><th>Valor</th></tr>";
+            foreach ($datosParaArchivos as $dato) {
+                if ($dato['type'] !== 'datatable') {
+                    $xlsContent .= "<tr><td>" . htmlspecialchars($dato['label']) . "</td><td>" . htmlspecialchars($dato['value']) . "</td></tr>";
+                }
+            }
+            $xlsContent .= "</table><br/><br/>";
 
-        // --- Generación de PDF con FPDF ---
+            // Tabla separada para cada DataTable
+            foreach ($datosParaArchivos as $dato) {
+                if ($dato['type'] === 'datatable') {
+                    $xlsContent .= "<h3>" . htmlspecialchars($dato['label']) . "</h3><table border='1'>";
+                    $tableData = json_decode($dato['value'], true);
+                    
+                    // Encabezados de la tabla
+                    $xlsContent .= "<tr>";
+                    foreach($dato['columns'] as $col) {
+                        $xlsContent .= "<th>" . htmlspecialchars($col['label']) . "</th>";
+                    }
+                    $xlsContent .= "</tr>";
+
+                    // Filas de la tabla
+                    foreach($tableData as $row) {
+                        $xlsContent .= "<tr>";
+                        foreach($dato['columns'] as $col) {
+                            $xlsContent .= "<td>" . htmlspecialchars($row[$col['name']] ?? '') . "</td>";
+                        }
+                        $xlsContent .= "</tr>";
+                    }
+                    $xlsContent .= "</table><br/>";
+                }
+            }
+            
+            $xlsContent .= "</body></html>";
+            file_put_contents($path, $xlsContent);
+            $archivosAdjuntar[] = $path;
+            $formatosGenerados[] = 'XLS';
+        }
+        // --- FIN: Generación de XLS (Excel) PURO y CORREGIDO ---
+
+        // --- Generación de PDF con FPDF (sin cambios) ---
         if (in_array('pdf', $formatosAgenerar)) {
             try {
                 $path = $baseFilename . '.pdf';
@@ -87,25 +130,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdf->SetFont('Arial', 'B', 16);
                 $pdf->Cell(0, 10, utf8_decode($params['subject'] ?? 'Datos del Formulario'), 0, 1, 'C');
                 $pdf->Ln(10);
-
                 foreach ($datosParaArchivos as $dato) {
                     $pdf->SetFont('Arial', 'B', 12);
                     $pdf->Cell(50, 8, utf8_decode($dato['label'] . ':'), 0, 0);
                     $pdf->SetFont('Arial', '', 12);
-
                     if ($dato['type'] === 'datatable') {
                         $pdf->Ln(10);
                         $tableData = json_decode($dato['value'], true);
-                        // Encabezados de la tabla
                         $pdf->SetFont('Arial', 'B', 10);
                         foreach($dato['columns'] as $col) { $pdf->Cell(40, 7, utf8_decode($col['label']), 1); }
                         $pdf->Ln();
-                        // Filas de la tabla
                         $pdf->SetFont('Arial', '', 10);
                         foreach($tableData as $row) {
-                            foreach($dato['columns'] as $col) {
-                                $pdf->Cell(40, 7, utf8_decode($row[$col['name']] ?? ''), 1);
-                            }
+                            foreach($dato['columns'] as $col) { $pdf->Cell(40, 7, utf8_decode($row[$col['name']] ?? ''), 1); }
                             $pdf->Ln();
                         }
                         $pdf->Ln(5);
@@ -122,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        // --- PASO 2: ENVIAR CORREO CON ADJUNTOS ---
+        // --- PASO 2: ENVIAR CORREO CON ADJUNTOS (sin cambios) ---
         if (in_array('htmlc', $formatosAgenerar) && !empty($params['destinatario'])) {
             $mail = new PHPMailer(true);
             $mail->isSendmail();

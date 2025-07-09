@@ -44,20 +44,9 @@ $json = json_decode(file_get_contents($json_path), true);
 if (json_last_error() !== JSON_ERROR_NONE) { die("Error: El archivo JSON contiene errores. " . json_last_error_msg()); }
 
 $all_fields = obtenerTodosLosCampos($json['fieldsets'] ?? []);
-$valores = [];
+$valores = []; // Se asegura que el formulario siempre cargue vacío
 $soloLectura = false;
 $mensaje_envio = '';
-
-// --- INICIO: Lógica para cargar datos de sesión al inicio ---
-$firstField = reset($all_fields);
-if ($firstField && !empty($_GET[$firstField['name']])) {
-    $key = $_GET[$firstField['name']];
-    $sessionKey = 'form_data_' . $archivo_json . '_' . $key;
-    if (isset($_SESSION[$sessionKey])) {
-        $valores = $_SESSION[$sessionKey];
-    }
-}
-// --- FIN: Lógica para cargar datos de sesión al inicio ---
 
 // --- INICIO: LÓGICA DE PROCESAMIENTO DEL FORMULARIO (POST) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -67,6 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!is_dir($uploadsDir)) mkdir($uploadsDir, 0755, true);
 
     // --- INICIO: Guardar datos en la sesión ---
+    $firstField = reset($all_fields);
     if ($firstField && isset($formData[$firstField['name']])) {
         $key = $formData[$firstField['name']];
         if (!empty($key)) {
@@ -160,36 +150,74 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 <!-- INICIO: SCRIPT PARA RECUPERACIÓN DE DATOS (VERSIÓN CORREGIDA) -->
 <script>
-$(document).ready(function() {
-    // Función para cargar datos desde la sesión
-    function cargarDatos(formName, key) {
-        $.getJSON('', { action: 'load_data', form_name: formName, key: key }, function(response) {
-            if (response.success) {
-                // Llenar el formulario con los datos recuperados
-                for (const [nombreCampo, valorCampo] of Object.entries(response.data)) {
-                    const campo = window.fields.find(f => f.name === nombreCampo);
-                    if (campo) {
-                        if (campo.type === 'datatable' && Array.isArray(valorCampo)) {
-                            // Para campos de tipo datatable, reconstruir la tabla
-                            const datatableHtml = `<table class="table table-bordered"><thead><tr>${campo.columns.map(col => `<th>${col.label}</th>`).join('')}</tr></thead><tbody>${
-                                valorCampo.map(row => `<tr>${campo.columns.map(col => `<td>${row[col.name]}</td>`).join('')}</tr>`).join('')
-                            }</tbody></table>`;
-                            $(`[name="${nombreCampo}"]`).closest('.form-group').find('.datatable-container').html(datatableHtml);
-                        } else {
-                            $(`[name="${nombreCampo}"]`).val(valorCampo);
-                        }
-                    }
-                }
-            } else {
-                console.log('No se encontraron datos para la clave proporcionada.');
-            }
-        });
-    }
+function fillForm(data) {
+    for (const fieldName in data) {
+        const value = data[fieldName];
+        const fieldInfo = window.fields.find(f => f.name === fieldName);
 
-    // Ejemplo: Cargar datos para el formulario con nombre 'mi_formulario' y clave '123'
-    // Puedes modificar esto según tus necesidades, por ejemplo, usando valores dinámicos
-    cargarDatos('<?php echo htmlspecialchars($archivo_json); ?>', '<?php echo htmlspecialchars($valores[$firstField['name']] ?? ''); ?>');
+        if (fieldInfo && fieldInfo.type === 'datatable' && Array.isArray(value)) {
+            const tableBody = document.querySelector(`[data-datatable-name="${fieldName}"] tbody`);
+            if (!tableBody) continue;
+
+            tableBody.innerHTML = ''; 
+            value.forEach((rowData, rowIndex) => {
+                const newRow = tableBody.insertRow();
+                fieldInfo.columns.forEach(col => {
+                    const cell = newRow.insertCell();
+                    const input = document.createElement('input');
+                    input.type = col.type || 'text';
+                    input.name = `${fieldName}[${rowIndex}][${col.name}]`;
+                    input.className = 'form-control';
+                    input.value = rowData[col.name] || '';
+                    cell.appendChild(input);
+                });
+            });
+        } else {
+            const elements = document.querySelectorAll(`[name="${fieldName}"]`);
+            elements.forEach(element => {
+                if (element.type === 'checkbox' || element.type === 'radio') {
+                    element.checked = Array.isArray(value) ? value.includes(element.value) : value === element.value;
+                } else {
+                    element.value = value;
+                }
+            });
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    const allFields = window.fields || [];
+    if (allFields.length === 0) return;
+
+    const firstField = allFields[0];
+    const firstFieldElement = document.querySelector(`[name="${firstField.name}"]`);
+    const formName = '<?php echo $archivo_json; ?>';
+
+    if (!firstFieldElement) return;
+
+    firstFieldElement.addEventListener('blur', function () {
+        const key = this.value.trim();
+        if (!key) return;
+
+        // Llamar a la función para cargar datos desde la sesión
+        cargarDatos(formName, key);
+    });
 });
+
+// Función para cargar datos desde la sesión
+function cargarDatos(formName, key) {
+    $.getJSON('', { action: 'load_data', form_name: formName, key: key }, function(response) {
+        if (response.success) {
+            fillForm(response.data);
+        } else {
+            console.log('No se encontraron datos para la clave proporcionada.');
+        }
+    });
+}
+
+// Ejemplo: Cargar datos para el formulario con nombre 'mi_formulario' y clave '123'
+// Puedes modificar esto según tus necesidades, por ejemplo, usando valores dinámicos
+cargarDatos('<?php echo htmlspecialchars($archivo_json); ?>', '<?php echo htmlspecialchars($valores[$firstField['name']] ?? ''); ?>');
 </script>
 <!-- FIN: SCRIPT PARA RECUPERACIÓN DE DATOS -->
 </body>

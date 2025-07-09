@@ -166,3 +166,51 @@ button:hover {
     float: none !important;
   }
 }
+
+/* --- INICIO: ESTILOS PARA CHECKBOX Y RADIO --- */
+
+/* Contenedor de todas las opciones */
+.options-container {
+    padding-top: 5px;
+}
+
+/* Item individual (input + label) */
+.option-item {
+    display: flex;
+    align-items: center;
+}
+
+/* La etiqueta de cada opción no debe ser negrita y debe tener un margen */
+.option-item label {
+    font-weight: normal;
+    margin-left: 8px;
+    margin-bottom: 0; /* Anula el margen por defecto de las etiquetas */
+}
+
+/* El input de radio/checkbox no debe ocupar todo el ancho */
+.option-item input[type="radio"],
+.option-item input[type="checkbox"] {
+    width: auto;
+}
+
+/* Disposición Vertical (por defecto) */
+.options-container.layout-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 5px; /* Espacio entre opciones verticales */
+}
+
+/* Disposición Horizontal */
+.options-container.layout-horizontal {
+    display: flex;
+    flex-wrap: nowrap; /* Fuerza a que todo esté en una sola línea */
+    gap: 20px; /* Espacio entre cada opción horizontal */
+    overflow-x: auto; /* Añade scroll si las opciones se desbordan */
+    padding: 5px 0;
+}
+
+.options-container.layout-horizontal .option-item {
+    flex-shrink: 0; /* Evita que las opciones se encojan */
+}
+
+/* --- FIN: ESTILOS PARA CHECKBOX Y RADIO --- */

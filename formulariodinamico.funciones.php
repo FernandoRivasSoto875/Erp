@@ -42,72 +42,89 @@ function prepararValoresGuardados($postData, $allFields) {
  * ¡VERSIÓN FINAL Y COMPLETA! Restaura la funcionalidad de todos los tipos de campo.
  */
 function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
-    $html = "";
+    $html = '';
+    $buildAttrs = function($attrs) {
+        $str = '';
+        foreach ($attrs as $k => $v) {
+            if ($v === true) $str .= " " . htmlspecialchars($k);
+            elseif ($v !== false && $v !== null) $str .= " " . htmlspecialchars($k) . "=\"" . htmlspecialchars($v) . "\"";
+        }
+        return $str;
+    };
+
     foreach ($fieldsets as $fieldset) {
         $legend = $fieldset['legend'] ?? '';
-        $html .= "<fieldset><legend>" . htmlspecialchars($legend) . "</legend>";
+        $style = !empty($fieldset['style']) ? htmlspecialchars($fieldset['style']) : '';
+        $html .= "<fieldset style='{$style}'><legend>{$legend}</legend>";
+
         if (isset($fieldset['fields'])) {
             foreach ($fieldset['fields'] as $field) {
-                $name = $field['name'] ?? '';
-                $label = $field['label'] ?? '';
                 $type = $field['type'] ?? 'text';
-                $value = $valores[$name] ?? ($field['value'] ?? '');
-                
-                // --- LÓGICA DE LABELPOSITION RESTAURADA ---
-                $labelPosition = $field['labelPosition'] ?? 'top'; // 'top' es el valor por defecto
-                
-                $html .= "<div class='campo-container label-{$labelPosition}'>"; // Se aplica la clase dinámica
-                
-                // Solo mostrar la etiqueta si existe y el campo no es de tipo 'hidden'
-                if ($label && $type !== 'hidden') {
-                    $html .= "<label for=\"" . htmlspecialchars($name) . "\">" . htmlspecialchars($label) . "</label>";
+                $name = $field['name'] ?? '';
+                $value = $valores[$name] ?? $field['value'] ?? '';
+                $labelPosition = $field['labelPosition'] ?? 'top';
+
+                // --- MODIFICACIÓN 1: Leer y aplicar 'style' a cada campo ---
+                $fieldStyle = !empty($field['style']) ? htmlspecialchars($field['style']) : '';
+                $classes = "campo-container label-{$labelPosition}";
+                $html .= "<div class='{$classes}' style='{$fieldStyle}'>";
+
+                $label = $field['label'] ?? ucfirst($name);
+                $placeholder = $field['placeholder'] ?? '';
+                $id = "field-{$name}-" . uniqid();
+
+                if ($labelPosition === 'top' || $labelPosition === 'top-left' || $labelPosition === 'top-center' || $labelPosition === 'top-right' || $labelPosition === 'left') {
+                    if ($label) $html .= "<label for='$id'>$label</label>";
                 }
-                // --- FIN DE LA LÓGICA RESTAURADA ---
 
-
-                $html .= "<div class='input-wrapper'>";
-                
-                $buildAttrs = function($attrs) {
-                    $str = '';
-                    foreach ($attrs as $k => $v) {
-                        if ($v === false || $v === null || (is_string($v) && $v === '')) continue;
-                        if ($v === true) { $str .= " $k"; continue; }
-                        $str .= " $k=\"" . htmlspecialchars(is_array($v) ? json_encode($v) : (string)$v, ENT_QUOTES) . "\"";
-                    }
-                    return $str;
-                };
-
-                // El switch con todos los tipos de campo (datatable, etc.) no necesita cambios
                 switch ($type) {
-                    // --- LÓGICA RESTAURADA PARA RADIO Y CHECKBOX ---
+                    case 'textarea':
+                        $html .= "<textarea name='$name' id='$id' placeholder='$placeholder' rows='" . ($field['rows'] ?? 3) . "'>$value</textarea>";
+                        break;
+                    
                     case 'radio':
                     case 'checkbox':
                         $options = $field['options'] ?? [];
-                        $html .= "<div class='options-container'>";
+                        if (empty($options)) break;
+
+                        // --- MODIFICACIÓN 2: Leer 'layout' para la disposición ---
+                        $layout = $field['layout'] ?? 'vertical';
+                        $html .= "<div class='options-container layout-{$layout}'>";
+
                         foreach ($options as $option) {
                             $optionValue = $option['value'];
                             $optionLabel = $option['label'];
-                            $id = "{$name}_{$optionValue}";
                             $currentName = ($type === 'checkbox' && count($options) > 1) ? "{$name}[]" : $name;
+                            $optionId = "{$id}-{$optionValue}";
                             $checked = '';
                             if (is_array($value) ? in_array($optionValue, $value) : $value == $optionValue) {
                                 $checked = ' checked';
                             }
                             $html .= "<div class='option-item'>";
-                            $html .= "<input type='{$type}' name='{$currentName}' id='{$id}' value='{$optionValue}'{$checked}>";
+                            $html .= "<input type='{$type}' name='{$currentName}' id='{$optionId}' value='{$optionValue}'{$checked}>";
                             if ($optionLabel) {
-                                $html .= "<label for='{$id}'>{$optionLabel}</label>";
+                                $html .= "<label for='{$optionId}'>{$optionLabel}</label>";
                             }
                             $html .= "</div>";
                         }
                         $html .= "</div>";
                         break;
 
+                    case 'select':
+                        $options = $field['options'] ?? [];
+                        $html .= "<select name='$name' id='$id'>";
+                        foreach ($options as $option) {
+                            $selected = ($value == $option['value']) ? ' selected' : '';
+                            $html .= "<option value='" . htmlspecialchars($option['value']) . "'$selected>" . htmlspecialchars($option['label']) . "</option>";
+                        }
+                        $html .= "</select>";
+                        break;
+
                     case 'selectdata':
                         $dataConfig = $field['data'] ?? null;
                         if ($dataConfig) {
                             $tabla = $dataConfig['tabla']; $campo = $dataConfig['campo']; $filtro = $dataConfig['filtro'] ?? '1=1';
-                            $html .= "<select name='$name' id='$name'><option value=''>Seleccione...</option>";
+                            $html .= "<select name='$name' id='$id'><option value=''>Seleccione...</option>";
                             $conn = conexionBd();
                             $sql = "SELECT DISTINCT " . $conn->real_escape_string($campo) . " FROM " . $conn->real_escape_string($tabla) . " WHERE " . $filtro . " ORDER BY " . $conn->real_escape_string($campo);
                             $result = $conn->query($sql);
@@ -144,13 +161,18 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                         }
                         $html .= "</tbody></table><button type='button' id='btn-add-row-{$name}' class='btn btn-primary mt-2'>Agregar Fila</button>";
                         break;
+                    
                     default:
-                        $attrs = ['type' => $type, 'name' => $name, 'id' => $name, 'value' => $value];
-                        foreach ($field as $k => $v) { if (in_array($k, ['placeholder', 'readonly', 'required']) || strpos($k, 'data-') === 0) { $attrs[$k] = $v; } }
-                        $html .= "<input " . $buildAttrs($attrs) . ">";
+                        $attrs = ['type' => $type, 'name' => $name, 'id' => $id, 'value' => $value, 'placeholder' => $placeholder];
+                        foreach ($field as $k => $v) { if (in_array($k, ['required', 'readonly', 'multiple', 'min', 'max', 'step']) || strpos($k, 'data-') === 0) { $attrs[$k] = $v; } }
+                        $html .= "<input" . $buildAttrs($attrs) . ">";
                         break;
                 }
-                $html .= "</div></div>"; // Cierre de input-wrapper y campo-container
+
+                if ($labelPosition === 'bottom' || $labelPosition === 'bottom-left' || $labelPosition === 'bottom-center' || $labelPosition === 'bottom-right' || $labelPosition === 'right') {
+                    if ($label) $html .= "<label for='$id'>$label</label>";
+                }
+                $html .= "</div>";
             }
         }
         $html .= "</fieldset>";

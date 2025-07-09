@@ -181,10 +181,7 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
     $html = "";
     foreach ($fieldsets as $fieldset) {
         $legend = $fieldset['legend'] ?? '';
-        $style = $fieldset['style'] ?? '';
-        $class = $fieldset['class'] ?? '';
-        $fieldsetAttrs = ($class ? ' class="' . htmlspecialchars($class) . '"' : '') . ($style ? ' style="' . htmlspecialchars($style) . '"' : '');
-        $html .= "<fieldset$fieldsetAttrs>";
+        $html .= "<fieldset>";
         if ($legend) $html .= "<legend>$legend</legend>";
 
         if (isset($fieldset['fields'])) {
@@ -193,18 +190,11 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                 $label = $field['label'] ?? '';
                 $type = $field['type'] ?? 'text';
                 $value = $valores[$name] ?? ($field['value'] ?? '');
-                $labelPosition = $field['labelPosition'] ?? 'top';
-                $containerClass = "campo-container label-pos-" . htmlspecialchars($labelPosition);
-                $html .= "<div class='$containerClass'>";
+                
+                $html .= "<div class='campo-container'>";
 
-                if ($label && $type !== 'hidden' && $labelPosition !== 'none') {
-                    $html .= ($type === 'checkbox' || $type === 'radio') 
-                        ? "<div class=\"grupo-label\">$label</div>" 
-                        : "<label for=\"$name\">$label</label>";
-                }
-
-                if ($type === 'checkbox' || $type === 'radio') {
-                    $html .= "<div class='opciones-container'>";
+                if ($label && $type !== 'hidden') {
+                    $html .= "<label for=\"$name\">$label</label>";
                 }
 
                 $buildAttrs = function($attrs) {
@@ -212,28 +202,12 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                     foreach ($attrs as $k => $v) {
                         if ($v === false || $v === null || $v === '') continue;
                         if ($v === true) { $str .= " $k"; continue; }
-                        if (is_array($v) || is_object($v)) {
-                            $str .= " $k='" . json_encode($v, JSON_UNESCAPED_UNICODE) . "'";
-                        } else {
-                            $str .= " $k=\"" . htmlspecialchars((string)$v) . "\"";
-                        }
+                        $str .= " $k=\"" . htmlspecialchars(is_array($v) ? json_encode($v) : (string)$v, ENT_QUOTES) . "\"";
                     }
                     return $str;
                 };
 
                 switch ($type) {
-                    case 'checkbox':
-                    case 'radio':
-                        $options = $field['options'] ?? [];
-                        foreach ($options as $opt) {
-                            $opt_val = is_array($opt) ? $opt['value'] : $opt;
-                            $opt_label = is_array($opt) ? $opt['label'] : $opt;
-                            $is_checked = ($type === 'checkbox' && is_array($value) && in_array($opt_val, $value)) || ($type === 'radio' && $value == $opt_val);
-                            $inputName = $name . ($type === 'checkbox' ? '[]' : '');
-                            $html .= "<label class='opcion-label'><input type=\"$type\" name=\"$inputName\" value=\"" . htmlspecialchars($opt_val) . "\" " . ($is_checked ? 'checked' : '') . "> " . htmlspecialchars($opt_label) . "</label> ";
-                        }
-                        break;
-
                     case 'datatable':
                         $columns = $field['columns'] ?? [];
                         $tableData = is_array($value) ? $value : [];
@@ -272,37 +246,30 @@ function generarFieldsets($fieldsets, $valores = [], $soloLectura = false) {
                         $html .= "<button type='button' id='btn-add-row-{$name}' class='btn btn-primary mt-2'>Agregar Fila</button>";
                         break;
 
+                    case 'checkbox':
+                    case 'radio':
+                        $options = $field['options'] ?? [];
+                        foreach ($options as $opt) {
+                            $opt_val = is_array($opt) ? $opt['value'] : $opt;
+                            $opt_label = is_array($opt) ? $opt['label'] : $opt;
+                            $is_checked = ($type === 'checkbox' && is_array($value) && in_array($opt_val, $value)) || ($type === 'radio' && $value == $opt_val);
+                            $inputName = $name . ($type === 'checkbox' ? '[]' : '');
+                            $html .= "<label class='opcion-label'><input type=\"$type\" name=\"$inputName\" value=\"" . htmlspecialchars($opt_val) . "\" " . ($is_checked ? 'checked' : '') . "> " . htmlspecialchars($opt_label) . "</label> ";
+                        }
+                        break;
+
                     default:
-                        $baseAttrs = [
-                            'name' => $name, 'id' => $name,
-                            'class' => $field['class'] ?? null, 'style' => $field['style'] ?? null,
-                            'required' => !empty($field['required']), 'readonly' => !empty($field['readonly']) || $soloLectura,
-                            'disabled' => !empty($field['disabled']) || $soloLectura,
-                        ];
+                        $attrs = ['type' => $type, 'name' => $name, 'id' => $name, 'value' => $value];
                         foreach ($field as $k => $v) {
-                            if (strpos($k, 'data-') === 0) {
-                                $baseAttrs[$k] = $v;
+                            if (in_array($k, ['placeholder', 'readonly', 'required']) || strpos($k, 'data-') === 0) {
+                                $attrs[$k] = $v;
                             }
                         }
-                        $attrs = array_merge($baseAttrs, [
-                            'type' => $type,
-                            'value' => $value,
-                            'placeholder' => $field['placeholder'] ?? null,
-                            'pattern' => $field['pattern'] ?? null,
-                        ]);
                         $html .= "<input " . $buildAttrs($attrs) . ">";
                         break;
                 }
-
-                if ($type === 'checkbox' || $type === 'radio') {
-                    $html .= "</div>";
-                }
                 $html .= "</div>";
             }
-        }
-
-        if (isset($fieldset['fieldsets'])) {
-            $html .= generarFieldsets($fieldset['fieldsets'], $valores, $soloLectura);
         }
         $html .= "</fieldset>";
     }

@@ -58,11 +58,15 @@
           "type": "datatable",
           "labelPosition": "top",
           "columns": [
-            { "name": "id_producto", "label": "ID Producto", "type": "text", "placeholder": "PROD-XXX", "readonly": true },
+
+
+              { "name": "descripcion_comuna1", "label": "Comuna (none)", "type": "text", "placeholder": "Descripción de la comuna aparecerá aquí", "labelPosition": "none", "data-formula": { "type": "lookup", "source": { "table": "Comuna", "field": "ComDes" }, "where": "ComId = {ComId}" }, "readonly": true },
+   
+            { "name": "id_producto", "label": "ID Producto", "type": "text", "placeholder": "PROD-XXX", "readonly": false },
             { "name": "descripcion", "label": "Descripción", "type": "text", "placeholder": "Nombre del producto" },
             { "name": "cantidad", "label": "Cantidad", "type": "number", "min": 1, "placeholder": "1" },
             { "name": "precio_unitario", "label": "Precio Unit.", "type": "number", "step": "0.01", "placeholder": "10000" },
-            { "name": "subtotal", "label": "Subtotal", "type": "number", "placeholder": "0", "readonly": true, "data-formula": "cantidad * precio_unitario" }
+            { "name": "subtotal", "label": "Subtotal", "type": "number", "placeholder": "0", "readonly": true, "data-formula": " + total + cantidad * precio_unitario" }
           ],
           "value": [
             { "id_producto": "PROD-001", "descripcion": "Mouse Inalámbrico", "cantidad": 2, "precio_unitario": 15000 },

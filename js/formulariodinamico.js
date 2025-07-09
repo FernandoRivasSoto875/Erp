@@ -1,124 +1,135 @@
 /**
- * Formulario Dinámico - Versión Final Estable y Robusta
- * Incluye una corrección para evitar conflictos en la ejecución de las fórmulas.
- * Muestra "no encontrado" en lookups sin resultado.
+ * Formulario Dinámico - Versión Final Unificada
+ * Soporta cálculos y búsquedas que pueden usar CUALQUIER campo del formulario,
+ * tanto dentro como fuera de los DataTables.
  */
 document.addEventListener('DOMContentLoaded', function() {
 
     const formulario = document.getElementById('formulario');
     if (!formulario) return;
 
-    let isCalculating = false; // Semáforo para evitar ejecuciones simultáneas
-    let debounceTimer;         // Temporizador para el "debounce"
+    let isCalculating = false;
+    let debounceTimer;
 
-    /**
-     * La función de recálculo principal. Orquesta todo en el orden correcto.
-     */
     async function recalculateAll() {
-        // --- PASO 1: EJECUTAR TODAS LAS BÚSQUEDAS (LOOKUPS) Y ESPERAR A QUE TERMINEN ---
-        const lookupPromises = [];
-        const currentFormValues = new FormData(formulario);
+        const allPromises = [];
 
+        // --- PASO 1: RECOLECTAR TODOS LOS VALORES Y EJECUTAR TODAS LAS BÚSQUEDAS ---
+        
+        // Obtener todos los valores del formulario una sola vez al inicio.
+        const allFormValues = new FormData(formulario);
+        const globalValues = Object.fromEntries(allFormValues.entries());
+
+        // Procesar todas las búsquedas (lookups) de una sola vez.
         formulario.querySelectorAll('[data-formula*="lookup"]').forEach(field => {
+            let context = globalValues;
+            const row = field.closest('tr');
+
+            // Si el campo está en una fila, crear un contexto combinado para esa fila.
+            if (row) {
+                const rowValues = {};
+                row.querySelectorAll('input, select, textarea').forEach(input => {
+                    const name = input.name.match(/\[(\w+)\]$/)?.[1];
+                    if (name) rowValues[name] = input.value;
+                });
+                context = { ...globalValues, ...rowValues }; // <-- CLAVE: Unifica el contexto
+            }
+
             try {
                 const formulaObj = JSON.parse(field.getAttribute('data-formula'));
-                if (formulaObj.type === 'lookup') {
-                    let whereClause = formulaObj.where;
-                    const placeholders = whereClause.match(/\{(.+?)\}/g) || [];
-                    let isReady = true;
+                let whereClause = formulaObj.where;
+                const placeholders = whereClause.match(/\{(.+?)\}/g) || [];
+                let isReady = true;
 
-                    placeholders.forEach(ph => {
-                        const fieldName = ph.replace(/[{}]/g, '');
-                        const value = currentFormValues.get(fieldName); // Usar valores actuales
-                        if (value === null || value === '') {
-                            isReady = false;
-                        }
-                        whereClause = whereClause.replace(ph, `'${value}'`); // Importante: añadir comillas para el SQL
-                    });
-
-                    if (isReady) {
-                        const promise = fetch('ajax/busqueda_formula.php', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ tabla: formulaObj.source.table, campo: formulaObj.source.field, where: whereClause })
-                        })
-                        .then(r => r.ok ? r.json() : { resultado: '' })
-                        .then(data => {
-                            // --- LÓGICA CORREGIDA ---
-                            // Si data.resultado tiene un valor, lo usa. Si no (es nulo, undefined o vacío), usa "no encontrado".
-                            field.value = data.resultado || 'no encontrado';
-                        });
-                        lookupPromises.push(promise);
-                    } else {
-                        field.value = ''; // Limpiar si el campo de origen está vacío.
+                placeholders.forEach(ph => {
+                    const fieldName = ph.replace(/[{}]/g, '');
+                    const value = context[fieldName]; // Busca en el contexto unificado
+                    if (value === null || value === '' || value === undefined) {
+                        isReady = false;
                     }
-                }
-            } catch (e) { /* Ignorar errores de parseo */ }
-        });
-        
-        // Esperar a que TODAS las búsquedas se completen antes de continuar.
-        await Promise.all(lookupPromises);
+                    whereClause = whereClause.replace(ph, `'${value}'`);
+                });
 
-        // --- PASO 2: CALCULAR TODAS LAS FÓRMULAS MATEMÁTICAS ---
-        // (El resto del código no necesita cambios)
-        
-        // Filas de los datatables
+                if (isReady) {
+                    const promise = fetch('ajax/busqueda_formula.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tabla: formulaObj.source.table, campo: formulaObj.source.field, where: whereClause })
+                    })
+                    .then(r => r.ok ? r.json() : { resultado: '' })
+                    .then(data => { field.value = data.resultado || 'no encontrado'; });
+                    allPromises.push(promise);
+                } else {
+                    field.value = '';
+                }
+            } catch (e) { /* Ignorar */ }
+        });
+
+        // Esperar a que TODAS las búsquedas terminen.
+        await Promise.all(allPromises);
+
+        // --- PASO 2: EJECUTAR TODOS LOS CÁLCULOS MATEMÁTICOS ---
+        // Se ejecuta después de que las búsquedas hayan actualizado los valores.
+
+        const finalFormValues = new FormData(formulario);
+        const finalGlobalValues = Object.fromEntries(finalFormValues.entries());
+
+        // Cálculos dentro de DataTables
         document.querySelectorAll('table.datatable-container tbody tr').forEach(row => {
             const rowValues = {};
             row.querySelectorAll('input, select, textarea').forEach(input => {
                 const name = input.name.match(/\[(\w+)\]$/)?.[1];
                 if (name) rowValues[name] = input.value;
             });
+            const context = { ...finalGlobalValues, ...rowValues }; // Contexto unificado
 
-            row.querySelectorAll('[data-formula]').forEach(field => {
-                if (!field.getAttribute('data-formula').includes('lookup')) {
-                    let expr = field.getAttribute('data-formula');
-                    try {
-                        Object.keys(rowValues).forEach(key => {
-                            const value = parseFloat(rowValues[key]) || 0;
-                            expr = expr.replace(new RegExp(`\\b${key}\\b`, 'g'), value);
-                        });
-                        const result = eval(expr);
-                        if (Number.isFinite(result)) field.value = result.toFixed(2);
-                    } catch (e) { /* Ignorar */ }
-                }
+            row.querySelectorAll('[data-formula]').forEach(fieldInRow => {
+                const formulaStr = fieldInRow.getAttribute('data-formula');
+                if (formulaStr.includes('lookup')) return; // Ya se procesaron
+
+                let expr = formulaStr;
+                try {
+                    Object.keys(context).forEach(key => {
+                        const value = parseFloat(context[key]) || 0;
+                        expr = expr.replace(new RegExp(`\\b${key}\\b`, 'g'), value);
+                    });
+                    const result = eval(expr);
+                    if (Number.isFinite(result)) fieldInRow.value = result.toFixed(2);
+                } catch (e) { /* Ignorar */ }
             });
         });
 
-        // Fórmulas globales y de agregación (SUM).
-        const finalFormValues = new FormData(formulario);
-        const finalValues = Object.fromEntries(finalFormValues.entries());
-
+        // Cálculos globales y de agregación (SUM)
         formulario.querySelectorAll('[data-formula]').forEach(field => {
-            if (!field.getAttribute('data-formula').includes('lookup') && !field.closest('table')) {
-                let expr = field.getAttribute('data-formula');
-                try {
-                    const sumMatch = expr.match(/SUM\((.+?)\)/);
-                    if (sumMatch) {
-                        const fieldToSum = sumMatch[1];
-                        const sumValues = finalFormValues.getAll(fieldToSum);
-                        const totalSum = sumValues.reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
-                        expr = expr.replace(sumMatch[0], totalSum);
-                    }
+            if (field.closest('table.datatable-container')) return; // Ya procesados
+            const formulaStr = field.getAttribute('data-formula');
+            if (formulaStr.includes('lookup')) return; // Ya procesados
 
-                    Object.keys(finalValues).forEach(key => {
-                        const value = parseFloat(finalValues[key]) || 0;
-                        expr = expr.replace(new RegExp(`\\b${key}\\b`, 'g'), value);
-                    });
+            let expr = formulaStr;
+            try {
+                // Lógica para SUM(items[][subtotal])
+                const sumMatch = expr.match(/SUM\(([^[]+)\[\]\[([^\]]+)\]\)/);
+                if (sumMatch) {
+                    const datatableName = sumMatch[1];
+                    const fieldToSum = sumMatch[2];
+                    const sumValues = finalFormValues.getAll(`${datatableName}[][${fieldToSum}]`);
+                    const totalSum = sumValues.reduce((acc, val) => acc + (parseFloat(val) || 0), 0);
+                    expr = expr.replace(sumMatch[0], totalSum);
+                }
 
-                    const result = eval(expr);
-                    if (Number.isFinite(result)) field.value = result.toFixed(2);
-                } catch (e) { /* Ignorar */ }
-            }
+                Object.keys(finalGlobalValues).forEach(key => {
+                    const value = parseFloat(finalGlobalValues[key]) || 0;
+                    expr = expr.replace(new RegExp(`\\b${key}\\b`, 'g'), value);
+                });
+
+                const result = eval(expr);
+                if (Number.isFinite(result)) field.value = result.toFixed(2);
+            } catch (e) { /* Ignorar */ }
         });
     }
 
-    /**
-     * Función controladora que se encarga de llamar a recalculateAll de forma segura.
-     */
     const handleRecalculate = async () => {
-        if (isCalculating) return; // Si ya está calculando, no hacer nada.
-        
+        if (isCalculating) return;
         isCalculating = true;
         try {
             await recalculateAll();
@@ -129,10 +140,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    // --- LÓGICA DE EVENTOS MEJORADA ---
     formulario.addEventListener('input', () => {
         clearTimeout(debounceTimer);
-        debounceTimer = setTimeout(handleRecalculate, 250); // Espera 250ms después de la última entrada para calcular
+        debounceTimer = setTimeout(handleRecalculate, 300);
     });
 
     formulario.addEventListener('click', function(e) {
@@ -165,6 +175,5 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Cálculo inicial al cargar la página.
     handleRecalculate();
 });

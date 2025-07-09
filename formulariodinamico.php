@@ -118,7 +118,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // --- FIN: LÓGICA DE GENERACIÓN DE ARCHIVOS Y CORREO ---
 
         $mensaje_envio = "<div class='alert alert-success'>Formulario procesado. Formatos generados: " . implode(', ', $formatosGenerados) . "</div>";
-        if ($params['limpiar'] ?? false) { $valores = []; }
+        if ($params['limpiar'] ?? false) { 
+            $valores = []; // Esta variable se usa para la recarga de la página
+        }
 
     } catch (Exception $e) {
         $mensaje_envio = "<div class='alert alert-danger'>Error: " . $e->getMessage() . "</div>";
@@ -148,9 +150,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="js/formulariodinamico.js"></script>
 
-<!-- INICIO: SCRIPT PARA RECUPERACIÓN DE DATOS (VERSIÓN FINAL) -->
+<!-- INICIO: SCRIPT PARA RECUPERACIÓN DE DATOS (VERSIÓN FINAL Y CORREGIDA) -->
 <script>
 function fillForm(data) {
+    // Limpia el formulario y las tablas antes de rellenar
     document.getElementById('formulario').reset();
     document.querySelectorAll('[data-datatable-name] tbody').forEach(tbody => {
         tbody.innerHTML = '';
@@ -164,7 +167,6 @@ function fillForm(data) {
             const tableBody = document.querySelector(`[data-datatable-name="${fieldName}"] tbody`);
             if (!tableBody) continue;
 
-            tableBody.innerHTML = ''; // Asegurar que la tabla esté vacía antes de rellenar
             value.forEach((rowData, rowIndex) => {
                 const newRow = tableBody.insertRow();
                 fieldInfo.columns.forEach(col => {
@@ -176,6 +178,9 @@ function fillForm(data) {
                     input.value = rowData[col.name] || '';
                     cell.appendChild(input);
                 });
+                // Añadir botón de eliminar si es necesario
+                const actionCell = newRow.insertCell();
+                actionCell.innerHTML = `<button type="button" class="eliminar_fila btn btn-danger btn-sm">Eliminar</button>`;
             });
         } else {
             const elements = document.querySelectorAll(`[name="${fieldName}"]`);
@@ -188,48 +193,61 @@ function fillForm(data) {
             });
         }
     }
+    // Disparar un evento para que la lógica de cálculo en formulariodinamico.js se ejecute
+    document.getElementById('formulario').dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+function clearForm(formElement, firstFieldElement) {
+    const key = firstFieldElement.value;
+    formElement.reset();
+    firstFieldElement.value = key; // Restaurar la clave que el usuario escribió
+    document.querySelectorAll('[data-datatable-name] tbody').forEach(tbody => {
+        tbody.innerHTML = '';
+    });
+    // Disparar un evento para que los totales se recalculen a cero
+    formElement.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 document.addEventListener('DOMContentLoaded', function () {
     const allFields = window.fields || [];
     if (allFields.length === 0) return;
 
+    const formElement = document.getElementById('formulario');
     const firstField = allFields[0];
     const firstFieldElement = document.querySelector(`[name="${firstField.name}"]`);
     const formName = '<?php echo $archivo_json; ?>';
 
-    if (!firstFieldElement) return;
+    if (!formElement || !firstFieldElement) return;
 
     firstFieldElement.addEventListener('blur', function () {
         const key = this.value.trim();
         if (key === '') {
-            // Si el usuario borra la clave, limpiar el formulario
-            document.getElementById('formulario').reset();
+            // Si el usuario borra la clave, limpiar todo
+            formElement.reset();
             document.querySelectorAll('[data-datatable-name] tbody').forEach(tbody => {
                 tbody.innerHTML = '';
             });
+            formElement.dispatchEvent(new Event('input', { bubbles: true }));
             return;
         }
 
-        // Llamar a la función para cargar datos desde la sesión
-        cargarDatos(formName, key);
+        fetch(`?action=load_data&form_name=${encodeURIComponent(formName)}&key=${encodeURIComponent(key)}`)
+            .then(response => response.json())
+            .then(result => {
+                if (result.success && result.data) {
+                    fillForm(result.data);
+                    // alert('Se han cargado los datos guardados anteriormente para "' + key + '".');
+                } else {
+                    // Si no se encuentran datos, limpiar el resto del formulario
+                    clearForm(formElement, firstFieldElement);
+                }
+            })
+            .catch(error => {
+                console.error('Error al recuperar datos:', error);
+                clearForm(formElement, firstFieldElement);
+            });
     });
 });
-
-// Función para cargar datos desde la sesión
-function cargarDatos(formName, key) {
-    $.getJSON('', { action: 'load_data', form_name: formName, key: key }, function(response) {
-        if (response.success) {
-            fillForm(response.data);
-        } else {
-            console.log('No se encontraron datos para la clave proporcionada.');
-        }
-    });
-}
-
-// Ejemplo: Cargar datos para el formulario con nombre 'mi_formulario' y clave '123'
-// Puedes modificar esto según tus necesidades, por ejemplo, usando valores dinámicos
-cargarDatos('<?php echo htmlspecialchars($archivo_json); ?>', '<?php echo htmlspecialchars($valores[$firstField['name']] ?? ''); ?>');
 </script>
 <!-- FIN: SCRIPT PARA RECUPERACIÓN DE DATOS -->
 </body>

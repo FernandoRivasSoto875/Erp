@@ -148,9 +148,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="js/formulariodinamico.js"></script>
 
-<!-- INICIO: SCRIPT PARA RECUPERACIÓN DE DATOS (VERSIÓN CORREGIDA) -->
+<!-- INICIO: SCRIPT PARA RECUPERACIÓN DE DATOS (VERSIÓN CORREGIDA Y LIMPIA) -->
 <script>
 function fillForm(data) {
+    // Primero, limpiar el formulario por si acaso
+    document.getElementById('formulario').reset();
+    
+    // Limpiar datatables explícitamente
+    document.querySelectorAll('[data-datatable-name] tbody').forEach(tbody => {
+        tbody.innerHTML = '';
+    });
+
     for (const fieldName in data) {
         const value = data[fieldName];
         const fieldInfo = window.fields.find(f => f.name === fieldName);
@@ -159,7 +167,7 @@ function fillForm(data) {
             const tableBody = document.querySelector(`[data-datatable-name="${fieldName}"] tbody`);
             if (!tableBody) continue;
 
-            tableBody.innerHTML = ''; 
+            tableBody.innerHTML = ''; // Asegurar que la tabla esté vacía antes de rellenar
             value.forEach((rowData, rowIndex) => {
                 const newRow = tableBody.insertRow();
                 fieldInfo.columns.forEach(col => {
@@ -197,7 +205,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     firstFieldElement.addEventListener('blur', function () {
         const key = this.value.trim();
-        if (!key) return;
+        if (key === '') {
+            // Si el usuario borra la clave, limpiar el formulario
+            document.getElementById('formulario').reset();
+            document.querySelectorAll('[data-datatable-name] tbody').forEach(tbody => {
+                tbody.innerHTML = '';
+            });
+            return;
+        }
 
         // Llamar a la función para cargar datos desde la sesión
         cargarDatos(formName, key);

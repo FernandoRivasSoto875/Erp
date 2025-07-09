@@ -60,18 +60,23 @@
           "type": "datatable",
           "labelPosition": "top",
           "columns": [
-
-
-          
-            { "name": "id_producto", "label": "ID Producto", "type": "text", "placeholder": "PROD-XXX", "readonly": false },
+            { "name": "id_producto", "label": "ID Producto", "type": "text", "placeholder": "PROD-XXX" },
             { "name": "descripcion", "label": "Descripción", "type": "text", "placeholder": "Nombre del producto" },
-        
-              { "name": "cantidad", "label": "cantidad", "type": "number", "placeholder": "cantidad" },
-
-
-              { "name": "precio", "label": "precio", "type": "number", "placeholder": "precio" },
-
-            { "name": "subtotal", "label": "Subtotal", "type": "number", "placeholder": "0", "readonly": true, "data-formula": "   cantidad * precio_unitario" }
+            { "name": "cantidad", "label": "Cantidad", "type": "number", "placeholder": "0" },
+            { 
+              "name": "precio_unitario", 
+              "label": "Precio Unit.", 
+              "type": "number", 
+              "placeholder": "0.00" 
+            },
+            { 
+              "name": "subtotal", 
+              "label": "Subtotal", 
+              "type": "number", 
+              "placeholder": "0.00", 
+              "readonly": true, 
+              "data-formula": "cantidad * precio_unitario" 
+            }
           ],
           "value": [
             { "id_producto": "PROD-001", "descripcion": "Mouse Inalámbrico", "cantidad": 2, "precio_unitario": 15000 },

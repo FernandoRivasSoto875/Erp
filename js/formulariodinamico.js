@@ -1,6 +1,7 @@
 /**
  * Formulario Dinámico - Versión Final Estable y Robusta
  * Incluye una corrección para evitar conflictos en la ejecución de las fórmulas.
+ * Muestra "no encontrado" en lookups sin resultado.
  */
 document.addEventListener('DOMContentLoaded', function() {
 
@@ -43,11 +44,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         })
                         .then(r => r.ok ? r.json() : { resultado: '' })
                         .then(data => {
-                            field.value = data.resultado ?? '';
+                            // --- LÓGICA CORREGIDA ---
+                            // Si data.resultado tiene un valor, lo usa. Si no (es nulo, undefined o vacío), usa "no encontrado".
+                            field.value = data.resultado || 'no encontrado';
                         });
                         lookupPromises.push(promise);
                     } else {
-                        field.value = ''; // Limpiar si no está listo
+                        field.value = ''; // Limpiar si el campo de origen está vacío.
                     }
                 }
             } catch (e) { /* Ignorar errores de parseo */ }
@@ -57,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
         await Promise.all(lookupPromises);
 
         // --- PASO 2: CALCULAR TODAS LAS FÓRMULAS MATEMÁTICAS ---
-        // Se ejecuta DESPUÉS de que los lookups hayan terminado.
+        // (El resto del código no necesita cambios)
         
         // Filas de los datatables
         document.querySelectorAll('table.datatable-container tbody tr').forEach(row => {

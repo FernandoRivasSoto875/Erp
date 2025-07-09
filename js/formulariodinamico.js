@@ -340,9 +340,23 @@ function clearForm(formElement, firstFieldElement) {
     const key = firstFieldElement ? firstFieldElement.value : '';
     formElement.reset();
     if (firstFieldElement) firstFieldElement.value = key;
+    
+    // --- INICIO: MODIFICACIÓN ---
+    // Limpiar visualmente todas las tablas
     document.querySelectorAll('[data-datatable-name] tbody').forEach(tbody => {
         tbody.innerHTML = '';
     });
-    // Dispara un evento 'input' para que tus totales se recalculen a 0.
+
+    // Eliminar los valores por defecto del objeto de configuración en memoria
+    if (window.fields) {
+        window.fields.forEach(field => {
+            if (field.type === 'datatable' && field.value) {
+                delete field.value;
+            }
+        });
+    }
+    // --- FIN: MODIFICACIÓN ---
+
+    // Dispara un evento 'input' para que los totales se recalculen a cero.
     formElement.dispatchEvent(new Event('input', { bubbles: true }));
 }

@@ -148,13 +148,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="js/formulariodinamico.js"></script>
 
-<!-- INICIO: SCRIPT PARA RECUPERACIÓN DE DATOS (VERSIÓN CORREGIDA Y LIMPIA) -->
+<!-- INICIO: SCRIPT PARA RECUPERACIÓN DE DATOS (VERSIÓN FINAL) -->
 <script>
 function fillForm(data) {
-    // Primero, limpiar el formulario por si acaso
     document.getElementById('formulario').reset();
-    
-    // Limpiar datatables explícitamente
     document.querySelectorAll('[data-datatable-name] tbody').forEach(tbody => {
         tbody.innerHTML = '';
     });

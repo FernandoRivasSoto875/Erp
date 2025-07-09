@@ -84,6 +84,13 @@ try {
 
     if ($stmt->fetch()) {
         $response['resultado'] = $resultado_db;
+        // --- INICIO: LÍNEA DE DEPURACIÓN AÑADIDA ---
+        file_put_contents($log_file, "Dato encontrado: " . $resultado_db . "\n", FILE_APPEND);
+        // --- FIN: LÍNEA DE DEPURACIÓN AÑADIDA ---
+    } else {
+        // --- INICIO: LÍNEA DE DEPURACIÓN AÑADIDA ---
+        file_put_contents($log_file, "No se encontró ningún dato para la consulta.\n", FILE_APPEND);
+        // --- FIN: LÍNEA DE DEPURACIÓN AÑADIDA ---
     }
     
     $stmt->close();

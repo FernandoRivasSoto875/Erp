@@ -208,6 +208,19 @@ $(document).ready(function() {
                     messages.html(successMsg).addClass('success').show();
                     if (response.limpiar_formulario) {
                         form[0].reset();
+                        form.find('table.datatable-container tbody').empty(); // Limpia las filas de las datatables
+                        // Opcional: Limpiar también el localStorage si se usa para autoguardado
+                        if (window.localStorage) {
+                            const keysToRemove = [];
+                            for (let i = 0; i < localStorage.length; i++) {
+                                const key = localStorage.key(i);
+                                // Asumiendo que las claves del formulario no tienen un prefijo específico,
+                                // esto es un borrado general. Si hay otros datos en localStorage,
+                                // se necesitaría una lógica más selectiva.
+                                keysToRemove.push(key);
+                            }
+                            keysToRemove.forEach(key => localStorage.removeItem(key));
+                        }
                     }
                 } else {
                     messages.html('Error: ' + response.message).addClass('error').show();

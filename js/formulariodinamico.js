@@ -254,21 +254,23 @@ $(document).ready(function() {
 
 /**
  * Rellena el formulario completo con los datos proporcionados.
+ * Maneja todos los tipos de input, incluyendo radio, checkbox, textarea, etc.
  * @param {object} data - Objeto con los datos del formulario.
  */
 function fillForm(data) {
     const formElement = document.getElementById('formulario');
-    formElement.reset();
+    formElement.reset(); // Limpia el estado anterior
     document.querySelectorAll('[data-datatable-name] tbody').forEach(tbody => { tbody.innerHTML = ''; });
 
     for (const fieldName in data) {
         const value = data[fieldName];
         const fieldInfo = window.fields.find(f => f.name === fieldName);
 
+        // Manejo de DataTables
         if (fieldInfo && fieldInfo.type === 'datatable' && Array.isArray(value)) {
             const tableBody = document.querySelector(`[data-datatable-name="${fieldName}"] tbody`);
             if (!tableBody) continue;
-
+            // (La lógica para rellenar datatables que ya tienes es correcta y se mantiene aquí)
             value.forEach((rowData, rowIndex) => {
                 const newRow = tableBody.insertRow();
                 fieldInfo.columns.forEach(col => {
@@ -286,12 +288,25 @@ function fillForm(data) {
                 actionCell.innerHTML = `<button type="button" class="eliminar_fila btn btn-danger btn-sm">Eliminar</button>`;
             });
         } else {
-            const elements = document.querySelectorAll(`[name="${fieldName}"]`);
+            // Manejo de otros tipos de campos
+            const elements = formElement.querySelectorAll(`[name="${fieldName}"], [name="${fieldName}[]"]`);
             elements.forEach(element => {
-                if (element.type === 'checkbox' || element.type === 'radio') {
-                    element.checked = Array.isArray(value) ? value.includes(element.value) : value === element.value;
-                } else {
-                    element.value = value;
+                switch (element.type) {
+                    case 'checkbox':
+                        // Para múltiples checkboxes con el mismo nombre (ej: intereses[])
+                        if (Array.isArray(value)) {
+                            element.checked = value.includes(element.value);
+                        } else { // Para un solo checkbox (ej: acepta_terminos)
+                            element.checked = (element.value === value);
+                        }
+                        break;
+                    case 'radio':
+                        element.checked = (element.value === value);
+                        break;
+                    default:
+                        // Para text, email, number, date, time, textarea, select-one, etc.
+                        element.value = value;
+                        break;
                 }
             });
         }
@@ -301,16 +316,15 @@ function fillForm(data) {
 }
 
 /**
- * Limpia el formulario, incluyendo los datatables. (VERSIÓN CORREGIDA)
+ * Limpia el formulario y lo establece en estado "Nuevo".
  * @param {HTMLFormElement} formElement - El elemento del formulario.
- * @param {HTMLInputElement|null} firstFieldElement - El primer campo (clave), para preservar su valor.
+ * @param {HTMLInputElement|null} firstFieldElement - El primer campo (clave), para preservar su valor si es necesario.
  */
 function clearForm(formElement, firstFieldElement) {
     const key = firstFieldElement ? firstFieldElement.value : '';
     formElement.reset();
     if (firstFieldElement) firstFieldElement.value = key;
     
-    // Limpiar visualmente todas las tablas
     document.querySelectorAll('[data-datatable-name] tbody').forEach(tbody => {
         tbody.innerHTML = '';
     });
@@ -318,3 +332,48 @@ function clearForm(formElement, firstFieldElement) {
     // Dispara un evento 'input' para que los totales se recalculen a cero.
     formElement.dispatchEvent(new Event('input', { bubbles: true }));
 }
+
+// --- Modifica el listener DOMContentLoaded ---
+document.addEventListener('DOMContentLoaded', function() {
+    // --- INICIO: Lógica de Estado y Carga (Versión Experto) ---
+    const formulario = document.getElementById('formulario');
+    const statusText = document.getElementById('form-status-text');
+    const statusContainer = document.getElementById('form-status-container');
+    const firstFieldElement = formulario.querySelector('input, textarea, select'); // El primer campo del formulario
+
+    if (firstFieldElement) {
+        firstFieldElement.addEventListener('blur', function () {
+            const key = this.value.trim();
+            const formName = new URLSearchParams(window.location.search).get('archivo') || 'formulariogenerico.json';
+
+            if (key === '') {
+                clearForm(formulario, null);
+                firstFieldElement.value = '';
+                statusText.textContent = 'Nuevo';
+                statusContainer.className = 'alert alert-secondary p-2';
+                return;
+            }
+
+            fetch(`formulariodinamicophp.php?action=load_data&form_name=${encodeURIComponent(formName)}&key=${encodeURIComponent(key)}`)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success && result.data) {
+                        fillForm(result.data);
+                        statusText.textContent = 'Modificando';
+                        statusContainer.className = 'alert alert-warning p-2';
+                    } else {
+                        clearForm(formulario, this);
+                        statusText.textContent = 'Nuevo';
+                        statusContainer.className = 'alert alert-info p-2';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al recuperar datos:', error);
+                    clearForm(formulario, this);
+                    statusText.textContent = 'Error de Conexión';
+                    statusContainer.className = 'alert alert-danger p-2';
+                });
+        });
+    }
+    // --- FIN: Lógica de Estado y Carga ---
+});

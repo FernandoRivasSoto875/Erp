@@ -14,8 +14,16 @@ require_once 'formulariodinamicologica.php';
 </head>
 <body>
 <div class="container mt-4">
-    <h2>Formulario: <?php echo htmlspecialchars($archivo_json); ?></h2>
     
+    <!-- INICIO: MODIFICACIÓN -->
+    <div class="d-flex justify-content-between align-items-center">
+        <h2>Formulario: <?php echo htmlspecialchars($archivo_json); ?></h2>
+        <div id="form-status-container" class="alert alert-secondary p-2">
+            Estado: <span id="form-status-text" class="font-weight-bold">Nuevo</span>
+        </div>
+    </div>
+    <!-- FIN: MODIFICACIÓN -->
+
     <!-- El action del formulario apunta a este mismo archivo de vista. -->
     <form id="formulario" method="post" action="formulariodinamico.php?archivo=<?php echo urlencode($archivo_json); ?>" enctype="multipart/form-data" autocomplete="off">
         

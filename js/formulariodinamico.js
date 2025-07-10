@@ -282,6 +282,6 @@ header('Content-Type: application/json');
 
 if ($_GET['action'] === 'lookup') {
     // ...tu lógica de búsqueda...
-    echo json_encode(['success' => true, 'value' => $valor]);
+ 
     exit;
 }

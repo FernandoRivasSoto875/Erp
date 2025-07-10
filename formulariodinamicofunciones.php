@@ -202,9 +202,6 @@ if (!function_exists('generarFieldsets')) {
                                             $attrs[$k] = $v;
                                         }
                                         // Si no es fórmula aritmética, no agregar nada
-                                    } else if ($k === 'data-formula' && is_array($v)) {
-                                        // Nunca agregar si es array/objeto
-                                        continue;
                                     } else {
                                         $attrs[$k] = $v;
                                     }

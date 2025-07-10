@@ -1,22 +1,3 @@
-<?php
-ob_clean();
-header('Content-Type: application/json');
-error_reporting(0); // Solo para producción, en desarrollo usa error_reporting(E_ALL);
-ini_set('display_errors', 0);
-/**
- * Formulario Dinámico - Versión Final, Verificada y Consistente
- *
- * Este código ha sido reescrito desde cero para ser robusto y predecible.
- *
- * Escenarios de Funcionamiento Verificados:
- * 1. Carga de datos al salir del campo clave.
- * 2. Relleno correcto de todos los tipos de campo.
- * 3. Asignación correcta de `data-formula` y `readonly`.
- * 4. Cálculo INMEDIATO de fórmulas al cargar datos.
- * 5. Recálculo EN VIVO de fórmulas al editar valores.
- * 6. Adición y eliminación de filas funcionales.
- * 7. Guardado de datos (Nuevo y Editando) funcional y sin conflictos.
- */
 document.addEventListener('DOMContentLoaded', function() {
     // --- 1. CONFIGURACIÓN INICIAL ---
     const form = document.getElementById('formulario');
@@ -293,3 +274,4 @@ document.addEventListener('DOMContentLoaded', function() {
 
     procesarLookups();
 });
+// Fin del archivo JS

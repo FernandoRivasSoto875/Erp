@@ -34,12 +34,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const camposConFormula = fila.querySelectorAll('[data-formula]');
         camposConFormula.forEach(campoResultado => {
             let formula = campoResultado.getAttribute('data-formula');
+            // Si la fórmula es un objeto (ej: [object Object]), no intentes evaluarla
+            if (!formula || formula.startsWith('{') || formula === '[object Object]') return;
+
             let formulaReemplazada = formula;
             let esCalculable = true;
 
             const variables = formula.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
             if (!variables) return;
-            
+
             variables.forEach(variable => {
                 const campoVariable = fila.querySelector(`[name*="[${variable}]"]`);
                 if (campoVariable) {

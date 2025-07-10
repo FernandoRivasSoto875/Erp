@@ -151,6 +151,7 @@ if (isset($_SESSION['mensaje_flash'])) {
 
 // --- PRIORIDAD 4: LOOKUP AJAX PARA CAMPOS CON data-formula tipo lookup ---
 if (isset($_GET['action']) && $_GET['action'] === 'lookup') {
+    ob_clean();
     header('Content-Type: application/json');
     $table = $_GET['table'] ?? '';
     $field = $_GET['field'] ?? '';

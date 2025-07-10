@@ -1,7 +1,7 @@
 <?php
 // NO SE INCLUYE A SÍ MISMO.
 // Solo incluimos los archivos que ESTE archivo necesita para funcionar.
-require_once 'funcionessql.php';
+// require_once 'funcionessql.php'; // <-- COMENTA O ELIMINA ESTA LÍNEA
 
 // --- INICIO DE LA FUNCIÓN FALTANTE ---
 /**

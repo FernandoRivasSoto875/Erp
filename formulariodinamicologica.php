@@ -15,10 +15,9 @@ require __DIR__ . '/vendor/autoload.php';
 // --- FIN: Integración con Librerías ---
 
 // ESTA ES LA CORRECCIÓN CRÍTICA.
-// Ya que 'formulariodinamico.funciones.php' se encarga de incluir 'funcionessql.php',
-// no necesitamos volver a incluirlo aquí. Esto evita cualquier conflicto.
+// Este archivo se encarga de incluir todas las dependencias necesarias.
 require_once 'formulariodinamico.funciones.php';
-// require_once 'funcionessql.php'; // <-- ELIMINA O COMENTA ESTA LÍNEA REDUNDANTE
+require_once 'funcionessql.php'; // <-- ASEGÚRATE DE QUE ESTA LÍNEA ESTÉ ACTIVA
 
 // --- FUNCIONES AUXILIARES ---
 function obtenerTodosLosCampos($fieldsets) { $campos = []; foreach ($fieldsets as $fieldset) { if (!empty($fieldset['fields'])) { $campos = array_merge($campos, $fieldset['fields']); } if (!empty($fieldset['fieldsets'])) { $campos = array_merge($campos, obtenerTodosLosCampos($fieldset['fieldsets'])); } } return $campos; }

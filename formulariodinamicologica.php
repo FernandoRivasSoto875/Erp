@@ -1,5 +1,5 @@
 <?php
-// filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\formulariodinamicologica.php
+// TAMPOCO DEBE HABER NADA ANTES DE ESTA LÍNEA.
 session_start();
 
 // --- INICIO: Integración con Librerías ---

@@ -1,4 +1,5 @@
 <?php
+// NO DEBE HABER NADA ANTES DE ESTA LÍNEA. NI ESPACIOS, NI LÍNEAS EN BLANCO.
 // filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\formulariodinamico.php
 // Paso 1: Incluir toda la lógica de negocio desde el archivo PHP dedicado.
 require_once 'formulariodinamicologica.php';

@@ -208,11 +208,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $_SESSION['mensaje_flash'] = "Formulario guardado y procesado con éxito.";
         // Redirigimos a la página limpia, sin el ID, para permitir un nuevo registro.
-        header("Location: formulariogenerico.php?archivo=" . urlencode($archivo_json) . "&status=saved");
+        header("Location: formulariodinamico.php?archivo=" . urlencode($archivo_json) . "&status=saved");
+        error_log('Redirigiendo a formulariodinamico.php tras guardar. Adjuntos: ' . implode(', ', $archivosAdjuntar));
         exit;
 
     } catch (Exception $e) {
         $mensaje_envio = "<div class='alert alert-danger'>Error al procesar: " . $e->getMessage() . "</div>";
+        error_log('Error al procesar formulario: ' . $e->getMessage());
         $valores = $formData; // Si hay error, rellenamos el form con los datos para corregir.
     }
 }

@@ -1,6 +1,6 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/usuario/public_html/
+    - export DEPLOYPATH=/home/usuario/public_html/ErpQa
     - /bin/cp -r * $DEPLOYPATH
 

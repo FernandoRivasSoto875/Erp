@@ -86,6 +86,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    // --- NUEVO: Recalculo global de todas las filas de todas las tablas y campos simples ---
+    function recalcularTodo() {
+        // Recalcula todos los datatables
+        document.querySelectorAll('.datatable-container tbody tr').forEach(recalcularFila);
+        // Recalcula todos los campos simples
+        recalcularCamposSimples();
+    }
 
     // --- 3. FUNCIÓN PARA RELLENAR EL FORMULARIO ---
     function fillForm(data) {
@@ -198,6 +205,7 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('click', e => {
         if (e.target.classList.contains('eliminar_fila')) {
             e.target.closest('tr').remove();
+            recalcularTodo(); // Recalcula tras eliminar fila
         } else if (e.target.id.startsWith('btn-add-row-')) {
             const tableId = e.target.id.replace('btn-add-row-', '');
             const tableBody = document.querySelector(`#${tableId} tbody`);
@@ -220,6 +228,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 const actionCell = newRow.insertCell();
                 actionCell.innerHTML = `<button type="button" class="btn btn-danger btn-sm eliminar_fila">X</button>`;
+                recalcularTodo(); // Recalcula tras agregar fila
             }
         }
     });
@@ -264,18 +273,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // EVENTO 4: Cambio en campos de texto (para fórmulas en vivo)
     form.addEventListener('input', e => {
-        // Recalcular todos los campos con fórmula en el formulario
-        document.querySelectorAll('[data-formula]').forEach(function(input) {
-            // Solo campos de texto/number
-            if (input.type === 'text' || input.type === 'number') {
-                let fila = input.closest('tr');
-                if (fila) {
-                    recalcularFila(fila);
-                } else {
-                    recalcularCamposSimples();
-                }
-            }
-        });
+        recalcularTodo(); // Recalcula todo en cada input
+    });
+
+    // Al cargar la página, recalcula todo
+    window.addEventListener('DOMContentLoaded', function() {
+        recalcularTodo();
     });
 
     // --- FUNCIÓN PARA LOOKUP AUTOMÁTICO ---

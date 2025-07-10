@@ -54,7 +54,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'lookup') {
 
 // Elimino el header global, solo se debe usar en respuestas AJAX
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // --- INICIO: Integración con Librerías ---
 use PHPMailer\PHPMailer\PHPMailer;
@@ -318,6 +320,9 @@ if (isset($_SESSION['mensaje_flash'])) {
 }
 
 // --- Limpieza automática de archivos temporales generados (no adjuntos subidos por usuario) ---
+if (!isset($archivosTemporales) || !is_array($archivosTemporales)) {
+    $archivosTemporales = [];
+}
 foreach ($archivosTemporales as $tmpFile) {
     if (file_exists($tmpFile)) {
         @unlink($tmpFile);

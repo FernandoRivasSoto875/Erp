@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
- 
-<body>
+ <body>
     <?php include 'header.php'; ?>
     <?php include 'menu.php'; ?>
     <?php include 'redes.php'; ?>

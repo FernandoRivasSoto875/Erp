@@ -73,10 +73,17 @@ function getFieldInfo($fieldName, $all_fields) { foreach ($all_fields as $field)
 
 // --- INICIO: Preparación de Variables Globales ---
 $archivo_json = $_GET['archivo'] ?? 'formulariogenerico.json';
-$json_path = "json/" . basename($archivo_json);
-if (!file_exists($json_path)) { die("Error: El archivo de configuración '$json_path' no existe."); }
+$archivo_json = basename($archivo_json); // Seguridad: solo nombre, sin ruta
+$json_path = __DIR__ . "/json/" . $archivo_json;
+if (!file_exists($json_path)) {
+    $mensaje_envio = "<div class='alert alert-danger'>Error: El archivo de configuración '$json_path' no existe.</div>";
+    return;
+}
 $json = json_decode(file_get_contents($json_path), true);
-if (json_last_error() !== JSON_ERROR_NONE) { die("Error: El archivo JSON contiene errores. " . json_last_error_msg()); }
+if (json_last_error() !== JSON_ERROR_NONE) {
+    $mensaje_envio = "<div class='alert alert-danger'>Error: El archivo JSON contiene errores. " . json_last_error_msg() . "</div>";
+    return;
+}
 
 $all_fields = obtenerTodosLosCampos($json['fieldsets'] ?? []);
 $valores = [];
@@ -96,6 +103,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $formData = [];
     $adjuntosWarnings = [];
+    // --- Configuración de validaciones de adjuntos ---
+    $allowedMimeTypes = [
+        'image/jpeg', 'image/png', 'image/gif', 'application/pdf',
+        'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/plain', 'application/zip', 'application/x-zip-compressed',
+        'application/vnd.ms-powerpoint', 'application/octet-stream' // para algunos doc antiguos
+    ];
+    $maxFileSize = 5 * 1024 * 1024; // 5 MB
+    $archivosTemporales = [];
     foreach ($all_fields as $field) {
         $fieldName = $field['name'];
         if ($field['type'] === 'datatable') {
@@ -106,7 +123,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 foreach ($_FILES[$fieldName]['name'] as $idx => $fileName) {
                     if ($_FILES[$fieldName]['error'][$idx] === UPLOAD_ERR_OK) {
                         $tmpName = $_FILES[$fieldName]['tmp_name'][$idx];
-                        $destPath = $uploadsDir . basename($fileName);
+                        $fileType = mime_content_type($tmpName);
+                        $fileSize = $_FILES[$fieldName]['size'][$idx];
+                        if (!in_array($fileType, $allowedMimeTypes)) {
+                            $adjuntosWarnings[] = "Tipo de archivo no permitido: $fileName ($fileType)";
+                            continue;
+                        }
+                        if ($fileSize > $maxFileSize) {
+                            $adjuntosWarnings[] = "Archivo demasiado grande: $fileName (" . round($fileSize/1024/1024,2) . " MB)";
+                            continue;
+                        }
+                        // Seguridad: nombre único para archivos adjuntos
+                        $destPath = $uploadsDir . uniqid('adj_', true) . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', basename($fileName));
                         if (move_uploaded_file($tmpName, $destPath)) {
                             $formData[$fieldName][] = $destPath;
                         } else {
@@ -119,11 +147,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else if (isset($_FILES[$fieldName]) && !is_array($_FILES[$fieldName]['name']) && $_FILES[$fieldName]['error'] === UPLOAD_ERR_OK) {
                 $tmpName = $_FILES[$fieldName]['tmp_name'];
                 $fileName = $_FILES[$fieldName]['name'];
-                $destPath = $uploadsDir . basename($fileName);
-                if (move_uploaded_file($tmpName, $destPath)) {
-                    $formData[$fieldName][] = $destPath;
+                $fileType = mime_content_type($tmpName);
+                $fileSize = $_FILES[$fieldName]['size'];
+                if (!in_array($fileType, $allowedMimeTypes)) {
+                    $adjuntosWarnings[] = "Tipo de archivo no permitido: $fileName ($fileType)";
+                } elseif ($fileSize > $maxFileSize) {
+                    $adjuntosWarnings[] = "Archivo demasiado grande: $fileName (" . round($fileSize/1024/1024,2) . " MB)";
                 } else {
-                    $adjuntosWarnings[] = "No se pudo guardar el archivo adjunto (single): $fileName";
+                    $destPath = $uploadsDir . uniqid('adj_', true) . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', basename($fileName));
+                    if (move_uploaded_file($tmpName, $destPath)) {
+                        $formData[$fieldName][] = $destPath;
+                    } else {
+                        $adjuntosWarnings[] = "No se pudo guardar el archivo adjunto (single): $fileName";
+                    }
                 }
             } else if (isset($_FILES[$fieldName]) && $_FILES[$fieldName]['error'] !== UPLOAD_ERR_NO_FILE) {
                 $adjuntosWarnings[] = "Error al subir archivo adjunto (single): " . $_FILES[$fieldName]['name'] . ", código: " . $_FILES[$fieldName]['error'];
@@ -168,7 +204,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if (file_exists($filePath)) {
                         $archivosAdjuntar[] = $filePath;
                     } else {
-                        error_log("Archivo adjunto no encontrado para adjuntar: $filePath");
+                        $adjuntosWarnings[] = "Archivo adjunto no encontrado para adjuntar: $filePath";
                     }
                 }
             } else {
@@ -178,33 +214,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $datosParaArchivos[] = ['label' => $label, 'value' => $valorParaArchivo, 'type' => $fieldInfo['type'], 'columns' => $fieldInfo['columns'] ?? []];
             $cuerpoHtml .= "<h3>" . htmlspecialchars($label) . "</h3><div>{$displayValue}</div><hr>";
         }
-        if (in_array('html', $formatosAgenerar)) { $path = $baseFilename . '.html'; file_put_contents($path, $cuerpoHtml); $archivosAdjuntar[] = $path; }
-        if (in_array('json', $formatosAgenerar)) { $path = $baseFilename . '.json'; file_put_contents($path, json_encode($formData, JSON_PRETTY_PRINT)); $archivosAdjuntar[] = $path; }
-        if (in_array('csv', $formatosAgenerar) || in_array('cvs', $formatosAgenerar)) { $path = $baseFilename . '.csv'; $fp = fopen($path, 'w'); fputcsv($fp, ['Campo', 'Valor']); foreach ($datosParaArchivos as $dato) { fputcsv($fp, [$dato['label'], $dato['value']]); } fclose($fp); $archivosAdjuntar[] = $path; }
-        if (in_array('xml', $formatosAgenerar)) { $path = $baseFilename . '.xml'; $xml = new SimpleXMLElement('<formulario/>'); foreach ($datosParaArchivos as $dato) { $xml->addChild(preg_replace('/[^A-Za-z0-9_]/', '', $dato['label']), htmlspecialchars($dato['value'])); } $xml->asXML($path); $archivosAdjuntar[] = $path; }
-        if (in_array('doc', $formatosAgenerar)) { $path = $baseFilename . '.doc'; file_put_contents($path, $cuerpoHtml); $archivosAdjuntar[] = $path; }
-        if (in_array('xls', $formatosAgenerar) || in_array('xlsx', $formatosAgenerar)) { $path = $baseFilename . '.xls'; $xlsContent = "<html xmlns:x='urn:schemas-microsoft-com:office:excel'><head><meta charset='UTF-8'></head><body>"; $xlsContent .= "<h3>Datos Principales</h3><table border='1'>"; $xlsContent .= "<tr><th>Campo</th><th>Valor</th></tr>"; foreach ($datosParaArchivos as $dato) { if ($dato['type'] !== 'datatable') { $xlsContent .= "<tr><td>" . htmlspecialchars($dato['label']) . "</td><td>" . htmlspecialchars($dato['value']) . "</td></tr>"; } } $xlsContent .= "</table><br/><br/>"; foreach ($datosParaArchivos as $dato) { if ($dato['type'] === 'datatable') { $xlsContent .= "<h3>" . htmlspecialchars($dato['label']) . "</h3><table border='1'>"; $tableData = json_decode($dato['value'], true); $xlsContent .= "<tr>"; foreach($dato['columns'] as $col) { $xlsContent .= "<th>" . htmlspecialchars($col['label']) . "</th>"; } $xlsContent .= "</tr>"; foreach($tableData as $row) { $xlsContent .= "<tr>"; foreach($dato['columns'] as $col) { $xlsContent .= "<td>" . htmlspecialchars($row[$col['name']] ?? '') . "</td>"; } $xlsContent .= "</tr>"; } $xlsContent .= "</table><br/>"; } } $xlsContent .= "</body></html>"; file_put_contents($path, $xlsContent); $archivosAdjuntar[] = $path; }
-        if (in_array('pdf', $formatosAgenerar)) { try { $path = $baseFilename . '.pdf'; $pdf = new FPDF('P', 'mm', 'A4'); $pdf->AddPage(); $pdf->SetFont('Arial', 'B', 16); $pdf->Cell(0, 10, utf8_decode($params['subject'] ?? 'Datos del Formulario'), 0, 1, 'C'); $pdf->Ln(10); foreach ($datosParaArchivos as $dato) { $pdf->SetFont('Arial', 'B', 12); $pdf->Cell(50, 8, utf8_decode($dato['label'] . ':'), 0, 0); $pdf->SetFont('Arial', '', 12); if ($dato['type'] === 'datatable') { $pdf->Ln(10); $tableData = json_decode($dato['value'], true); $pdf->SetFont('Arial', 'B', 10); foreach($dato['columns'] as $col) { $pdf->Cell(40, 7, utf8_decode($col['label']), 1); } $pdf->Ln(); $pdf->SetFont('Arial', '', 10); foreach($tableData as $row) { foreach($dato['columns'] as $col) { $pdf->Cell(40, 7, utf8_decode($row[$col['name']] ?? ''), 1); } $pdf->Ln(); } $pdf->Ln(5); } else { $pdf->MultiCell(0, 8, utf8_decode($dato['value'])); $pdf->Ln(2); } } $pdf->Output('F', $path); $archivosAdjuntar[] = $path; } catch (Exception $e) { /* Ignorar error de PDF */ } }
+        if (in_array('html', $formatosAgenerar)) { $path = $baseFilename . '.html'; file_put_contents($path, $cuerpoHtml); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path; }
+        if (in_array('json', $formatosAgenerar)) { $path = $baseFilename . '.json'; file_put_contents($path, json_encode($formData, JSON_PRETTY_PRINT)); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path; }
+        if (in_array('csv', $formatosAgenerar) || in_array('cvs', $formatosAgenerar)) { $path = $baseFilename . '.csv'; $fp = fopen($path, 'w'); fputcsv($fp, ['Campo', 'Valor']); foreach ($datosParaArchivos as $dato) { fputcsv($fp, [$dato['label'], $dato['value']]); } fclose($fp); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path; }
+        if (in_array('xml', $formatosAgenerar)) { $path = $baseFilename . '.xml'; $xml = new SimpleXMLElement('<formulario/>'); foreach ($datosParaArchivos as $dato) { $xml->addChild(preg_replace('/[^A-Za-z0-9_]/', '', $dato['label']), htmlspecialchars($dato['value'])); } $xml->asXML($path); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path; }
+        if (in_array('doc', $formatosAgenerar)) { $path = $baseFilename . '.doc'; file_put_contents($path, $cuerpoHtml); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path; }
+        if (in_array('xls', $formatosAgenerar) || in_array('xlsx', $formatosAgenerar)) { $path = $baseFilename . '.xls'; $xlsContent = "<html xmlns:x='urn:schemas-microsoft-com:office:excel'><head><meta charset='UTF-8'></head><body>"; $xlsContent .= "<h3>Datos Principales</h3><table border='1'>"; $xlsContent .= "<tr><th>Campo</th><th>Valor</th></tr>"; foreach ($datosParaArchivos as $dato) { if ($dato['type'] !== 'datatable') { $xlsContent .= "<tr><td>" . htmlspecialchars($dato['label']) . "</td><td>" . htmlspecialchars($dato['value']) . "</td></tr>"; } } $xlsContent .= "</table><br/><br/>"; foreach ($datosParaArchivos as $dato) { if ($dato['type'] === 'datatable') { $xlsContent .= "<h3>" . htmlspecialchars($dato['label']) . "</h3><table border='1'>"; $tableData = json_decode($dato['value'], true); $xlsContent .= "<tr>"; foreach($dato['columns'] as $col) { $xlsContent .= "<th>" . htmlspecialchars($col['label']) . "</th>"; } $xlsContent .= "</tr>"; foreach($tableData as $row) { $xlsContent .= "<tr>"; foreach($dato['columns'] as $col) { $xlsContent .= "<td>" . htmlspecialchars($row[$col['name']] ?? '') . "</td>"; } $xlsContent .= "</tr>"; } $xlsContent .= "</table><br/>"; } } $xlsContent .= "</body></html>"; file_put_contents($path, $xlsContent); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path; }
+        if (in_array('pdf', $formatosAgenerar)) { try { $path = $baseFilename . '.pdf'; $pdf = new FPDF('P', 'mm', 'A4'); $pdf->AddPage(); $pdf->SetFont('Arial', 'B', 16); $pdf->Cell(0, 10, utf8_decode($params['subject'] ?? 'Datos del Formulario'), 0, 1, 'C'); $pdf->Ln(10); foreach ($datosParaArchivos as $dato) { $pdf->SetFont('Arial', 'B', 12); $pdf->Cell(50, 8, utf8_decode($dato['label'] . ':'), 0, 0); $pdf->SetFont('Arial', '', 12); if ($dato['type'] === 'datatable') { $pdf->Ln(10); $tableData = json_decode($dato['value'], true); $pdf->SetFont('Arial', 'B', 10); foreach($dato['columns'] as $col) { $pdf->Cell(40, 7, utf8_decode($col['label']), 1); } $pdf->Ln(); $pdf->SetFont('Arial', '', 10); foreach($tableData as $row) { foreach($dato['columns'] as $col) { $pdf->Cell(40, 7, utf8_decode($row[$col['name']] ?? ''), 1); } $pdf->Ln(); } $pdf->Ln(5); } else { $pdf->MultiCell(0, 8, utf8_decode($dato['value'])); $pdf->Ln(2); } } $pdf->Output('F', $path); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path; } catch (Exception $e) { /* Ignorar error de PDF */ } }
         if (in_array('htmlc', $formatosAgenerar) && !empty($params['destinatario'])) {
-            $mail = new PHPMailer(true);
-            $mail->isSendmail();
-            $mail->CharSet = 'UTF-8';
-            $mail->setFrom($params['mailDe'] ?? 'noreply@example.com', 'Formulario Web');
-            $mail->addAddress($params['destinatario']);
-            if (!empty($params['mailCc'])) { $mail->addCC($params['mailCc']); }
-            $mail->isHTML(true);
-            $mail->Subject = $params['subject'] ?? 'Nuevo Envío de Formulario';
-            $mail->Body    = $cuerpoHtml;
-            $logAdjuntos = [];
-            foreach ($archivosAdjuntar as $rutaArchivo) {
-                if (file_exists($rutaArchivo)) {
-                    $mail->addAttachment($rutaArchivo);
-                    $logAdjuntos[] = $rutaArchivo;
+            try {
+                $mail = new PHPMailer(true);
+                $mail->isSendmail();
+                $mail->CharSet = 'UTF-8';
+                $mail->setFrom($params['mailDe'] ?? 'noreply@example.com', 'Formulario Web');
+                $mail->addAddress($params['destinatario']);
+                if (!empty($params['mailCc'])) { $mail->addCC($params['mailCc']); }
+                $mail->isHTML(true);
+                $mail->Subject = $params['subject'] ?? 'Nuevo Envío de Formulario';
+                $mail->Body    = $cuerpoHtml;
+                $logAdjuntos = [];
+                foreach ($archivosAdjuntar as $rutaArchivo) {
+                    if (file_exists($rutaArchivo)) {
+                        $mail->addAttachment($rutaArchivo);
+                        $logAdjuntos[] = $rutaArchivo;
+                    }
                 }
+                $mail->send();
+                error_log('Correo enviado a: ' . $params['destinatario'] . ' | Adjuntos: ' . implode(', ', $logAdjuntos));
+            } catch (Exception $e) {
+                $adjuntosWarnings[] = 'No se pudo enviar el correo: ' . $mail->ErrorInfo;
             }
-            $mail->send();
-            // Log en error_log con destinatario y adjuntos
-            error_log('Correo enviado a: ' . $params['destinatario'] . ' | Adjuntos: ' . implode(', ', $logAdjuntos));
         }
         $mensajeFinal = "Formulario guardado y procesado con éxito.";
         if (!empty($adjuntosWarnings)) {
@@ -249,5 +288,12 @@ else if (isset($_GET['action']) && $_GET['action'] === 'load_data') {
 if (isset($_SESSION['mensaje_flash'])) {
     $mensaje_envio = "<div class='alert alert-success'>" . $_SESSION['mensaje_flash'] . "</div>";
     unset($_SESSION['mensaje_flash']);
+}
+
+// --- Limpieza automática de archivos temporales generados (no adjuntos subidos por usuario) ---
+foreach ($archivosTemporales as $tmpFile) {
+    if (file_exists($tmpFile)) {
+        @unlink($tmpFile);
+    }
 }
 ?>

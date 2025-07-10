@@ -150,4 +150,51 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    // --- INICIO: SECCIÓN NUEVA - EL MOTOR DE CÁLCULO QUE FALTABA ---
+    // --- 6. LÓGICA PARA CÁLCULOS CON 'data-formula' ---
+    form.addEventListener('input', function(e) {
+        // Nos aseguramos de que el cambio ocurrió en un input dentro de una tabla
+        const inputCambiado = e.target;
+        const fila = inputCambiado.closest('tr');
+        if (!fila) return;
+
+        // Buscamos todos los campos con fórmula DENTRO de la misma fila
+        const camposConFormula = fila.querySelectorAll('[data-formula]');
+        
+        camposConFormula.forEach(campoResultado => {
+            let formula = campoResultado.getAttribute('data-formula');
+            
+            // Encontramos todos los nombres de las variables en la fórmula (ej: "cantidad", "precio")
+            const variables = formula.match(/[a-zA-Z0-9_]+/g) || [];
+            let formulaCalculable = formula;
+
+            let calculoPosible = true;
+            variables.forEach(variable => {
+                // Buscamos el input que corresponde a esa variable DENTRO de la misma fila
+                const campoVariable = fila.querySelector(`[name*="[${variable}]"]`);
+                
+                if (campoVariable) {
+                    const valor = parseFloat(campoVariable.value) || 0;
+                    // Reemplazamos el nombre de la variable por su valor numérico en la fórmula
+                    formulaCalculable = formulaCalculable.replace(new RegExp(variable, 'g'), valor);
+                } else {
+                    calculoPosible = false;
+                }
+            });
+
+            if (calculoPosible) {
+                try {
+                    // Usamos una forma segura de evaluar la expresión matemática
+                    const resultado = new Function(`return ${formulaCalculable}`)();
+                    campoResultado.value = resultado.toFixed(2); // Redondeamos a 2 decimales
+                } catch (error) {
+                    // Si la fórmula es inválida (ej: "10 *"), no hacemos nada
+                    console.error("Error al calcular la fórmula:", error);
+                }
+            }
+        });
+    });
+    // --- FIN: SECCIÓN NUEVA ---
+
 });

@@ -335,6 +335,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // --- VALIDACIÓN POR REGEX DESDE JSON ---
     function validarCamposPorRegex(campos, validaciones) {
         let errores = [];
+        const mensajeUniversal = 'Por favor, ingrese un valor válido en este campo.';
         for (const campo of campos) {
             const nombre = campo.name;
             const valor = campo.value;
@@ -343,7 +344,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!regex.test(valor)) {
                     errores.push({
                         campo: nombre,
-                        mensaje: validaciones[nombre].mensaje || 'Valor inválido.'
+                        mensaje: mensajeUniversal
                     });
                 }
             }

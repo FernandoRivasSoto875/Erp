@@ -194,7 +194,7 @@ if (!function_exists('generarFieldsets')) {
 
                         default:
                             $attrs = ['type' => $type, 'name' => $name, 'id' => $id, 'value' => $value, 'placeholder' => ($field['placeholder'] ?? '')];
-                            foreach $field as $k => $v) {
+                            foreach ($field as $k => $v) {
                                 if (in_array($k, ['required', 'readonly', 'multiple', 'min', 'max', 'step']) || strpos($k, 'data-') === 0) {
                                     // Si es data-formula, solo agregar si es string aritmético
                                     if ($k === 'data-formula') {

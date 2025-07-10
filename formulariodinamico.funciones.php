@@ -1,6 +1,7 @@
 <?php
-require_once 'formulariodinamico.funciones.php'; // <-- USA require_once
-require_once 'funcionessql.php';                 // <-- USA require_once
+// NO SE INCLUYE A SÍ MISMO.
+// Solo incluimos los archivos que ESTE archivo necesita para funcionar.
+require_once 'funcionessql.php';
 
 // --- INICIO DE LA FUNCIÓN FALTANTE ---
 /**

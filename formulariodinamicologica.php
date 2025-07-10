@@ -244,7 +244,6 @@ else if (isset($_GET['action']) && $_GET['action'] === 'load_data') {
     }
     exit;
 }
-
 // --- PRIORIDAD 3: LÓGICA PARA MOSTRAR MENSAJES (SI NO ES POST NI AJAX) ---
 // Esto se ejecuta en la carga normal de la página.
 if (isset($_SESSION['mensaje_flash'])) {

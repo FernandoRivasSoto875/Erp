@@ -1,3 +1,8 @@
+<?php
+ob_clean();
+header('Content-Type: application/json');
+error_reporting(0); // Solo para producción, en desarrollo usa error_reporting(E_ALL);
+ini_set('display_errors', 0);
 /**
  * Formulario Dinámico - Versión Final, Verificada y Consistente
  *

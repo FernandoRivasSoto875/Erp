@@ -14,6 +14,7 @@ require_once 'fpdf/fpdf.php';
 require __DIR__ . '/vendor/autoload.php';
 // --- FIN: Integración con Librerías ---
 
+// ESTA ES LA CORRECCIÓN CRÍTICA. AMBOS DEBEN USAR require_once.
 require_once 'formulariodinamico.funciones.php';
 require_once 'funcionessql.php';
 

@@ -359,16 +359,18 @@ document.addEventListener('DOMContentLoaded', function() {
             errorDiv.className = 'error-feedback text-danger';
             input.parentNode.appendChild(errorDiv);
         }
-        errorDiv.textContent = mensaje;
+        // Mensaje universal de error
+        const mensajeUniversal = 'Por favor, ingrese un valor válido en este campo.';
+        errorDiv.textContent = mensajeUniversal;
         input.classList.add('is-invalid');
-        // Popup flotante para cualquier campo con error
+        // Popup flotante universal
         if (input._swalTimeout) clearTimeout(input._swalTimeout);
         input._swalTimeout = setTimeout(() => {
             if (input.classList.contains('is-invalid')) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Error de validación',
-                    text: mensaje,
+                    text: mensajeUniversal,
                     timer: 2500,
                     timerProgressBar: true,
                     toast: true,
@@ -390,7 +392,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (validaciones[nombre]) {
             const regex = new RegExp(validaciones[nombre].regex);
             if (!regex.test(valor)) {
-                mostrarErrorCampo(input, validaciones[nombre].mensaje || 'Valor inválido.');
+                mostrarErrorCampo(input, validaciones[nombre].mensaje || '');
                 return false;
             }
         }
@@ -415,8 +417,8 @@ document.addEventListener('DOMContentLoaded', function() {
             let errores = validarCamposPorRegex(campos, validaciones);
             if (errores.length > 0) {
                 e.preventDefault();
-                let mensajes = errores.map(err => `<li>${err.mensaje}</li>`).join('');
-                $('#mensaje-envio').html(`<div class='alert alert-danger'><b>Errores de validación:</b><ul>${mensajes}</ul></div>`);
+                // Mensaje universal de error para todos los campos
+                $('#mensaje-envio').html(`<div class='alert alert-danger'><b>Error:</b> Por favor, revise los campos marcados en rojo y corrija los datos antes de enviar el formulario.</div>`);
                 return false;
             }
         });

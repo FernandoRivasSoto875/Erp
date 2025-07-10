@@ -107,8 +107,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $destPath = $uploadsDir . basename($fileName);
                         if (move_uploaded_file($tmpName, $destPath)) {
                             $formData[$fieldName][] = $destPath;
+                        } else {
+                            error_log("No se pudo mover el archivo adjunto: $fileName");
                         }
+                    } else {
+                        error_log("Error al subir archivo adjunto: $fileName, error code: " . $_FILES[$fieldName]['error'][$idx]);
                     }
+                }
+            } else if (isset($_FILES[$fieldName]) && !is_array($_FILES[$fieldName]['name']) && $_FILES[$fieldName]['error'] === UPLOAD_ERR_OK) {
+                // Soporte para un solo archivo
+                $tmpName = $_FILES[$fieldName]['tmp_name'];
+                $fileName = $_FILES[$fieldName]['name'];
+                $destPath = $uploadsDir . basename($fileName);
+                if (move_uploaded_file($tmpName, $destPath)) {
+                    $formData[$fieldName][] = $destPath;
+                } else {
+                    error_log("No se pudo mover el archivo adjunto (single): $fileName");
                 }
             }
         } else {
@@ -150,6 +164,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 foreach ($value as $filePath) {
                     if (file_exists($filePath)) {
                         $archivosAdjuntar[] = $filePath;
+                    } else {
+                        error_log("Archivo adjunto no encontrado para adjuntar: $filePath");
                     }
                 }
             } else {

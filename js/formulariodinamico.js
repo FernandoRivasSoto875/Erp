@@ -173,7 +173,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const url = `formulariodinamicologica.php?archivo=${encodeURIComponent(archivoJson)}&action=load_data&key=${encodeURIComponent(key)}`;
         fetch(url)
             .then(response => response.json())
-            .then(result => result.success && result.data ? fillForm(result.data) : limpiarFormulario(true))
+            .then(result => {
+                if (result.success && result.data) {
+                    fillForm(result.data);
+                } else {
+                    limpiarFormulario(true);
+                    // Mostrar mensaje visual si no se encuentra el registro
+                    if (!document.getElementById('alert-no-encontrado')) {
+                        const alertDiv = document.createElement('div');
+                        alertDiv.id = 'alert-no-encontrado';
+                        alertDiv.className = 'alert alert-info';
+                        alertDiv.innerHTML = '<b>No encontrado:</b> No existe un registro con ese valor.';
+                        statusText.parentNode.insertBefore(alertDiv, statusText.nextSibling);
+                        setTimeout(() => {
+                            if (alertDiv.parentNode) alertDiv.parentNode.removeChild(alertDiv);
+                        }, 3000);
+                    }
+                }
+            })
             .catch(error => console.error('Error al cargar los datos:', error));
     });
 

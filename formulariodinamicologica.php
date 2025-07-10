@@ -214,8 +214,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     } catch (Exception $e) {
         $mensaje_envio = "<div class='alert alert-danger'>Error al procesar: " . $e->getMessage() . "</div>";
-        error_log('Error al procesar formulario: ' . $e->getMessage());
         $valores = $formData; // Si hay error, rellenamos el form con los datos para corregir.
+        echo $mensaje_envio; // Mostrar el error directamente en la web
+        exit;
     }
 }
 // --- PRIORIDAD 2: PROCESAR PETICIONES AJAX PARA CARGAR DATOS ---

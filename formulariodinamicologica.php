@@ -2,7 +2,7 @@
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-header('Content-Type: text/plain');
+// Elimino el header global, solo se debe usar en respuestas AJAX
 
 session_start();
 

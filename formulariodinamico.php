@@ -18,16 +18,16 @@ require_once 'formulariodinamicologica.php';
         <!-- INICIO: MODIFICACIÓN -->
     <div class="d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center">
-            <h2 class="mb-0 mr-3"><?php 
-                // Mostrar el título desde el JSON de parámetros si existe
-                echo htmlspecialchars($json['parametros']['titulo'] ?? basename($archivo_json)); 
-            ?></h2>
+            <h2 class="mb-0 mr-3">
+                <?php 
+                    // Mostrar el título desde el JSON de parámetros si existe
+                    echo htmlspecialchars($json['parametros']['titulo'] ?? basename($archivo_json)); 
+                ?>
+                <span id="form-status-text" class="font-weight-bold" style="font-size:0.7em; margin-left:12px; color:#6c757d;">Nuevo</span>
+            </h2>
             <?php if (!empty($json['parametros']['tituloimagen'])): ?>
                 <img src="<?php echo htmlspecialchars($json['parametros']['tituloimagen']); ?>" alt="Imagen título" style="max-height:48px; margin-left:12px;">
             <?php endif; ?>
-        </div>
-        <div id="form-status-container" class="alert alert-secondary p-2">
-            Estado: <span id="form-status-text" class="font-weight-bold">Nuevo</span>
         </div>
     </div>
     <!-- FIN: MODIFICACIÓN -->

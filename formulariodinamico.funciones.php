@@ -167,6 +167,23 @@ if (!function_exists('generarFieldsets')) {
                             $html .= "</tbody></table><button type='button' id='btn-add-row-{$name}' class='btn btn-primary mt-2'>Agregar Fila</button>";
                             break;
                         
+                        case 'file':
+                            $attrs = ['type' => 'file', 'name' => $name, 'id' => $id];
+                            if (!empty($field['multiple'])) {
+                                $attrs['multiple'] = true;
+                                // Asegura que el nombre termine en [] para múltiples archivos
+                                if (substr($name, -2) !== '[]') {
+                                    $attrs['name'] = $name . '[]';
+                                }
+                            }
+                            foreach ($field as $k => $v) {
+                                if (in_array($k, ['required', 'readonly', 'accept']) || strpos($k, 'data-') === 0) {
+                                    $attrs[$k] = $v;
+                                }
+                            }
+                            $inputHtml = "<input" . $buildAttrs($attrs) . ">";
+                            break;
+
                         default:
                             $attrs = ['type' => $type, 'name' => $name, 'id' => $id, 'value' => $value, 'placeholder' => ($field['placeholder'] ?? '')];
                             foreach ($field as $k => $v) { if (in_array($k, ['required', 'readonly', 'multiple', 'min', 'max', 'step']) || strpos($k, 'data-') === 0) { $attrs[$k] = $v; } }

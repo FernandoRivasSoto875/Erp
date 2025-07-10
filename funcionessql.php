@@ -1,5 +1,4 @@
 <?php // <-- ESTO DEBE SER LO PRIMERO EN EL ARCHIVO. SIN ESPACIOS NI LÍNEAS ANTES.
-
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);

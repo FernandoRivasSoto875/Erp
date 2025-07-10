@@ -413,5 +413,15 @@ document.addEventListener('DOMContentLoaded', function() {
             $('#form-spinner').fadeOut(200);
         }, true);
     });
+
+    // --- GUARDAR ARCHIVO PHP LLAMADOR Y LÓGICA POST-ENVÍO ---
+    if (!form.querySelector('[name="archivo_llamador"]')) {
+        let hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'archivo_llamador';
+        hidden.value = window.location.pathname.split('/').pop();
+        form.appendChild(hidden);
+    }
+    // La lógica post-envío ya está correctamente dentro del .then() del submit principal, no se debe duplicar aquí
 });
 // Fin del archivo JS

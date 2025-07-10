@@ -4,10 +4,23 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-// funcionessql.php
-// Archivo de funciones para la conexión a la base de datos y utilidades SQL
-
+/**
+ * Establece y devuelve una conexión a la base de datos.
+ * Utiliza un patrón Singleton (conexión única) para evitar múltiples conexiones
+ * en una misma ejecución de página.
+ *
+ * @return mysqli La instancia de la conexión a la base de datos.
+ */
 function conexionBd() {
+    // La variable estática mantiene su valor entre llamadas a la función.
+    static $conn = null;
+
+    // Si la conexión ya fue creada, la devolvemos directamente.
+    if ($conn !== null) {
+        return $conn;
+    }
+
+    // Si no, creamos la conexión por primera vez.
     $rutaJson = __DIR__ . '/json/conexion.json';
     if (!file_exists($rutaJson)) {
         die("Error: No se encuentra el archivo de configuración $rutaJson");
@@ -32,11 +45,18 @@ function conexionBd() {
     return $conn;
 }
 
-// Ejemplo de función auxiliar para obtener una descripción según un código
-function obtenerClienteDescripcion($codigo) {
+/**
+ * Obtiene la descripción de una ciudad según su código.
+ *
+ * @param string $codigo El código de la ciudad (ej: 'STGO').
+ * @return string La descripción de la ciudad o un mensaje de error.
+ */
+function obtenerDescripcionCiudad($codigo) {
+    // Ahora esta llamada es súper eficiente.
+    // La 1ra vez conecta, las siguientes solo devuelve la conexión existente.
     $conn = conexionBd();
-    $descripcion = "Código no encontrado."; // Valor por defecto
-    
+    $descripcion = "Código no encontrado.";
+
     $sql = "SELECT CiuDes FROM Ciudad WHERE CiuCod = ?";
     $stmt = $conn->prepare($sql);
     if ($stmt) {
@@ -50,8 +70,7 @@ function obtenerClienteDescripcion($codigo) {
         $stmt->close();
     }
     $conn->close();
-    
-    // ¡CORRECCIÓN CRÍTICA! Faltaba devolver el valor encontrado.
+
     return $descripcion;
 }
 ?>

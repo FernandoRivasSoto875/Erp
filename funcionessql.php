@@ -1,4 +1,7 @@
 <?php // <-- ESTO DEBE SER LO PRIMERO EN EL ARCHIVO. SIN ESPACIOS NI LÍNEAS ANTES.
+echo "<!-- FUNCIONESSQL CARGADO -->"; // <-- AÑADE ESTA LÍNEA DE PRUEBA
+if (function_exists('conexionBd')) { die('ERROR DE DIAGNÓSTICO: Se intentó cargar funcionessql.php, pero la función conexionBd ya existe. Revisa tus "require" y cámbialos por "require_once".'); }
+
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);

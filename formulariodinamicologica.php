@@ -148,4 +148,43 @@ if (isset($_SESSION['mensaje_flash'])) {
     $mensaje_envio = "<div class='alert alert-success'>" . $_SESSION['mensaje_flash'] . "</div>";
     unset($_SESSION['mensaje_flash']);
 }
+
+// --- PRIORIDAD 4: LOOKUP AJAX PARA CAMPOS CON data-formula tipo lookup ---
+if (isset($_GET['action']) && $_GET['action'] === 'lookup') {
+    header('Content-Type: application/json');
+    $table = $_GET['table'] ?? '';
+    $field = $_GET['field'] ?? '';
+    $where = $_GET['where'] ?? '';
+
+    if (!$table || !$field || !$where) {
+        echo json_encode(['success' => false, 'error' => 'Faltan parámetros']);
+        exit;
+    }
+
+    // Conexión a la base de datos (ajusta según tu config)
+    require_once __DIR__ . '/config/conexion.json';
+    $config = json_decode(file_get_contents(__DIR__ . '/config/conexion.json'), true);
+    $mysqli = new mysqli($config['host'], $config['user'], $config['password'], $config['database']);
+    if ($mysqli->connect_errno) {
+        echo json_encode(['success' => false, 'error' => 'Error de conexión']);
+        exit;
+    }
+
+    // Seguridad básica: solo permite letras, números y guion bajo en nombres de tabla/campo
+    if (!preg_match('/^[a-zA-Z0-9_]+$/', $table) || !preg_match('/^[a-zA-Z0-9_]+$/', $field)) {
+        echo json_encode(['success' => false, 'error' => 'Parámetros inválidos']);
+        exit;
+    }
+
+    // Prepara la consulta
+    $sql = "SELECT `$field` FROM `$table` WHERE $where LIMIT 1";
+    $result = $mysqli->query($sql);
+    if ($result && $row = $result->fetch_assoc()) {
+        echo json_encode(['success' => true, 'value' => $row[$field]]);
+    } else {
+        echo json_encode(['success' => false, 'value' => '']);
+    }
+    $mysqli->close();
+    exit;
+}
 ?>

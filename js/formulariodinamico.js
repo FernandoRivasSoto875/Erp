@@ -20,7 +20,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const camposConFormula = fila.querySelectorAll('[data-formula]');
         camposConFormula.forEach(campoResultado => {
             let formula = campoResultado.getAttribute('data-formula');
+            // Si la fórmula es un objeto (ej: [object Object]), no intentes evaluarla
             if (!formula || formula.startsWith('{') || formula === '[object Object]') return;
+            try {
+                // Si la fórmula viene serializada como JSON, intenta parsear y descartar si es objeto
+                let parsed = null;
+                try { parsed = JSON.parse(formula); } catch(e){}
+                if (parsed && typeof parsed === 'object') return;
+            } catch(e){}
             let formulaReemplazada = formula;
             let esCalculable = true;
             const variables = formula.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
@@ -49,7 +56,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function recalcularCamposSimples() {
         allFields.forEach(field => {
             if (typeof field['data-formula'] === 'string') {
-                const formula = field['data-formula'];
+                let formula = field['data-formula'];
+                // Si la fórmula es un objeto serializado, ignorar
+                try { let parsed = JSON.parse(formula); if (parsed && typeof parsed === 'object') return; } catch(e){}
                 const input = form.querySelector(`[name="${field.name}"]`);
                 if (!input) return;
                 let formulaReemplazada = formula;

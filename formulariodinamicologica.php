@@ -95,12 +95,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!is_dir($uploadsDir)) mkdir($uploadsDir, 0755, true);
 
     $formData = [];
+    $adjuntosWarnings = [];
     foreach ($all_fields as $field) {
         $fieldName = $field['name'];
         if ($field['type'] === 'datatable') {
             $formData[$fieldName] = isset($postData[$fieldName]) ? $postData[$fieldName] : [];
         } else if ($field['type'] === 'file') {
-            // Procesar archivos adjuntos
             $formData[$fieldName] = [];
             if (isset($_FILES[$fieldName]) && is_array($_FILES[$fieldName]['name'])) {
                 foreach ($_FILES[$fieldName]['name'] as $idx => $fileName) {
@@ -110,22 +110,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         if (move_uploaded_file($tmpName, $destPath)) {
                             $formData[$fieldName][] = $destPath;
                         } else {
-                            error_log("No se pudo mover el archivo adjunto: $fileName");
+                            $adjuntosWarnings[] = "No se pudo guardar el archivo adjunto: $fileName";
                         }
-                    } else {
-                        error_log("Error al subir archivo adjunto: $fileName, error code: " . $_FILES[$fieldName]['error'][$idx]);
+                    } else if ($_FILES[$fieldName]['error'][$idx] !== UPLOAD_ERR_NO_FILE) {
+                        $adjuntosWarnings[] = "Error al subir archivo adjunto: $fileName, código: " . $_FILES[$fieldName]['error'][$idx];
                     }
                 }
             } else if (isset($_FILES[$fieldName]) && !is_array($_FILES[$fieldName]['name']) && $_FILES[$fieldName]['error'] === UPLOAD_ERR_OK) {
-                // Soporte para un solo archivo
                 $tmpName = $_FILES[$fieldName]['tmp_name'];
                 $fileName = $_FILES[$fieldName]['name'];
                 $destPath = $uploadsDir . basename($fileName);
                 if (move_uploaded_file($tmpName, $destPath)) {
                     $formData[$fieldName][] = $destPath;
                 } else {
-                    error_log("No se pudo mover el archivo adjunto (single): $fileName");
+                    $adjuntosWarnings[] = "No se pudo guardar el archivo adjunto (single): $fileName";
                 }
+            } else if (isset($_FILES[$fieldName]) && $_FILES[$fieldName]['error'] !== UPLOAD_ERR_NO_FILE) {
+                $adjuntosWarnings[] = "Error al subir archivo adjunto (single): " . $_FILES[$fieldName]['name'] . ", código: " . $_FILES[$fieldName]['error'];
             }
         } else {
             $formData[$fieldName] = isset($postData[$fieldName]) ? $postData[$fieldName] : null;
@@ -205,17 +206,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // Log en error_log con destinatario y adjuntos
             error_log('Correo enviado a: ' . $params['destinatario'] . ' | Adjuntos: ' . implode(', ', $logAdjuntos));
         }
-
-        $_SESSION['mensaje_flash'] = "Formulario guardado y procesado con éxito.";
-        // Redirigimos a la página limpia, sin el ID, para permitir un nuevo registro.
+        $mensajeFinal = "Formulario guardado y procesado con éxito.";
+        if (!empty($adjuntosWarnings)) {
+            $mensajeFinal .= "<br><div class='alert alert-warning mt-2'><b>Advertencias:</b><ul><li>" . implode('</li><li>', $adjuntosWarnings) . "</li></ul></div>";
+        }
+        $_SESSION['mensaje_flash'] = $mensajeFinal;
         header("Location: formulariodinamico.php?archivo=" . urlencode($archivo_json) . "&status=saved");
         error_log('Redirigiendo a formulariodinamico.php tras guardar. Adjuntos: ' . implode(', ', $archivosAdjuntar));
         exit;
-
     } catch (Exception $e) {
         $mensaje_envio = "<div class='alert alert-danger'>Error al procesar: " . $e->getMessage() . "</div>";
-        $valores = $formData; // Si hay error, rellenamos el form con los datos para corregir.
-        echo $mensaje_envio; // Mostrar el error directamente en la web
+        if (!empty($adjuntosWarnings)) {
+            $mensaje_envio .= "<br><div class='alert alert-warning mt-2'><b>Advertencias:</b><ul><li>" . implode('</li><li>', $adjuntosWarnings) . "</li></ul></div>";
+        }
+        $valores = $formData;
+        echo $mensaje_envio;
         exit;
     }
 }

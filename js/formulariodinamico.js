@@ -89,8 +89,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     try {
                         const resultado = new Function(`return ${formulaReemplazada}`)();
                         input.value = isFinite(resultado) ? resultado.toFixed(2) : '';
+                        console.log('Calculando', field.name, '=', formula, '->', formulaReemplazada, '->', input.value);
                     } catch (error) {
                         input.value = '';
+                        console.error('Error al calcular', field.name, formula, error);
                     }
                 } else {
                     input.value = '';
@@ -282,7 +284,3 @@ document.addEventListener('DOMContentLoaded', function() {
 
     procesarLookups();
 });
-
-<?php
-$postData = json_decode(file_get_contents('php://input'), true);
-?>

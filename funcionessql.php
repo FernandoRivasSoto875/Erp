@@ -1,4 +1,7 @@
-<?php // <-- ESTO DEBE SER LO PRIMERO EN EL ARCHIVO. SIN ESPACIOS NI LÍNEAS ANTES.
+<?php
+// echo "<!-- FUNCIONESSQL CARGADO -->"; // <-- ELIMINA ESTA LÍNEA
+// if (function_exists('conexionBd')) { die('ERROR DE DIAGNÓSTICO...'); } // <-- ELIMINA ESTA LÍNEA
+
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);

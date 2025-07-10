@@ -152,6 +152,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         setTimeout(() => {
             form.querySelectorAll('.datatable-container tbody tr, [data-datatable-name] tbody tr').forEach(recalcularFila);
+            recalcularCamposSimples();
         }, 100);
     }
 
@@ -237,6 +238,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (fila) {
             recalcularFila(fila);
         }
+        recalcularCamposSimples();
     });
 
     // --- FUNCIÓN PARA LOOKUP AUTOMÁTICO ---

@@ -1,5 +1,3 @@
- 
-
 <footer class="footer">
     <!-- Contenido del footer -->
     <p class="footer-title">

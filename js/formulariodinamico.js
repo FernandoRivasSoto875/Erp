@@ -264,11 +264,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // EVENTO 4: Cambio en campos de texto (para fórmulas en vivo)
     form.addEventListener('input', e => {
-        const fila = e.target.closest('tr');
-        if (fila) {
-            recalcularFila(fila);
-        }
-        recalcularCamposSimples();
+        // Recalcular todos los campos con fórmula en el formulario
+        document.querySelectorAll('[data-formula]').forEach(function(input) {
+            // Solo campos de texto/number
+            if (input.type === 'text' || input.type === 'number') {
+                let fila = input.closest('tr');
+                if (fila) {
+                    recalcularFila(fila);
+                } else {
+                    recalcularCamposSimples();
+                }
+            }
+        });
     });
 
     // --- FUNCIÓN PARA LOOKUP AUTOMÁTICO ---

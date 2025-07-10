@@ -166,7 +166,17 @@ if (!function_exists('generarFieldsets')) {
                                     foreach ($columns as $col) {
                                         $colName = $col['name'];
                                         $colAttrs = ['type' => $col['type'] ?? 'text', 'name' => "{$name}[{$i}][{$colName}]", 'value' => $rowData[$colName] ?? '', 'class' => 'form-control'];
-                                        foreach ($col as $k => $v) { if (in_array($k, ['placeholder', 'readonly']) || strpos($k, 'data-') === 0) { $colAttrs[$k] = $v; } }
+                                        foreach ($col as $k => $v) {
+                                            if (in_array($k, ['placeholder', 'readonly']) || strpos($k, 'data-') === 0) {
+                                                if ($k === 'data-formula') {
+                                                    if ($esFormulaAritmetica($v)) {
+                                                        $colAttrs[$k] = $v;
+                                                    }
+                                                } else {
+                                                    $colAttrs[$k] = $v;
+                                                }
+                                            }
+                                        }
                                         $html .= "<td><input " . $buildAttrs($colAttrs) . "></td>";
                                     }
                                     $html .= "<td><button type='button' class='eliminar_fila btn btn-danger btn-sm'>Eliminar</button></td></tr>";

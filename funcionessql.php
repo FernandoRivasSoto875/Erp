@@ -1,6 +1,13 @@
 <?php
-// echo "<!-- FUNCIONESSQL CARGADO -->"; // <-- ELIMINA ESTA LÍNEA
-// if (function_exists('conexionBd')) { die('ERROR DE DIAGNÓSTICO...'); } // <-- ELIMINA ESTA LÍNEA
+if (function_exists('conexionBd')) {
+    echo "<h1>Error de Diagnóstico Definitivo</h1>";
+    echo "<p><b>El problema es una doble inclusión.</b> El archivo <code>funcionessql.php</code> se intentó cargar una segunda vez.</p>";
+    echo "<p>La <b>primera carga</b> fue correcta, pero la <b>segunda carga</b> (que causa el error) fue solicitada por el archivo que se muestra a continuación en la traza (trace):</p>";
+    echo "<pre style='background:#fff; border:1px solid #f00; padding:15px; font-family:monospace;'>";
+    debug_print_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+    echo "</pre>";
+    die();
+}
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
@@ -67,7 +74,8 @@ function obtenerDescripcionCiudad($codigo) {
         }
         $stmt->close();
     }
-    $conn->close();
+    // Ya no cerramos la conexión aquí ($conn->close()), 
+    // se cerrará automáticamente al final del script.
 
     return $descripcion;
 }

@@ -279,11 +279,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Ejecuta el lookup tanto al cargar como al cambiar el campo clave
                 function ejecutarLookup() {
                     let where = formula.where;
+                    let camposCompletos = true;
                     matches.forEach(m => {
                         const n = m.replace(/[{}]/g, '');
                         const v = form.querySelector(`[name="${n}"]`)?.value || '';
+                        if (!v) camposCompletos = false;
                         where = where.replace(m, v);
                     });
+                    if (!camposCompletos) {
+                        targetInput.value = '';
+                        return;
+                    }
                     fetch(`formulariodinamicologica.php?action=lookup&table=${encodeURIComponent(formula.source.table)}&field=${encodeURIComponent(formula.source.field)}&where=${encodeURIComponent(where)}`)
                         .then(r => r.json())
                         .then(result => {
@@ -294,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         });
                 }
-                // Ejecutar lookup al cargar
+                // Ejecutar lookup al cargar SOLO si todos los campos requeridos existen y tienen valor
                 ejecutarLookup();
                 // Ejecutar lookup al cambiar el campo clave
                 matches.forEach(match => {

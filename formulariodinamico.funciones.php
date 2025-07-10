@@ -1,5 +1,6 @@
 <?php
-//require_once 'funcionessql.php';
+require_once 'formulariodinamico.funciones.php'; // <-- USA require_once
+require_once 'funcionessql.php';                 // <-- USA require_once
 
 // --- INICIO DE LA FUNCIÓN FALTANTE ---
 /**

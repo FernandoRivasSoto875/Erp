@@ -1,5 +1,4 @@
 <?php
-// Asegúrate de que la conexión a la BD esté disponible
 require_once 'funcionessql.php';
 
 // --- INICIO DE LA FUNCIÓN FALTANTE ---

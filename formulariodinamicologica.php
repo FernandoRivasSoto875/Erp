@@ -113,24 +113,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $_SESSION['mensaje_flash'] = "Formulario guardado y procesado con éxito.";
         // --- CORRECCIÓN CRÍTICA EN LA REDIRECCIÓN ---
-        // Redirigimos pasándole el ID del registro guardado.
-        header("Location: formulariogenerico.php?archivo=" . urlencode($archivo_json) . "&id=" . urlencode($id_registro) . "&status=saved");
+        // Redirigimos a la página limpia, sin el ID, para permitir un nuevo registro.
+        header("Location: formulariogenerico.php?archivo=" . urlencode($archivo_json) . "&status=saved");
         exit;
 
     } catch (Exception $e) {
         $mensaje_envio = "<div class='alert alert-danger'>Error al procesar: " . $e->getMessage() . "</div>";
-        $valores = $formData;
+        $valores = $formData; // Si hay error, rellenamos el form con los datos para corregir.
     }
 }
 // --- PRIORIDAD 2: PROCESAR PETICIONES AJAX PARA CARGAR DATOS ---
+// Esta es AHORA la ÚNICA forma de cargar datos en el formulario.
 else if (isset($_GET['action']) && $_GET['action'] === 'load_data') {
     header('Content-Type: application/json');
-    // --- CORRECCIÓN: Usamos el nombre del archivo JSON de la URL, no uno enviado por JS ---
     $formName = $_GET['archivo'] ?? ''; 
     $key = $_GET['key'] ?? '';
 
     if (empty($formName) || empty($key)) {
-        echo json_encode(['error' => 'Faltan parámetros.']);
+        echo json_encode(['error' => 'Faltan parámetros para la carga.']);
         exit;
     }
 
@@ -143,17 +143,8 @@ else if (isset($_GET['action']) && $_GET['action'] === 'load_data') {
     exit;
 }
 
-// --- PRIORIDAD 3: LÓGICA PARA CARGAR DATOS EN LA CARGA INICIAL DE LA PÁGINA ---
-$id_a_cargar = $_GET['id'] ?? null;
-if ($id_a_cargar) {
-    $sessionKey = 'form_data_' . $archivo_json . '_' . $id_a_cargar;
-    if (isset($_SESSION[$sessionKey])) {
-        $valores = $_SESSION[$sessionKey];
-        $soloLectura = true; // Opcional: Poner el formulario en modo solo lectura al cargar
-    }
-}
-
-// --- PRIORIDAD 4: LÓGICA PARA MOSTRAR MENSAJES (SI NO ES POST NI AJAX) ---
+// --- PRIORIDAD 3: LÓGICA PARA MOSTRAR MENSAJES (SI NO ES POST NI AJAX) ---
+// Esto se ejecuta en la carga normal de la página.
 if (isset($_SESSION['mensaje_flash'])) {
     $mensaje_envio = "<div class='alert alert-success'>" . $_SESSION['mensaje_flash'] . "</div>";
     unset($_SESSION['mensaje_flash']);

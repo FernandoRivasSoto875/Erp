@@ -160,3 +160,45 @@ button:hover { background: var(--primary-hover); }
     order: 0;
   }
 }
+
+@media screen and (min-width: 769px) {
+  /* Para pantallas grandes, refuerza la lógica de labelPosition */
+  .campo-container.label-top,
+  .campo-container.label-top-left,
+  .campo-container.label-top-center,
+  .campo-container.label-top-right {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+  .campo-container.label-bottom,
+  .campo-container.label-bottom-left,
+  .campo-container.label-bottom-center,
+  .campo-container.label-bottom-right {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    text-align: left;
+  }
+  .campo-container.label-left {
+    flex-direction: row;
+    align-items: center;
+    text-align: left;
+    gap: 10px;
+  }
+  .campo-container.label-right {
+    flex-direction: row;
+    align-items: center;
+    text-align: right;
+    gap: 10px;
+  }
+  .campo-container.label-top-center,
+  .campo-container.label-bottom-center {
+    align-items: center;
+    text-align: center;
+  }
+  .campo-container.label-top-right,
+  .campo-container.label-bottom-right {
+    align-items: flex-end;
+    text-align: right;
+  }
+}

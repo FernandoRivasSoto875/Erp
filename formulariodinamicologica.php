@@ -194,7 +194,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mail->isHTML(true);
             $mail->Subject = $params['subject'] ?? 'Nuevo Envío de Formulario';
             $mail->Body    = $cuerpoHtml;
-            foreach ($archivosAdjuntar as $rutaArchivo) { if (file_exists($rutaArchivo)) { $mail->addAttachment($rutaArchivo); } }
+            // LOG de adjuntos enviados
+            $logAdjuntos = [];
+            foreach ($archivosAdjuntar as $rutaArchivo) {
+                if (file_exists($rutaArchivo)) {
+                    $mail->addAttachment($rutaArchivo);
+                    $logAdjuntos[] = $rutaArchivo;
+                }
+            }
+            error_log('Archivos adjuntos enviados: ' . implode(', ', $logAdjuntos));
             $mail->send();
         }
 

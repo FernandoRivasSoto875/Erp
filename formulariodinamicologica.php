@@ -2,13 +2,7 @@
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-ob_clean();
 header('Content-Type: text/plain');
-// --- INICIO: HERRAMIENTA DE DIAGNÓSTICO ---  <-- BORRA ESTE BLOQUE
-if (headers_sent($file, $line)) {
-    die("Error: Las cabeceras ya fueron enviadas. La salida de texto comenzó en el archivo: <b>$file</b> en la línea: <b>$line</b>");
-}
-// --- FIN: HERRAMIENTA DE DIAGNÓSTICO ---    <-- HASTA AQUÍ
 
 session_start();
 

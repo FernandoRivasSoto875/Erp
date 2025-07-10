@@ -3,7 +3,6 @@
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-
 /**
  * Establece y devuelve una conexión a la base de datos.
  * Utiliza un patrón Singleton (conexión única) para evitar múltiples conexiones
@@ -14,12 +13,10 @@ error_reporting(E_ALL);
 function conexionBd() {
     // La variable estática mantiene su valor entre llamadas a la función.
     static $conn = null;
-
     // Si la conexión ya fue creada, la devolvemos directamente.
     if ($conn !== null) {
         return $conn;
     }
-
     // Si no, creamos la conexión por primera vez.
     $rutaJson = __DIR__ . '/json/conexion.json';
     if (!file_exists($rutaJson)) {
@@ -44,7 +41,6 @@ function conexionBd() {
     $conn->set_charset("utf8");
     return $conn;
 }
-
 /**
  * Obtiene la descripción de una ciudad según su código.
  *

@@ -1,11 +1,10 @@
 <?php
-// --- INICIO: HERRAMIENTA DE DIAGNÓSTICO ---
+// --- INICIO: HERRAMIENTA DE DIAGNÓSTICO ---  <-- BORRA ESTE BLOQUE
 if (headers_sent($file, $line)) {
     die("Error: Las cabeceras ya fueron enviadas. La salida de texto comenzó en el archivo: <b>$file</b> en la línea: <b>$line</b>");
 }
-// --- FIN: HERRAMIENTA DE DIAGNÓSTICO ---
+// --- FIN: HERRAMIENTA DE DIAGNÓSTICO ---    <-- HASTA AQUÍ
 
-// TAMPOCO DEBE HABER NADA ANTES DE ESTA LÍNEA.
 session_start();
 
 // --- INICIO: Integración con Librerías ---

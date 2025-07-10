@@ -81,19 +81,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     // --- FIN: FUSIÓN Y MEJORA ---
 
+    // --- INICIO: CORRECCIÓN DE LÓGICA DE GUARDADO ---
     $firstField = reset($all_fields);
+    // Verificamos que el primer campo esté definido en el formulario.
     if ($firstField && isset($formData[$firstField['name']])) {
         $key = $formData[$firstField['name']];
-        if (!empty($key)) {
-            $sessionKey = 'form_data_' . $archivo_json . '_' . $key;
-            // Guardamos el formData reconstruido, no el $_POST original.
-            $_SESSION[$sessionKey] = $formData;
-        }
+
+        // La clave para la sesión se construye siempre.
+        $sessionKey = 'form_data_' . $archivo_json . '_' . $key;
+
+        // Guardamos SIEMPRE que se presiona el botón, incluso si la clave está vacía.
+        // Esto permite "sobrescribir" un registro existente con datos vacíos si es necesario,
+        // o simplemente guardar un formulario nuevo que aún no tiene clave.
+        // El JavaScript se encargará de no cargar datos si la clave está vacía.
+        $_SESSION[$sessionKey] = $formData;
     }
+    // --- FIN: CORRECCIÓN DE LÓGICA DE GUARDADO ---
     
     try {
         // --- LÓGICA DE GENERACIÓN DE ARCHIVOS Y CORREO (SIN CAMBIOS) ---
-        // Esta sección se mantiene intacta, pero ahora usa el $formData mejorado.
         $formatosAgenerar = array_map('trim', explode(',', $params['tipoformatoenvio'] ?? ''));
         $archivosAdjuntar = [];
         $baseFilename = $uploadsDir . 'formulario_' . date('Ymd_His');

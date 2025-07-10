@@ -23,40 +23,39 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (!keyField) return;
 
-    // --- 2. FUNCIÓN PARA RELLENAR EL FORMULARIO (USANDO TU VERSIÓN MEJORADA) ---
+    // --- 2. FUNCIÓN PARA RELLENAR EL FORMULARIO ---
     function fillForm(data) {
         // Limpieza profunda antes de rellenar
         form.reset();
-        document.querySelectorAll('.datatable-container tbody').forEach(tbody => {
+        document.querySelectorAll('.datatable-container tbody, [data-datatable-name] tbody').forEach(tbody => {
             tbody.innerHTML = '';
         });
 
         // Iterar sobre TODOS los campos definidos en el JSON
         allFields.forEach(field => {
             const fieldName = field.name;
-            const value = data[fieldName];
+            const value = data[fieldName]; // Puede ser undefined si no hay dato guardado
 
             const elements = form.querySelectorAll(`[name="${fieldName}"], [name="${fieldName}[]"]`);
-            if (elements.length === 0 && field.type !== 'datatable') return;
-
+            
             switch (field.type) {
                 case 'checkbox':
                     if (field.options) { // Grupo de checkboxes
                         const savedValues = Array.isArray(value) ? value : [];
                         elements.forEach(chk => chk.checked = savedValues.includes(chk.value));
                     } else { // Checkbox único
-                        if(elements[0]) elements[0].checked = (value !== null && value !== false && value !== 'off');
+                        if(elements[0]) elements[0].checked = (value !== null && value !== undefined && value !== false && value !== 'off');
                     }
                     break;
 
                 case 'radio':
-                    if (value !== null) {
-                        elements.forEach(rad => rad.checked = (rad.value === value));
+                    if (value !== null && value !== undefined) {
+                        elements.forEach(rad => rad.checked = (rad.value === String(value)));
                     }
                     break;
 
                 case 'datatable':
-                    const tableBody = document.querySelector(`#${fieldName} tbody`);
+                    const tableBody = document.querySelector(`#${fieldName} tbody, [data-datatable-name="${fieldName}"] tbody`);
                     if (tableBody && Array.isArray(value)) {
                         value.forEach((rowData, rowIndex) => {
                             let newRowHtml = '<tr>';
@@ -71,7 +70,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     break;
 
                 default: // Para text, textarea, time, number, select, etc.
-                    if(elements[0]) elements[0].value = (value !== null ? value : '');
+                    if(elements[0]) elements[0].value = (value !== null && value !== undefined ? value : '');
                     break;
             }
         });
@@ -80,31 +79,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- 3. FUNCIÓN PARA LIMPIAR EL FORMULARIO ---
     function limpiarFormulario(exceptoCampoClave = true) {
+        const keyFieldValue = keyField.value;
         form.reset();
-        document.querySelectorAll('.datatable-container tbody').forEach(tbody => {
+        document.querySelectorAll('.datatable-container tbody, [data-datatable-name] tbody').forEach(tbody => {
             tbody.innerHTML = '';
         });
-        if (exceptoCampoClave && keyField) {
-            // La función reset() limpia todo, así que restauramos el valor del campo clave si es necesario
-            const keyFieldValue = keyField.value;
-            form.reset();
+        if (exceptoCampoClave) {
             keyField.value = keyFieldValue;
-        } else {
-            form.reset();
         }
         if (statusText) statusText.textContent = 'Nuevo';
     }
-
 
     // --- 4. EVENTO PRINCIPAL: ESCUCHAR CAMBIOS EN EL CAMPO CLAVE ---
     keyField.addEventListener('blur', function() {
         const key = this.value.trim();
 
         if (key === '') {
-            // Limpiamos todo excepto el campo clave que el usuario acaba de vaciar
-            const keyFieldValue = keyField.value;
-            limpiarFormulario(false); // Limpia todo
-            keyField.value = keyFieldValue; // Pero dejamos el campo clave como está (vacío)
+            limpiarFormulario(true);
             return;
         }
 
@@ -116,11 +107,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (result.success && result.data) {
                     fillForm(result.data);
                 } else {
-                    // Si no se encontraron datos, limpiamos el formulario pero mantenemos la clave que el usuario escribió
-                    const keyFieldValue = keyField.value;
-                    limpiarFormulario(false);
-                    keyField.value = keyFieldValue;
-                    if (statusText) statusText.textContent = 'Nuevo';
+                    limpiarFormulario(true); // Mantiene la clave que el usuario escribió pero limpia el resto
                 }
             })
             .catch(error => {

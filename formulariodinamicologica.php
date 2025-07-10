@@ -1,5 +1,7 @@
 <?php
-ob_start(); // <-- Agregado para evitar salida accidental antes de los headers
+// Elimina cualquier salida previa para evitar errores de headers
+if (ob_get_level() === 0) ob_start();
+
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);

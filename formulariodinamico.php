@@ -15,8 +15,7 @@ require_once 'formulariodinamicologica.php';
 </head>
 <body>
 <div class="container mt-4">
-    
-    <!-- INICIO: MODIFICACIÓN -->
+        <!-- INICIO: MODIFICACIÓN -->
     <div class="d-flex justify-content-between align-items-center">
         <h2>Formulario: <?php echo htmlspecialchars($archivo_json); ?></h2>
         <div id="form-status-container" class="alert alert-secondary p-2">

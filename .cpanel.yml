@@ -3,4 +3,5 @@ deployment:
   tasks:
     - export DEPLOYPATH=/home/usuario/public_html/ErpQa
     - /bin/cp -r * $DEPLOYPATH
+    - echo "El sistema ErpQa fue actualizado en $(date)" | mail -s "[ErpQa] Actualización de despliegue" FernandoRivasSoto@Gmail.Com
 

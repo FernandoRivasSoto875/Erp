@@ -194,7 +194,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $mail->isHTML(true);
             $mail->Subject = $params['subject'] ?? 'Nuevo Envío de Formulario';
             $mail->Body    = $cuerpoHtml;
-            // LOG de adjuntos enviados
             $logAdjuntos = [];
             foreach ($archivosAdjuntar as $rutaArchivo) {
                 if (file_exists($rutaArchivo)) {
@@ -202,8 +201,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $logAdjuntos[] = $rutaArchivo;
                 }
             }
-            error_log('Archivos adjuntos enviados: ' . implode(', ', $logAdjuntos));
             $mail->send();
+            // Log en error_log con destinatario y adjuntos
+            error_log('Correo enviado a: ' . $params['destinatario'] . ' | Adjuntos: ' . implode(', ', $logAdjuntos));
         }
 
         $_SESSION['mensaje_flash'] = "Formulario guardado y procesado con éxito.";

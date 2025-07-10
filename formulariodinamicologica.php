@@ -97,6 +97,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $fieldName = $field['name'];
         if ($field['type'] === 'datatable') {
             $formData[$fieldName] = isset($postData[$fieldName]) ? $postData[$fieldName] : [];
+        } else if ($field['type'] === 'file') {
+            // Procesar archivos adjuntos
+            $formData[$fieldName] = [];
+            if (isset($_FILES[$fieldName]) && is_array($_FILES[$fieldName]['name'])) {
+                foreach ($_FILES[$fieldName]['name'] as $idx => $fileName) {
+                    if ($_FILES[$fieldName]['error'][$idx] === UPLOAD_ERR_OK) {
+                        $tmpName = $_FILES[$fieldName]['tmp_name'][$idx];
+                        $destPath = $uploadsDir . basename($fileName);
+                        if (move_uploaded_file($tmpName, $destPath)) {
+                            $formData[$fieldName][] = $destPath;
+                        }
+                    }
+                }
+            }
         } else {
             $formData[$fieldName] = isset($postData[$fieldName]) ? $postData[$fieldName] : null;
         }
@@ -130,6 +144,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 foreach($value as $row) { $displayValue .= "<tr>"; foreach($fieldInfo['columns'] as $col) { $displayValue .= "<td>" . htmlspecialchars($row[$col['name']] ?? '') . "</td>"; } $displayValue .= "</tr>"; }
                 $displayValue .= "</tbody></table>";
                 $valorParaArchivo = json_encode($value);
+            } else if ($fieldInfo['type'] === 'file' && is_array($value)) {
+                $displayValue = implode('<br>', array_map('htmlspecialchars', $value));
+                $valorParaArchivo = implode(', ', $value);
+                foreach ($value as $filePath) {
+                    if (file_exists($filePath)) {
+                        $archivosAdjuntar[] = $filePath;
+                    }
+                }
             } else {
                 $displayValue = is_array($value) ? implode(', ', array_map('htmlspecialchars', $value)) : nl2br(htmlspecialchars($value));
                 $valorParaArchivo = is_array($value) ? implode(', ', $value) : $value;

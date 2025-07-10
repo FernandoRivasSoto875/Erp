@@ -136,8 +136,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     break;
             }
         });
-        statusText.textContent = 'Editando';
-
+        statusText.textContent = 'Modificando';
+        statusText.style.color = '#d35400'; // Naranja para destacar
+        // Mensaje visual destacado (opcional, puedes quitar si no quieres alert)
+        if (!document.getElementById('alert-modificando')) {
+            const alertDiv = document.createElement('div');
+            alertDiv.id = 'alert-modificando';
+            alertDiv.className = 'alert alert-warning';
+            alertDiv.innerHTML = '<b>Modificando:</b> Estás editando un registro existente.';
+            statusText.parentNode.insertBefore(alertDiv, statusText.nextSibling);
+        }
         setTimeout(() => {
             form.querySelectorAll('.datatable-container tbody tr, [data-datatable-name] tbody tr').forEach(recalcularFila);
             recalcularCamposSimples();

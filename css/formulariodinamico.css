@@ -146,6 +146,27 @@ button { padding: 0.625rem 1.25rem; background: var(--primary-color); color: var
 button:hover { background: var(--primary-hover); }
 .submit-container { margin-top: var(--large-spacing); }
 
+input.is-invalid, textarea.is-invalid, select.is-invalid {
+  border-color: #dc3545 !important;
+  background-color: #fff0f0;
+}
+.error-feedback {
+  font-size: 0.95em;
+  margin-top: 2px;
+  color: #dc3545;
+  transition: opacity 0.3s;
+}
+.alert {
+  transition: opacity 0.5s;
+}
+#mensaje-envio {
+  animation: fadeInDown 0.7s;
+}
+@keyframes fadeInDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media screen and (max-width: 768px) {
   .campo-container.label-left,
   .campo-container.label-right {

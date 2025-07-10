@@ -90,10 +90,19 @@ $valores = [];
 $soloLectura = false;
 $mensaje_envio = '';
 
-// =================================================================================
-//  INICIO: LÓGICA DE PROCESAMIENTO DE PETICIONES (NUEVO ORDEN)
-// =================================================================================
+// --- NUEVO: Cargar parámetros universales del JSON ---
+$param_mensajes = $json['parametros']['mensajes'] ?? [
+    'exito' => 'Formulario guardado y procesado con éxito.',
+    'error' => 'Ocurrió un error al procesar el formulario.',
+    'advertencia' => 'Por favor, revisa los campos resaltados.'
+];
+$param_validaciones = $json['parametros']['validaciones'] ?? [];
+$param_botones = $json['parametros']['botones'] ?? [];
+$param_post_envio = $json['parametros']['post_envio'] ?? [];
+$param_adjuntos = $json['parametros']['adjuntos'] ?? [];
+$param_notificaciones = $json['parametros']['notificaciones'] ?? [];
 
+// --- FUNCIONALIDAD PRINCIPAL ---
 // --- PRIORIDAD 1: PROCESAR EL ENVÍO DEL FORMULARIO (POST) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $params = $json['parametros'] ?? [];
@@ -103,15 +112,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $formData = [];
     $adjuntosWarnings = [];
+    $erroresValidacion = [];
+    // --- Validación por regex desde JSON (backend) ---
+    foreach (($json['parametros']['validaciones'] ?? []) as $campo => $regla) {
+        if (isset($postData[$campo]) && $regla['regex']) {
+            if (!preg_match('/' . $regla['regex'] . '/u', $postData[$campo])) {
+                $erroresValidacion[] = $regla['mensaje'] ?? ("Valor inválido en $campo");
+            }
+        }
+    }
+    if (!empty($erroresValidacion)) {
+        $mensaje_envio = "<div class='alert alert-danger'><b>Errores de validación:</b><ul><li>" . implode('</li><li>', $erroresValidacion) . "</li></ul></div>";
+        $valores = $postData;
+        echo $mensaje_envio;
+        exit;
+    }
+
+    $formData = [];
+    $adjuntosWarnings = [];
     // --- Configuración de validaciones de adjuntos ---
-    $allowedMimeTypes = [
+    $allowedMimeTypes = $param_adjuntos['tipos_permitidos'] ?? [
         'image/jpeg', 'image/png', 'image/gif', 'application/pdf',
         'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
         'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         'text/plain', 'application/zip', 'application/x-zip-compressed',
-        'application/vnd.ms-powerpoint', 'application/octet-stream' // para algunos doc antiguos
+        'application/vnd.ms-powerpoint', 'application/octet-stream'
     ];
-    $maxFileSize = 5 * 1024 * 1024; // 5 MB
+    $maxFileSize = ($param_adjuntos['tamano_maximo_mb'] ?? 5) * 1024 * 1024; // 5 MB
     $archivosTemporales = [];
     foreach ($all_fields as $field) {
         $fieldName = $field['name'];
@@ -245,18 +272,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $adjuntosWarnings[] = 'No se pudo enviar el correo: ' . $mail->ErrorInfo;
             }
         }
-        $mensajeFinal = "Formulario guardado y procesado con éxito.";
+        $mensajeFinal = $param_mensajes['exito'];
         if (!empty($adjuntosWarnings)) {
-            $mensajeFinal .= "<br><div class='alert alert-warning mt-2'><b>Advertencias:</b><ul><li>" . implode('</li><li>', $adjuntosWarnings) . "</li></ul></div>";
+            $mensajeFinal .= "<br><div class='alert alert-warning mt-2'><b>" . $param_mensajes['advertencia'] . "</b><ul><li>" . implode('</li><li>', $adjuntosWarnings) . "</li></ul></div>";
         }
         $_SESSION['mensaje_flash'] = $mensajeFinal;
         header("Location: formulariodinamico.php?archivo=" . urlencode($archivo_json) . "&status=saved");
         error_log('Redirigiendo a formulariodinamico.php tras guardar. Adjuntos: ' . implode(', ', $archivosAdjuntar));
         exit;
     } catch (Exception $e) {
-        $mensaje_envio = "<div class='alert alert-danger'>Error al procesar: " . $e->getMessage() . "</div>";
+        $mensaje_envio = "<div class='alert alert-danger'>" . $param_mensajes['error'] . "<br>" . $e->getMessage() . "</div>";
         if (!empty($adjuntosWarnings)) {
-            $mensaje_envio .= "<br><div class='alert alert-warning mt-2'><b>Advertencias:</b><ul><li>" . implode('</li><li>', $adjuntosWarnings) . "</li></ul></div>";
+            $mensaje_envio .= "<br><div class='alert alert-warning mt-2'><b>" . $param_mensajes['advertencia'] . "</b><ul><li>" . implode('</li><li>', $adjuntosWarnings) . "</li></ul></div>";
         }
         $valores = $formData;
         echo $mensaje_envio;

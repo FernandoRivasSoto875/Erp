@@ -316,5 +316,89 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     procesarLookups();
+
+    // --- VALIDACIÓN POR REGEX DESDE JSON ---
+    function validarCamposPorRegex(campos, validaciones) {
+        let errores = [];
+        for (const campo of campos) {
+            const nombre = campo.name;
+            const valor = campo.value;
+            if (validaciones[nombre]) {
+                const regex = new RegExp(validaciones[nombre].regex);
+                if (!regex.test(valor)) {
+                    errores.push({
+                        campo: nombre,
+                        mensaje: validaciones[nombre].mensaje || 'Valor inválido.'
+                    });
+                }
+            }
+        }
+        return errores;
+    }
+
+    // --- VALIDACIÓN EN TIEMPO REAL Y FEEDBACK VISUAL ---
+    function mostrarErrorCampo(input, mensaje) {
+        let errorDiv = input.parentNode.querySelector('.error-feedback');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'error-feedback text-danger';
+            input.parentNode.appendChild(errorDiv);
+        }
+        errorDiv.textContent = mensaje;
+        input.classList.add('is-invalid');
+    }
+    function limpiarErrorCampo(input) {
+        let errorDiv = input.parentNode.querySelector('.error-feedback');
+        if (errorDiv) errorDiv.textContent = '';
+        input.classList.remove('is-invalid');
+    }
+    function validarCampoIndividual(input, validaciones) {
+        const nombre = input.name.replace(/\[.*\]$/, '');
+        const valor = input.value;
+        if (validaciones[nombre]) {
+            const regex = new RegExp(validaciones[nombre].regex);
+            if (!regex.test(valor)) {
+                mostrarErrorCampo(input, validaciones[nombre].mensaje || 'Valor inválido.');
+                return false;
+            }
+        }
+        limpiarErrorCampo(input);
+        return true;
+    }
+    // Hook para validación en tiempo real
+    $(document).ready(function() {
+        let validaciones = window.validacionesJSON || {};
+        $('#formulario input, #formulario textarea, #formulario select').on('input blur', function() {
+            validarCampoIndividual(this, validaciones);
+        });
+    });
+
+    // Hook al submit del formulario
+    $(document).ready(function() {
+        const validaciones = (window.fields && window.fields.length && window.fields[0].validaciones) ? window.fields[0].validaciones : (window.validacionesJSON || {});
+        $('#formulario').on('submit', function(e) {
+            // Obtener validaciones desde variable global pasada por PHP
+            let validaciones = window.validacionesJSON || {};
+            let campos = this.elements;
+            let errores = validarCamposPorRegex(campos, validaciones);
+            if (errores.length > 0) {
+                e.preventDefault();
+                let mensajes = errores.map(err => `<li>${err.mensaje}</li>`).join('');
+                $('#mensaje-envio').html(`<div class='alert alert-danger'><b>Errores de validación:</b><ul>${mensajes}</ul></div>`);
+                return false;
+            }
+        });
+    });
+
+    // --- SPINNER DE CARGA EN ENVÍO ---
+    $(document).ready(function() {
+        $('#formulario').on('submit', function() {
+            $('#form-spinner').fadeIn(200);
+        });
+        // Ocultar spinner si hay error de validación
+        $('#formulario').on('invalid', function() {
+            $('#form-spinner').fadeOut(200);
+        }, true);
+    });
 });
 // Fin del archivo JS

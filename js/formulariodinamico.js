@@ -346,11 +346,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         errorDiv.textContent = mensaje;
         input.classList.add('is-invalid');
+        // --- NUEVO: Popup si el error persiste tras 1 segundo ---
+        if (input._swalTimeout) clearTimeout(input._swalTimeout);
+        input._swalTimeout = setTimeout(() => {
+            if (input.classList.contains('is-invalid')) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de validación',
+                    text: mensaje,
+                    timer: 2500,
+                    timerProgressBar: true,
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false
+                });
+            }
+        }, 1000);
     }
     function limpiarErrorCampo(input) {
         let errorDiv = input.parentNode.querySelector('.error-feedback');
         if (errorDiv) errorDiv.textContent = '';
         input.classList.remove('is-invalid');
+        if (input._swalTimeout) clearTimeout(input._swalTimeout);
     }
     function validarCampoIndividual(input, validaciones) {
         const nombre = input.name.replace(/\[.*\]$/, '');
@@ -365,10 +382,10 @@ document.addEventListener('DOMContentLoaded', function() {
         limpiarErrorCampo(input);
         return true;
     }
-    // Hook para validación en tiempo real
+    // Hook para validación en tiempo real (incluye campos agregados dinámicamente)
     $(document).ready(function() {
         let validaciones = window.validacionesJSON || {};
-        $('#formulario input, #formulario textarea, #formulario select').on('input blur', function() {
+        $(document).on('input blur', '#formulario input, #formulario textarea, #formulario select', function() {
             validarCampoIndividual(this, validaciones);
         });
     });

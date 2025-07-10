@@ -3,6 +3,7 @@
 // filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\formulariodinamico.php
 // Paso 1: Incluir toda la lógica de negocio desde el archivo PHP dedicado.
 require_once 'formulariodinamicologica.php';
+header('Content-Type: text/html; charset=UTF-8');
 ?>
 <link rel="stylesheet" href="css/formulariodinamico.css">
 <div class="container mt-4">
@@ -12,7 +13,7 @@ require_once 'formulariodinamicologica.php';
             <h2 class="mb-0 mr-3">
                 <?php 
                     // Mostrar el título desde el JSON de parámetros si existe
-                    echo htmlspecialchars($json['parametros']['titulo'] ?? basename($archivo_json)); 
+                    echo htmlspecialchars($json['parametros']['titulo'] ?? basename($archivo_json), ENT_QUOTES, 'UTF-8'); 
                 ?>
                 <span id="form-status-text" class="font-weight-bold" style="font-size:0.7em; margin-left:12px; color:#6c757d;">Nuevo</span>
             </h2>
@@ -27,7 +28,7 @@ require_once 'formulariodinamicologica.php';
         <?php 
         // Muestra el mensaje de éxito o error preparado por la lógica.
         if (!empty($mensaje_envio)) { 
-            echo "<div id='mensaje-envio'>{$mensaje_envio}</div>"; 
+            echo "<div id='mensaje-envio'>".mb_convert_encoding($mensaje_envio, 'UTF-8', 'auto')."</div>"; 
         } 
         ?>
         <?php 
@@ -40,7 +41,7 @@ require_once 'formulariodinamicologica.php';
             foreach ($json['parametros']['botones'] as $btn) {
                 $tipo = $btn['accion'] === 'reset' ? 'reset' : 'submit';
                 $clase = htmlspecialchars($btn['clase'] ?? 'btn-primary');
-                $texto = htmlspecialchars($btn['texto'] ?? 'Enviar');
+                $texto = htmlspecialchars($btn['texto'] ?? 'Enviar', ENT_QUOTES, 'UTF-8');
                 echo "<button type='$tipo' class='btn $clase mt-3'>$texto</button> ";
             }
         } else {

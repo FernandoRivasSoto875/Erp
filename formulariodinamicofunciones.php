@@ -67,6 +67,14 @@ if (!function_exists('generarFieldsets')) {
             return $str;
         };
 
+        // --- FUNCIÓN PARA DETECTAR SI UN STRING ES UNA FÓRMULA ARITMÉTICA ---
+        $esFormulaAritmetica = function($str) {
+            if (!is_string($str) || trim($str) === '') return false;
+            // Solo acepta strings con números, letras, paréntesis y operadores aritméticos
+            // y debe contener al menos un operador aritmético
+            return preg_match('/^[\d\w\s\+\-\*\/\(\)\.]+$/', $str) && preg_match('/[\+\-\*\/]/', $str);
+        };
+
         foreach ($fieldsets as $fieldset) {
             $legend = $fieldset['legend'] ?? '';
             $style = !empty($fieldset['style']) ? htmlspecialchars($fieldset['style']) : '';
@@ -186,7 +194,22 @@ if (!function_exists('generarFieldsets')) {
 
                         default:
                             $attrs = ['type' => $type, 'name' => $name, 'id' => $id, 'value' => $value, 'placeholder' => ($field['placeholder'] ?? '')];
-                            foreach ($field as $k => $v) { if (in_array($k, ['required', 'readonly', 'multiple', 'min', 'max', 'step']) || strpos($k, 'data-') === 0) { $attrs[$k] = $v; } }
+                            foreach $field as $k => $v) {
+                                if (in_array($k, ['required', 'readonly', 'multiple', 'min', 'max', 'step']) || strpos($k, 'data-') === 0) {
+                                    // Si es data-formula, solo agregar si es string aritmético
+                                    if ($k === 'data-formula') {
+                                        if ($esFormulaAritmetica($v)) {
+                                            $attrs[$k] = $v;
+                                        }
+                                        // Si no es fórmula aritmética, no agregar nada
+                                    } else if ($k === 'data-formula' && is_array($v)) {
+                                        // Nunca agregar si es array/objeto
+                                        continue;
+                                    } else {
+                                        $attrs[$k] = $v;
+                                    }
+                                }
+                            }
                             $inputHtml = "<input" . $buildAttrs($attrs) . ">";
                             break;
                     }

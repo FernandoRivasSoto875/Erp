@@ -275,3 +275,13 @@ document.addEventListener('DOMContentLoaded', function() {
     procesarLookups();
 });
 // Fin del archivo JS
+<?php
+ob_clean();
+header('Content-Type: application/json');
+// ...conexión y lógica...
+
+if ($_GET['action'] === 'lookup') {
+    // ...tu lógica de búsqueda...
+    echo json_encode(['success' => true, 'value' => $valor]);
+    exit;
+}

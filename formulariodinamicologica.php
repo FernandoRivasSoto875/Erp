@@ -1,6 +1,20 @@
 <?php
 // Elimina cualquier salida previa para evitar errores de headers
 if (ob_get_level() === 0) ob_start();
+// No mostrar error HTML si es petición AJAX (ej: fetch, XMLHttpRequest)
+$isAjax = (
+    (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') ||
+    (isset($_GET['action']) && in_array($_GET['action'], ['lookup', 'load_data']))
+);
+if (headers_sent($file, $line) && !$isAjax) {
+    $msg = '<div style="color:red;font-weight:bold">Error: No se puede iniciar sesión porque los headers ya fueron enviados.';
+    $msg .= '<br>Archivo: <b>' . htmlspecialchars($file) . '</b> línea <b>' . $line . '</b>.';
+    $msg .= '<br>Revisa que no haya espacios, saltos de línea, <code>echo</code>, <code>print</code>, <code>var_dump</code> o <code>?>" fuera de lugar antes de este archivo.';
+    $msg .= '<br>Consejo: Busca en tu código <code>echo</code>, <code>print</code>, <code>var_dump</code>, <code>?>" y espacios antes de <code><?php</code>.';
+    $msg .= '</div>';
+    error_log("[HEADERS_SENT] Headers enviados antes de tiempo en $file línea $line");
+    die($msg);
+}
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);

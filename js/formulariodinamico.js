@@ -15,34 +15,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (!keyField) return;
 
-    // --- 2. MOTOR DE CÁLCULO (VERSIÓN ROBUSTA) ---
+    // --- 2. MOTOR DE CÁLCULO (ROBUSTO Y UNIVERSAL) ---
     function recalcularFila(fila) {
         const camposConFormula = fila.querySelectorAll('[data-formula]');
         camposConFormula.forEach(campoResultado => {
             let formula = campoResultado.getAttribute('data-formula');
-            // Si la fórmula es un objeto (ej: [object Object]), no intentes evaluarla
             if (!formula || formula.startsWith('{') || formula === '[object Object]') return;
-
             let formulaReemplazada = formula;
             let esCalculable = true;
-
             const variables = formula.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
-            if (!variables) return;
-
             variables.forEach(variable => {
-                const campoVariable = fila.querySelector(`[name*="[${variable}]"]`);
+                // Busca en la fila y en el formulario global
+                let campoVariable = fila.querySelector(`[name*="[${variable}]"]`) || form.querySelector(`[name="${variable}"]`);
                 if (campoVariable) {
-                    const valor = parseFloat(campoVariable.value) || 0;
+                    let valor = parseFloat(campoVariable.value) || 0;
                     formulaReemplazada = formulaReemplazada.replace(new RegExp(`\\b${variable}\\b`, 'g'), valor);
                 } else {
                     esCalculable = false;
                 }
             });
-
             if (esCalculable) {
                 try {
                     const resultado = new Function(`return ${formulaReemplazada}`)();
-                    campoResultado.value = isFinite(resultado) ? resultado.toFixed(2) : '';
+                    campoResultado.value = isFinite(resultado) ? resultado : '';
                 } catch (error) {
                     campoResultado.value = '';
                 }
@@ -51,21 +46,19 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-
     function recalcularCamposSimples() {
         allFields.forEach(field => {
             if (typeof field['data-formula'] === 'string') {
                 const formula = field['data-formula'];
                 const input = form.querySelector(`[name="${field.name}"]`);
                 if (!input) return;
-
                 let formulaReemplazada = formula;
                 let esCalculable = true;
                 const variables = formula.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
                 variables.forEach(variable => {
-                    const campoVariable = form.querySelector(`[name="${variable}"]`);
+                    let campoVariable = form.querySelector(`[name="${variable}"]`);
                     if (campoVariable) {
-                        const valor = parseFloat(campoVariable.value) || 0;
+                        let valor = parseFloat(campoVariable.value) || 0;
                         formulaReemplazada = formulaReemplazada.replace(new RegExp(`\\b${variable}\\b`, 'g'), valor);
                     } else {
                         esCalculable = false;
@@ -74,11 +67,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (esCalculable) {
                     try {
                         const resultado = new Function(`return ${formulaReemplazada}`)();
-                        input.value = isFinite(resultado) ? resultado.toFixed(2) : '';
-                        console.log('Calculando', field.name, '=', formula, '->', formulaReemplazada, '->', input.value);
+                        input.value = isFinite(resultado) ? resultado : '';
                     } catch (error) {
                         input.value = '';
-                        console.error('Error al calcular', field.name, formula, error);
                     }
                 } else {
                     input.value = '';
@@ -247,8 +238,13 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(result => {
             if (!result) return;
             if (result.success) {
-                Swal.fire('Guardado', 'Los datos se han guardado correctamente.', 'success');
-                // Limpia el formulario después de guardar exitosamente
+                if (window.validacionesJSON && window.validacionesJSON.post_envio && window.validacionesJSON.post_envio.redireccion) {
+                    window.location.href = window.validacionesJSON.post_envio.redireccion;
+                } else if (window.validacionesJSON && window.validacionesJSON.post_envio && window.validacionesJSON.post_envio.mostrar_resumen) {
+                    Swal.fire('Resumen', '¡Formulario enviado correctamente!', 'success');
+                } else {
+                    Swal.fire('Guardado', 'Los datos se han guardado correctamente.', 'success');
+                }
                 limpiarFormulario();
             } else {
                 Swal.fire('Error', 'Ha ocurrido un error al guardar los datos.', 'error');
@@ -336,7 +332,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return errores;
     }
 
-    // --- VALIDACIÓN EN TIEMPO REAL Y FEEDBACK VISUAL ---
+    // --- VALIDACIÓN EN TIEMPO REAL Y FEEDBACK VISUAL UNIVERSAL ---
     function mostrarErrorCampo(input, mensaje) {
         let errorDiv = input.parentNode.querySelector('.error-feedback');
         if (!errorDiv) {
@@ -346,7 +342,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         errorDiv.textContent = mensaje;
         input.classList.add('is-invalid');
-        // --- NUEVO: Popup si el error persiste tras 1 segundo ---
+        // Popup flotante para cualquier campo con error
         if (input._swalTimeout) clearTimeout(input._swalTimeout);
         input._swalTimeout = setTimeout(() => {
             if (input.classList.contains('is-invalid')) {
@@ -361,7 +357,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     showConfirmButton: false
                 });
             }
-        }, 1000);
+        }, 500);
     }
     function limpiarErrorCampo(input) {
         let errorDiv = input.parentNode.querySelector('.error-feedback');

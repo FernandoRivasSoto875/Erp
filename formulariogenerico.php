@@ -4,6 +4,16 @@
 // =============================
 // Forzar el archivo JSON correcto (solo el nombre, no la ruta absoluta)
 $_GET['archivo'] = 'formulariogenerico.json';
+// --- PREVENCIÓN DE HEADERS ENVIADOS ANTES DE TIEMPO ---
+if (headers_sent($file, $line)) {
+    $msg = '<div style="color:red;font-weight:bold">Error: No se puede iniciar sesión porque los headers ya fueron enviados.';
+    $msg .= '<br>Archivo: <b>' . htmlspecialchars($file) . '</b> línea <b>' . $line . '</b>.';
+    $msg .= '<br>Revisa que no haya espacios, saltos de línea, <code>echo</code>, <code>print</code>, <code>var_dump</code> o <code>?&gt;</code> fuera de lugar antes de este archivo.';
+    $msg .= '<br>Consejo: Busca en tu código <code>echo</code>, <code>print</code>, <code>var_dump</code>, <code>?&gt;</code> y espacios antes de <code>&lt;?php</code>.';
+    $msg .= '</div>';
+    error_log("[HEADERS_SENT] Headers enviados antes de tiempo en $file línea $line");
+    die($msg);
+}
 ?>
 <!DOCTYPE html>
 <html lang="es" aria-label="Formulario genérico">

@@ -28,8 +28,8 @@ if (!function_exists('conexionBd')) {
         if (json_last_error() !== JSON_ERROR_NONE) {
             die("Error al decodificar el archivo JSON: " . json_last_error_msg());
         }
-        $server   = $config['server']   ?? null;
-        $username = $config['username'] ?? null;
+        $server   = $config['host']   ?? null;
+        $username = $config['user']   ?? null;
         $password = $config['password'] ?? null;
         $database = $config['database'] ?? null;
         if (!$server || !$username || !$password || !$database) {

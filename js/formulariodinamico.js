@@ -58,13 +58,32 @@ document.addEventListener('DOMContentLoaded', function() {
                     const tableBody = document.querySelector(`#${fieldName} tbody, [data-datatable-name="${fieldName}"] tbody`);
                     if (tableBody && Array.isArray(value)) {
                         value.forEach((rowData, rowIndex) => {
-                            let newRowHtml = '<tr>';
+                            // --- INICIO DE LA LÓGICA RESTAURADA ---
+                            const newRow = tableBody.insertRow();
                             field.columns.forEach(col => {
-                                const cellValue = rowData[col.name] || '';
-                                newRowHtml += `<td><input type="${col.type || 'text'}" name="${fieldName}[${rowIndex}][${col.name}]" value="${cellValue}" class="form-control"></td>`;
+                                const cell = newRow.insertCell();
+                                const input = document.createElement('input');
+                                
+                                // Asignar todas las propiedades y atributos
+                                Object.assign(input, {
+                                    type: col.type || 'text',
+                                    name: `${fieldName}[${rowIndex}][${col.name}]`,
+                                    className: 'form-control form-control-sm',
+                                    value: rowData[col.name] || '',
+                                    placeholder: col.placeholder || ''
+                                });
+
+                                // Restaurar la lógica de atributos específicos que eliminé
+                                if (col.readonly) input.readOnly = true;
+                                if (col['data-formula']) input.setAttribute('data-formula', col['data-formula']);
+                                
+                                cell.appendChild(input);
                             });
-                            newRowHtml += `<td><button type='button' class='eliminar_fila btn btn-danger btn-sm'>Eliminar</button></td></tr>`;
-                            tableBody.insertAdjacentHTML('beforeend', newRowHtml);
+                            
+                            // Añadir el botón de eliminar
+                            const actionCell = newRow.insertCell();
+                            actionCell.innerHTML = `<button type="button" class="btn btn-danger btn-sm eliminar_fila">X</button>`;
+                            // --- FIN DE LA LÓGICA RESTAURADA ---
                         });
                     }
                     break;
@@ -244,47 +263,4 @@ function fillForm(data) {
             case 'radio':
                 // Si el valor guardado es null, ningún radio debe estar seleccionado.
                 // La función reset() ya se encargó de esto.
-                if (value !== null) {
-                    elements.forEach(rad => {
-                        rad.checked = (rad.value === value);
-                    });
-                }
-                break;
-
-            case 'datatable':
-                const tableBody = document.querySelector(`[data-datatable-name="${fieldName}"] tbody`);
-                if (tableBody && Array.isArray(value)) {
-                    // (La lógica para rellenar datatables que ya tienes es correcta y se puede insertar aquí)
-                    // Por simplicidad, la reconstruimos para asegurar consistencia:
-                    value.forEach((rowData, rowIndex) => {
-                        const newRow = tableBody.insertRow();
-                        field.columns.forEach(col => {
-                            const cell = newRow.insertCell();
-                            const input = document.createElement('input');
-                            // Asignar propiedades al input
-                            Object.assign(input, {
-                                type: col.type || 'text',
-                                name: `${fieldName}[${rowIndex}][${col.name}]`,
-                                className: 'form-control form-control-sm',
-                                value: rowData[col.name] || '',
-                                placeholder: col.placeholder || ''
-                            });
-                            if (col.readonly) input.readOnly = true;
-                            if (col['data-formula']) input.setAttribute('data-formula', col['data-formula']);
-                            cell.appendChild(input);
-                        });
-                        // Añadir botón de eliminar
-                        const actionCell = newRow.insertCell();
-                        actionCell.innerHTML = `<button type="button" class="btn btn-danger btn-sm eliminar_fila">X</button>`;
-                    });
-                }
-                break;
-
-            default: // Para text, textarea, time, number, select, etc.
-                if(elements[0]) elements[0].value = (value !== null ? value : '');
-                break;
-        }
-    });
-}
-
-// --- FIN: Bloque de código a insertar al final del archivo ---
+                if

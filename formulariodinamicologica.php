@@ -45,28 +45,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $uploadsDir = 'uploads/';
     if (!is_dir($uploadsDir)) mkdir($uploadsDir, 0755, true);
 
-    // Reconstrucción de datos (sin cambios)
     $formData = [];
     foreach ($all_fields as $field) {
         $fieldName = $field['name'];
-        if ($field['type'] === 'checkbox' && isset($field['options'])) {
-            $formData[$fieldName] = isset($postData[$fieldName]) ? (array)$postData[$fieldName] : [];
-        } else if ($field['type'] === 'checkbox' && !isset($field['options'])) {
-            $formData[$fieldName] = isset($postData[$fieldName]) ? $postData[$fieldName] : null;
-        } else if ($field['type'] === 'radio') {
-            $formData[$fieldName] = isset($postData[$fieldName]) ? $postData[$fieldName] : null;
-        } else if ($field['type'] === 'datatable') {
+        if ($field['type'] === 'datatable') {
             $formData[$fieldName] = isset($postData[$fieldName]) ? $postData[$fieldName] : [];
         } else {
             $formData[$fieldName] = isset($postData[$fieldName]) ? $postData[$fieldName] : null;
         }
     }
 
-    // Guardado en sesión (sin cambios)
     $firstField = reset($all_fields);
+    $id_registro = null;
     if ($firstField && array_key_exists($firstField['name'], $formData)) {
-        $key = $formData[$firstField['name']];
-        $sessionKey = 'form_data_' . $archivo_json . '_' . $key;
+        $id_registro = $formData[$firstField['name']];
+        $sessionKey = 'form_data_' . $archivo_json . '_' . $id_registro;
         $_SESSION[$sessionKey] = $formData;
     }
     
@@ -119,7 +112,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $_SESSION['mensaje_flash'] = "Formulario guardado y procesado con éxito.";
-        header("Location: formulariogenerico.php?archivo=" . urlencode($archivo_json) . "&status=saved");
+        // --- CORRECCIÓN CRÍTICA EN LA REDIRECCIÓN ---
+        // Redirigimos pasándole el ID del registro guardado.
+        header("Location: formulariogenerico.php?archivo=" . urlencode($archivo_json) . "&id=" . urlencode($id_registro) . "&status=saved");
         exit;
 
     } catch (Exception $e) {
@@ -130,7 +125,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // --- PRIORIDAD 2: PROCESAR PETICIONES AJAX PARA CARGAR DATOS ---
 else if (isset($_GET['action']) && $_GET['action'] === 'load_data') {
     header('Content-Type: application/json');
-    $formName = $_GET['form_name'] ?? '';
+    // --- CORRECCIÓN: Usamos el nombre del archivo JSON de la URL, no uno enviado por JS ---
+    $formName = $_GET['archivo'] ?? ''; 
     $key = $_GET['key'] ?? '';
 
     if (empty($formName) || empty($key)) {
@@ -147,7 +143,17 @@ else if (isset($_GET['action']) && $_GET['action'] === 'load_data') {
     exit;
 }
 
-// --- PRIORIDAD 3: LÓGICA PARA MOSTRAR MENSAJES (SI NO ES POST NI AJAX) ---
+// --- PRIORIDAD 3: LÓGICA PARA CARGAR DATOS EN LA CARGA INICIAL DE LA PÁGINA ---
+$id_a_cargar = $_GET['id'] ?? null;
+if ($id_a_cargar) {
+    $sessionKey = 'form_data_' . $archivo_json . '_' . $id_a_cargar;
+    if (isset($_SESSION[$sessionKey])) {
+        $valores = $_SESSION[$sessionKey];
+        $soloLectura = true; // Opcional: Poner el formulario en modo solo lectura al cargar
+    }
+}
+
+// --- PRIORIDAD 4: LÓGICA PARA MOSTRAR MENSAJES (SI NO ES POST NI AJAX) ---
 if (isset($_SESSION['mensaje_flash'])) {
     $mensaje_envio = "<div class='alert alert-success'>" . $_SESSION['mensaje_flash'] . "</div>";
     unset($_SESSION['mensaje_flash']);

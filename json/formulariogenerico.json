@@ -42,7 +42,7 @@
           }
         },
 
-        { "name": "total", "label": "Total (right)", "type": "number", "placeholder": "0", "readonly": true, "labelPosition": "top", "data-formula": "10 + 10 * edad" },
+        { "name": "total", "label": "Total  ", "type": "number", "placeholder": "0", "readonly": true, "labelPosition": "top", "data-formula": "10 + 10 * edad" },
         { "name": "email", "label": "Correo (top - por defecto)", "type": "email", "placeholder": "ejemplo@correo.com", "required": true, "labelPosition": "top" },
         { "name": "telefono", "label": "Teléfono (top-center)", "type": "tel", "placeholder": "Ej: +56912345678", "labelPosition": "top-center" },
         { "name": "fecha_nacimiento", "label": "Nacimiento (top-right)", "type": "date", "labelPosition": "top-right" },
@@ -100,7 +100,7 @@
       ]
     },
     {
-      "legend": "Detalle de Productos (DataTable)",
+      "legend": "Detalle de Productos",
       "style": "border:1px solid #dc3545; padding:10px; background:#fff5f5;",
       "fields": [
         {

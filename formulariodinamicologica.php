@@ -153,6 +153,9 @@ if (isset($_SESSION['mensaje_flash'])) {
 if (isset($_GET['action']) && $_GET['action'] === 'lookup') {
     ob_clean();
     header('Content-Type: application/json');
+    ini_set('display_errors', 1); // Mostrar errores solo para depuración
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
     $table = $_GET['table'] ?? '';
     $field = $_GET['field'] ?? '';
     $where = $_GET['where'] ?? '';
@@ -162,28 +165,33 @@ if (isset($_GET['action']) && $_GET['action'] === 'lookup') {
         exit;
     }
 
-    // Conexión a la base de datos (ajusta según tu config)
-    require_once __DIR__ . '/config/conexion.json';
-    $config = json_decode(file_get_contents(__DIR__ . '/config/conexion.json'), true);
+    $config_path = __DIR__ . '/config/conexion.json';
+    if (!file_exists($config_path)) {
+        echo json_encode(['success' => false, 'error' => 'No existe config/conexion.json']);
+        exit;
+    }
+    $config = json_decode(file_get_contents($config_path), true);
+    if (!$config || !isset($config['host'], $config['user'], $config['password'], $config['database'])) {
+        echo json_encode(['success' => false, 'error' => 'config/conexion.json inválido']);
+        exit;
+    }
     $mysqli = new mysqli($config['host'], $config['user'], $config['password'], $config['database']);
     if ($mysqli->connect_errno) {
-        echo json_encode(['success' => false, 'error' => 'Error de conexión']);
+        echo json_encode(['success' => false, 'error' => 'Error de conexión: ' . $mysqli->connect_error]);
         exit;
     }
 
-    // Seguridad básica: solo permite letras, números y guion bajo en nombres de tabla/campo
     if (!preg_match('/^[a-zA-Z0-9_]+$/', $table) || !preg_match('/^[a-zA-Z0-9_]+$/', $field)) {
         echo json_encode(['success' => false, 'error' => 'Parámetros inválidos']);
         exit;
     }
 
-    // Prepara la consulta
     $sql = "SELECT `$field` FROM `$table` WHERE $where LIMIT 1";
     $result = $mysqli->query($sql);
     if ($result && $row = $result->fetch_assoc()) {
         echo json_encode(['success' => true, 'value' => $row[$field]]);
     } else {
-        echo json_encode(['success' => false, 'value' => '']);
+        echo json_encode(['success' => false, 'value' => '', 'sql' => $sql, 'mysqli_error' => $mysqli->error]);
     }
     $mysqli->close();
     exit;

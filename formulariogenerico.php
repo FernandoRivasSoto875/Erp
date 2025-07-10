@@ -65,4 +65,3 @@ if (headers_sent($file, $line)) {
     </script>
 </body>
 </html>
-

@@ -154,7 +154,6 @@
     </script>
 </body>
 </html>
-
 <?php
 header('Content-Type: application/json');
 
@@ -261,4 +260,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['json_file'])) {
 }
 
 echo json_encode($response);
-?>

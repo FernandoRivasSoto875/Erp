@@ -32,7 +32,7 @@ $jsonData = json_encode($menu_items);
 $menuArray = json_decode($jsonData, true);
 
 /* FUNCIÓN PARA GENERAR EL MENÚ DE FORMA RECURSIVA A PARTIR DEL ARRAY obtenido del JSON */
- function construirMenu($items, $padreId = 0) {
+function construirMenu($items, $padreId = 0) {
     $html = '';
 
     $subItems = array_filter($items, function ($item) use ($padreId) {

@@ -1,3 +1,4 @@
+<?php
 ¡Por supuesto!
 
 ### **Paso 2: Sube el archivo a tu servidor**
@@ -26,14 +27,6 @@
      https://tudominio.com/Erp/test_mail.php
      ```
 3. **Presiona Enter** y verás en pantalla si el correo fue enviado correctamente o si hubo un error.
-
----
-
-**Resumen:**  
-- El archivo `test_mail.php` debe estar en la carpeta de tu sitio web.
-- Accede a él desde el navegador usando la URL correspondiente.
-
-¿Te ayudo a ajustar la ruta exacta según tu entorno?3. **Presiona Enter** y verás en pantalla si el correo fue enviado correctamente o si hubo un error.
 
 ---
 

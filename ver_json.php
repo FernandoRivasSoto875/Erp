@@ -7,8 +7,6 @@ if (isset($_GET['archivo'])) {
         $contenido = file_get_contents($archivo);
         $jsonData = json_decode($contenido, true); // Decodificar el JSON
     } else {
-
-         
         die("El archivo no existe o no es un archivo JSON válido.");
     }
 } else {

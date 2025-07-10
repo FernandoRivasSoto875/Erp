@@ -2,7 +2,6 @@
 // Leer el archivo JSON desde la carpeta "config"
 $parametros = json_decode(file_get_contents('json/parametro.json'), true);
 ?>
-
 <header>
     <!-- Contenedor para el logo y el título -->
     <div class="header-container">
@@ -34,6 +33,3 @@ $parametros = json_decode(file_get_contents('json/parametro.json'), true);
         color: <?php echo $parametros['ColorTextoHeader']; ?>; /* Color dinámico del TextoHeader */
     }
 </style>
-
-
-

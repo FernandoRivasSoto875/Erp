@@ -1,5 +1,5 @@
 <?php
-require_once 'funcionessql.php';
+//require_once 'funcionessql.php';
 
 // --- INICIO DE LA FUNCIÓN FALTANTE ---
 /**

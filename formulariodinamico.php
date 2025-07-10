@@ -50,7 +50,6 @@ require_once 'formulariodinamicologica.php';
         <button type="submit" class="btn btn-success mt-3">Guardar</button>
     </form>
 </div>
-
 <!-- Pasamos los campos de PHP a una variable global de JavaScript. -->
 <script>window.fields = <?php echo json_encode($all_fields); ?>;</script>
 

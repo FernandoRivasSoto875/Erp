@@ -64,7 +64,7 @@ require __DIR__ . '/vendor/autoload.php';
 // --- FIN: Integración con Librerías ---
 
 // --- Inclusiones de funciones ---
-require_once 'formulariodinamico.funciones.php';
+require_once 'formulariodinamicofunciones.php';
 require_once 'funcionessql.php';
 
 // --- FUNCIONES AUXILIARES ---

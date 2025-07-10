@@ -1,96 +1,110 @@
 /**
  * Formulario Dinámico - Versión Final Unificada
- * Soporta cálculos y búsquedas que pueden usar CUALQUIER campo del formulario,
- * tanto dentro como fuera de los DataTables.
+ * Responsabilidades:
+ * 1. Cargar datos de un registro existente al escribir en el campo clave.
+ * 2. Rellenar correctamente todos los tipos de campo (texto, checkbox, radio, datatable).
+ * 3. Permitir agregar y eliminar filas en los datatables.
+ * 4. Actualizar el estado del formulario (Nuevo/Editando).
  */
 document.addEventListener('DOMContentLoaded', function() {
     // --- 1. CONFIGURACIÓN INICIAL ---
     const form = document.getElementById('formulario');
-    if (!form) {
-        console.error("Error: No se encontró el formulario con id 'formulario'.");
-        return;
-    }
+    if (!form) return;
 
     const urlParams = new URLSearchParams(window.location.search);
     const archivoJson = urlParams.get('archivo');
     const allFields = window.fields || [];
     const statusText = document.getElementById('form-status-text');
 
-    if (allFields.length === 0) {
-        console.error("Error: No se encontraron definiciones de campos (variable window.fields).");
-        return;
-    }
+    if (allFields.length === 0) return;
 
     const firstFieldConfig = allFields[0];
     const keyField = form.querySelector(`[name="${firstFieldConfig.name}"]`);
 
-    if (!keyField) {
-        console.error(`Error: No se encontró el campo clave '${firstFieldConfig.name}' en el formulario.`);
-        return;
-    }
+    if (!keyField) return;
 
-    // --- 2. FUNCIÓN PARA LIMPIAR EL FORMULARIO ---
-    function limpiarFormulario(exceptoCampoClave = true) {
-        form.querySelectorAll('input, select, textarea').forEach(el => {
-            if (exceptoCampoClave && el === keyField) {
-                return; // No limpiar el campo clave si se especifica
-            }
-            if (el.type === 'checkbox' || el.type === 'radio') {
-                el.checked = false;
-            } else {
-                el.value = '';
-            }
-        });
+    // --- 2. FUNCIÓN PARA RELLENAR EL FORMULARIO (USANDO TU VERSIÓN MEJORADA) ---
+    function fillForm(data) {
+        // Limpieza profunda antes de rellenar
+        form.reset();
         document.querySelectorAll('.datatable-container tbody').forEach(tbody => {
             tbody.innerHTML = '';
         });
+
+        // Iterar sobre TODOS los campos definidos en el JSON
+        allFields.forEach(field => {
+            const fieldName = field.name;
+            const value = data[fieldName];
+
+            const elements = form.querySelectorAll(`[name="${fieldName}"], [name="${fieldName}[]"]`);
+            if (elements.length === 0 && field.type !== 'datatable') return;
+
+            switch (field.type) {
+                case 'checkbox':
+                    if (field.options) { // Grupo de checkboxes
+                        const savedValues = Array.isArray(value) ? value : [];
+                        elements.forEach(chk => chk.checked = savedValues.includes(chk.value));
+                    } else { // Checkbox único
+                        if(elements[0]) elements[0].checked = (value !== null && value !== false && value !== 'off');
+                    }
+                    break;
+
+                case 'radio':
+                    if (value !== null) {
+                        elements.forEach(rad => rad.checked = (rad.value === value));
+                    }
+                    break;
+
+                case 'datatable':
+                    const tableBody = document.querySelector(`#${fieldName} tbody`);
+                    if (tableBody && Array.isArray(value)) {
+                        value.forEach((rowData, rowIndex) => {
+                            let newRowHtml = '<tr>';
+                            field.columns.forEach(col => {
+                                const cellValue = rowData[col.name] || '';
+                                newRowHtml += `<td><input type="${col.type || 'text'}" name="${fieldName}[${rowIndex}][${col.name}]" value="${cellValue}" class="form-control"></td>`;
+                            });
+                            newRowHtml += `<td><button type='button' class='eliminar_fila btn btn-danger btn-sm'>Eliminar</button></td></tr>`;
+                            tableBody.insertAdjacentHTML('beforeend', newRowHtml);
+                        });
+                    }
+                    break;
+
+                default: // Para text, textarea, time, number, select, etc.
+                    if(elements[0]) elements[0].value = (value !== null ? value : '');
+                    break;
+            }
+        });
+        if (statusText) statusText.textContent = 'Editando';
+    }
+
+    // --- 3. FUNCIÓN PARA LIMPIAR EL FORMULARIO ---
+    function limpiarFormulario(exceptoCampoClave = true) {
+        form.reset();
+        document.querySelectorAll('.datatable-container tbody').forEach(tbody => {
+            tbody.innerHTML = '';
+        });
+        if (exceptoCampoClave && keyField) {
+            // La función reset() limpia todo, así que restauramos el valor del campo clave si es necesario
+            const keyFieldValue = keyField.value;
+            form.reset();
+            keyField.value = keyFieldValue;
+        } else {
+            form.reset();
+        }
         if (statusText) statusText.textContent = 'Nuevo';
     }
 
-    // --- 3. FUNCIÓN PARA RELLENAR EL FORMULARIO ---
-    function rellenarFormulario(data) {
-        for (const fieldName in data) {
-            const value = data[fieldName];
-            const fieldConfig = allFields.find(f => f.name === fieldName);
-            if (!fieldConfig) continue;
-
-            if (fieldConfig.type === 'datatable' && Array.isArray(value)) {
-                const tableBody = document.querySelector(`#${fieldName} tbody`);
-                if (tableBody) {
-                    tableBody.innerHTML = ''; // Limpiar filas existentes
-                    value.forEach((rowData, index) => {
-                        let newRowHtml = '<tr>';
-                        fieldConfig.columns.forEach(col => {
-                            const colName = col.name;
-                            const cellValue = rowData[colName] || '';
-                            newRowHtml += `<td><input type="${col.type || 'text'}" name="${fieldName}[${index}][${colName}]" value="${cellValue}" class="form-control"></td>`;
-                        });
-                        newRowHtml += `<td><button type='button' class='eliminar_fila btn btn-danger btn-sm'>Eliminar</button></td></tr>`;
-                        tableBody.insertAdjacentHTML('beforeend', newRowHtml);
-                    });
-                }
-            } else {
-                const fieldElements = form.querySelectorAll(`[name="${fieldName}"], [name="${fieldName}[]"]`);
-                fieldElements.forEach(el => {
-                    if (el.type === 'checkbox') {
-                        el.checked = Array.isArray(value) ? value.includes(el.value) : (el.value == value);
-                    } else if (el.type === 'radio') {
-                        el.checked = (el.value == value);
-                    } else {
-                        el.value = value;
-                    }
-                });
-            }
-        }
-        if (statusText) statusText.textContent = 'Editando';
-    }
 
     // --- 4. EVENTO PRINCIPAL: ESCUCHAR CAMBIOS EN EL CAMPO CLAVE ---
     keyField.addEventListener('blur', function() {
         const key = this.value.trim();
 
         if (key === '') {
-            limpiarFormulario(true);
+            // Limpiamos todo excepto el campo clave que el usuario acaba de vaciar
+            const keyFieldValue = keyField.value;
+            limpiarFormulario(false); // Limpia todo
+            keyField.value = keyFieldValue; // Pero dejamos el campo clave como está (vacío)
             return;
         }
 
@@ -99,21 +113,23 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch(url)
             .then(response => response.json())
             .then(result => {
-                limpiarFormulario(true); // Limpiar antes de rellenar para evitar datos mezclados
                 if (result.success && result.data) {
-                    rellenarFormulario(result.data);
+                    fillForm(result.data);
                 } else {
+                    // Si no se encontraron datos, limpiamos el formulario pero mantenemos la clave que el usuario escribió
+                    const keyFieldValue = keyField.value;
+                    limpiarFormulario(false);
+                    keyField.value = keyFieldValue;
                     if (statusText) statusText.textContent = 'Nuevo';
                 }
             })
             .catch(error => {
                 console.error('Error al cargar los datos:', error);
-                alert('Hubo un error al intentar cargar los datos.');
             });
     });
 
     // --- 5. LÓGICA PARA DATATABLES (AGREGAR/ELIMINAR FILAS) ---
-    document.addEventListener('click', function(e) {
+    form.addEventListener('click', function(e) {
         if (e.target) {
             if (e.target.classList.contains('eliminar_fila')) {
                 e.target.closest('tr').remove();
@@ -278,13 +294,10 @@ function fillForm(data) {
                 break;
 
             default: // Para text, textarea, time, number, select, etc.
-                if (elements[0]) {
-                    elements[0].value = value || '';
-                }
+                if(elements[0]) elements[0].value = (value !== null ? value : '');
                 break;
         }
     });
-
-    // 3. Disparar un evento para que todos los cálculos se actualicen
-    formElement.dispatchEvent(new Event('input', { bubbles: true }));
 }
+
+// --- FIN: Bloque de código a insertar al final del archivo ---

@@ -112,7 +112,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $_SESSION['mensaje_flash'] = "Formulario guardado y procesado con éxito.";
-        // --- CORRECCIÓN CRÍTICA EN LA REDIRECCIÓN ---
         // Redirigimos a la página limpia, sin el ID, para permitir un nuevo registro.
         header("Location: formulariogenerico.php?archivo=" . urlencode($archivo_json) . "&status=saved");
         exit;

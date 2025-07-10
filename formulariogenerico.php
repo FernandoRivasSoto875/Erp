@@ -47,5 +47,74 @@ require_once 'formulariodinamicologica.php';
     </main>
 
     <?php include 'footer.php'; ?>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('main-form');
+        if (!form) return;
+
+        const allFields = <?php echo json_encode($all_fields); ?>;
+        const firstField = allFields.length > 0 ? allFields[0] : null;
+
+        if (!firstField) return;
+
+        const keyField = form.querySelector(`[name="${firstField.name}"]`);
+        const archivoJson = '<?php echo $archivo_json; ?>';
+
+        if (!keyField) return;
+
+        keyField.addEventListener('blur', function() {
+            const key = this.value.trim();
+
+            // Si el campo clave está vacío, limpiar el formulario (excepto el campo clave)
+            if (key === '') {
+                form.querySelectorAll('input, select, textarea').forEach(el => {
+                    if (el !== keyField) {
+                        if (el.type === 'checkbox' || el.type === 'radio') {
+                            el.checked = false;
+                        } else {
+                            el.value = '';
+                        }
+                    }
+                });
+                // Limpiar también las tablas dinámicas
+                document.querySelectorAll('.datatable-container tbody').forEach(tbody => {
+                    tbody.innerHTML = '';
+                });
+                return;
+            }
+
+            // Si hay una clave, buscar los datos
+            const url = `formulariodinamicologica.php?archivo=${encodeURIComponent(archivoJson)}&action=load_data&key=${encodeURIComponent(key)}`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success && result.data) {
+                        const data = result.data;
+                        // Rellenar cada campo con los datos recibidos
+                        for (const fieldName in data) {
+                            const value = data[fieldName];
+                            const fieldElement = form.querySelector(`[name="${fieldName}"]`);
+                            
+                            if (fieldElement) {
+                                if (fieldElement.type === 'checkbox' || fieldElement.type === 'radio') {
+                                    fieldElement.checked = (fieldElement.value == value);
+                                } else {
+                                    fieldElement.value = value;
+                                }
+                            }
+                        }
+                        alert('Datos cargados correctamente.');
+                    } else {
+                        alert('No se encontraron datos para la clave introducida. Puede crear un nuevo registro.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error al cargar los datos:', error);
+                    alert('Hubo un error al intentar cargar los datos.');
+                });
+        });
+    });
+    </script>
 </body>
 </html>

@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <html lang="es">
+ 
 <body>
     <?php include 'header.php'; ?>
     <?php include 'menu.php'; ?>
     <?php include 'redes.php'; ?>
+
     <main>
           <?php
         // Ruta absoluta del archivo JSON
-        $_GET['archivo'] = __DIR__ . '/json/formulariogenerico.json';
+        $_GET['archivo'] = __DIR__ . '/json/formularioCgenerico.json';
 
         // Verificar si formulario_dinamico.php existe
         if (file_exists('formulariodinamico.php')) {

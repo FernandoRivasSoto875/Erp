@@ -211,16 +211,28 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', e => {
         e.preventDefault();
         const formData = new FormData(form);
-        const url = `formulariodinamicologica.php?archivo=${encodeURIComponent(archivoJson)}&action=save_data`;
+        // El backend espera POST sin action=save_data, solo con ?archivo=...
+        const url = `formulariodinamicologica.php?archivo=${encodeURIComponent(archivoJson)}`;
         fetch(url, {
             method: 'POST',
             body: formData // No pongas headers, deja que el navegador lo maneje
         })
-        .then(response => response.json())
+        .then(response => {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                // Si no es JSON, probablemente es una redirección, recarga la página
+                window.location.reload();
+                return null;
+            }
+        })
         .then(result => {
+            if (!result) return;
             if (result.success) {
                 Swal.fire('Guardado', 'Los datos se han guardado correctamente.', 'success');
-                fillForm(result.data);
+                // Limpia el formulario después de guardar exitosamente
+                limpiarFormulario();
             } else {
                 Swal.fire('Error', 'Ha ocurrido un error al guardar los datos.', 'error');
             }

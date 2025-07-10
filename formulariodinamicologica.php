@@ -1,4 +1,5 @@
 <?php
+ob_start(); // <-- Agregado para evitar salida accidental antes de los headers
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -6,6 +7,7 @@ error_reporting(E_ALL);
 if (isset($_GET['action']) && $_GET['action'] === 'lookup') {
     ob_clean();
     header('Content-Type: application/json');
+    flush(); // <-- Asegura que el buffer esté limpio antes de los headers
     ini_set('display_errors', 1); // Mostrar errores solo para depuración
     ini_set('display_startup_errors', 1);
     error_reporting(E_ALL);

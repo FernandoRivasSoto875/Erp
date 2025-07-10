@@ -66,6 +66,39 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function recalcularCamposSimples() {
+        allFields.forEach(field => {
+            if (typeof field['data-formula'] === 'string') {
+                const formula = field['data-formula'];
+                const input = form.querySelector(`[name="${field.name}"]`);
+                if (!input) return;
+
+                let formulaReemplazada = formula;
+                let esCalculable = true;
+                const variables = formula.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
+                variables.forEach(variable => {
+                    const campoVariable = form.querySelector(`[name="${variable}"]`);
+                    if (campoVariable) {
+                        const valor = parseFloat(campoVariable.value) || 0;
+                        formulaReemplazada = formulaReemplazada.replace(new RegExp(`\\b${variable}\\b`, 'g'), valor);
+                    } else {
+                        esCalculable = false;
+                    }
+                });
+                if (esCalculable) {
+                    try {
+                        const resultado = new Function(`return ${formulaReemplazada}`)();
+                        input.value = isFinite(resultado) ? resultado.toFixed(2) : '';
+                    } catch (error) {
+                        input.value = '';
+                    }
+                } else {
+                    input.value = '';
+                }
+            }
+        });
+    }
+
     // --- 3. FUNCIÓN PARA RELLENAR EL FORMULARIO ---
     function fillForm(data) {
         form.reset();

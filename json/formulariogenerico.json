@@ -110,24 +110,6 @@
           "labelPosition": "top",
           "columns": [
             { "name": "id_producto", "label": "ID Producto", "type": "text", "placeholder": "PROD-XXX" },
-
-           
-
-   { 
-          "name": "descripcion_comuna_", 
-          "label": "Comuna", 
-          "type": "text", 
-          "placeholder": "Descripción de la comuna aparecerá aquí", 
-          "labelPosition": "left", 
-          "readonly": true, 
-          "data-formula": { 
-            "type": "lookup", 
-            "source": { "table": "Comuna", "field": "ComDes" }, 
-            "where": "ComId = {ComId}" 
-          }
-        },
-
-            
             { "name": "descripcion", "label": "Descripción", "type": "text", "placeholder": "Nombre del producto" },
             { "name": "cantidad", "label": "Cantidad", "type": "number", "placeholder": "0" },
             { 

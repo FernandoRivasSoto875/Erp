@@ -10,7 +10,6 @@ session_start();
 // --- INICIO: Integración con Librerías ---
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
-
 require_once 'fpdf/fpdf.php';
 require __DIR__ . '/vendor/autoload.php';
 // --- FIN: Integración con Librerías ---

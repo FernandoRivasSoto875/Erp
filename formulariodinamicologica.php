@@ -53,53 +53,64 @@ $mensaje_envio = '';
 // --- INICIO: LÓGICA DE PROCESAMIENTO DEL FORMULARIO (POST) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $params = $json['parametros'] ?? [];
-    $postData = $_POST; // Datos crudos del POST
+    $postData = $_POST; // Datos crudos que llegan del formulario
     $uploadsDir = 'uploads/';
     if (!is_dir($uploadsDir)) mkdir($uploadsDir, 0755, true);
 
-    // --- INICIO: FUSIÓN Y MEJORA - Lógica robusta para capturar todos los campos ---
-    $formData = []; // Aquí construiremos los datos limpios y completos
+    // --- INICIO: RECONSTRUCCIÓN DE DATOS (VERSIÓN FORENSE) ---
+    // Esta es la lógica que revisa cada tipo de campo uno por uno.
+    $formData = [];
     foreach ($all_fields as $field) {
         $fieldName = $field['name'];
-        // Si el campo existe en el POST, usamos su valor.
-        if (isset($postData[$fieldName])) {
-            $formData[$fieldName] = $postData[$fieldName];
-        } 
-        // Si no existe (ej. un checkbox desmarcado), lo añadimos como nulo para limpiar el valor guardado.
+
+        // Caso 1: Checkboxes de opción múltiple (ej: name="intereses[]")
+        if ($field['type'] === 'checkbox' && isset($field['options'])) {
+            // Si el POST contiene datos para este campo, es un array. Lo guardamos.
+            // Si no, significa que ninguno fue seleccionado, guardamos un array vacío.
+            $formData[$fieldName] = isset($postData[$fieldName]) ? (array)$postData[$fieldName] : [];
+        }
+        // Caso 2: Checkbox único (ej: name="acepta_terminos")
+        else if ($field['type'] === 'checkbox' && !isset($field['options'])) {
+            // Si está en el POST, se marcó. Guardamos su valor.
+            // Si no, no se marcó. Guardamos null.
+            $formData[$fieldName] = isset($postData[$fieldName]) ? $postData[$fieldName] : null;
+        }
+        // Caso 3: Radio buttons
+        else if ($field['type'] === 'radio') {
+            // Si se seleccionó una opción, guardamos su valor.
+            // Si no, guardamos null.
+            $formData[$fieldName] = isset($postData[$fieldName]) ? $postData[$fieldName] : null;
+        }
+        // Caso 4: DataTables
+        else if ($field['type'] === 'datatable') {
+            // Los datatables siempre llegan como un array si tienen filas.
+            $formData[$fieldName] = isset($postData[$fieldName]) ? $postData[$fieldName] : [];
+        }
+        // Caso 5: Todos los demás campos (text, textarea, time, number, select, etc.)
         else {
-            if ($field['type'] !== 'datatable') {
-                 $formData[$fieldName] = null;
-            }
+            // Si el campo fue enviado, guardamos su valor.
+            // Si no (lo cual es raro para estos tipos), guardamos null.
+            $formData[$fieldName] = isset($postData[$fieldName]) ? $postData[$fieldName] : null;
         }
     }
-    // Añadimos los datatables que sí vienen en el POST.
-    foreach ($postData as $key => $value) {
-        $fieldInfo = getFieldInfo($key, $all_fields);
-        if ($fieldInfo && $fieldInfo['type'] === 'datatable') {
-            $formData[$key] = $value;
-        }
-    }
-    // --- FIN: FUSIÓN Y MEJORA ---
+    // --- FIN: RECONSTRUCCIÓN DE DATOS ---
 
-    // --- INICIO: CORRECCIÓN DE LÓGICA DE GUARDADO ---
+    // --- INICIO: LÓGICA DE GUARDADO EN SESIÓN (Revisada) ---
     $firstField = reset($all_fields);
-    // Verificamos que el primer campo esté definido en el formulario.
-    if ($firstField && isset($formData[$firstField['name']])) {
+    if ($firstField && array_key_exists($firstField['name'], $formData)) {
         $key = $formData[$firstField['name']];
-
-        // La clave para la sesión se construye siempre.
+        
+        // La clave de sesión se construye siempre, incluso si la clave de datos está vacía.
         $sessionKey = 'form_data_' . $archivo_json . '_' . $key;
 
-        // Guardamos SIEMPRE que se presiona el botón, incluso si la clave está vacía.
-        // Esto permite "sobrescribir" un registro existente con datos vacíos si es necesario,
-        // o simplemente guardar un formulario nuevo que aún no tiene clave.
-        // El JavaScript se encargará de no cargar datos si la clave está vacía.
+        // Guardamos SIEMPRE el formData reconstruido.
         $_SESSION[$sessionKey] = $formData;
     }
-    // --- FIN: CORRECCIÓN DE LÓGICA DE GUARDADO ---
+    // --- FIN: LÓGICA DE GUARDADO EN SESIÓN ---
     
     try {
         // --- LÓGICA DE GENERACIÓN DE ARCHIVOS Y CORREO (SIN CAMBIOS) ---
+        // Esta parte ya funcionaba bien y usará el $formData corregido.
         $formatosAgenerar = array_map('trim', explode(',', $params['tipoformatoenvio'] ?? ''));
         $archivosAdjuntar = [];
         $baseFilename = $uploadsDir . 'formulario_' . date('Ymd_His');

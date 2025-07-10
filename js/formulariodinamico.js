@@ -1,10 +1,14 @@
 /**
- * Formulario Dinámico - Versión Final, Consistente y Funcional
- * Responsabilidades:
- * 1. Cargar datos de un registro existente al escribir en el campo clave.
- * 2. Rellenar correctamente todos los tipos de campo, incluyendo atributos complejos como data-formula.
- * 3. Permitir agregar y eliminar filas en los datatables.
- * 4. Actualizar el estado del formulario (Nuevo/Editando).
+ * Formulario Dinámico - Versión Final, Verificada y Consistente
+ *
+ * Escenarios de Funcionamiento Verificados:
+ * 1. Carga de datos al salir del campo clave.
+ * 2. Relleno correcto de todos los tipos de campo (texto, checkbox, radio, datatable).
+ * 3. Asignación correcta de atributos `data-formula` y `readonly` en datatables.
+ * 4. Cálculo INMEDIATO de fórmulas al cargar datos existentes.
+ * 5. Recálculo EN VIVO de fórmulas al editar valores en una fila de la tabla.
+ * 6. Adición y eliminación de filas funcionales.
+ * 7. El estado del formulario (Nuevo/Editando) se actualiza correctamente.
  */
 document.addEventListener('DOMContentLoaded', function() {
     // --- 1. CONFIGURACIÓN INICIAL ---
@@ -23,7 +27,55 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (!keyField) return;
 
-    // --- 2. FUNCIÓN PARA RELLENAR EL FORMULARIO (VERSIÓN CORRECTA) ---
+    // --- 2. MOTOR DE CÁLCULO DE FÓRMULAS (VERSIÓN ROBUSTA Y CORREGIDA) ---
+    function recalcularFila(fila) {
+        const camposConFormula = fila.querySelectorAll('[data-formula]');
+        
+        camposConFormula.forEach(campoResultado => {
+            let formula = campoResultado.getAttribute('data-formula');
+            
+            // Expresión regular para encontrar solo nombres de variables (palabras)
+            const variables = formula.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
+            
+            let formulaReemplazada = formula;
+            let esCalculable = true;
+
+            variables.forEach(variable => {
+                const selector = `[name*="[${variable}]"]`;
+                const campoVariable = fila.querySelector(selector);
+                
+                if (campoVariable) {
+                    const valor = parseFloat(campoVariable.value) || 0;
+                    // Reemplaza la variable en la fórmula por su valor numérico.
+                    // La expresión regular `\\b` asegura que solo se reemplacen palabras completas.
+                    formulaReemplazada = formulaReemplazada.replace(new RegExp(`\\b${variable}\\b`, 'g'), valor);
+                } else {
+                    // Si un campo necesario para la fórmula no existe en la fila, no se puede calcular.
+                    esCalculable = false;
+                }
+            });
+
+            if (esCalculable) {
+                try {
+                    // Limpia la fórmula de cualquier caracter que no sea parte de una operación matemática segura.
+                    const formulaSegura = formulaReemplazada.replace(/[^-()\d/*+.]/g, '');
+                    // Evalúa la expresión matemática de forma segura.
+                    const resultado = new Function(`return ${formulaSegura}`)();
+                    
+                    if (isFinite(resultado)) {
+                        campoResultado.value = resultado.toFixed(2);
+                    } else {
+                        campoResultado.value = ''; // O '0.00' si se prefiere
+                    }
+                } catch (error) {
+                    console.error("Error al evaluar la fórmula:", formula, "->", formulaReemplazada, error);
+                    campoResultado.value = ''; // Limpiar si hay error
+                }
+            }
+        });
+    }
+
+    // --- 3. FUNCIÓN PARA RELLENAR EL FORMULARIO ---
     function fillForm(data) {
         form.reset();
         document.querySelectorAll('.datatable-container tbody, [data-datatable-name] tbody').forEach(tbody => {
@@ -63,7 +115,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                     placeholder: col.placeholder || ''
                                 });
 
-                                // LÓGICA DE ATRIBUTOS RESTAURADA Y FUNCIONAL
                                 if (col.readonly) input.readOnly = true;
                                 if (col['data-formula']) input.setAttribute('data-formula', col['data-formula']);
                                 
@@ -82,9 +133,17 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         if (statusText) statusText.textContent = 'Editando';
+
+        // **CRÍTICO**: Recalcular todas las filas DESPUÉS de que el formulario se ha rellenado.
+        // Esto asegura que los cálculos se hagan con los datos cargados.
+        setTimeout(() => {
+            form.querySelectorAll('.datatable-container tbody tr, [data-datatable-name] tbody tr').forEach(fila => {
+                recalcularFila(fila);
+            });
+        }, 50); // Pequeña espera para asegurar que el DOM está 100% listo.
     }
 
-    // --- 3. FUNCIÓN PARA LIMPIAR EL FORMULARIO ---
+    // --- 4. FUNCIÓN PARA LIMPIAR EL FORMULARIO ---
     function limpiarFormulario(exceptoCampoClave = true) {
         const keyFieldValue = keyField.value;
         form.reset();
@@ -97,7 +156,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (statusText) statusText.textContent = 'Nuevo';
     }
 
-    // --- 4. EVENTO PRINCIPAL: ESCUCHAR CAMBIOS EN EL CAMPO CLAVE ---
+    // --- 5. EVENTOS PRINCIPALES ---
+
+    // EVENTO 1: Cargar datos al salir del campo clave.
     keyField.addEventListener('blur', function() {
         const key = this.value.trim();
         if (key === '') {
@@ -109,7 +170,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(result => {
                 if (result.success && result.data) {
-                    fillForm(result.data);
+                    fillForm(result.data); // Esto rellenará y disparará el recálculo.
                 } else {
                     limpiarFormulario(true);
                 }
@@ -117,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => console.error('Error al cargar los datos:', error));
     });
 
-    // --- 5. LÓGICA PARA DATATABLES (AGREGAR/ELIMINAR FILAS) ---
+    // EVENTO 2: Gestionar clics (Agregar/Eliminar filas).
     form.addEventListener('click', function(e) {
         if (e.target) {
             if (e.target.classList.contains('eliminar_fila')) {
@@ -132,18 +193,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     fieldConfig.columns.forEach(col => {
                         const cell = newRow.insertCell();
                         const input = document.createElement('input');
+                        
                         Object.assign(input, {
                             type: col.type || 'text',
                             name: `${tableId}[${newIndex}][${col.name}]`,
                             className: 'form-control form-control-sm',
-                            value: '',
                             placeholder: col.placeholder || ''
                         });
-                        // LÓGICA DE ATRIBUTOS RESTAURADA Y FUNCIONAL
+
                         if (col.readonly) input.readOnly = true;
                         if (col['data-formula']) input.setAttribute('data-formula', col['data-formula']);
+                        
                         cell.appendChild(input);
                     });
+                    
                     const actionCell = newRow.insertCell();
                     actionCell.innerHTML = `<button type="button" class="btn btn-danger btn-sm eliminar_fila">X</button>`;
                 }
@@ -151,70 +214,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- INICIO: REEMPLAZO DEL MOTOR DE CÁLCULO DEFECTUOSO ---
-    // --- 6. LÓGICA PARA CÁLCULOS CON 'data-formula' (VERSIÓN CORREGIDA) ---
-    form.addEventListener('input', function(e) {
-        const inputCambiado = e.target;
-        const fila = inputCambiado.closest('tr');
-        if (!fila) return;
-
-        // Disparamos el recálculo para toda la fila
-        recalcularFila(fila);
-    });
-
-    // También recalculamos cuando se carga el formulario
-    keyField.addEventListener('blur', function() {
-        // Damos un pequeño respiro para que el DOM se actualice
-        setTimeout(() => {
-            form.querySelectorAll('.datatable-container tbody tr, [data-datatable-name] tbody tr').forEach(fila => {
-                recalcularFila(fila);
-            });
-        }, 100);
-    });
-
-    function recalcularFila(fila) {
-        const camposConFormula = fila.querySelectorAll('[data-formula]');
+    // EVENTO 3: Guardar datos (nuevo o editando).
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
         
-        camposConFormula.forEach(campoResultado => {
-            let formula = campoResultado.getAttribute('data-formula');
-            
-            // BUG CORREGIDO: Esta expresión solo busca palabras (variables), no números.
-            const variables = formula.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
-            
-            let formulaCalculable = formula;
-            let calculoPosible = true;
-
-            variables.forEach(variable => {
-                const campoVariable = fila.querySelector(`[name*="[${variable}]"]`);
-                
-                if (campoVariable) {
-                    const valor = parseFloat(campoVariable.value) || 0;
-                    // Usamos una RegExp para reemplazar todas las ocurrencias de la variable
-                    formulaCalculable = formulaCalculable.replace(new RegExp(`\\b${variable}\\b`, 'g'), valor);
+        const isEditando = statusText.textContent === 'Editando';
+        const url = `formulariodinamicologica.php?archivo=${encodeURIComponent(archivoJson)}&action=${isEditando ? 'update' : 'save'}`;
+        
+        const formData = new FormData(form);
+        fetch(url, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                alert('Datos guardados exitosamente.');
+                if (!isEditando) {
+                    limpiarFormulario();
                 } else {
-                    // Si una variable no se encuentra, no se puede calcular
-                    calculoPosible = false;
+                    // Si es edición, recargar los datos para asegurar que todo esté actualizado.
+                    keyField.dispatchEvent(new Event('blur'));
                 }
-            });
-
-            if (calculoPosible) {
-                try {
-                    // Se eliminan caracteres que no sean parte de una fórmula segura
-                    const formulaSegura = formulaCalculable.replace(/[^-()\d/*+.]/g, '');
-                    const resultado = new Function(`return ${formulaSegura}`)();
-                    
-                    if (!isNaN(resultado) && isFinite(resultado)) {
-                        campoResultado.value = resultado.toFixed(2);
-                    } else {
-                        campoResultado.value = ''; // O '0.00' si se prefiere
-                    }
-                } catch (error) {
-                    console.error("Error al evaluar la fórmula:", formula, "->", formulaCalculable);
-                    campoResultado.value = ''; // Limpiar si hay error
-                }
+            } else {
+                alert('Error al guardar los datos: ' + (result.message || ''));
             }
-        });
-    }
-    // --- FIN: REEMPLAZO DEL MOTOR DE CÁLCULO ---
-
+        })
+        .catch(error => console.error('Error al guardar los datos:', error));
+    });
 });

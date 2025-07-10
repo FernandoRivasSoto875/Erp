@@ -186,7 +186,21 @@ if (!function_exists('generarFieldsets')) {
 
                         default:
                             $attrs = ['type' => $type, 'name' => $name, 'id' => $id, 'value' => $value, 'placeholder' => ($field['placeholder'] ?? '')];
-                            foreach ($field as $k => $v) { if (in_array($k, ['required', 'readonly', 'multiple', 'min', 'max', 'step']) || strpos($k, 'data-') === 0) { $attrs[$k] = $v; } }
+                            foreach ($field as $k => $v) {
+                                if (in_array($k, ['required', 'readonly', 'multiple', 'min', 'max', 'step']) || strpos($k, 'data-') === 0) {
+                                    // Si es data-formula y es un array u objeto, convertir a string plano si es posible
+                                    if ($k === 'data-formula' && is_array($v)) {
+                                        if (isset($v['type']) && $v['type'] === 'lookup') {
+                                            // No poner data-formula para lookups en campos normales
+                                            continue;
+                                        } else {
+                                            $attrs[$k] = '';
+                                        }
+                                    } else {
+                                        $attrs[$k] = $v;
+                                    }
+                                }
+                            }
                             $inputHtml = "<input" . $buildAttrs($attrs) . ">";
                             break;
                     }

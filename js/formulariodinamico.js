@@ -253,29 +253,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Detecta el/los campos usados en el where (ej: {ComId})
                 const matches = formula.where.match(/{([^}]+)}/g) || [];
+                // Ejecuta el lookup tanto al cargar como al cambiar el campo clave
+                function ejecutarLookup() {
+                    let where = formula.where;
+                    matches.forEach(m => {
+                        const n = m.replace(/[{}]/g, '');
+                        const v = form.querySelector(`[name="${n}"]`)?.value || '';
+                        where = where.replace(m, v);
+                    });
+                    fetch(`formulariodinamicologica.php?action=lookup&table=${encodeURIComponent(formula.source.table)}&field=${encodeURIComponent(formula.source.field)}&where=${encodeURIComponent(where)}`)
+                        .then(r => r.json())
+                        .then(result => {
+                            if (result.success) {
+                                targetInput.value = result.value;
+                            } else {
+                                targetInput.value = '';
+                            }
+                        });
+                }
+                // Ejecutar lookup al cargar
+                ejecutarLookup();
+                // Ejecutar lookup al cambiar el campo clave
                 matches.forEach(match => {
                     const fieldName = match.replace(/[{}]/g, '');
                     const sourceInput = form.querySelector(`[name="${fieldName}"]`);
                     if (sourceInput) {
-                        sourceInput.addEventListener('blur', function() {
-                            // Construye el where reemplazando {Campo} por el valor actual
-                            let where = formula.where;
-                            matches.forEach(m => {
-                                const n = m.replace(/[{}]/g, '');
-                                const v = form.querySelector(`[name="${n}"]`)?.value || '';
-                                where = where.replace(m, v);
-                            });
-                            // Llama al backend para hacer el lookup
-                            fetch(`formulariodinamicologica.php?action=lookup&table=${encodeURIComponent(formula.source.table)}&field=${encodeURIComponent(formula.source.field)}&where=${encodeURIComponent(where)}`)
-                                .then(r => r.json())
-                                .then(result => {
-                                    if (result.success) {
-                                        targetInput.value = result.value;
-                                    } else {
-                                        targetInput.value = '';
-                                    }
-                                });
-                        });
+                        sourceInput.addEventListener('blur', ejecutarLookup);
+                        sourceInput.addEventListener('input', ejecutarLookup);
                     }
                 });
             }

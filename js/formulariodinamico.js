@@ -419,7 +419,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (errores.length > 0) {
                 e.preventDefault();
                 // Mensaje universal de error para todos los campos
-                $('#mensaje-envio').html(`<div class='alert alert-danger'><b>Error:</b> Por favor, revise los campos marcados en rojo y corrija los datos antes de enviar el formulario.</div>`);
+                const mensajeUniversal = 'Por favor, ingrese un valor válido en este campo.';
+                let mensajes = errores.map(err => `<li>${mensajeUniversal}</li>`).join('');
+                $('#mensaje-envio').html(`<div class='alert alert-danger'><b>Error:</b> Por favor, revise los campos marcados en rojo y corrija los datos antes de enviar el formulario.<ul>${mensajes}</ul></div>`);
                 return false;
             }
         });

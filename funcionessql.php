@@ -19,7 +19,7 @@ if (!function_exists('conexionBd')) {
         if ($conn !== null) {
             return $conn;
         }
-        $rutaJson = __DIR__ . '/json/conexion.json';
+        $rutaJson = __DIR__ . '/config/conexion.json';
         if (!file_exists($rutaJson)) {
             die("Error: No se encuentra el archivo de configuración $rutaJson");
         }

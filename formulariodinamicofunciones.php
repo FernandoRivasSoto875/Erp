@@ -196,7 +196,15 @@ if (!function_exists('generarFieldsets')) {
                             }
                             foreach ($field as $k => $v) {
                                 if (in_array($k, ['required', 'readonly', 'accept']) || strpos($k, 'data-') === 0) {
-                                    $attrs[$k] = $v;
+                                    // Si es data-formula, solo agregar si es string aritmético
+                                    if ($k === 'data-formula') {
+                                        if ($esFormulaAritmetica($v)) {
+                                            $attrs[$k] = $v;
+                                        }
+                                        // Si no es fórmula aritmética, no agregar nada
+                                    } else {
+                                        $attrs[$k] = $v;
+                                    }
                                 }
                             }
                             $inputHtml = "<input" . $buildAttrs($attrs) . ">";

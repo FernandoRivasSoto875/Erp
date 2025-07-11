@@ -282,7 +282,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Al cargar la página, recalcula todo
     window.addEventListener('DOMContentLoaded', function() {
         recalcularTodo();
+        // DEPURACIÓN: Mostrar todos los campos con fórmula encontrados
+        allFields.forEach(field => {
+            if (typeof field['data-formula'] === 'string') {
+                console.log('[Depuración] Campo con fórmula:', field.name, '->', field['data-formula']);
+            }
+        });
     });
+
+    // Refuerzo: recalcular también al hacer focusout (por si hay campos que no disparan input)
+    form.addEventListener('change', e => {
+        recalcularTodo();
+    });
+    form.addEventListener('blur', e => {
+        recalcularTodo();
+    }, true);
 
     // --- FUNCIÓN PARA LOOKUP AUTOMÁTICO ---
     function procesarLookups() {
@@ -452,10 +466,3 @@ document.addEventListener('DOMContentLoaded', function() {
     // La lógica post-envío ya está correctamente dentro del .then() del submit principal, no se debe duplicar aquí
 });
 // Fin del archivo JS
-<?php
-$all_fields = [];
-foreach ($json['fieldsets'] as $fs) {
-    foreach ($fs['fields'] as $f) {
-        $all_fields[] = $f;
-    }
-}

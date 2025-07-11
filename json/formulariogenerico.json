@@ -65,8 +65,7 @@
         
       
         { "name": "ComId", "label": "Código", "type": "text", "placeholder": "Ingrese código", "labelPosition": "left" },
-        
-   
+           
         { 
           "name": "descripcion_comuna", 
           "label": "Comuna", 

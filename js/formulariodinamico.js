@@ -61,6 +61,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 try { let parsed = JSON.parse(formula); if (parsed && typeof parsed === 'object') return; } catch(e){}
                 const input = form.querySelector(`[name="${field.name}"]`);
                 if (!input) return;
+                // DEPURACIÓN: Mostrar en consola cada campo con fórmula
+                console.log('Depuración fórmula:', field.name, 'formula:', formula, 'valor actual:', input.value);
                 let formulaReemplazada = formula;
                 let esCalculable = true;
                 const variables = formula.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
@@ -76,6 +78,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (esCalculable) {
                     try {
                         const resultado = new Function(`return ${formulaReemplazada}`)();
+                        console.log('Resultado calculado para', field.name, ':', resultado);
                         input.value = isFinite(resultado) ? resultado : '';
                     } catch (error) {
                         input.value = '';
@@ -449,3 +452,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // La lógica post-envío ya está correctamente dentro del .then() del submit principal, no se debe duplicar aquí
 });
 // Fin del archivo JS
+<?php
+$all_fields = [];
+foreach ($json['fieldsets'] as $fs) {
+    foreach ($fs['fields'] as $f) {
+        $all_fields[] = $f;
+    }
+}

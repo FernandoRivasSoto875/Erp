@@ -50,6 +50,19 @@ header('Content-Type: text/html; charset=UTF-8');
         ?>
     </form>
 </div>
+<?php
+// --- Asegurar que $all_fields contenga todos los campos de todos los fieldsets ---
+$all_fields = [];
+if (!empty($json['fieldsets'])) {
+    foreach ($json['fieldsets'] as $fs) {
+        if (!empty($fs['fields'])) {
+            foreach ($fs['fields'] as $f) {
+                $all_fields[] = $f;
+            }
+        }
+    }
+}
+?>
 <script>window.fields = <?php echo json_encode($all_fields); ?>;
 window.validacionesJSON = <?php echo json_encode($json['parametros']['validaciones'] ?? []); ?>;
 </script>

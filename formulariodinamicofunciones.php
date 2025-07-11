@@ -239,7 +239,6 @@ if (!function_exists('generarFieldsets')) {
         }
         return $html;
     }
-
     // Aquí podrían ir otras funciones futuras de este archivo.
 
 } // <-- FIN DEL BLOQUE DE PROTECCIÓN

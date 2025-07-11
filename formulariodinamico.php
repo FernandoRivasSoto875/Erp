@@ -50,12 +50,13 @@ header('Content-Type: text/html; charset=UTF-8');
         ?>
     </form>
 </div>
+
 <?php
 // --- Asegurar que $all_fields contenga todos los campos de todos los fieldsets ---
-$all_fields = [];
+$all_fields = array();
 if (!empty($json['fieldsets'])) {
     foreach ($json['fieldsets'] as $fs) {
-        if (!empty($fs['fields'])) {
+        if (!empty($fs['fields']) && is_array($fs['fields'])) {
             foreach ($fs['fields'] as $f) {
                 $all_fields[] = $f;
             }
@@ -63,8 +64,9 @@ if (!empty($json['fieldsets'])) {
     }
 }
 ?>
-<script>window.fields = <?php echo json_encode($all_fields); ?>;
-window.validacionesJSON = <?php echo json_encode($json['parametros']['validaciones'] ?? []); ?>;
+<script>
+window.fields = <?php echo json_encode($all_fields, JSON_UNESCAPED_UNICODE); ?>;
+window.validacionesJSON = <?php echo json_encode($json['parametros']['validaciones'] ?? [], JSON_UNESCAPED_UNICODE); ?>;
 </script>
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>

@@ -36,7 +36,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'lookup') {
         exit;
     }
 
-    $config_path = __DIR__ . '/config/conexion.json';
+    $config_path = __DIR__ . '/json/conexion.json';
     if (!file_exists($config_path)) {
         echo json_encode(['success' => false, 'error' => 'No existe config/conexion.json']);
         exit;

@@ -466,3 +466,4 @@ document.addEventListener('DOMContentLoaded', function() {
     // La lógica post-envío ya está correctamente dentro del .then() del submit principal, no se debe duplicar aquí
 });
 // Fin del archivo JS
+

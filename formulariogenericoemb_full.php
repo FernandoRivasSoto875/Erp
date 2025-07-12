@@ -24,7 +24,17 @@
                         try { eval(match[1]); } catch(e) { console.error('Error evaluando script:', e); }
                     }
                     main.innerHTML = html;
-                    if (window.inicializarFormularioDinamico) window.inicializarFormularioDinamico();
+                    // Esperar a que el JS esté cargado si es necesario
+                    if (window.inicializarFormularioDinamico) {
+                        window.inicializarFormularioDinamico();
+                    } else {
+                        var intv = setInterval(function() {
+                            if (window.inicializarFormularioDinamico) {
+                                clearInterval(intv);
+                                window.inicializarFormularioDinamico();
+                            }
+                        }, 100);
+                    }
                 })
                 .catch(err => { main.innerHTML = '<p style="color:red">No se pudo cargar el formulario dinámico embebido.</p>'; });
         }

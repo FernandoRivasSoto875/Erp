@@ -18,7 +18,25 @@ $_GET['archivo'] = __DIR__ . '/json/FormularioContacto.json';
         if (main) {
             fetch('https://saludenterreno.cl/ErpQa/formulariodinamico.php?archivo=formulariogenerico2.json')
                 .then(resp => resp.text())
-                .then(html => { main.innerHTML = html; })
+                .then(html => {
+                    // Extraer y evaluar los bloques <script> con window.fields y window.validacionesJSON usando regex
+                    const regex = /<script[^>]*>([\s\S]*?window\.(fields|validacionesJSON)[\s\S]*?)<\/script>/gi;
+                    let match;
+                    while ((match = regex.exec(html)) !== null) {
+                        try { eval(match[1]); } catch(e) { console.error('Error evaluando script:', e); }
+                    }
+                    main.innerHTML = html;
+                    if (window.inicializarFormularioDinamico) {
+                        window.inicializarFormularioDinamico();
+                    } else {
+                        var intv = setInterval(function() {
+                            if (window.inicializarFormularioDinamico) {
+                                clearInterval(intv);
+                                window.inicializarFormularioDinamico();
+                            }
+                        }, 100);
+                    }
+                })
                 .catch(err => { main.innerHTML = '<p style="color:red">No se pudo cargar el formulario dinámico embebido.</p>'; });
         }
     });

@@ -16,8 +16,11 @@
         if (main) {
             fetch('https://saludenterreno.cl/ErpQa/formulariodinamico.php?archivo=formulariogenerico2.json')
                 .then(resp => resp.text())
-                .then(html => { main.innerHTML = html; })
-                .catch(err => { main.innerHTML = '<p style=\"color:red\">No se pudo cargar el formulario dinámico embebido.</p>'; });
+                .then(html => {
+                    main.innerHTML = html;
+                    if (window.inicializarFormularioDinamico) window.inicializarFormularioDinamico();
+                })
+                .catch(err => { main.innerHTML = '<p style="color:red">No se pudo cargar el formulario dinámico embebido.</p>'; });
         }
     });
     </script>

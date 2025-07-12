@@ -17,16 +17,14 @@
         fetch('formulariodinamico.php?archivo=formulariogenerico2.json')
             .then(r => r.text())
             .then(html => {
-                document.getElementById('contenedor-formulario').innerHTML = html;
-                // Espera a que el JS esté cargado y luego inicializa
-                if (window.inicializarFormularioDinamico) {
-                    window.inicializarFormularioDinamico();
-                } else {
-                    // Si el JS aún no está listo, espera y reintenta
-                    setTimeout(() => {
-                        if (window.inicializarFormularioDinamico) window.inicializarFormularioDinamico();
-                    }, 200);
+                // Extraer y evaluar los bloques <script> con window.fields y window.validacionesJSON usando regex
+                const regex = /<script[^>]*>([\s\S]*?window\.(fields|validacionesJSON)[\s\S]*?)<\/script>/gi;
+                let match;
+                while ((match = regex.exec(html)) !== null) {
+                    try { eval(match[1]); } catch(e) { console.error('Error evaluando script:', e); }
                 }
+                document.getElementById('contenedor-formulario').innerHTML = html;
+                if (window.inicializarFormularioDinamico) window.inicializarFormularioDinamico();
             });
     }
     </script>

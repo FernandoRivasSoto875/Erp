@@ -1,4 +1,5 @@
-document.addEventListener('DOMContentLoaded', function() {
+// Encapsulamos toda la inicialización en una función global
+window.inicializarFormularioDinamico = function() {
     // --- 1. CONFIGURACIÓN INICIAL ---
     const form = document.getElementById('formulario');
     if (!form) return;
@@ -464,6 +465,14 @@ document.addEventListener('DOMContentLoaded', function() {
         form.appendChild(hidden);
     }
     // La lógica post-envío ya está correctamente dentro del .then() del submit principal, no se debe duplicar aquí
-});
+
+};
+
+// Autoejecutar si el DOM ya está listo (modo directo o iframe)
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', window.inicializarFormularioDinamico);
+} else {
+    window.inicializarFormularioDinamico();
+}
 // Fin del archivo JS
 

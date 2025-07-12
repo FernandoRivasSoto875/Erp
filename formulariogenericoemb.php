@@ -23,17 +23,16 @@ $_GET['archivo'] = __DIR__ . '/json/FormularioContacto.json';
         }
     });
     </script>
+    <!-- Cargar los JS necesarios para el formulario dinámico -->
+    <script src="https://saludenterreno.cl/ErpQa/js/formulariodinamico.js"></script>
+    <!-- Agrega aquí otros JS necesarios si el formulario los requiere -->
 </head>
 <body>
-    <?php include 'header.php'; ?>
-    <?php include 'menu.php'; ?>
-    <?php include 'redes.php'; ?>
     <main id="formulario-dinamico-main">
         <div style="text-align:center;padding:2em;">
             <span>Cargando formulario embebido...</span>
         </div>
     </main>
-    <?php include 'footer.php'; ?>
 </body>
 </html>
 

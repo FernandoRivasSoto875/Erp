@@ -18,6 +18,13 @@
                 .then(resp => resp.text())
                 .then(html => {
                     main.innerHTML = html;
+                    // Extraer y evaluar los bloques <script> con window.fields y window.validacionesJSON
+                    const scripts = main.querySelectorAll('script');
+                    scripts.forEach(script => {
+                        if (script.textContent.includes('window.fields') || script.textContent.includes('window.validacionesJSON')) {
+                            try { eval(script.textContent); } catch(e) { console.error('Error evaluando script:', e); }
+                        }
+                    });
                     if (window.inicializarFormularioDinamico) window.inicializarFormularioDinamico();
                 })
                 .catch(err => { main.innerHTML = '<p style="color:red">No se pudo cargar el formulario dinámico embebido.</p>'; });

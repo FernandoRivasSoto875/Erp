@@ -1,20 +1,20 @@
-/* Style 7: Colorido pastel */
+/* Blue Style 6: Azul hielo */
 :root {
-  --color-bg: #fdf6f0;
-  --color-card: #fff7e6;
-  --color-primary: #ffb347;
-  --color-accent: #ffcc80;
+  --color-bg: #f0f8ff;
+  --color-card: #e6f0fa;
+  --color-primary: #5dade2;
+  --color-accent: #aed6f1;
   --color-error: #e57373;
-  --color-success: #81c784;
+  --color-success: #43a047;
   --color-dark: #222;
   --color-light: #fff;
   --radius: 16px;
-  --shadow: 0 2px 12px rgba(255,179,71,0.08);
+  --shadow: 0 2px 10px rgba(93,173,226,0.08);
 }
 body { background: var(--color-bg); font-family: 'Segoe UI', Arial, sans-serif; }
 .form-card { background: var(--color-card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 2em; margin-bottom: 2em; }
-input, select, textarea { border-radius: var(--radius); border: 1px solid #ffb347; padding: 0.7em 1em; transition: border-color 0.2s, box-shadow 0.2s; }
-input:focus, select:focus, textarea:focus { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-accent); }
+input, select, textarea { border-radius: var(--radius); border: 1px solid #5dade2; padding: 0.7em 1em; transition: border-color 0.2s, box-shadow 0.2s; }
+input:focus, select:focus, textarea:focus { border-color: var(--color-accent); box-shadow: 0 0 0 2px var(--color-primary); }
 .btn-primary { background: linear-gradient(90deg, var(--color-primary), var(--color-accent)); color: #fff; border: none; border-radius: var(--radius); padding: 0.8em 2em; font-size: 1.1em; transition: background 0.2s, transform 0.1s; }
 .btn-primary:hover { background: linear-gradient(90deg, var(--color-accent), var(--color-primary)); transform: scale(1.04); }
 .form-progress { height: 6px; background: var(--color-primary); border-radius: 3px; margin-bottom: 1.5em; transition: width 0.3s; }

@@ -1,19 +1,19 @@
-/* Style 15: Naranja y gris cálido */
+/* Blue Style 4: Azul acero */
 :root {
-  --color-bg: #fff3e0;
-  --color-card: #fff;
-  --color-primary: #ff9800;
-  --color-accent: #ffe0b2;
-  --color-error: #e63946;
-  --color-success: #43aa8b;
+  --color-bg: #f0f4f8;
+  --color-card: #e3eaf1;
+  --color-primary: #4682b4;
+  --color-accent: #b0c4de;
+  --color-error: #e57373;
+  --color-success: #43a047;
   --color-dark: #222;
   --color-light: #fff;
   --radius: 14px;
-  --shadow: 0 2px 10px rgba(255,152,0,0.08);
+  --shadow: 0 2px 10px rgba(70,130,180,0.08);
 }
 body { background: var(--color-bg); font-family: 'Segoe UI', Arial, sans-serif; }
 .form-card { background: var(--color-card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 2em; margin-bottom: 2em; }
-input, select, textarea { border-radius: var(--radius); border: 1px solid #ff9800; padding: 0.7em 1em; transition: border-color 0.2s, box-shadow 0.2s; }
+input, select, textarea { border-radius: var(--radius); border: 1px solid #4682b4; padding: 0.7em 1em; transition: border-color 0.2s, box-shadow 0.2s; }
 input:focus, select:focus, textarea:focus { border-color: var(--color-accent); box-shadow: 0 0 0 2px var(--color-primary); }
 .btn-primary { background: linear-gradient(90deg, var(--color-primary), var(--color-accent)); color: #fff; border: none; border-radius: var(--radius); padding: 0.8em 2em; font-size: 1.1em; transition: background 0.2s, transform 0.1s; }
 .btn-primary:hover { background: linear-gradient(90deg, var(--color-accent), var(--color-primary)); transform: scale(1.04); }

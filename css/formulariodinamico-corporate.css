@@ -1,0 +1,22 @@
+/* Style: Corporate Blue (azul y gris profesional, antes formulariodinamico.css) */
+:root {
+  --primary-color: #007BFF;
+  --primary-hover: #0056b3;
+  --secondary-color: #333;
+  --light-bg: #f5f5f5;
+  --white: #fff;
+  --gray-border: #ccc;
+  --input-border: #aaa;
+  --font-family: Arial, sans-serif;
+  --base-font-size: 14px;
+  --small-spacing: 0.5rem;
+  --medium-spacing: 0.625rem;
+  --large-spacing: 1.25rem;
+  --border-radius: 0.3125rem;
+}
+body {
+  font-family: var(--font-family);
+  background: var(--light-bg);
+  color: var(--secondary-color);
+}
+/* ...resto del contenido igual a formulariodinamico.css... */

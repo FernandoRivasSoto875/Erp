@@ -1,20 +1,20 @@
-/* Style 11: Verde naturaleza */
+/* Style: Pastel Colors (colorido pastel) */
 :root {
-  --color-bg: #eafaf1;
-  --color-card: #ffffff;
-  --color-primary: #43aa8b;
-  --color-accent: #90be6d;
-  --color-error: #e63946;
-  --color-success: #43aa8b;
+  --color-bg: #fdf6f0;
+  --color-card: #fff7e6;
+  --color-primary: #ffb347;
+  --color-accent: #ffcc80;
+  --color-error: #e57373;
+  --color-success: #81c784;
   --color-dark: #222;
   --color-light: #fff;
-  --radius: 14px;
-  --shadow: 0 2px 10px rgba(67,170,139,0.08);
+  --radius: 16px;
+  --shadow: 0 2px 12px rgba(255,179,71,0.08);
 }
 body { background: var(--color-bg); font-family: 'Segoe UI', Arial, sans-serif; }
 .form-card { background: var(--color-card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 2em; margin-bottom: 2em; }
-input, select, textarea { border-radius: var(--radius); border: 1px solid #43aa8b; padding: 0.7em 1em; transition: border-color 0.2s, box-shadow 0.2s; }
-input:focus, select:focus, textarea:focus { border-color: var(--color-accent); box-shadow: 0 0 0 2px var(--color-primary); }
+input, select, textarea { border-radius: var(--radius); border: 1px solid #ffb347; padding: 0.7em 1em; transition: border-color 0.2s, box-shadow 0.2s; }
+input:focus, select:focus, textarea:focus { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-accent); }
 .btn-primary { background: linear-gradient(90deg, var(--color-primary), var(--color-accent)); color: #fff; border: none; border-radius: var(--radius); padding: 0.8em 2em; font-size: 1.1em; transition: background 0.2s, transform 0.1s; }
 .btn-primary:hover { background: linear-gradient(90deg, var(--color-accent), var(--color-primary)); transform: scale(1.04); }
 .form-progress { height: 6px; background: var(--color-primary); border-radius: 3px; margin-bottom: 1.5em; transition: width 0.3s; }

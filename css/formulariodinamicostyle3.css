@@ -1,0 +1,23 @@
+/* Style 3: Neumorfismo (Soft UI) */
+:root {
+  --color-bg: #e0e5ec;
+  --color-card: #f4f6fb;
+  --color-primary: #8f94fb;
+  --color-accent: #4e54c8;
+  --color-error: #e74c3c;
+  --color-success: #27ae60;
+  --color-dark: #222;
+  --color-light: #fff;
+  --radius: 18px;
+  --shadow: 8px 8px 16px #c8d0e7, -8px -8px 16px #fff;
+}
+body { background: var(--color-bg); font-family: 'Segoe UI', Arial, sans-serif; }
+.form-card { background: var(--color-card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 2em; margin-bottom: 2em; }
+input, select, textarea { border-radius: var(--radius); border: none; box-shadow: 4px 4px 8px #c8d0e7, -4px -4px 8px #fff; padding: 0.7em 1em; transition: box-shadow 0.2s; }
+input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 2px var(--color-accent); }
+.btn-primary { background: var(--color-primary); color: #fff; border: none; border-radius: var(--radius); padding: 0.8em 2em; font-size: 1.1em; box-shadow: 2px 2px 6px #c8d0e7, -2px -2px 6px #fff; transition: background 0.2s, transform 0.1s; }
+.btn-primary:hover { background: var(--color-accent); transform: scale(1.04); }
+.form-progress { height: 6px; background: var(--color-accent); border-radius: 3px; margin-bottom: 1.5em; transition: width 0.3s; }
+.tooltip { background: #222; color: #fff; border-radius: 6px; padding: 0.5em 1em; font-size: 0.95em; position: absolute; z-index: 10; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+input:invalid { border: 2px solid var(--color-error); animation: shake 0.2s; }
+@keyframes shake { 0% { transform: translateX(0);} 25% { transform: translateX(-4px);} 50% { transform: translateX(4px);} 75% { transform: translateX(-4px);} 100% { transform: translateX(0);} }

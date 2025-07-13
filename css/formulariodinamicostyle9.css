@@ -1,0 +1,23 @@
+/* Style 9: Formulario retro (años 80/90) */
+:root {
+  --color-bg: #22223b;
+  --color-card: #4a4e69;
+  --color-primary: #f2e9e4;
+  --color-accent: #9a8c98;
+  --color-error: #e07a5f;
+  --color-success: #81b29a;
+  --color-dark: #f2e9e4;
+  --color-light: #4a4e69;
+  --radius: 8px;
+  --shadow: 0 2px 12px rgba(154,140,152,0.18);
+}
+body { background: var(--color-bg); color: #f2e9e4; font-family: 'Courier New', Courier, monospace; }
+.form-card { background: var(--color-card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 2em; margin-bottom: 2em; border: 2px dashed #f2e9e4; }
+input, select, textarea { border-radius: var(--radius); border: 2px solid #f2e9e4; padding: 0.7em 1em; background: #22223b; color: #f2e9e4; font-family: 'Courier New', Courier, monospace; }
+input:focus, select:focus, textarea:focus { border-color: var(--color-accent); box-shadow: 0 0 0 2px var(--color-primary); }
+.btn-primary { background: var(--color-accent); color: #22223b; border: none; border-radius: var(--radius); padding: 0.8em 2em; font-size: 1.1em; transition: background 0.2s, transform 0.1s; font-family: 'Courier New', Courier, monospace; }
+.btn-primary:hover { background: var(--color-primary); color: #4a4e69; transform: scale(1.04); }
+.form-progress { height: 6px; background: var(--color-accent); border-radius: 3px; margin-bottom: 1.5em; transition: width 0.3s; }
+.tooltip { background: #f2e9e4; color: #22223b; border-radius: 6px; padding: 0.5em 1em; font-size: 0.95em; position: absolute; z-index: 10; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+input:invalid { border-color: var(--color-error); animation: shake 0.2s; }
+@keyframes shake { 0% { transform: translateX(0);} 25% { transform: translateX(-4px);} 50% { transform: translateX(4px);} 75% { transform: translateX(-4px);} 100% { transform: translateX(0);} }

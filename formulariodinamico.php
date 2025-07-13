@@ -5,7 +5,10 @@
 require_once 'formulariodinamicologica.php';
 header('Content-Type: text/html; charset=UTF-8');
 ?>
-<link rel="stylesheet" href="css/formulariodinamico.css">
+<?php
+$cssDefault = $json['parametros']['CssDefault'] ?? 'formulariodinamico.css';
+?>
+<link rel="stylesheet" href="css/<?php echo htmlspecialchars($cssDefault); ?>">
 <div class="container mt-4">
     <!-- INICIO: MODIFICACIÓN -->
     <div class="d-flex justify-content-between align-items-center">

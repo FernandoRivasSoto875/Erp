@@ -19,6 +19,10 @@ Versión: 1.3
 10. Escenarios de Entrada y Salida de Datos: Casos y Recomendaciones UX
 11. Sugerencias Expertas para Fortalecer el Proyecto
 12. Visión Futura y Escenarios Avanzados
+13. Referencias y Recursos
+
+
+
 
 1. Objetivo
 ------------
@@ -205,12 +209,18 @@ Propiedades:
 - Divide el código PHP en módulos/clases: uno para manejo de plantillas, otro para lógica de reemplazo, otro para generación de archivos y otro para envío de correos.
 - Usa namespaces y autoloading (PSR-4) si el proyecto crece.
 
-2. Validación y Seguridad
-- Valida exhaustivamente los archivos subidos (tipo, tamaño, extensión, escaneo antivirus).
-- Usa rutas relativas y nunca expongas rutas absolutas en el frontend.
-- Implementa control de acceso a archivos generados (por usuario, rol o token temporal).
-- Protege contra XSS, CSRF y SQL Injection en todos los puntos de entrada.
+2. Validación, Seguridad y Privacidad
+Valida exhaustivamente los archivos subidos (tipo, tamaño, extensión, escaneo antivirus).
+Usa rutas relativas y nunca expongas rutas absolutas en el frontend.
+Implementa control de acceso a archivos generados (por usuario, rol o token temporal).
+Protege contra XSS, CSRF y SQL Injection en todos los puntos de entrada.
+Aplica cifrado de datos sensibles en tránsito y en reposo.
+Gestiona contraseñas y tokens de forma segura (hashing, expiración, rotación).
+Cumple con normativas como GDPR, ISO 27001 y otras según industria.
 
+
+
+ 
 3. Experiencia de Usuario (UX)
 - Agrega indicadores de carga y progreso para operaciones largas (subida/generación de archivos).
 - Permite guardar borradores y continuar formularios incompletos.
@@ -246,6 +256,28 @@ Propiedades:
 - Considera soporte para firma digital avanzada y blockchain si se requiere trazabilidad legal.
 - Evalúa integración con sistemas de notificaciones (email, SMS, WhatsApp) para alertas automáticas.
 
+
+
+11.1. Roles y Permisos
+
+Define roles de usuario (admin, editor, lector, etc.) y permisos granulares para formularios, archivos y acciones.
+Permite asignar y revocar permisos desde la interfaz administrativa.
+
+11.1. Roles y Permisos
+Define roles de usuario (admin, editor, lector, etc.) y permisos granulares para formularios, archivos y acciones.
+Permite asignar y revocar permisos desde la interfaz administrativa.
+11.2. Estrategia de Pruebas
+Realiza pruebas unitarias, de integración y de aceptación para todos los módulos críticos.
+Usa herramientas de CI/CD para automatizar pruebas y despliegues.
+11.3. Estrategia de Mantenimiento y Actualización
+Documenta procedimientos de actualización y migración.
+Programa revisiones periódicas de seguridad y rendimiento.
+Mantén dependencias y librerías actualizadas.
+ 
+
+
+
+
 12. Visión Futura y Escenarios Avanzados
 ----------------------------------------
 
@@ -272,4 +304,12 @@ El sistema está diseñado para evolucionar y adaptarse a cualquier necesidad de
 - Dashboards de uso y errores para identificar cuellos de botella y oportunidades de mejora.
 - Feedback integrado para sugerencias y reporte de problemas desde la interfaz.
 
-Este apartado debe ser revisado y actualizado periódicamente para incorporar nuevas tendencias, tecnologías y necesidades de los usuarios y del negocio.
+13.- Referencias y Recursos
+Documentación oficial de PHP, Bootstrap, Flexbox, JSON.
+Estándares de accesibilidad WCAG 2.2.
+OWASP Top 10 para seguridad web.
+Librerías recomendadas: PHPOffice, TCPDF, DomPDF, Twig, Mustache.
+Enlaces a recursos y ejemplos de integra
+
+
+ 

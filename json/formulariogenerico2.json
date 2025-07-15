@@ -129,7 +129,7 @@
         },
         { "name": "rango_satisfaccion", "label": "Satisfacción", "type": "range", "min": 1, "max": 10, "labelPosition": "top-right" },
         { "name": "oculto", "type": "hidden", "value": "valor_oculto" },
-        { "name": "ciudad_2", "label": "Ciudad (left)", "type": "selectdata", "labelPosition": "left", "data": { "tabla": "Comuna", "campo": "ComDes", "filtro": "1=1" } }
+        { "name": "ciudad_2", "label": "Ciudad ", "type": "selectdata", "labelPosition": "left", "data": { "tabla": "Comuna", "campo": "ComDes", "filtro": "1=1" } }
       ]
     },
     {

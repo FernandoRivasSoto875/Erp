@@ -1,0 +1,15 @@
+Resumen Ejecutivo
+-----------------
+Este documento describe los requisitos y mejores prácticas para un sistema de formularios y generación dinámica de archivos, orientado a máxima flexibilidad, seguridad, accesibilidad y evolución tecnológica. El objetivo es permitir la entrada y salida de datos en cualquier escenario, integrando plantillas, flujos, validaciones y automatización avanzada.
+
+Glosario de Términos
+--------------------
+- Preformato: Configuración de plantilla y reglas para generar archivos dinámicos.
+- Marcador: Etiqueta en la plantilla que será reemplazada por un valor del formulario.
+- JSON: Formato de datos usado para definir formularios y reemplazos.
+- Plugin/Hook: Mecanismo para extender el sistema sin modificar el núcleo.
+- Rol: Perfil de usuario con permisos específicos.
+
+Espacio para Diagrama de Flujo
+------------------------------
+[Aquí puede insertarse un diagrama de flujo del proceso de generación y reemplazo de archivos.]

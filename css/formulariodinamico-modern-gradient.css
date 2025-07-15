@@ -1,0 +1,67 @@
+/* Modern Gradient Theme for formulariodinamico */
+:root {
+  --fd-bg: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+  --fd-surface: #fff;
+  --fd-primary: #5f76e8;
+  --fd-secondary: #ffb86c;
+  --fd-accent: #f7fafc;
+  --fd-error: #ff5555;
+  --fd-text: #222;
+  --fd-label: #5f76e8;
+  --fd-border: #dbeafe;
+}
+
+body, .fd-form {
+  background: var(--fd-bg);
+  color: var(--fd-text);
+  font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+}
+
+.fd-field, .fd-input, .fd-select, .fd-textarea {
+  background: var(--fd-surface);
+  color: var(--fd-text);
+  border-radius: 10px;
+  border: 1px solid var(--fd-border);
+  padding: 0.75em 1em;
+  margin-bottom: 1em;
+  box-shadow: 0 4px 16px rgba(95, 118, 232, 0.08);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.fd-field:focus, .fd-input:focus, .fd-select:focus, .fd-textarea:focus {
+  border-color: var(--fd-secondary);
+  box-shadow: 0 0 0 2px var(--fd-secondary);
+  outline: none;
+}
+
+.fd-label {
+  color: var(--fd-label);
+  font-weight: 600;
+  margin-bottom: 0.5em;
+  letter-spacing: 0.02em;
+}
+
+.fd-button {
+  background: var(--fd-primary);
+  color: #fff;
+  border-radius: 10px;
+  border: none;
+  padding: 0.75em 2em;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(95, 118, 232, 0.15);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.fd-button:hover {
+  background: var(--fd-secondary);
+}
+
+.fd-error {
+  color: var(--fd-error);
+  background: #fff0f0;
+  border-radius: 8px;
+  padding: 0.5em 1em;
+  border: 1px solid var(--fd-error);
+  margin-bottom: 1em;
+}

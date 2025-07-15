@@ -1,0 +1,70 @@
+/* Modern Formal Theme for formulariodinamico */
+:root {
+  --fd-bg: #f4f6fb;
+  --fd-surface: #fff;
+  --fd-primary: #2a4365;
+  --fd-secondary: #4fd1c5;
+  --fd-accent: #e2e8f0;
+  --fd-error: #e53e3e; /* Solo para mensajes de error */
+  --fd-text: #222;
+  --fd-label: #2a4365;
+  --fd-border: #cbd5e1;
+}
+
+body, .fd-form {
+  background: var(--fd-bg);
+  color: var(--fd-text);
+  font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+}
+
+.fd-field, .fd-input, .fd-select, .fd-textarea {
+  background: var(--fd-surface);
+  color: var(--fd-text);
+  border-radius: 8px;
+  border: 1px solid var(--fd-border);
+  padding: 0.75em 1em;
+  margin-bottom: 1em;
+  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.05);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+
+.fd-field:focus, .fd-input:focus, .fd-select:focus, .fd-textarea:focus {
+  border-color: var(--fd-secondary);
+  box-shadow: 0 0 0 2px var(--fd-secondary);
+  outline: none;
+}
+
+/* Nunca usar rojo para destacar campos o atributos, solo para mensajes de error */
+
+.fd-label {
+  color: var(--fd-label);
+  font-weight: 600;
+  margin-bottom: 0.5em;
+  letter-spacing: 0.02em;
+}
+
+.fd-button {
+  background: var(--fd-primary);
+  color: #fff;
+  border-radius: 8px;
+  border: none;
+  padding: 0.75em 2em;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.10);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.fd-button:hover {
+  background: var(--fd-secondary);
+}
+
+.fd-error {
+  color: var(--fd-error);
+  background: #fff0f0;
+  border-radius: 6px;
+  padding: 0.5em 1em;
+  border: 1px solid var(--fd-error);
+  margin-bottom: 1em;
+}

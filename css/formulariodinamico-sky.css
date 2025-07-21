@@ -1,3 +1,24 @@
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.form-card, .formulario-dinamico, .form-container {
+  width: 100%;
+  max-width: 100vw;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+@media (max-width: 900px) {
+  .form-card, .formulario-dinamico, .form-container {
+    padding: 1em;
+    min-height: 100vh;
+  }
+}
 /* Style: Sky Blue & White (azul cielo y blanco) */
 :root {
   --color-bg: #e3f2fd;

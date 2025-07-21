@@ -49,9 +49,7 @@
     <?php include 'menu.php'; ?>
     <?php include 'redes.php'; ?>
     <main id="formulario-dinamico-main">
-        <div style="text-align:center;padding:2em;">
-            <span>Cargando formulario embebido...</span>
-        </div>
+        <iframe src="https://saludenterreno.cl/ErpQa/formulariodinamico.php?archivo=json/formulariogenerico2.json" width="100%" height="900" frameborder="0" style="border:none;min-height:600px;"></iframe>
     </main>
     <?php include 'footer.php'; ?>
 </body>

@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="css/estilos.css">
     <script>
     function abrirPopupFormulario() {
-        window.open('https://saludenterreno.cl/ErpQa/formulariodinamico.php?archivo=formulariogenerico2.json',
+        window.open('https://saludenterreno.cl/ErpQa/formulariodinamico.php?archivo=json/formulariogenerico2.json',
             'popupFormulario',
             'width=900,height=700,scrollbars=yes,resizable=yes');
     }

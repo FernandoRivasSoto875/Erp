@@ -14,7 +14,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         const main = document.getElementById('formulario-dinamico-main');
         if (main) {
-            fetch('https://saludenterreno.cl/ErpQa/formulariodinamico.php?archivo=formulariogenerico2.json')
+            fetch('https://saludenterreno.cl/ErpQa/formulariodinamico.php?archivo=json/formulariogenerico2.json')
                 .then(resp => resp.text())
                 .then(html => {
                     // Extraer y evaluar los bloques <script> con window.fields y window.validacionesJSON usando regex

@@ -14,7 +14,7 @@
     </div>
     <script>
     function cargarFormulario() {
-        fetch('formulariodinamico.php?archivo=formulariogenerico2.json')
+        fetch('formulariodinamico.php?archivo=json/formulariogenerico2.json')
             .then(r => r.text())
             .then(html => {
                 // Extraer y evaluar los bloques <script> con window.fields y window.validacionesJSON usando regex

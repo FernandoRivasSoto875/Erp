@@ -89,39 +89,45 @@ require_once 'funcionessql.php';
 function generarLayout($layoutConfig, $fieldsetsConfig, $valores, $soloLectura) {
     $html = '';
     if (empty($layoutConfig)) {
-        return generarFieldsets($fieldsetsConfig, $valores, $soloLectura);
+        $html .= '<!-- Layout no definido, renderizando fallback -->';
+        $html .= '<div class="layout-container fallback-layout">';
+        foreach (array_keys($fieldsetsConfig) as $fieldsetName) {
+            $html .= generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $soloLectura);
+        }
+        $html .= '</div>';
+        return $html;
     }
 
-    // El layout principal es una fila implícita que contiene los bloques.
-    $html .= '<div class="layout-container">';
+    $html .= '<div class="layout-container" data-layout-container>';
     foreach ($layoutConfig as $blockName => $blockData) {
-        $html .= renderBlock($blockData, $fieldsetsConfig, $valores, $soloLectura);
+        $html .= renderBlock($blockData, $fieldsetsConfig, $valores, $soloLectura, $blockName);
     }
     $html .= '</div>';
     
     return $html;
 }
 
-function renderBlock($block, $fieldsetsConfig, $valores, $soloLectura) {
+function renderBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockName = 'generic') {
     $type = $block['type'] ?? 'generic';
     $html = '';
+    $blockAttrs = "data-block-type='{$type}' data-block-name='{$blockName}'";
 
     switch ($type) {
         case 'header':
-            $html .= '<div class="form-block form-header-block mb-4">';
+            $html .= "<div class='form-block form-header-block mb-4' {$blockAttrs}>";
             $html .= renderRows($block['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
             $html .= '</div>';
             break;
         case 'tabs':
-            $html .= renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura);
+            $html .= renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockAttrs);
             break;
         case 'footer':
-            $html .= '<div class="form-block form-footer-block mt-4">';
+            $html .= "<div class='form-block form-footer-block mt-4' {$blockAttrs}>";
             $html .= renderRows($block['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
             $html .= '</div>';
             break;
-        default: // Para cualquier otro bloque o uno sin tipo
-            $html .= '<div class="form-block">';
+        default:
+            $html .= "<div class='form-block' {$blockAttrs}>";
             $html .= renderRows($block['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
             $html .= '</div>';
             break;
@@ -129,16 +135,39 @@ function renderBlock($block, $fieldsetsConfig, $valores, $soloLectura) {
     return $html;
 }
 
-function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura) {
+function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
+    $html = '';
+    foreach ($rows as $row) {
+        $columns = $row['columns'] ?? [];
+        $html .= '<div class="row" data-row>';
+        foreach ($columns as $column) {
+            $width = $column['width'] ?? '12';
+            $fieldsetName = $column['fieldset'] ?? null;
+            
+            $html .= "<div class='col-md-{$width}' data-col-width='{$width}'>";
+            if ($fieldsetName) {
+                $html .= generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $soloLectura);
+            }
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+    }
+    return $html;
+}
+
+function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockAttrs) {
     $tabsId = 'tabs_' . uniqid();
-    // Usamos nav-pills para un look más de "botones" y añadimos clases para el drag&drop
-    $html = '<ul class="nav nav-pills mb-3" id="' . $tabsId . '" role="tablist">';
+    $html = "<div {$blockAttrs}>";
+    $html .= '<ul class="nav nav-pills mb-3" id="' . $tabsId . '" role="tablist">';
     $isFirstTab = true;
+
     foreach (($block['tabs'] ?? []) as $index => $tab) {
-        $tabId = 'tab_' . preg_replace('/[^a-zA-Z0-9]/', '', $tab['title'] ?? 'tab') . '_' . $index;
+        $tabTitle = htmlspecialchars($tab['title'] ?? '');
+        $tabId = 'tab_' . preg_replace('/[^a-zA-Z0-9_]/', '', str_replace(' ', '_', $tabTitle)) . '_' . $index;
         $activeClass = $isFirstTab ? 'active' : '';
+        
         $html .= '<li class="nav-item" role="presentation">';
-        $html .= '<a class="nav-link ' . $activeClass . '" id="' . $tabId . '-tab" data-toggle="tab" href="#' . $tabId . '" role="tab" aria-controls="' . $tabId . '" aria-selected="' . ($isFirstTab ? 'true' : 'false') . '">' . htmlspecialchars($tab['title'] ?? '') . '</a>';
+        $html .= '<a class="nav-link ' . $activeClass . '" id="' . $tabId . '-tab" data-toggle="pill" href="#' . $tabId . '" role="tab" aria-controls="' . $tabId . '" aria-selected="' . ($isFirstTab ? 'true' : 'false') . '">' . $tabTitle . '</a>';
         $html .= '</li>';
         $isFirstTab = false;
     }
@@ -147,65 +176,44 @@ function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura) {
     $html .= '<div class="tab-content" id="' . $tabsId . 'Content">';
     $isFirstTab = true;
     foreach (($block['tabs'] ?? []) as $index => $tab) {
-        $tabId = 'tab_' . preg_replace('/[^a-zA-Z0-9]/', '', $tab['title'] ?? 'tab') . '_' . $index;
+        $tabTitle = htmlspecialchars($tab['title'] ?? '');
+        $tabId = 'tab_' . preg_replace('/[^a-zA-Z0-9_]/', '', str_replace(' ', '_', $tabTitle)) . '_' . $index;
         $activeClass = $isFirstTab ? 'show active' : '';
-        // Añadimos la clase 'tab-pane-content' para el drag&drop
-        $html .= '<div class="tab-pane fade ' . $activeClass . '" id="' . $tabId . '" role="tabpanel" aria-labelledby="' . $tabId . '-tab">';
-        $html .= '<div class="p-3 border tab-pane-content">'; // Contenedor con borde
-        if (!empty($tab['rows'])) {
-            $html .= renderRows($tab['rows'], $fieldsetsConfig, $valores, $soloLectura);
-        }
-        $html .= '</div>';
+        $tabAttrs = "data-tab-title='{$tabTitle}'";
+
+        $html .= '<div class="tab-pane fade ' . $activeClass . '" id="' . $tabId . '" role="tabpanel" aria-labelledby="' . $tabId . '-tab" ' . $tabAttrs . '>';
+        $html .= renderRows($tab['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
         $html .= '</div>';
         $isFirstTab = false;
     }
     $html .= '</div>';
+    $html .= '</div>';
     return $html;
 }
 
-function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
-    $html = '';
-    if (!is_array($rows)) return '';
-
-    foreach ($rows as $row) {
-        $html .= '<div class="row draggable-row">'; // Clase para identificar filas arrastrables
-        $columns = $row['cols'] ?? [];
-
-        foreach ($columns as $col) {
-            $colClass = $col['class'] ?? ('col-md-' . ($col['size'] ?? '12'));
-            // Añadimos la clase 'draggable-column' para el drag&drop
-            $html .= '<div class="' . htmlspecialchars($colClass) . ' draggable-column">';
-
-            // Una columna puede contener fieldsets o bloques anidados
-            if (!empty($col['fieldsets'])) {
-                foreach ($col['fieldsets'] as $fsName) {
-                    $fieldsetData = null;
-                    foreach ($fieldsetsConfig as $fs) {
-                        if (isset($fs['name']) && $fs['name'] === $fsName) {
-                            $fieldsetData = $fs;
-                            break;
-                        }
-                    }
-                    if ($fieldsetData) {
-                        // Envolvemos cada fieldset en un div para que sea una unidad arrastrable
-                        $html .= '<div class="draggable-fieldset" data-fieldset-name="' . htmlspecialchars($fsName) . '">';
-                        $html .= generarFieldsets([$fieldsetData], $valores, $soloLectura);
-                        $html .= '</div>';
-                    }
-                }
-            } elseif (!empty($col['blocks'])) {
-                // Renderiza bloques anidados dentro de una columna
-                foreach($col['blocks'] as $nestedBlock) {
-                    $html .= renderBlock($nestedBlock, $fieldsetsConfig, $valores, $soloLectura);
-                }
-            } elseif (!empty($col['content'])) {
-                $html .= $col['content'];
-            }
-            
-            $html .= '</div>';
-        }
-        $html .= '</div>';
+function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $soloLectura) {
+    if (!isset($fieldsetsConfig[$fieldsetName])) {
+        return "<div class='alert alert-warning'>Fieldset '{$fieldsetName}' no encontrado.</div>";
     }
+
+    $fieldset = $fieldsetsConfig[$fieldsetName];
+    $titulo = $fieldset['titulo'] ?? ucfirst(str_replace('_', ' ', $fieldsetName));
+    $html = '';
+
+    $html .= "<div class='draggable-fieldset' data-fieldset-name='{$fieldsetName}'>";
+    $html .= "<fieldset class='mb-4 p-3 border rounded'>";
+    if ($titulo) {
+        $html .= "<legend class='w-auto px-2 h6'>{$titulo}</legend>";
+    }
+
+    foreach ($fieldset['campos'] as $campo) {
+        $nombreCampo = $campo['nombre'] ?? 'sin_nombre';
+        $valor = $valores[$nombreCampo] ?? $campo['valor_predeterminado'] ?? '';
+        $html .= generarCampo($campo, $valor, $soloLectura);
+    }
+
+    $html .= '</fieldset>';
+    $html .= '</div>';
     return $html;
 }
 // --- FIN: Nuevo motor de renderizado de Layout ---

@@ -3,274 +3,298 @@
 // filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\formulariodinamico.php
 // Paso 1: Incluir toda la lógica de negocio desde el archivo PHP dedicado.
 require_once 'formulariodinamico.funciones.php';
+// --- INICIO DE LA LÓGICA DEL FORMULARIO ---
 require_once 'formulariodinamicologica.php';
-header('Content-Type: text/html; charset=UTF-8');
-?>
-<?php
-$cssDefault = $json['parametros']['CssDefault'] ?? 'formulariodinamico.css';
-?>
-<link rel="stylesheet" href="css/<?php echo htmlspecialchars($cssDefault); ?>">
-<div class="container mt-4">
-    <!-- INICIO: MODIFICACIÓN -->
-    <div class="d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center">
-            <h2 class="mb-0 mr-3">
-                <?php 
-                    // Mostrar el título desde el JSON de parámetros si existe
-                    echo htmlspecialchars($json['parametros']['titulo'] ?? basename($archivo_json), ENT_QUOTES, 'UTF-8'); 
-                ?>
-                <span id="form-status-text" class="font-weight-bold" style="font-size:0.7em; margin-left:12px; color:#6c757d;">Nuevo</span>
-            </h2>
-            <?php if (!empty($json['parametros']['tituloimagen'])): ?>
-                <img src="<?php echo htmlspecialchars($json['parametros']['tituloimagen']); ?>" alt="Imagen título" style="max-height:48px; margin-left:12px;">
-            <?php endif; ?>
-        </div>
-    </div>
-    <!-- FIN: MODIFICACIÓN -->
-    <form id="formulario" method="post" action="formulariodinamico.php?archivo=<?php echo urlencode($archivo_json); ?>" enctype="multipart/form-data" autocomplete="off">
-        <div id="form-spinner" style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.7);z-index:10;justify-content:center;align-items:center;"><div class="spinner-border text-primary" role="status"><span class="sr-only">Cargando...</span></div></div>
-        <?php 
-        // Muestra el mensaje de éxito o error preparado por la lógica.
-        if (!empty($mensaje_envio)) { 
-            echo "<div id='mensaje-envio'>".mb_convert_encoding($mensaje_envio, 'UTF-8', 'auto')."</div>"; 
-        } 
-        ?>
-        <?php 
-        // Genera los campos del formulario usando las variables preparadas.
-        // echo generarFieldsets($json['fieldsets'] ?? [], $valores, $soloLectura); 
-        // --- INICIO: Llamada al nuevo motor de renderizado de Layout ---
-        echo generarLayout($json['layout'] ?? [], $json['fieldsets'] ?? [], $valores, $soloLectura);
-        // --- FIN: Llamada al nuevo motor de renderizado de Layout ---
-        ?>
-        <?php
-        // --- NUEVO: Generar botones desde JSON si existen ---
-        if (!empty($json['parametros']['botones'])) {
-            foreach ($json['parametros']['botones'] as $btn) {
-                $tipo = $btn['accion'] === 'reset' ? 'reset' : 'submit';
-                $clase = htmlspecialchars($btn['clase'] ?? 'btn-primary');
-                $texto = htmlspecialchars($btn['texto'] ?? 'Enviar', ENT_QUOTES, 'UTF-8');
-                echo "<button type='$tipo' class='btn $clase mt-3'>$texto</button> ";
-            }
-        } else {
-            echo "<button type='submit' class='btn btn-success mt-3'>Guardar</button>";
-        }
-        ?>
-    </form>
-</div>
+// --- FIN DE LA LÓGICA DEL FORMULARIO ---
 
-<?php
-// --- Asegurar que $all_fields contenga todos los campos de todos los fieldsets ---
-$all_fields = array();
-if (!empty($json['fieldsets'])) {
-    foreach ($json['fieldsets'] as $fs) {
-        if (!empty($fs['fields']) && is_array($fs['fields'])) {
-            foreach ($fs['fields'] as $f) {
-                $all_fields[] = $f;
-            }
-        }
-    }
+// Cargar la configuración del formulario desde el archivo JSON
+$archivo_json = $_GET['archivo'] ?? 'formulariogenerico.json';
+$json_path = __DIR__ . "/json/" . basename($archivo_json);
+
+if (!file_exists($json_path)) {
+    die("<div class='alert alert-danger'>Error: El archivo de configuración '$json_path' no existe.</div>");
 }
-?>
-<script>
-window.fields = <?php echo json_encode($all_fields, JSON_UNESCAPED_UNICODE); ?>;
-window.validacionesJSON = <?php echo json_encode($json['parametros']['validaciones'] ?? [], JSON_UNESCAPED_UNICODE); ?>;
-</script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-<!-- Select2 -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ttskch/select2-bootstrap4-theme@1.5.2/dist/select2-bootstrap4.min.css">
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/es.js"></script>
-<script src="js/formulariodinamico.js?v=<?php echo time(); ?>"></script>
 
+$json_data = json_decode(file_get_contents($json_path), true);
+if (json_last_error() !== JSON_ERROR_NONE) {
+    die("<div class='alert alert-danger'>Error: El archivo JSON contiene errores. " . json_last_error_msg() . "</div>");
+}
+
+$titulo_formulario = $json_data['titulo'] ?? 'Formulario Dinámico';
+$descripcion_formulario = $json_data['descripcion'] ?? '';
+$fieldsets = $json_data['fieldsets'] ?? [];
+$layout = $json_data['layout'] ?? [];
+$valores = []; // Aquí se cargarían los datos de un registro existente si fuera necesario
+$soloLectura = false;
+
+?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo htmlspecialchars($json['parametros']['titulo'] ?? 'Formulario Dinámico'); ?></title>
+    <title><?php echo htmlspecialchars($titulo_formulario); ?></title>
     
-    <!-- Librerías de Estilos -->
+    <!-- Dependencias de Estilos -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/css/select2.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap4-theme@1.0.0/dist/select2-bootstrap4.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-    
-    <!-- Estilos del Formulario Dinámico -->
-    <link rel="stylesheet" href="css/<?php echo htmlspecialchars($json['parametros']['CssDefault'] ?? 'estilos.css'); ?>">
     <link rel="stylesheet" href="css/formularariodinamico.css">
 
+    <!-- Estilos para el Modo Diseño (Drag and Drop) -->
     <style>
-        /* --- ESTILOS PARA EL MODO DISEÑO Y PESTAÑAS --- */
-        
-        /* Estilo para resaltar las zonas donde se pueden soltar los fieldsets */
-        .design-mode .draggable-column, 
-        .design-mode .tab-pane-content {
-            border: 2px dashed #007bff;
-            background-color: #f0f8ff;
-            min-height: 100px; /* Asegura que haya espacio para soltar */
-            padding: 10px;
-            margin-bottom: 15px;
-        }
-
-        /* Estilo para los fieldsets cuando se están arrastrando */
-        .draggable-fieldset {
+        /* Estilos que solo se aplican en modo diseño */
+        body.design-mode .draggable-fieldset {
             cursor: move;
-            border: 1px solid #ccc;
-            margin-bottom: 10px;
-            background-color: #fff;
-            transition: box-shadow 0.2s ease-in-out;
+            border: 2px dashed #007bff !important;
+            background-color: rgba(0, 123, 255, 0.05);
+            transition: background-color 0.3s, border 0.3s;
         }
-        .draggable-fieldset:hover {
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        body.design-mode .draggable-fieldset:hover {
+            background-color: rgba(0, 123, 255, 0.1);
         }
+        /* Placeholder que muestra dónde se soltará el elemento */
         .sortable-ghost {
-            opacity: 0.4;
-            background: #c8ebfb;
+            background-color: #cce5ff;
+            border: 2px dashed #007bff;
+            opacity: 0.7;
         }
-
-        /* --- ESTILOS MEJORADOS PARA PESTAÑAS (VIÑETAS) --- */
-        .nav-pills {
-            border-bottom: 1px solid #dee2e6;
-            margin-bottom: 1rem;
-        }
-        .nav-pills .nav-item {
-            margin-bottom: -1px; /* Alinea el borde inferior del item con el borde de la barra */
-        }
-        .nav-pills .nav-link {
-            border: 1px solid transparent;
-            border-top-left-radius: .25rem;
-            border-top-right-radius: .25rem;
-            padding: 0.75rem 1.25rem;
-            color: #007bff;
-            transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out;
-        }
-        .nav-pills .nav-link:not(.active):hover {
-            background-color: #e9ecef;
-            border-color: transparent;
-        }
-        .nav-pills .nav-link.active {
-            color: #495057;
-            background-color: #fff;
-            border-color: #dee2e6 #dee2e6 #fff;
-            font-weight: 600;
-        }
-        .tab-content > .tab-pane {
-            background-color: #fff;
-        }
-        .tab-content > .active {
-            display: block;
-        }
-        .tab-pane-content {
+        /* Contenedor donde se pueden soltar elementos */
+        body.design-mode .tab-pane,
+        body.design-mode [data-col-width] {
+            min-height: 100px; /* Asegura que haya espacio para soltar */
+            background-color: #f8f9fa;
             border: 1px solid #dee2e6;
-            border-top: none;
-            padding: 1.5rem;
-            border-bottom-left-radius: .25rem;
-            border-bottom-right-radius: .25rem;
+            border-radius: .25rem;
+            padding: 1rem;
+        }
+        /* Estilos para el interruptor de modo diseño */
+        .design-mode-switch {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1050;
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 50px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+        }
+        .design-mode-switch .custom-control-label::before,
+        .design-mode-switch .custom-control-label::after {
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
-    <div class="container mt-5">
+
+    <div class="container mt-5 mb-5">
         <div class="card">
             <div class="card-header">
-                <div class="d-flex justify-content-between align-items-center">
-                    <h2 class="mb-0"><?php echo htmlspecialchars($json['parametros']['titulo'] ?? 'Formulario'); ?></h2>
-                    <button id="design-mode-toggle" class="btn btn-outline-primary">Activar Modo Diseño</button>
-                </div>
-                <?php if (!empty($json['parametros']['comentario'])): ?>
-                    <p class="text-muted"><?php echo htmlspecialchars($json['parametros']['comentario']); ?></p>
-                <?php endif; ?>
+                <h2><?php echo htmlspecialchars($titulo_formulario); ?></h2>
+                <p><?php echo htmlspecialchars($descripcion_formulario); ?></p>
             </div>
             <div class="card-body">
                 <?php if (!empty($mensaje_envio)) echo $mensaje_envio; ?>
-                <form id="formulariodinamico" method="post" enctype="multipart/form-data">
-                    <?php 
-                        // Llama al nuevo motor de layout
-                        echo generarLayout($json['layout'] ?? [], $json['fieldsets'] ?? [], $valores, $soloLectura); 
+                
+                <form id="formulariodinamico" method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]) . '?archivo=' . urlencode($archivo_json); ?>" enctype="multipart/form-data">
+                    
+                    <?php
+                    // El nuevo motor de renderizado se encarga de todo el layout
+                    echo generarLayout($layout, $fieldsets, $valores, $soloLectura);
                     ?>
-                    <div class="mt-4">
-                        <?php foreach (($json['parametros']['botones'] ?? []) as $boton): ?>
-                            <button type="<?php echo htmlspecialchars($boton['accion']); ?>" class="btn <?php echo htmlspecialchars($boton['clase']); ?>">
-                                <?php echo htmlspecialchars($boton['texto']); ?>
-                            </button>
-                        <?php endforeach; ?>
-                        <button id="save-design-button" class="btn btn-success" style="display:none;">Guardar Diseño</button>
+
+                    <div class="form-footer mt-4">
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                        <button type="button" class="btn btn-secondary" onclick="window.history.back();">Cancelar</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Librerías de JavaScript -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <!-- Interruptor para activar/desactivar el Modo Diseño -->
+    <div class="design-mode-switch">
+        <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input" id="designModeToggle">
+            <label class="custom-control-label" for="designModeToggle">Modo Diseño</label>
+        </div>
+        <button id="saveLayoutBtn" class="btn btn-success btn-sm ml-3" style="display: none;">Guardar Diseño</button>
+    </div>
+
+    <!-- Dependencias de JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.1.0-rc.0/js/select2.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    
-    <!-- Librería para Drag & Drop -->
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <!-- SortableJS para Drag and Drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
 
-    <!-- Lógica del Formulario Dinámico -->
-    <script src="js/formulariodinamico.js"></script>
-    
     <script>
-        // --- LÓGICA PARA EL MODO DISEÑO (DRAG & DROP) ---
-        document.addEventListener('DOMContentLoaded', function () {
-            const designModeToggle = document.getElementById('design-mode-toggle');
-            const saveDesignButton = document.getElementById('save-design-button');
-            const formContainer = document.querySelector('.card-body');
-            let sortableInstances = [];
-
-            function enableDesignMode() {
-                formContainer.classList.add('design-mode');
-                saveDesignButton.style.display = 'inline-block';
-                designModeToggle.textContent = 'Desactivar Modo Diseño';
-                designModeToggle.classList.remove('btn-outline-primary');
-                designModeToggle.classList.add('btn-danger');
-
-                // Inicializar SortableJS en todas las columnas y paneles de pestañas
-                const containers = document.querySelectorAll('.draggable-column, .tab-pane-content');
-                containers.forEach(container => {
-                    let sortable = new Sortable(container, {
-                        group: 'shared', // Permite mover elementos entre contenedores
-                        animation: 150,
-                        ghostClass: 'sortable-ghost',
-                        draggable: '.draggable-fieldset', // Especifica qué elementos son arrastrables
-                    });
-                    sortableInstances.push(sortable);
+    $(document).ready(function() {
+        // Inicializar Select2 en todos los selects
+        $('.form-control').each(function() {
+            if ($(this).is('select')) {
+                $(this).select2({
+                    width: '100%'
                 });
             }
+        });
 
-            function disableDesignMode() {
-                formContainer.classList.remove('design-mode');
-                saveDesignButton.style.display = 'none';
-                designModeToggle.textContent = 'Activar Modo Diseño';
-                designModeToggle.classList.remove('btn-danger');
-                designModeToggle.classList.add('btn-outline-primary');
+        // --- LÓGICA DEL MODO DISEÑO ---
+        const designModeToggle = $('#designModeToggle');
+        const saveLayoutBtn = $('#saveLayoutBtn');
+        const body = $('body');
+        let sortableInstances = [];
 
-                // Destruir todas las instancias de SortableJS para quitar la funcionalidad
-                sortableInstances.forEach(sortable => sortable.destroy());
-                sortableInstances = [];
+        designModeToggle.on('change', function() {
+            if (this.checked) {
+                enableDesignMode();
+            } else {
+                disableDesignMode();
             }
+        });
 
-            designModeToggle.addEventListener('click', function() {
-                if (formContainer.classList.contains('design-mode')) {
-                    disableDesignMode();
-                } else {
-                    enableDesignMode();
+        function enableDesignMode() {
+            body.addClass('design-mode');
+            saveLayoutBtn.show();
+            
+            // Hacer arrastrables los fieldsets dentro de las columnas y pestañas
+            const containers = document.querySelectorAll('[data-col-width], .tab-pane');
+            containers.forEach(container => {
+                let sortable = Sortable.create(container, {
+                    group: 'shared-fieldsets', // Permite mover fieldsets entre contenedores
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    draggable: '.draggable-fieldset', // Especifica qué elementos son arrastrables
+                    onEnd: function(evt) {
+                        console.log('Drag ended.');
+                    }
+                });
+                sortableInstances.push(sortable);
+            });
+        }
+
+        function disableDesignMode() {
+            body.removeClass('design-mode');
+            saveLayoutBtn.hide();
+            // Destruir todas las instancias de SortableJS para restaurar el comportamiento normal
+            sortableInstances.forEach(sortable => sortable.destroy());
+            sortableInstances = [];
+        }
+
+        // --- LÓGICA PARA GUARDAR EL DISEÑO ---
+        saveLayoutBtn.on('click', function() {
+            const nuevoLayout = buildLayoutFromDOM();
+            const archivoJson = '<?php echo addslashes($archivo_json); ?>';
+
+            Swal.fire({
+                title: '¿Guardar el nuevo diseño?',
+                text: "Esto sobrescribirá la estructura del formulario actual.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33',
+                confirmButtonText: 'Sí, guardar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch('guardar_layout.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            archivo_json: archivoJson,
+                            layout: nuevoLayout
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.estado === 'exito') {
+                            Swal.fire(
+                                '¡Guardado!',
+                                'El diseño ha sido actualizado. La página se recargará.',
+                                'success'
+                            ).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire(
+                                'Error',
+                                'No se pudo guardar el diseño: ' + data.mensaje,
+                                'error'
+                            );
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error en la petición:', error);
+                        Swal.fire(
+                            'Error de Red',
+                            'Hubo un problema al conectar con el servidor.',
+                            'error'
+                        );
+                    });
                 }
             });
-
-            // Lógica para guardar (se implementará en la siguiente fase)
-            saveDesignButton.addEventListener('click', function() {
-                alert('La funcionalidad de guardar el diseño se implementará en la siguiente fase.');
-                // Aquí irá la lógica para reconstruir el JSON y enviarlo al servidor
-            });
         });
+
+        function buildLayoutFromDOM() {
+            const layout = {};
+            document.querySelectorAll('[data-layout-container] > [data-block-name]').forEach(blockElement => {
+                const blockName = blockElement.dataset.blockName;
+                const blockType = blockElement.dataset.blockType;
+                
+                const blockData = { type: blockType };
+
+                if (blockType === 'tabs') {
+                    blockData.tabs = [];
+                    blockElement.querySelectorAll('.tab-pane[data-tab-title]').forEach(tabElement => {
+                        const tabTitle = tabElement.dataset.tabTitle;
+                        const tab = { title: tabTitle, rows: [] };
+                        tabElement.querySelectorAll('[data-row]').forEach(rowElement => {
+                            const row = { columns: [] };
+                            rowElement.querySelectorAll('[data-col-width]').forEach(colElement => {
+                                const width = colElement.dataset.colWidth;
+                                const fieldsetElement = colElement.querySelector('[data-fieldset-name]');
+                                if (fieldsetElement) {
+                                    const fieldsetName = fieldsetElement.dataset.fieldsetName;
+                                    row.columns.push({ width: width, fieldset: fieldsetName });
+                                }
+                            });
+                            if (row.columns.length > 0) {
+                                tab.rows.push(row);
+                            }
+                        });
+                        blockData.tabs.push(tab);
+                    });
+                } else { // header, footer, generic
+                    blockData.rows = [];
+                    blockElement.querySelectorAll('[data-row]').forEach(rowElement => {
+                        const row = { columns: [] };
+                        rowElement.querySelectorAll('[data-col-width]').forEach(colElement => {
+                            const width = colElement.dataset.colWidth;
+                            const fieldsetElement = colElement.querySelector('[data-fieldset-name]');
+                            if (fieldsetElement) {
+                                const fieldsetName = fieldsetElement.dataset.fieldsetName;
+                                row.columns.push({ width: width, fieldset: fieldsetName });
+                            }
+                        });
+                        if (row.columns.length > 0) {
+                            blockData.rows.push(row);
+                        }
+                    });
+                }
+                layout[blockName] = blockData;
+            });
+            console.log('Layout reconstruido:', layout);
+            return layout;
+        }
+    });
     </script>
+
 </body>
 </html>

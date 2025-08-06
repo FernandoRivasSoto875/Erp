@@ -8,8 +8,8 @@ error_reporting(E_ALL);
 echo "<pre>"; // Para facilitar la lectura
 
 // Incluir archivos de configuración y funciones
-require_once '../config/conexion.php';
-require_once '../funcionessql.php';
+require_once __DIR__ . '/../config/conexion.php';
+require_once __DIR__ . '/../funcionessql.php';
 
 // Parámetros de la solicitud
 $tabla = isset($_GET['tabla']) ? $_GET['tabla'] : '';

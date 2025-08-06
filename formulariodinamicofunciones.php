@@ -103,23 +103,43 @@ if (!function_exists('generarFieldsets')) {
                     $inputHtml = ''; // Generamos el input por separado
                     switch ($type) {
                         case 'select2':
-                            $attrs = $field;
-                            unset($attrs['type'], $attrs['options']); // Evitar atributos no estándar
-                            $attrs['id'] = $id;
-                            $attrs['name'] = $name;
-                            $attrs['class'] = 'form-control select2-field';
-                            $attrs['style'] = 'width: 100%;';
-                            
-                            $inputHtml .= "<select " . $buildAttrs($attrs) . ">";
-                            if (!empty($field['options'])) {
-                                foreach ($field['options'] as $option) {
-                                    // Soporte para array de strings o array de objetos {value, label}
-                                    $optionValue = is_array($option) ? ($option['value'] ?? '') : $option;
-                                    $optionLabel = is_array($option) ? ($option['label'] ?? '') : $option;
-                                    $selected = ($value == $optionValue) ? ' selected' : '';
-                                    $inputHtml .= "<option value='" . htmlspecialchars($optionValue) . "'$selected>" . htmlspecialchars($optionLabel) . "</option>";
+                            // Preparamos los atributos básicos
+                            $attrs = [
+                                'id' => $id,
+                                'name' => $name . (!empty($field['multiple']) ? '[]' : ''), // Añadir [] si es múltiple
+                                'class' => 'form-control select2-field',
+                                'style' => 'width: 100%;'
+                            ];
+
+                            // Añadir atributos desde el JSON (placeholder, multiple, etc.)
+                            $allowed_attrs = ['placeholder', 'multiple', 'required', 'disabled'];
+                            foreach ($allowed_attrs as $attr) {
+                                if (isset($field[$attr])) {
+                                    $attrs[$attr] = $field[$attr];
                                 }
                             }
+                            
+                            // Añadir atributos data-* para la configuración de AJAX
+                            if (isset($field['data']) && is_array($field['data'])) {
+                                foreach ($field['data'] as $key => $val) {
+                                    $attrs['data-' . $key] = $val;
+                                }
+                            }
+
+                            $inputHtml .= "<select " . $buildAttrs($attrs) . ">";
+                            
+                            // Si hay un valor predefinido, creamos la opción para que Select2 la muestre
+                            if (!empty($value)) {
+                                // Para selección múltiple, $value puede ser un array
+                                if (is_array($value)) {
+                                    foreach ($value as $singleValue) {
+                                        $inputHtml .= "<option value='" . htmlspecialchars($singleValue) . "' selected>" . htmlspecialchars($singleValue) . "</option>";
+                                    }
+                                } else {
+                                    $inputHtml .= "<option value='" . htmlspecialchars($value) . "' selected>" . htmlspecialchars($value) . "</option>";
+                                }
+                            }
+                            
                             $inputHtml .= "</select>";
                             break;
 

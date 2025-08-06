@@ -65,6 +65,6 @@ if ($result) {
 $stmt->close();
 $conn->close();
 
-// Select2 espera un objeto con una clave 'results'
-echo json_encode(['results' => $data]);
+// Select2 espera un array de objetos directamente
+echo json_encode($data);
 ?>

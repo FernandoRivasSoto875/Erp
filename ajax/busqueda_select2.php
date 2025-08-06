@@ -1,77 +1,72 @@
 <?php
-// DIAGNOSTICO: Habilitar todos los errores y quitar la cabecera JSON
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-// header('Content-Type: application/json');
+header('Content-Type: application/json');
 
-echo "<pre>"; // Para facilitar la lectura
-
-// Incluir archivos de configuración y funciones
-require_once __DIR__ . '/../config/conexion.php';
+// Incluir el archivo de funciones que contiene la conexión correcta.
+// Usamos __DIR__ para asegurar que la ruta sea siempre correcta.
 require_once __DIR__ . '/../funcionessql.php';
 
-// Parámetros de la solicitud
+// Parámetros de la solicitud de Select2
 $tabla = isset($_GET['tabla']) ? $_GET['tabla'] : '';
 $campo = isset($_GET['campo']) ? $_GET['campo'] : '';
 $filtro = isset($_GET['filtro']) ? $_GET['filtro'] : '1=1';
 $searchTerm = isset($_GET['q']) ? $_GET['q'] : '';
 
-echo "--- PARÁMETROS RECIBIDOS ---\n";
-var_dump(['tabla' => $tabla, 'campo' => $campo, 'filtro' => $filtro, 'searchTerm' => $searchTerm]);
-
+// Validar parámetros esenciales
 if (empty($tabla) || empty($campo)) {
-    die("Error: Parámetros 'tabla' o 'campo' incompletos.");
+    echo json_encode(['results' => [['id' => '', 'text' => 'Error: Parámetros incompletos']]] );
+    exit;
 }
 
-// Conexión a la base de datos
-echo "\n--- INTENTANDO CONEXIÓN A BD ---\n";
-$conn = newConexion();
-if ($conn->connect_error) {
-    die("Error de conexión a BD: " . $conn->connect_error);
+// Usar la función de conexión correcta de funcionessql.php
+$conn = conexionBd();
+if ($conn === null) {
+    echo json_encode(['results' => [['id' => '', 'text' => 'Error: Falla de conexión a BD']]] );
+    exit;
 }
-echo "Conexión exitosa.\n";
-$conn->set_charset("utf8");
 
-
-// Construir la consulta
+// Construir la consulta de forma segura
 $filtroAdicional = "";
-// La consulta debe devolver 'id' y 'text' para Select2
-$sql = "SELECT DISTINCT " . $campo . " as id, " . $campo . " as text FROM " . $tabla . " WHERE " . $filtro . $filtroAdicional . " ORDER BY " . $campo . " ASC LIMIT 50";
+if (!empty($searchTerm)) {
+    // Usar parámetros preparados para prevenir inyección SQL
+    $filtroAdicional = " AND LOWER(" . $conn->real_escape_string($campo) . ") LIKE LOWER(?)";
+}
 
-echo "\n--- CONSULTA SQL ---\n";
-var_dump($sql);
+// La consulta debe devolver 'id' y 'text' para Select2
+// Se usa real_escape_string para una capa extra de seguridad en los nombres de tabla/campo
+$sql = "SELECT DISTINCT " . $conn->real_escape_string($campo) . " as id, " . $conn->real_escape_string($campo) . " as text 
+        FROM " . $conn->real_escape_string($tabla) . " 
+        WHERE " . $filtro . $filtroAdicional . " 
+        ORDER BY " . $conn->real_escape_string($campo) . " ASC 
+        LIMIT 50";
 
 $stmt = $conn->prepare($sql);
 
 if ($stmt === false) {
-    die("Error en la preparación de la consulta: " . $conn->error);
+    // En un entorno real, sería mejor registrar este error en un log
+    echo json_encode(['results' => [['id' => '', 'text' => 'Error en la preparación de la consulta']]] );
+    exit;
 }
-echo "Preparación de consulta exitosa.\n";
+
+// Si hay un término de búsqueda, vincular el parámetro
+if (!empty($searchTerm)) {
+    $searchTermLike = '%' . $searchTerm . '%';
+    $stmt->bind_param("s", $searchTermLike);
+}
 
 $stmt->execute();
-echo "Ejecución de consulta exitosa.\n";
-
 $result = $stmt->get_result();
 
 $data = [];
 if ($result) {
     while ($row = $result->fetch_assoc()) {
-        $data[] = $row;
+        // Asegurarnos de que los datos están en el formato {id: "valor", text: "valor"}
+        $data[] = ['id' => $row['id'], 'text' => $row['text']];
     }
-} else {
-    die("Error en la ejecución o obtención de resultados: " . $stmt->error);
 }
 
-echo "\n--- DATOS OBTENIDOS (" . count($data) . " filas) ---\n";
-var_dump($data);
-
 $stmt->close();
-$conn->close();
-echo "\n--- CONEXIÓN CERRADA ---\n";
+// No cerramos la conexión aquí si es estática y se reutiliza en otros lados.
 
-echo "</pre>";
-
-// echo json_encode($data); // Desactivado para diagnóstico
-
+// Select2 espera un objeto con una clave 'results' que contiene el array de datos
+echo json_encode(['results' => $data]);
 ?>

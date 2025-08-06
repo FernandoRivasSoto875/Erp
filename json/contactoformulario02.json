@@ -161,6 +161,23 @@
           },
           "posicionetiqueta": "arriba",
           "estilo": "color:#007BFF;"
+        },
+        {
+          "activo": true,
+          "crud": true,
+          "nombre": "pais_seleccionado",
+          "etiqueta": "País (Select2)",
+          "tipo": "select2",
+          "requerido": true,
+          "tooltipText": "Seleccione su país",
+          "placeholder": "Buscar país...",
+          "data": {
+            "tabla": "Pais",
+            "campo": "PaiDes",
+            "filtro": "1=1"
+          },
+          "posicionetiqueta": "arriba",
+          "estilo": "color:#007BFF;"
         }
       ],
       "hijos": [

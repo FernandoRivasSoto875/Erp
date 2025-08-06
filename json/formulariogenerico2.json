@@ -1,0 +1,109 @@
+{
+  "version": "1.4.0 - Demo con Datatable y Fórmulas",
+  "titulo": "Formulario con Todos los Tipos de Campo",
+  "descripcion": "Demostración de todos los controles, incluyendo datatable con totales.",
+  "fieldsets": {
+    "datos_personales": {
+      "titulo": "Datos Personales",
+      "campos": [
+        { "nombre": "nombre_completo", "etiqueta": "Nombre Completo (text)", "tipo": "text", "placeholder": "Ingrese su nombre", "atributos": { "required": true } },
+        { "nombre": "email", "etiqueta": "Correo Electrónico (email)", "tipo": "email", "placeholder": "ejemplo@dominio.com" },
+        { "nombre": "clave_acceso", "etiqueta": "Contraseña (password)", "tipo": "password" }
+      ]
+    },
+    "datos_contacto": {
+      "titulo": "Información de Contacto",
+      "campos": [
+        { "nombre": "telefono", "etiqueta": "Teléfono (text)", "tipo": "text", "placeholder": "+56 9 1234 5678" },
+        { "nombre": "direccion", "etiqueta": "Dirección (textarea)", "tipo": "textarea", "placeholder": "Calle, número, comuna, ciudad" }
+      ]
+    },
+    "campos_variados": {
+      "titulo": "Tipos de Campos Variados",
+      "campos": [
+        { "nombre": "fecha_nacimiento", "etiqueta": "Fecha de Nacimiento (date)", "tipo": "date" },
+        { "nombre": "edad", "etiqueta": "Edad (number)", "tipo": "number", "placeholder": "30" },
+        { "nombre": "genero", "etiqueta": "Género (radio)", "tipo": "radio", "opciones": { "masculino": "Masculino", "femenino": "Femenino", "otro": "Otro" } },
+        { "nombre": "pais_db", "etiqueta": "País (cargado desde BD)", "tipo": "select", "data-source": { "tabla": "Pais", "campo_valor": "PaiDes", "campo_etiqueta": "nombre_pais" } },
+        { "nombre": "ciudad_db", "etiqueta": "Ciudad (depende del país)", "tipo": "select", "data-source": { "tabla": "Ciudad", "campo_valor": "id_ciudad", "campo_etiqueta": "nombre_ciudad", "depende_de": "pais_db", "depende_columna": "id_pais_fk" } },
+        { "nombre": "habilidades", "etiqueta": "Habilidades (select2 múltiple)", "tipo": "select", "atributos": { "multiple": "multiple" }, "opciones": { "php": "PHP", "js": "JavaScript", "css": "CSS", "sql": "SQL", "react": "React" } },
+        { "nombre": "acepta_notificaciones", "etiqueta": "Acepta recibir notificaciones (checkbox)", "tipo": "checkbox", "opciones": { "si": "" } },
+        { "nombre": "id_oculto", "tipo": "hidden", "valor_predeterminado": "ABC-123" },
+        { "nombre": "cv_adjunto", "etiqueta": "Adjuntar CV (file)", "tipo": "file" }
+      ]
+    },
+    "productos_factura": {
+      "titulo": "Detalle de Productos (Datatable con Fórmula)",
+      "campos": [
+        {
+          "nombre": "detalle_productos",
+          "tipo": "datatable",
+          "etiqueta": "Productos",
+          "columnas": [
+            { "nombre": "producto", "etiqueta": "Producto", "tipo": "text" },
+            { "nombre": "precio", "etiqueta": "Precio", "tipo": "number", "atributos": { "class": "calculo-datatable" } },
+            { "nombre": "cantidad", "etiqueta": "Cantidad", "tipo": "number", "atributos": { "class": "calculo-datatable" } },
+            { "nombre": "total_linea", "etiqueta": "Total", "tipo": "number", "atributos": { "readonly": true }, "data-formula": "precio * cantidad" }
+          ]
+        }
+      ]
+    },
+    "resumen_factura": {
+        "titulo": "Resumen y Totales",
+        "campos": [
+            {
+                "nombre": "total_factura",
+                "etiqueta": "Total Factura (Fórmula)",
+                "tipo": "number",
+                "atributos": { "readonly": true, "style": "font-weight: bold; font-size: 1.2em;" },
+                "data-formula": "SUM(detalle_productos.total_linea)"
+            }
+        ]
+    },
+    "header_info": {
+      "titulo": "Información General del Formulario",
+      "campos": [
+        { "nombre": "tipo_solicitud", "etiqueta": "Tipo de Solicitud", "tipo": "text", "valor_predeterminado": "Postulación Completa", "atributos": { "readonly": true } }
+      ]
+    },
+    "footer_legal": {
+      "titulo": "Términos y Condiciones",
+      "campos": [
+        { "nombre": "aceptar_terminos", "etiqueta": "Acepto los términos y condiciones", "tipo": "checkbox", "opciones": { "si": "" } }
+      ]
+    }
+  },
+  "layout": {
+    "header": {
+      "type": "header",
+      "rows": [ { "columns": [ { "width": "12", "fieldset": "header_info" } ] } ]
+    },
+    "main": {
+      "type": "tabs",
+      "tabs": [
+        {
+          "title": "Información Personal",
+          "rows": [ { "columns": [ { "width": "6", "fieldset": "datos_personales" }, { "width": "6", "fieldset": "datos_contacto" } ] } ]
+        },
+        {
+          "title": "Facturación",
+          "rows": [
+            { "columns": [ { "width": "12", "fieldset": "productos_factura" } ] },
+            { "columns": [ { "width": "12", "fieldset": "resumen_factura" } ] }
+          ]
+        },
+        {
+          "title": "Campos Diversos",
+          "rows": [ { "columns": [ { "width": "12", "fieldset": "campos_variados" } ] } ]
+        }
+      ]
+    },
+    "footer": {
+      "type": "footer",
+      "rows": [ { "columns": [ { "width": "12", "fieldset": "footer_legal" } ] } ]
+    }
+  },
+  "elementos_fuera": []
+}
+
+

@@ -205,7 +205,10 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
     // El fieldset en sí, que ahora es un contenedor para campos draggables
     $html .= "<fieldset class='mb-4 p-3 border rounded sortable-fields-container'>"; 
     if ($titulo) {
-        $html .= "<legend class='w-auto px-2 h6'>{$titulo}</legend>";
+        $html .= "<legend class='w-auto px-2 h6'>
+                    <span class='fieldset-title-text'>{$titulo}</span>
+                    <i class='fas fa-pencil-alt edit-icon' data-edit-type='fieldset' data-fieldset-name='{$fieldsetName}' style='display:none; cursor:pointer; margin-left: 10px;'></i>
+                  </legend>";
     }
 
     // Contenedor para los campos que se pueden ordenar
@@ -215,6 +218,8 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
         $html .= "<div class='draggable-field' data-field-name='{$nombreCampo}'>";
         $valor = $valores[$nombreCampo] ?? $campo['valor_predeterminado'] ?? '';
         $html .= generarCampo($campo, $valor, $soloLectura);
+        // Añadimos el ícono de edición para el campo
+        $html .= "<i class='fas fa-pencil-alt edit-icon' data-edit-type='field' data-field-name='{$nombreCampo}' style='display:none; cursor:pointer; margin-left: 5px;'></i>";
         $html .= "</div>"; // Cierre de draggable-field
     }
 

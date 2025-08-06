@@ -39,6 +39,7 @@ $soloLectura = false;
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <link rel="stylesheet" href="css/formularariodinamico.css">
 
     <!-- Estilos para el Modo Diseño (Drag and Drop) -->
@@ -174,6 +175,7 @@ $soloLectura = false;
         function enableDesignMode() {
             body.addClass('design-mode');
             saveLayoutBtn.show();
+            $('.edit-icon').show();
             
             // 1. Contenedores de FIELDSETS (columnas, pestañas y el área exterior)
             const fieldsetContainers = document.querySelectorAll('[data-col-width], .tab-pane, #elementos-fuera-container');
@@ -215,6 +217,7 @@ $soloLectura = false;
         function disableDesignMode() {
             body.removeClass('design-mode');
             saveLayoutBtn.hide();
+            $('.edit-icon').hide();
             // Destruir todas las instancias de SortableJS para restaurar el comportamiento normal
             sortableInstances.forEach(sortable => sortable.destroy());
             sortableInstances = [];
@@ -354,6 +357,91 @@ $soloLectura = false;
             
             console.log('Elementos fuera reconstruidos:', outsideElements);
             return outsideElements;
+        }
+
+        // --- LÓGICA PARA EDITAR PROPIEDADES ---
+        $(document).on('click', '.edit-icon', function() {
+            const editType = $(this).data('edit-type');
+            const itemName = $(this).data('edit-type') === 'fieldset' ? $(this).data('fieldset-name') : $(this).data('field-name');
+            const archivoJson = '<?php echo addslashes($archivo_json); ?>';
+            const allData = <?php echo json_encode($json_data); ?>;
+
+            if (editType === 'fieldset') {
+                const fieldsetData = allData.fieldsets[itemName];
+                Swal.fire({
+                    title: `Editando Grupo: ${fieldsetData.titulo}`,
+                    html:
+                        `<input id="swal-input-titulo" class="swal2-input" value="${fieldsetData.titulo}">`,
+                    focusConfirm: false,
+                    preConfirm: () => {
+                        return {
+                            titulo: document.getElementById('swal-input-titulo').value
+                        }
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        saveProperties(archivoJson, editType, itemName, result.value);
+                    }
+                });
+            } else if (editType === 'field') {
+                let fieldData;
+                for (const fs in allData.fieldsets) {
+                    const found = allData.fieldsets[fs].campos.find(f => f.nombre === itemName);
+                    if (found) {
+                        fieldData = found;
+                        break;
+                    }
+                }
+                
+                if (fieldData) {
+                    Swal.fire({
+                        title: `Editando Campo: ${fieldData.etiqueta}`,
+                        html:
+                            `<input id="swal-input-etiqueta" class="swal2-input" placeholder="Etiqueta" value="${fieldData.etiqueta || ''}">` +
+                            `<input id="swal-input-placeholder" class="swal2-input" placeholder="Texto de ejemplo" value="${fieldData.placeholder || ''}">`,
+                        focusConfirm: false,
+                        preConfirm: () => {
+                            return {
+                                etiqueta: document.getElementById('swal-input-etiqueta').value,
+                                placeholder: document.getElementById('swal-input-placeholder').value
+                            }
+                        }
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            saveProperties(archivoJson, editType, itemName, result.value);
+                        }
+                    });
+                }
+            }
+        });
+
+        function saveProperties(archivoJson, editType, itemName, properties) {
+            fetch('editar_propiedades.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    archivo_json: archivoJson,
+                    edit_type: editType,
+                    item_name: itemName,
+                    properties: properties
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.estado === 'exito') {
+                    Swal.fire('¡Guardado!', 'Las propiedades han sido actualizadas. La página se recargará.', 'success')
+                    .then(() => location.reload());
+                } else {
+                    Swal.fire('Error', 'No se pudo guardar: ' + data.mensaje, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error en la petición:', error);
+                Swal.fire('Error de Red', 'Hubo un problema al conectar con el servidor.', 'error');
+            });
         }
     });
     </script>

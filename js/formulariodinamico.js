@@ -1,35 +1,34 @@
-// Versión 2.0 - Refactorizada para mayor estabilidad y predictibilidad.
-// Se elimina el uso de múltiples $(document).ready() para evitar race conditions.
-// Toda la lógica del formulario se encapsula en una única función de inicialización.
-
-window.inicializarFormularioDinamico = function() {
+// *** CAMBIO REALIZADO: El script ahora se envuelve en una función para ser llamado explícitamente ***
+// No se auto-ejecuta, permitiendo que `formulariodinamico.php` decida cuándo inicializar la lógica.
+function inicializarFormularioDinamico(config) {
+    console.log("Inicializando lógica del formulario normal...");
     // --- 1. CONFIGURACIÓN INICIAL Y VALIDACIONES PREVIAS ---
-    const form = document.getElementById('formulario');
+    const form = document.getElementById('formulariodinamico'); // ID del formulario principal
     if (!form) {
-        console.error("Error crítico: No se encontró el elemento #formulario. El script no puede continuar.");
+        console.error("Error crítico: No se encontró el elemento #formulariodinamico. El script no puede continuar.");
         return;
     }
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const archivoJson = urlParams.get('archivo');
-    // `window.fields` es la configuración de campos inyectada por PHP.
-    const allFields = window.fields || [];
+    const archivoJson = config.archivo_json;
+    // *** CAMBIO REALIZADO: Se obtiene la configuración de campos desde una variable global inyectada por PHP ***
+    // Esta variable `window.fieldsConfig` debe ser creada en `formulariodinamicologica.php`.
+    const allFields = window.fieldsConfig || []; 
     const validaciones = window.validacionesJSON || {};
     const statusText = document.getElementById('form-status-text');
 
     if (allFields.length === 0) {
-        console.warn("Advertencia: La configuración `window.fields` está vacía. El formulario no tendrá campos dinámicos.");
-        // No retornamos, para permitir que un formulario estático aún funcione.
+        console.warn("Advertencia: La configuración `window.fieldsConfig` está vacía. El formulario no tendrá campos dinámicos.");
     }
 
-    const firstFieldConfig = allFields.length > 0 ? allFields[0] : null;
-    const keyField = firstFieldConfig ? form.querySelector(`[name="${firstFieldConfig.name}"]`) : null;
+    // *** CAMBIO REALIZADO: Búsqueda del campo clave (PK) más robusta ***
+    const firstFieldConfig = allFields.length > 0 ? allFields.find(f => f.es_pk) : null;
+    const keyField = firstFieldConfig ? form.querySelector(`[name="${firstFieldConfig.nombre}"]`) : null;
 
     if (!keyField) {
-        console.warn("Advertencia: No se encontró el campo clave del formulario.");
+        console.warn("Advertencia: No se encontró un campo definido como clave primaria (es_pk) en el JSON.");
     }
 
-    // --- 2. MOTOR DE CÁLCULO (ROBUSTO Y UNIVERSAL) ---
+    // --- 2. MOTOR DE CÁLCULO (SIN CAMBIOS, PERO VERIFICADO) ---
     function recalcularFila(fila) {
         const camposConFormula = fila.querySelectorAll('[data-formula]');
         camposConFormula.forEach(campoResultado => {
@@ -67,7 +66,7 @@ window.inicializarFormularioDinamico = function() {
         allFields.forEach(field => {
             if (typeof field['data-formula'] === 'string') {
                 const formula = field['data-formula'];
-                const input = form.querySelector(`[name="${field.name}"]`);
+                const input = form.querySelector(`[name="${field.nombre}"]`);
                 if (!input) return;
 
                 let formulaReemplazada = formula;
@@ -103,22 +102,23 @@ window.inicializarFormularioDinamico = function() {
         recalcularCamposSimples();
     }
 
-    // --- 3. FUNCIONES DE MANIPULACIÓN DEL FORMULARIO ---
+    // --- 3. FUNCIONES DE MANIPULACIÓN DEL FORMULARIO (CON AJUSTES) ---
     function fillForm(data) {
         form.reset();
         document.querySelectorAll('.datatable-container tbody, [data-datatable-name] tbody').forEach(tbody => tbody.innerHTML = '');
 
         allFields.forEach(field => {
-            const fieldName = field.name;
+            // *** CAMBIO REALIZADO: Se usa `field.nombre` y `field.tipo` para alinear con el JSON ***
+            const fieldName = field.nombre;
             const value = data[fieldName];
             const elements = form.querySelectorAll(`[name="${fieldName}"], [name="${fieldName}[]"]`);
 
             if (!elements.length) return;
 
-            switch (field.type) {
+            switch (field.tipo) {
                 case 'checkbox':
                 case 'radio':
-                    if (field.options) {
+                    if (field.opciones) {
                         const savedValues = Array.isArray(value) ? value : [];
                         elements.forEach(el => el.checked = savedValues.includes(el.value));
                     } else {
@@ -130,17 +130,18 @@ window.inicializarFormularioDinamico = function() {
                     if (tableBody && Array.isArray(value)) {
                         value.forEach((rowData, rowIndex) => {
                             const newRow = tableBody.insertRow();
-                            field.columns.forEach(col => {
+                            // *** CAMBIO REALIZADO: Se usa `field.columnas` ***
+                            field.columnas.forEach(col => {
                                 const cell = newRow.insertCell();
                                 const input = document.createElement('input');
                                 Object.assign(input, {
-                                    type: col.type || 'text',
-                                    name: `${fieldName}[${rowIndex}][${col.name}]`,
+                                    type: col.tipo || 'text',
+                                    name: `${fieldName}[${rowIndex}][${col.nombre}]`,
                                     className: 'form-control form-control-sm',
-                                    value: rowData[col.name] || '',
+                                    value: rowData[col.nombre] || '',
                                     placeholder: col.placeholder || ''
                                 });
-                                if (col.readonly) input.readOnly = true;
+                                if (col.solo_lectura) input.readOnly = true;
                                 if (col['data-formula']) input.setAttribute('data-formula', col['data-formula']);
                                 cell.appendChild(input);
                             });
@@ -171,54 +172,57 @@ window.inicializarFormularioDinamico = function() {
         recalcularTodo();
     }
 
-    // --- 4. INICIALIZACIÓN DE COMPONENTES ESPECIALES ---
+    // --- 4. INICIALIZACIÓN DE COMPONENTES ESPECIALES (CON AJUSTES) ---
 
     function inicializarSelect2() {
-        console.log('[Select2] Iniciando inicialización de campos .select2-field');
+        console.log('[Select2] Iniciando inicialización de campos select');
         if (typeof $ === 'undefined' || typeof $.fn.select2 === 'undefined') {
-            console.error('Error crítico: jQuery o Select2 no están cargados. No se pueden inicializar los campos.');
+            console.error('Error crítico: jQuery o Select2 no están cargados.');
             return;
         }
 
-        $('.select2-field').each(function() {
+        $('select.form-control').each(function() {
             const $this = $(this);
             const fieldName = $this.attr('name').replace(/\[\]$/, '');
-            const fieldConfig = allFields.find(f => f.name === fieldName);
+            const fieldConfig = allFields.find(f => f.nombre === fieldName);
 
             console.log(`[Select2] Procesando campo: ${fieldName}`);
 
             if (!fieldConfig) {
-                console.warn(`[Select2] No se encontró configuración para el campo "${fieldName}". Se inicializará sin AJAX.`);
+                console.warn(`[Select2] No se encontró config para "${fieldName}".`);
             }
 
             let ajaxConfig = null;
-            if (fieldConfig && fieldConfig.data && fieldConfig.data.tabla) {
-                console.log(`[Select2] Configurando AJAX para ${fieldName} con tabla ${fieldConfig.data.tabla}`);
+            // *** CAMBIO REALIZADO: Se ajusta a la estructura `origen_datos` del JSON ***
+            if (fieldConfig && fieldConfig.origen_datos && fieldConfig.origen_datos.tabla) {
+                console.log(`[Select2] Configurando AJAX para ${fieldName} con tabla ${fieldConfig.origen_datos.tabla}`);
                 ajaxConfig = {
-                    url: 'ajax/busqueda_select2.php',
+                    url: 'ajax/busqueda_formula.php', // URL del backend para búsquedas
                     dataType: 'json',
                     delay: 250,
                     data: function(params) {
                         return {
                             q: params.term,
-                            tabla: fieldConfig.data.tabla,
-                            campo: fieldConfig.data.campo,
-                            filtro: fieldConfig.data.filtro || '1=1'
+                            tabla: fieldConfig.origen_datos.tabla,
+                            campo_valor: fieldConfig.origen_datos.campo_valor,
+                            campo_etiqueta: fieldConfig.origen_datos.campo_etiqueta,
+                            filtro: fieldConfig.origen_datos.filtro || '1=1'
                         };
                     },
                     processResults: function(data) {
-                        // El backend ya debe devolver { results: [...] }
-                        return data;
+                        return {
+                            results: data.items // Se espera que el backend devuelva un objeto con una clave `items`
+                        };
                     },
                     cache: true
                 };
             }
 
             $this.select2({
-                theme: "bootstrap4",
+                width: '100%',
                 placeholder: $this.attr('placeholder') || 'Seleccione una opción',
                 allowClear: true,
-                ajax: ajaxConfig, // Será null si no hay config, deshabilitando AJAX
+                ajax: ajaxConfig,
                 language: "es"
             });
         });
@@ -229,7 +233,7 @@ window.inicializarFormularioDinamico = function() {
         allFields.forEach(field => {
             if (typeof field['data-formula'] === 'object' && field['data-formula'].type === 'lookup') {
                 const formula = field['data-formula'];
-                const targetInput = form.querySelector(`[name="${field.name}"]`);
+                const targetInput = form.querySelector(`[name="${field.nombre}"]`);
                 if (!targetInput) return;
 
                 const matches = formula.where.match(/{([^}]+)}/g) || [];
@@ -267,7 +271,7 @@ window.inicializarFormularioDinamico = function() {
         });
     }
 
-    // --- 5. VALIDACIÓN EN TIEMPO REAL ---
+    // --- 5. VALIDACIÓN EN TIEMPO REAL (SIN CAMBIOS) ---
     function mostrarErrorCampo(input, mensaje) {
         const universalMessage = 'Valor inválido.';
         let errorDiv = input.parentNode.querySelector('.error-feedback');
@@ -299,7 +303,7 @@ window.inicializarFormularioDinamico = function() {
         return true;
     }
 
-    // --- 6. ASIGNACIÓN DE EVENTOS ---
+    // --- 6. ASIGNACIÓN DE EVENTOS (CON AJUSTES) ---
     
     // Evento para cargar datos al cambiar el campo clave
     if (keyField) {
@@ -334,20 +338,21 @@ window.inicializarFormularioDinamico = function() {
         if (e.target.id.startsWith('btn-add-row-')) {
             const tableId = e.target.id.replace('btn-add-row-', '');
             const tableBody = document.querySelector(`#${tableId} tbody`);
-            const fieldConfig = allFields.find(f => f.name === tableId);
+            const fieldConfig = allFields.find(f => f.nombre === tableId);
             if (tableBody && fieldConfig) {
                 const newIndex = tableBody.rows.length;
                 const newRow = tableBody.insertRow();
-                fieldConfig.columns.forEach(col => {
+                // *** CAMBIO REALIZADO: Se usa `fieldConfig.columnas` ***
+                fieldConfig.columnas.forEach(col => {
                     const cell = newRow.insertCell();
                     const input = document.createElement('input');
                     Object.assign(input, {
-                        type: col.type || 'text',
-                        name: `${tableId}[${newIndex}][${col.name}]`,
+                        type: col.tipo || 'text',
+                        name: `${tableId}[${newIndex}][${col.nombre}]`,
                         className: 'form-control form-control-sm',
                         placeholder: col.placeholder || ''
                     });
-                    if (col.readonly) input.readOnly = true;
+                    if (col.solo_lectura) input.readOnly = true;
                     if (col['data-formula']) input.setAttribute('data-formula', col['data-formula']);
                     cell.appendChild(input);
                 });
@@ -366,11 +371,10 @@ window.inicializarFormularioDinamico = function() {
         }
     });
 
-    // Evento de envío del formulario
+    // Evento de envío del formulario (sin cambios)
     form.addEventListener('submit', e => {
         e.preventDefault();
         
-        // Validación final
         let esValido = true;
         form.querySelectorAll('input, textarea, select').forEach(input => {
             if (!validarCampoIndividual(input)) {
@@ -383,7 +387,6 @@ window.inicializarFormularioDinamico = function() {
             return;
         }
 
-        // Spinner y envío
         const spinner = document.getElementById('form-spinner');
         if (spinner) spinner.style.display = 'block';
 
@@ -413,7 +416,6 @@ window.inicializarFormularioDinamico = function() {
 
     // --- 7. EJECUCIÓN INICIAL ---
     
-    // Añadir campo oculto con el nombre del archivo llamador si no existe
     if (!form.querySelector('[name="archivo_llamador"]')) {
         let hidden = document.createElement('input');
         hidden.type = 'hidden';
@@ -428,14 +430,4 @@ window.inicializarFormularioDinamico = function() {
     recalcularTodo();
 
     console.log("Formulario dinámico inicializado correctamente.");
-};
-
-// --- PUNTO DE ENTRADA ---
-// Se asegura de que el DOM esté listo antes de ejecutar el script.
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', window.inicializarFormularioDinamico);
-} else {
-    // El DOM ya está listo
-    window.inicializarFormularioDinamico();
 }
-

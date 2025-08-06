@@ -131,6 +131,10 @@ $soloLectura = false;
 
     <!-- Interruptor para activar/desactivar el Modo Diseño -->
     <div class="design-mode-switch">
+        <!-- CAMBIO: Añadidos botones Undo/Redo -->
+        <button id="undoBtn" class="btn btn-secondary btn-sm mr-2" style="display: none;" title="Deshacer"><i class="fas fa-undo"></i></button>
+        <button id="redoBtn" class="btn btn-secondary btn-sm mr-2" style="display: none;" title="Rehacer"><i class="fas fa-redo"></i></button>
+
         <div class="custom-control custom-switch">
             <input type="checkbox" class="custom-control-input" id="designModeToggle">
             <label class="custom-control-label" for="designModeToggle">Modo Diseño</label>
@@ -147,22 +151,44 @@ $soloLectura = false;
     <!-- SortableJS para Drag and Drop -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
 
+    <!-- *** CAMBIO REALIZADO: Se ha vuelto a incluir el script principal del formulario *** -->
+    <!-- Este archivo contiene toda la lógica de cálculos, datatables, lookups, etc. -->
+    <script src="js/formulariodinamico.js"></script>
+
     <script>
     $(document).ready(function() {
-        // Inicializar Select2 en todos los selects
-        $('.form-control').each(function() {
-            if ($(this).is('select')) {
-                $(this).select2({
-                    width: '100%'
-                });
-            }
-        });
-
-        // --- LÓGICA DEL MODO DISEÑO ---
+        // --- LÓGICA DEL MODO DISEÑO (MODIFICADA) ---
         const designModeToggle = $('#designModeToggle');
         const saveLayoutBtn = $('#saveLayoutBtn');
         const body = $('body');
         let sortableInstances = [];
+
+        // *** CAMBIO REALIZADO: Nueva función para inicializar la lógica del formulario normal ***
+        // Esta función llama al código que está en `js/formulariodinamico.js`.
+        function inicializarLogicaFormulario() {
+            // Verificamos si la función `inicializarFormularioDinamico` existe en el script que acabamos de incluir.
+            if (typeof inicializarFormularioDinamico === 'function') {
+                const config = {
+                    archivo_json: '<?php echo addslashes($archivo_json); ?>'
+                };
+                // Ejecutamos la inicialización del formulario pasándole la configuración necesaria.
+                inicializarFormularioDinamico(config);
+            } else {
+                console.warn('La función `inicializarFormularioDinamico` no se encontró en `js/formulariodinamico.js`. La funcionalidad interactiva puede no estar disponible.');
+                // Fallback por si el otro script falla: inicializa al menos los Select2 básicos.
+                 $('.form-control').each(function() {
+                    if ($(this).is('select')) {
+                        $(this).select2({
+                            width: '100%'
+                        });
+                    }
+                });
+            }
+        }
+
+        // *** CAMBIO REALIZADO: Se llama a la lógica del formulario al cargar la página ***
+        // Esto asegura que el formulario sea funcional desde el principio.
+        inicializarLogicaFormulario();
 
         designModeToggle.on('change', function() {
             if (this.checked) {
@@ -176,23 +202,34 @@ $soloLectura = false;
             body.addClass('design-mode');
             saveLayoutBtn.show();
             $('.edit-icon').show();
+
+            // *** CAMBIO REALIZADO: Desactivar plugins del modo normal para evitar conflictos ***
+            // Destruimos las instancias de Select2 para que no interfieran con el drag & drop.
+            $('select.form-control').each(function() {
+                if ($(this).data('select2')) {
+                    $(this).select2('destroy');
+                }
+            });
             
-            // 1. Contenedores de FIELDSETS (columnas, pestañas y el área exterior)
-            const fieldsetContainers = document.querySelectorAll('[data-col-width], .tab-pane, #elementos-fuera-container');
-            fieldsetContainers.forEach(container => {
+            // 1. Contenedores de FIELDSETS y BLOQUES (columnas, pestañas y el área exterior)
+            // CAMBIO: Se añade '.draggable-tab-block' al selector y se especifica el 'handle'
+            const blockContainers = document.querySelectorAll('[data-col-width], .tab-pane, #elementos-fuera-container');
+            blockContainers.forEach(container => {
                 let sortable = Sortable.create(container, {
                     group: {
-                        name: 'shared-fieldsets',
+                        name: 'shared-blocks',
                         put: function (to) {
-                            // Solo permite soltar fieldsets, no campos individuales
+                            // Previene que un bloque grande (como el de pestañas) se meta en un fieldset
                             return !to.el.classList.contains('sortable-fields-container');
                         }
                     },
                     animation: 150,
                     ghostClass: 'sortable-ghost',
-                    draggable: '.draggable-fieldset',
+                    // CAMBIO: Se especifica qué elementos son arrastrables y cuál es su manija
+                    draggable: '.draggable-fieldset, .draggable-tab-block', 
+                    handle: '.handle', // 'legend' para fieldsets, 'tab-block-handle' para el bloque de pestañas
                     onEnd: function(evt) {
-                        console.log('Fieldset drag ended.');
+                        console.log('Block/Fieldset drag ended.');
                     }
                 });
                 sortableInstances.push(sortable);
@@ -212,6 +249,23 @@ $soloLectura = false;
                 });
                 sortableInstances.push(sortable);
             });
+
+            // 3. NUEVO: Contenedor para REORDENAR PESTAÑAS
+            const tabsList = document.querySelector('.sortable-tabs');
+            if (tabsList) {
+                let sortableTabs = Sortable.create(tabsList, {
+                    group: 'tabs-reorder',
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    draggable: '.nav-item:not(.add-tab-button)', // Solo los items de pestaña son arrastrables
+                    onEnd: function(evt) {
+                        console.log('Tab reordered.');
+                        // Es necesario reajustar los IDs y references si se cambia el orden,
+                        // pero por ahora solo habilitamos el movimiento visual.
+                    }
+                });
+                sortableInstances.push(sortableTabs);
+            }
         }
 
         function disableDesignMode() {
@@ -221,9 +275,13 @@ $soloLectura = false;
             // Destruir todas las instancias de SortableJS para restaurar el comportamiento normal
             sortableInstances.forEach(sortable => sortable.destroy());
             sortableInstances = [];
+
+            // *** CAMBIO REALIZADO: Reinicializar la lógica del formulario ***
+            // Al salir del modo diseño, volvemos a activar toda la funcionalidad interactiva.
+            inicializarLogicaFormulario();
         }
 
-        // --- LÓGICA PARA GUARDAR EL DISEÑO ---
+        // --- LÓGICA PARA GUARDAR EL DISEÑO (SIN CAMBIOS) ---
         saveLayoutBtn.on('click', function() {
             const nuevoLayout = buildLayoutFromDOM();
             const elementosFuera = buildOutsideElementsFromDOM();
@@ -359,8 +417,11 @@ $soloLectura = false;
             return outsideElements;
         }
 
-        // --- LÓGICA PARA EDITAR PROPIEDADES ---
+        // --- LÓGICA PARA EDITAR PROPIEDADES (MODIFICADA) ---
         $(document).on('click', '.edit-icon', function() {
+            // *** CAMBIO REALIZADO: Asegurarse de que solo funcione en modo diseño ***
+            if (!body.hasClass('design-mode')) return;
+
             const editType = $(this).data('edit-type');
             const itemName = $(this).data('edit-type') === 'fieldset' ? $(this).data('fieldset-name') : $(this).data('field-name');
             const archivoJson = '<?php echo addslashes($archivo_json); ?>';

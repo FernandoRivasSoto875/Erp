@@ -159,32 +159,45 @@ function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $bloc
     $tabsId = 'tabs_' . uniqid();
     $html = "<div {$blockAttrs}>";
     $html .= '<ul class="nav nav-pills mb-3" id="' . $tabsId . '" role="tablist">';
-    $isFirstTab = true;
-
+    
+    // Pre-generar IDs para asegurar consistencia entre links y contenido
+    $tabDetails = [];
     foreach (($block['tabs'] ?? []) as $index => $tab) {
-        $tabTitle = htmlspecialchars($tab['title'] ?? '');
-        $tabId = 'tab_' . preg_replace('/[^a-zA-Z0-9_]/', '', str_replace(' ', '_', $tabTitle)) . '_' . $index;
-        $activeClass = $isFirstTab ? 'active' : '';
+        $tabTitle = htmlspecialchars($tab['title'] ?? 'Pestaña ' . ($index + 1));
+        $tabDetails[] = [
+            'title' => $tabTitle,
+            'id' => 'tab_' . preg_replace('/[^a-zA-Z0-9_]/', '', str_replace(' ', '_', $tab['title'] ?? '')) . '_' . uniqid(),
+            'rows' => $tab['rows'] ?? []
+        ];
+    }
+
+    // Renderizar las pestañas (los links <a>)
+    foreach ($tabDetails as $index => $details) {
+        $activeClass = ($index === 0) ? 'active' : '';
+        $isSelected = ($index === 0) ? 'true' : 'false';
         
         $html .= '<li class="nav-item" role="presentation">';
-        $html .= '<a class="nav-link ' . $activeClass . '" id="' . $tabId . '-tab" data-toggle="pill" href="#' . $tabId . '" role="tab" aria-controls="' . $tabId . '" aria-selected="' . ($isFirstTab ? 'true' : 'false') . '">' . $tabTitle . '</a>';
+        $html .= '<a class="nav-link ' . $activeClass . '" id="' . $details['id'] . '-tab" data-toggle="pill" href="#' . $details['id'] . '" role="tab" aria-controls="' . $details['id'] . '" aria-selected="' . $isSelected . '">';
+        $html .= "<span class='tab-title-text'>" . $details['title'] . "</span>";
+        // Icono para editar el título de la pestaña, visible en modo diseño
+        $html .= " <i class='fas fa-pencil-alt edit-icon' data-edit-type='tab' data-target-tab-id='" . $details['id'] . "-tab' style='display:none; cursor:pointer;'></i>";
+        $html .= '</a>';
         $html .= '</li>';
-        $isFirstTab = false;
     }
+    
+    // Botón para agregar nueva pestaña, visible en modo diseño
+    $html .= '<li class="nav-item" id="add-tab-button" style="display:none;" role="presentation">';
+    $html .= '<a class="nav-link" href="#" title="Agregar nueva pestaña"><i class="fas fa-plus"></i></a>';
+    $html .= '</li>';
     $html .= '</ul>';
 
+    // Renderizar el contenido de las pestañas
     $html .= '<div class="tab-content" id="' . $tabsId . 'Content">';
-    $isFirstTab = true;
-    foreach (($block['tabs'] ?? []) as $index => $tab) {
-        $tabTitle = htmlspecialchars($tab['title'] ?? '');
-        $tabId = 'tab_' . preg_replace('/[^a-zA-Z0-9_]/', '', str_replace(' ', '_', $tabTitle)) . '_' . $index;
-        $activeClass = $isFirstTab ? 'show active' : '';
-        $tabAttrs = "data-tab-title='{$tabTitle}'";
-
-        $html .= '<div class="tab-pane fade ' . $activeClass . '" id="' . $tabId . '" role="tabpanel" aria-labelledby="' . $tabId . '-tab" ' . $tabAttrs . '>';
-        $html .= renderRows($tab['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
+    foreach ($tabDetails as $index => $details) {
+        $activeClass = ($index === 0) ? 'show active' : '';
+        $html .= '<div class="tab-pane fade ' . $activeClass . '" id="' . $details['id'] . '" role="tabpanel" aria-labelledby="' . $details['id'] . '-tab" data-tab-title="' . htmlspecialchars($details['title']) . '">';
+        $html .= renderRows($details['rows'], $fieldsetsConfig, $valores, $soloLectura);
         $html .= '</div>';
-        $isFirstTab = false;
     }
     $html .= '</div>';
     $html .= '</div>';

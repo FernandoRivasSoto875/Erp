@@ -348,7 +348,53 @@ window.inicializarFormularioDinamico = function() {
         });
     }
 
+    // --- FUNCIÓN PARA INICIALIZAR SELECT2 ---
+    function inicializarSelect2() {
+        // Usa la variable `allFields` que está definida al inicio de `inicializarFormularioDinamico`
+        if (!allFields) return; 
+
+        $('.select2-field').each(function() {
+            const $this = $(this);
+            // Limpiar el nombre del campo para encontrar la configuración.
+            // Un campo 'multiple' puede tener el nombre "paises_visitados[]", pero en el JSON es "paises_visitados".
+            const fieldName = $this.attr('name');
+            const cleanFieldName = fieldName.replace(/\[\]$/, ''); // Elimina '[]' del final si existe.
+            const fieldConfig = allFields.find(f => f.name === cleanFieldName);
+            
+            let ajaxConfig = {};
+            if (fieldConfig && fieldConfig.data && fieldConfig.data.tabla) {
+                ajaxConfig = {
+                    url: 'ajax/busqueda_select2.php',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            q: params.term, // término de búsqueda
+                            tabla: fieldConfig.data.tabla,
+                            campo: fieldConfig.data.campo,
+                            filtro: fieldConfig.data.filtro || '1=1'
+                        };
+                    },
+                    processResults: function (data) {
+                        // El backend ya devuelve {results: [...]}, no es necesario volver a envolverlo.
+                        return data;
+                    },
+                    cache: true
+                };
+            }
+
+            $this.select2({
+                theme: "bootstrap",
+                placeholder: $this.attr('placeholder') || 'Seleccione una opción',
+                allowClear: true,
+                ajax: ajaxConfig,
+                language: "es"
+            });
+        });
+    }
+
     procesarLookups();
+    inicializarSelect2(); // Llamamos a la nueva función aquí
 
     // --- VALIDACIÓN POR REGEX DESDE JSON ---
     function validarCamposPorRegex(campos, validaciones) {
@@ -420,46 +466,6 @@ window.inicializarFormularioDinamico = function() {
     }
     // Hook para validación en tiempo real (incluye campos agregados dinámicamente)
     $(document).ready(function() {
-        // Inicializar Select2 en los campos que lo necesiten
-        $('.select2-field').each(function() {
-            const $this = $(this);
-            // CORRECCIÓN 1: Limpiar el nombre del campo para encontrar la configuración.
-            // Un campo 'multiple' puede tener el nombre "paises_visitados[]", pero en el JSON es "paises_visitados".
-            const fieldName = $this.attr('name');
-            const cleanFieldName = fieldName.replace(/\[\]$/, ''); // Elimina '[]' del final si existe.
-            const fieldConfig = window.fields.find(f => f.name === cleanFieldName);
-            
-            let ajaxConfig = {};
-            if (fieldConfig && fieldConfig.data && fieldConfig.data.tabla) {
-                ajaxConfig = {
-                    url: 'ajax/busqueda_select2.php',
-                    dataType: 'json',
-                    delay: 250,
-                    data: function (params) {
-                        return {
-                            q: params.term, // término de búsqueda
-                            tabla: fieldConfig.data.tabla,
-                            campo: fieldConfig.data.campo,
-                            filtro: fieldConfig.data.filtro || '1=1'
-                        };
-                    },
-                    // CORRECCIÓN 2: El backend ya devuelve {results: [...]}, no es necesario volver a envolverlo.
-                    processResults: function (data) {
-                        return data;
-                    },
-                    cache: true
-                };
-            }
-
-            $this.select2({
-                theme: "bootstrap",
-                placeholder: $this.attr('placeholder') || 'Seleccione una opción',
-                allowClear: true,
-                ajax: ajaxConfig,
-                language: "es"
-            });
-        });
-
         let validaciones = window.validacionesJSON || {};
         $(document).on('input blur', '#formulario input, #formulario textarea, #formulario select', function() {
             validarCampoIndividual(this, validaciones);

@@ -28,11 +28,14 @@ $conn->set_charset("utf8");
 
 // Construir la consulta
 // Se asume que el campo de búsqueda es el mismo que el campo de descripción
+// DIAGNOSTICO: Ignorar término de búsqueda temporalmente
 $filtroAdicional = "";
+/*
 if (!empty($searchTerm)) {
     // Usar parámetros preparados para prevenir inyección SQL
     $filtroAdicional = " AND LOWER(" . $campo . ") LIKE LOWER(?)";
 }
+*/
 
 // La consulta debe devolver 'id' y 'text' para Select2
 $sql = "SELECT DISTINCT " . $campo . " as id, " . $campo . " as text FROM " . $tabla . " WHERE " . $filtro . $filtroAdicional . " ORDER BY " . $campo . " ASC LIMIT 50";
@@ -44,10 +47,12 @@ if ($stmt === false) {
     exit;
 }
 
+/*
 if (!empty($searchTerm)) {
     $searchTermLike = '%' . $searchTerm . '%';
     $stmt->bind_param("s", $searchTermLike);
 }
+*/
 
 $stmt->execute();
 $result = $stmt->get_result();

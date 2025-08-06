@@ -165,6 +165,7 @@
           "placeholder": "Seleccione  países",
           "labelPosition": "top", 
           "data": { "tabla": "Pais", "campo": "PaiDes", "filtro": "1=1" } 
+          
         }
       ]
     },

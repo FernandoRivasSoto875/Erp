@@ -441,8 +441,9 @@ window.inicializarFormularioDinamico = function() {
                         };
                     },
                     processResults: function (data, params) {
+                        // La respuesta del servidor es el array de resultados directamente.
                         return {
-                            results: data.results
+                            results: data
                         };
                     },
                     cache: true

@@ -421,8 +421,40 @@ window.inicializarFormularioDinamico = function() {
     // Hook para validación en tiempo real (incluye campos agregados dinámicamente)
     $(document).ready(function() {
         // Inicializar Select2 en los campos que lo necesiten
-        $('.select2-field').select2({
-            theme: "bootstrap" // Opcional: para que se vea como Bootstrap
+        $('.select2-field').each(function() {
+            const $this = $(this);
+            const fieldName = $this.attr('name');
+            const fieldConfig = window.fields.find(f => f.name === fieldName);
+            
+            let ajaxConfig = {};
+            if (fieldConfig && fieldConfig.data && fieldConfig.data.tabla) {
+                ajaxConfig = {
+                    url: 'ajax/busqueda_select2.php',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function (params) {
+                        return {
+                            q: params.term, // término de búsqueda
+                            tabla: fieldConfig.data.tabla,
+                            campo: fieldConfig.data.campo,
+                            filtro: fieldConfig.data.filtro || '1=1'
+                        };
+                    },
+                    processResults: function (data, params) {
+                        return {
+                            results: data.results
+                        };
+                    },
+                    cache: true
+                };
+            }
+
+            $this.select2({
+                theme: "bootstrap",
+                placeholder: $this.attr('placeholder') || 'Seleccione una opción',
+                allowClear: true,
+                ajax: ajaxConfig
+            });
         });
 
         let validaciones = window.validacionesJSON || {};

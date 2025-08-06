@@ -359,14 +359,15 @@ window.inicializarFormularioDinamico = function() {
 
         $('.select2-field').each(function() {
             const $this = $(this);
-            // Limpiar el nombre del campo para encontrar la configuración.
+            
+            // CORRECCIÓN 1: Limpiar el nombre del campo para encontrar la configuración.
             // Un campo 'multiple' puede tener el nombre "paises_visitados[]", pero en el JSON es "paises_visitados".
             const fieldName = $this.attr('name');
             const cleanFieldName = fieldName.replace(/\[\]$/, ''); // Elimina '[]' del final si existe.
+            
+            // BUG ARREGLADO: Se busca en 'allFields' (la variable segura) en lugar de 'window.fields'.
             const fieldConfig = allFields.find(f => f.name === cleanFieldName);
             
-            console.log(`[Depuración Select2] Configurando campo: ${fieldName} (limpio: ${cleanFieldName}). Config encontrada:`, fieldConfig);
-
             let ajaxConfig = {};
             if (fieldConfig && fieldConfig.data && fieldConfig.data.tabla) {
                 ajaxConfig = {
@@ -381,8 +382,9 @@ window.inicializarFormularioDinamico = function() {
                             filtro: fieldConfig.data.filtro || '1=1'
                         };
                     },
+                    // BUG ARREGLADO: La respuesta del backend ya es {results: [...]}, no se debe tocar.
+                    // Select2 procesará esto correctamente.
                     processResults: function (data) {
-                        // El backend ya devuelve {results: [...]}, no es necesario volver a envolverlo.
                         return data;
                     },
                     cache: true

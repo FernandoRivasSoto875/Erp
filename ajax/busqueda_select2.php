@@ -1,6 +1,11 @@
 <?php
-header('Content-Type: application/json');
-error_reporting(0); // Desactivar reportes de errores para no corromper el JSON
+// DIAGNOSTICO: Habilitar todos los errores y quitar la cabecera JSON
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+// header('Content-Type: application/json');
+
+echo "<pre>"; // Para facilitar la lectura
 
 // Incluir archivos de configuración y funciones
 require_once '../config/conexion.php';
@@ -12,49 +17,41 @@ $campo = isset($_GET['campo']) ? $_GET['campo'] : '';
 $filtro = isset($_GET['filtro']) ? $_GET['filtro'] : '1=1';
 $searchTerm = isset($_GET['q']) ? $_GET['q'] : '';
 
+echo "--- PARÁMETROS RECIBIDOS ---\n";
+var_dump(['tabla' => $tabla, 'campo' => $campo, 'filtro' => $filtro, 'searchTerm' => $searchTerm]);
+
 if (empty($tabla) || empty($campo)) {
-    echo json_encode(['results' => [['id' => '', 'text' => 'Error: Parámetros incompletos']]] );
-    exit;
+    die("Error: Parámetros 'tabla' o 'campo' incompletos.");
 }
 
 // Conexión a la base de datos
+echo "\n--- INTENTANDO CONEXIÓN A BD ---\n";
 $conn = newConexion();
 if ($conn->connect_error) {
-    echo json_encode(['results' => [['id' => '', 'text' => 'Error: Falla de conexión a BD']]] );
-    exit;
+    die("Error de conexión a BD: " . $conn->connect_error);
 }
+echo "Conexión exitosa.\n";
 $conn->set_charset("utf8");
 
 
 // Construir la consulta
-// Se asume que el campo de búsqueda es el mismo que el campo de descripción
-// DIAGNOSTICO: Ignorar término de búsqueda temporalmente
 $filtroAdicional = "";
-/*
-if (!empty($searchTerm)) {
-    // Usar parámetros preparados para prevenir inyección SQL
-    $filtroAdicional = " AND LOWER(" . $campo . ") LIKE LOWER(?)";
-}
-*/
-
 // La consulta debe devolver 'id' y 'text' para Select2
 $sql = "SELECT DISTINCT " . $campo . " as id, " . $campo . " as text FROM " . $tabla . " WHERE " . $filtro . $filtroAdicional . " ORDER BY " . $campo . " ASC LIMIT 50";
+
+echo "\n--- CONSULTA SQL ---\n";
+var_dump($sql);
 
 $stmt = $conn->prepare($sql);
 
 if ($stmt === false) {
-    echo json_encode(['results' => [['id' => '', 'text' => 'Error en la preparación de la consulta']]] );
-    exit;
+    die("Error en la preparación de la consulta: " . $conn->error);
 }
-
-/*
-if (!empty($searchTerm)) {
-    $searchTermLike = '%' . $searchTerm . '%';
-    $stmt->bind_param("s", $searchTermLike);
-}
-*/
+echo "Preparación de consulta exitosa.\n";
 
 $stmt->execute();
+echo "Ejecución de consulta exitosa.\n";
+
 $result = $stmt->get_result();
 
 $data = [];
@@ -63,13 +60,17 @@ if ($result) {
         $data[] = $row;
     }
 } else {
-     echo json_encode(['results' => [['id' => '', 'text' => 'Error en la ejecución de la consulta']]] );
-    exit;
+    die("Error en la ejecución o obtención de resultados: " . $stmt->error);
 }
+
+echo "\n--- DATOS OBTENIDOS (" . count($data) . " filas) ---\n";
+var_dump($data);
 
 $stmt->close();
 $conn->close();
+echo "\n--- CONEXIÓN CERRADA ---\n";
 
-// Select2 espera un array de objetos directamente
-echo json_encode($data);
+echo "</pre>";
+
+// echo json_encode($data); // Desactivado para diagnóstico
 ?>

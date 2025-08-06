@@ -156,7 +156,16 @@
         },
         { "name": "rango_satisfaccion", "label": "Satisfacción", "type": "range", "min": 1, "max": 10, "labelPosition": "top-right" },
         { "name": "oculto", "type": "hidden", "value": "valor_oculto" },
-        { "name": "ciudad_2", "label": "Ciudad ", "type": "selectdata", "labelPosition": "left", "data": { "tabla": "Comuna", "campo": "ComDes", "filtro": "1=1" } }
+        { "name": "ciudad_2", "label": "Ciudad (SelectData)", "type": "selectdata", "labelPosition": "left", "data": { "tabla": "Comuna", "campo": "ComDes", "filtro": "1=1" } },
+        { 
+          "name": "paises_visitados", 
+          "label": "Países Visitados (Select2)", 
+          "type": "select2", 
+          "multiple": true,
+          "placeholder": "Seleccione uno o más países",
+          "labelPosition": "top", 
+          "data": { "tabla": "Pais", "campo": "PaisDes", "filtro": "1=1" } 
+        }
       ]
     },
     {

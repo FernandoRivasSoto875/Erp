@@ -159,12 +159,12 @@
         { "name": "ciudad_2", "label": "Ciudad (SelectData)", "type": "selectdata", "labelPosition": "left", "data": { "tabla": "Comuna", "campo": "ComDes", "filtro": "1=1" } },
         { 
           "name": "paises_visitados", 
-          "label": "Países Visitados (Select2)", 
+          "label": "Países Visitadoss (Select2)", 
           "type": "select2", 
           "multiple": true,
-          "placeholder": "Seleccione uno o más países",
+          "placeholder": "Seleccione  países",
           "labelPosition": "top", 
-          "data": { "tabla": "Pais", "campo": "PaisDes", "filtro": "1=1" } 
+          "data": { "tabla": "Pais", "campo": "PaiDes", "filtro": "1=1" } 
         }
       ]
     },

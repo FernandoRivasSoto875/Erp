@@ -6,4 +6,4 @@
     <p class="footer-message">
         <?php echo $parametros['MensajeFooter']; ?>
     </p>
-</footer>
+</footer> 

@@ -131,27 +131,44 @@ window.validacionesJSON = <?php echo json_encode($json['parametros']['validacion
             background: #c8ebfb;
         }
 
-        /* Mejoras visuales para las pestañas (nav-pills) */
+        /* --- ESTILOS MEJORADOS PARA PESTAÑAS (VIÑETAS) --- */
+        .nav-pills {
+            border-bottom: 1px solid #dee2e6;
+            margin-bottom: 1rem;
+        }
+        .nav-pills .nav-item {
+            margin-bottom: -1px; /* Alinea el borde inferior del item con el borde de la barra */
+        }
         .nav-pills .nav-link {
-            border: 1px solid #dee2e6;
-            margin-right: 5px;
-            background-color: #f8f9fa;
-            color: #495057;
+            border: 1px solid transparent;
+            border-top-left-radius: .25rem;
+            border-top-right-radius: .25rem;
+            padding: 0.75rem 1.25rem;
+            color: #007bff;
+            transition: color .15s ease-in-out, background-color .15s ease-in-out, border-color .15s ease-in-out;
+        }
+        .nav-pills .nav-link:not(.active):hover {
+            background-color: #e9ecef;
+            border-color: transparent;
         }
         .nav-pills .nav-link.active {
-            color: #fff;
-            background-color: #007bff;
-            border-color: #007bff;
+            color: #495057;
+            background-color: #fff;
+            border-color: #dee2e6 #dee2e6 #fff;
+            font-weight: 600;
         }
         .tab-content > .tab-pane {
-            /* Mantiene el borde solo en el contenido */
             background-color: #fff;
         }
         .tab-content > .active {
             display: block;
         }
         .tab-pane-content {
-            border-radius: 0 0.25rem 0.25rem 0.25rem;
+            border: 1px solid #dee2e6;
+            border-top: none;
+            padding: 1.5rem;
+            border-bottom-left-radius: .25rem;
+            border-bottom-right-radius: .25rem;
         }
     </style>
 </head>

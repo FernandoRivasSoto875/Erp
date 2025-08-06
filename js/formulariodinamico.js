@@ -215,7 +215,7 @@ window.inicializarFormularioDinamico = function() {
             }
 
             $this.select2({
-                theme: "bootstrap",
+                theme: "bootstrap4",
                 placeholder: $this.attr('placeholder') || 'Seleccione una opción',
                 allowClear: true,
                 ajax: ajaxConfig, // Será null si no hay config, deshabilitando AJAX

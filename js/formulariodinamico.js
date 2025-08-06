@@ -1,51 +1,59 @@
-// Encapsulamos toda la inicialización en una función global
+// Versión 2.0 - Refactorizada para mayor estabilidad y predictibilidad.
+// Se elimina el uso de múltiples $(document).ready() para evitar race conditions.
+// Toda la lógica del formulario se encapsula en una única función de inicialización.
+
 window.inicializarFormularioDinamico = function() {
-    // --- 1. CONFIGURACIÓN INICIAL ---
+    // --- 1. CONFIGURACIÓN INICIAL Y VALIDACIONES PREVIAS ---
     const form = document.getElementById('formulario');
-    if (!form) return;
+    if (!form) {
+        console.error("Error crítico: No se encontró el elemento #formulario. El script no puede continuar.");
+        return;
+    }
 
     const urlParams = new URLSearchParams(window.location.search);
     const archivoJson = urlParams.get('archivo');
+    // `window.fields` es la configuración de campos inyectada por PHP.
     const allFields = window.fields || [];
+    const validaciones = window.validacionesJSON || {};
     const statusText = document.getElementById('form-status-text');
 
-    if (allFields.length === 0) return;
+    if (allFields.length === 0) {
+        console.warn("Advertencia: La configuración `window.fields` está vacía. El formulario no tendrá campos dinámicos.");
+        // No retornamos, para permitir que un formulario estático aún funcione.
+    }
 
-    const firstFieldConfig = allFields[0];
-    const keyField = form.querySelector(`[name="${firstFieldConfig.name}"]`);
+    const firstFieldConfig = allFields.length > 0 ? allFields[0] : null;
+    const keyField = firstFieldConfig ? form.querySelector(`[name="${firstFieldConfig.name}"]`) : null;
 
-    if (!keyField) return;
+    if (!keyField) {
+        console.warn("Advertencia: No se encontró el campo clave del formulario.");
+    }
 
     // --- 2. MOTOR DE CÁLCULO (ROBUSTO Y UNIVERSAL) ---
     function recalcularFila(fila) {
         const camposConFormula = fila.querySelectorAll('[data-formula]');
         camposConFormula.forEach(campoResultado => {
             let formula = campoResultado.getAttribute('data-formula');
-            // Si la fórmula es un objeto (ej: [object Object]), no intentes evaluarla
-            if (!formula || formula.startsWith('{') || formula === '[object Object]') return;
-            try {
-                // Si la fórmula viene serializada como JSON, intenta parsear y descartar si es objeto
-                let parsed = null;
-                try { parsed = JSON.parse(formula); } catch(e){}
-                if (parsed && typeof parsed === 'object') return;
-            } catch(e){}
+            if (!formula || typeof formula !== 'string' || formula.startsWith('{')) return;
+
             let formulaReemplazada = formula;
             let esCalculable = true;
             const variables = formula.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
+
             variables.forEach(variable => {
-                // Busca en la fila y en el formulario global
-                let campoVariable = fila.querySelector(`[name*="[${variable}]"]`) || form.querySelector(`[name="${variable}"]`);
+                const campoVariable = fila.querySelector(`[name*="[${variable}]"]`) || form.querySelector(`[name="${variable}"]`);
                 if (campoVariable) {
-                    let valor = parseFloat(campoVariable.value) || 0;
+                    const valor = parseFloat(campoVariable.value) || 0;
                     formulaReemplazada = formulaReemplazada.replace(new RegExp(`\\b${variable}\\b`, 'g'), valor);
                 } else {
                     esCalculable = false;
                 }
             });
+
             if (esCalculable) {
                 try {
                     const resultado = new Function(`return ${formulaReemplazada}`)();
-                    campoResultado.value = isFinite(resultado) ? resultado : '';
+                    campoResultado.value = isFinite(resultado) ? resultado.toFixed(2) : '';
                 } catch (error) {
                     campoResultado.value = '';
                 }
@@ -54,33 +62,32 @@ window.inicializarFormularioDinamico = function() {
             }
         });
     }
+
     function recalcularCamposSimples() {
         allFields.forEach(field => {
             if (typeof field['data-formula'] === 'string') {
-                let formula = field['data-formula'];
-                // Si la fórmula es un objeto serializado, ignorar
-                try { let parsed = JSON.parse(formula); if (parsed && typeof parsed === 'object') return; } catch(e){}
+                const formula = field['data-formula'];
                 const input = form.querySelector(`[name="${field.name}"]`);
                 if (!input) return;
-                // DEPURACIÓN: Mostrar en consola cada campo con fórmula
-                console.log('Depuración fórmula:', field.name, 'formula:', formula, 'valor actual:', input.value);
+
                 let formulaReemplazada = formula;
                 let esCalculable = true;
                 const variables = formula.match(/[a-zA-Z_][a-zA-Z0-9_]*/g) || [];
+
                 variables.forEach(variable => {
-                    let campoVariable = form.querySelector(`[name="${variable}"]`);
+                    const campoVariable = form.querySelector(`[name="${variable}"]`);
                     if (campoVariable) {
-                        let valor = parseFloat(campoVariable.value) || 0;
+                        const valor = parseFloat(campoVariable.value) || 0;
                         formulaReemplazada = formulaReemplazada.replace(new RegExp(`\\b${variable}\\b`, 'g'), valor);
                     } else {
                         esCalculable = false;
                     }
                 });
+
                 if (esCalculable) {
                     try {
                         const resultado = new Function(`return ${formulaReemplazada}`)();
-                        console.log('Resultado calculado para', field.name, ':', resultado);
-                        input.value = isFinite(resultado) ? resultado : '';
+                        input.value = isFinite(resultado) ? resultado.toFixed(2) : '';
                     } catch (error) {
                         input.value = '';
                     }
@@ -90,15 +97,13 @@ window.inicializarFormularioDinamico = function() {
             }
         });
     }
-    // --- NUEVO: Recalculo global de todas las filas de todas las tablas y campos simples ---
+
     function recalcularTodo() {
-        // Recalcula todos los datatables
         document.querySelectorAll('.datatable-container tbody tr').forEach(recalcularFila);
-        // Recalcula todos los campos simples
         recalcularCamposSimples();
     }
 
-    // --- 3. FUNCIÓN PARA RELLENAR EL FORMULARIO ---
+    // --- 3. FUNCIONES DE MANIPULACIÓN DEL FORMULARIO ---
     function fillForm(data) {
         form.reset();
         document.querySelectorAll('.datatable-container tbody, [data-datatable-name] tbody').forEach(tbody => tbody.innerHTML = '');
@@ -108,13 +113,15 @@ window.inicializarFormularioDinamico = function() {
             const value = data[fieldName];
             const elements = form.querySelectorAll(`[name="${fieldName}"], [name="${fieldName}[]"]`);
 
+            if (!elements.length) return;
+
             switch (field.type) {
                 case 'checkbox':
                 case 'radio':
                     if (field.options) {
                         const savedValues = Array.isArray(value) ? value : [];
                         elements.forEach(el => el.checked = savedValues.includes(el.value));
-                    } else if (elements.length) {
+                    } else {
                         elements[0].checked = !!value && value !== 'off';
                     }
                     break;
@@ -143,74 +150,188 @@ window.inicializarFormularioDinamico = function() {
                     }
                     break;
                 default:
-                    if (elements.length) elements[0].value = value || '';
+                    elements[0].value = value || '';
                     break;
             }
         });
-        statusText.textContent = 'Modificando';
-        statusText.style.color = '#d35400'; // Naranja para destacar
-        // Mensaje visual destacado (opcional, puedes quitar si no quieres alert)
-        if (!document.getElementById('alert-modificando')) {
-            const alertDiv = document.createElement('div');
-            alertDiv.id = 'alert-modificando';
-            alertDiv.className = 'alert alert-warning';
-            alertDiv.innerHTML = '<b>Modificando:</b> Estás editando un registro existente.';
-            statusText.parentNode.insertBefore(alertDiv, statusText.nextSibling);
+
+        if (statusText) {
+            statusText.textContent = 'Modificando';
+            statusText.style.color = '#d35400';
         }
-        setTimeout(() => {
-            form.querySelectorAll('.datatable-container tbody tr, [data-datatable-name] tbody tr').forEach(recalcularFila);
-            recalcularCamposSimples();
-        }, 100);
+        recalcularTodo();
     }
 
-    // --- 4. FUNCIÓN PARA LIMPIAR EL FORMULARIO ---
     function limpiarFormulario(mantenerClave = false) {
-        const valorClave = keyField.value;
+        const valorClave = keyField ? keyField.value : '';
         form.reset();
         document.querySelectorAll('.datatable-container tbody, [data-datatable-name] tbody').forEach(tbody => tbody.innerHTML = '');
-        if (mantenerClave) keyField.value = valorClave;
-        statusText.textContent = 'Nuevo';
+        if (mantenerClave && keyField) keyField.value = valorClave;
+        if (statusText) statusText.textContent = 'Nuevo';
+        recalcularTodo();
     }
 
-    // --- 5. EVENTOS PRINCIPALES ---
+    // --- 4. INICIALIZACIÓN DE COMPONENTES ESPECIALES ---
 
-    // EVENTO 1: Cargar datos
-    keyField.addEventListener('blur', () => {
-        const key = keyField.value.trim();
-        if (!key) {
-            limpiarFormulario();
+    function inicializarSelect2() {
+        console.log('[Select2] Iniciando inicialización de campos .select2-field');
+        if (typeof $ === 'undefined' || typeof $.fn.select2 === 'undefined') {
+            console.error('Error crítico: jQuery o Select2 no están cargados. No se pueden inicializar los campos.');
             return;
         }
-        const url = `formulariodinamicologica.php?archivo=${encodeURIComponent(archivoJson)}&action=load_data&key=${encodeURIComponent(key)}`;
-        fetch(url)
-            .then(response => response.json())
-            .then(result => {
-                if (result.success && result.data) {
-                    fillForm(result.data);
-                } else {
-                    limpiarFormulario(true);
-                    // Mostrar mensaje visual si no se encuentra el registro
-                    if (!document.getElementById('alert-no-encontrado')) {
-                        const alertDiv = document.createElement('div');
-                        alertDiv.id = 'alert-no-encontrado';
-                        alertDiv.className = 'alert alert-info';
-                        alertDiv.innerHTML = '<b>No encontrado:</b> No existe un registro con ese valor.';
-                        statusText.parentNode.insertBefore(alertDiv, statusText.nextSibling);
-                        setTimeout(() => {
-                            if (alertDiv.parentNode) alertDiv.parentNode.removeChild(alertDiv);
-                        }, 3000);
-                    }
-                }
-            })
-            .catch(error => console.error('Error al cargar los datos:', error));
-    });
 
-    // EVENTO 2: Agregar/Eliminar filas
+        $('.select2-field').each(function() {
+            const $this = $(this);
+            const fieldName = $this.attr('name').replace(/\[\]$/, '');
+            const fieldConfig = allFields.find(f => f.name === fieldName);
+
+            console.log(`[Select2] Procesando campo: ${fieldName}`);
+
+            if (!fieldConfig) {
+                console.warn(`[Select2] No se encontró configuración para el campo "${fieldName}". Se inicializará sin AJAX.`);
+            }
+
+            let ajaxConfig = null;
+            if (fieldConfig && fieldConfig.data && fieldConfig.data.tabla) {
+                console.log(`[Select2] Configurando AJAX para ${fieldName} con tabla ${fieldConfig.data.tabla}`);
+                ajaxConfig = {
+                    url: 'ajax/busqueda_select2.php',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        return {
+                            q: params.term,
+                            tabla: fieldConfig.data.tabla,
+                            campo: fieldConfig.data.campo,
+                            filtro: fieldConfig.data.filtro || '1=1'
+                        };
+                    },
+                    processResults: function(data) {
+                        // El backend ya debe devolver { results: [...] }
+                        return data;
+                    },
+                    cache: true
+                };
+            }
+
+            $this.select2({
+                theme: "bootstrap",
+                placeholder: $this.attr('placeholder') || 'Seleccione una opción',
+                allowClear: true,
+                ajax: ajaxConfig, // Será null si no hay config, deshabilitando AJAX
+                language: "es"
+            });
+        });
+        console.log('[Select2] Inicialización completada.');
+    }
+
+    function procesarLookups() {
+        allFields.forEach(field => {
+            if (typeof field['data-formula'] === 'object' && field['data-formula'].type === 'lookup') {
+                const formula = field['data-formula'];
+                const targetInput = form.querySelector(`[name="${field.name}"]`);
+                if (!targetInput) return;
+
+                const matches = formula.where.match(/{([^}]+)}/g) || [];
+                
+                function ejecutarLookup() {
+                    let where = formula.where;
+                    let camposCompletos = true;
+                    matches.forEach(m => {
+                        const n = m.replace(/[{}]/g, '');
+                        const v = form.querySelector(`[name="${n}"]`)?.value || '';
+                        if (!v) camposCompletos = false;
+                        where = where.replace(m, v);
+                    });
+
+                    if (!camposCompletos) {
+                        targetInput.value = '';
+                        return;
+                    }
+
+                    fetch(`formulariodinamicologica.php?action=lookup&table=${encodeURIComponent(formula.source.table)}&field=${encodeURIComponent(formula.source.field)}&where=${encodeURIComponent(where)}`)
+                        .then(r => r.json())
+                        .then(result => {
+                            targetInput.value = result.success ? result.value : '';
+                        });
+                }
+
+                matches.forEach(match => {
+                    const fieldName = match.replace(/[{}]/g, '');
+                    const sourceInput = form.querySelector(`[name="${fieldName}"]`);
+                    if (sourceInput) {
+                        sourceInput.addEventListener('blur', ejecutarLookup);
+                    }
+                });
+            }
+        });
+    }
+
+    // --- 5. VALIDACIÓN EN TIEMPO REAL ---
+    function mostrarErrorCampo(input, mensaje) {
+        const universalMessage = 'Valor inválido.';
+        let errorDiv = input.parentNode.querySelector('.error-feedback');
+        if (!errorDiv) {
+            errorDiv = document.createElement('div');
+            errorDiv.className = 'error-feedback text-danger';
+            input.parentNode.appendChild(errorDiv);
+        }
+        errorDiv.textContent = universalMessage;
+        input.classList.add('is-invalid');
+    }
+
+    function limpiarErrorCampo(input) {
+        let errorDiv = input.parentNode.querySelector('.error-feedback');
+        if (errorDiv) errorDiv.textContent = '';
+        input.classList.remove('is-invalid');
+    }
+
+    function validarCampoIndividual(input) {
+        const nombre = input.name.replace(/\[.*\]$/, '');
+        if (validaciones[nombre]) {
+            const regex = new RegExp(validaciones[nombre].regex);
+            if (!regex.test(input.value)) {
+                mostrarErrorCampo(input, validaciones[nombre].mensaje);
+                return false;
+            }
+        }
+        limpiarErrorCampo(input);
+        return true;
+    }
+
+    // --- 6. ASIGNACIÓN DE EVENTOS ---
+    
+    // Evento para cargar datos al cambiar el campo clave
+    if (keyField) {
+        keyField.addEventListener('blur', () => {
+            const key = keyField.value.trim();
+            if (!key) {
+                limpiarFormulario();
+                return;
+            }
+            const url = `formulariodinamicologica.php?archivo=${encodeURIComponent(archivoJson)}&action=load_data&key=${encodeURIComponent(key)}`;
+            fetch(url)
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success && result.data) {
+                        fillForm(result.data);
+                    } else {
+                        limpiarFormulario(true);
+                    }
+                })
+                .catch(error => console.error('Error al cargar los datos:', error));
+        });
+    }
+
+    // Eventos de clicks en todo el formulario (delegados)
     form.addEventListener('click', e => {
+        // Eliminar fila de un datatable
         if (e.target.classList.contains('eliminar_fila')) {
             e.target.closest('tr').remove();
-            recalcularTodo(); // Recalcula tras eliminar fila
-        } else if (e.target.id.startsWith('btn-add-row-')) {
+            recalcularTodo();
+        }
+        // Agregar fila a un datatable
+        if (e.target.id.startsWith('btn-add-row-')) {
             const tableId = e.target.id.replace('btn-add-row-', '');
             const tableBody = document.querySelector(`#${tableId} tbody`);
             const fieldConfig = allFields.find(f => f.name === tableId);
@@ -232,285 +353,67 @@ window.inicializarFormularioDinamico = function() {
                 });
                 const actionCell = newRow.insertCell();
                 actionCell.innerHTML = `<button type="button" class="btn btn-danger btn-sm eliminar_fila">X</button>`;
-                recalcularTodo(); // Recalcula tras agregar fila
+                recalcularFila(newRow);
             }
         }
     });
 
-    // EVENTO 3: Guardar datos
+    // Evento para recalcular fórmulas y validar en tiempo real
+    form.addEventListener('input', e => {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+            recalcularTodo();
+            validarCampoIndividual(e.target);
+        }
+    });
+
+    // Evento de envío del formulario
     form.addEventListener('submit', e => {
         e.preventDefault();
+        
+        // Validación final
+        let esValido = true;
+        form.querySelectorAll('input, textarea, select').forEach(input => {
+            if (!validarCampoIndividual(input)) {
+                esValido = false;
+            }
+        });
+
+        if (!esValido) {
+            Swal.fire('Error de Validación', 'Por favor, revise los campos marcados en rojo.', 'error');
+            return;
+        }
+
+        // Spinner y envío
+        const spinner = document.getElementById('form-spinner');
+        if (spinner) spinner.style.display = 'block';
+
         const formData = new FormData(form);
-        // El backend espera POST sin action=save_data, solo con ?archivo=...
         const url = `formulariodinamicologica.php?archivo=${encodeURIComponent(archivoJson)}`;
+
         fetch(url, {
             method: 'POST',
-            body: formData // No pongas headers, deja que el navegador lo maneje
+            body: formData
         })
-        .then(response => {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json();
-            } else {
-                // Si no es JSON, probablemente es una redirección, recarga la página
-                window.location.reload();
-                return null;
-            }
-        })
+        .then(response => response.json())
         .then(result => {
-            if (!result) return;
+            if (spinner) spinner.style.display = 'none';
             if (result.success) {
-                if (window.validacionesJSON && window.validacionesJSON.post_envio && window.validacionesJSON.post_envio.redireccion) {
-                    window.location.href = window.validacionesJSON.post_envio.redireccion;
-                } else if (window.validacionesJSON && window.validacionesJSON.post_envio && window.validacionesJSON.post_envio.mostrar_resumen) {
-                    Swal.fire('Resumen', '¡Formulario enviado correctamente!', 'success');
-                } else {
-                    Swal.fire('Guardado', 'Los datos se han guardado correctamente.', 'success');
-                }
+                Swal.fire('Guardado', 'Los datos se han guardado correctamente.', 'success');
                 limpiarFormulario();
             } else {
-                Swal.fire('Error', 'Ha ocurrido un error al guardar los datos.', 'error');
+                Swal.fire('Error', result.message || 'Ha ocurrido un error al guardar los datos.', 'error');
             }
         })
-        .catch(error => console.error('Error al guardar los datos:', error));
-    });
-
-    // EVENTO 4: Cambio en campos de texto (para fórmulas en vivo)
-    form.addEventListener('input', e => {
-        recalcularTodo(); // Recalcula todo en cada input
-    });
-
-    // Al cargar la página, recalcula todo
-    window.addEventListener('DOMContentLoaded', function() {
-        recalcularTodo();
-        // DEPURACIÓN: Mostrar todos los campos con fórmula encontrados
-        allFields.forEach(field => {
-            if (typeof field['data-formula'] === 'string') {
-                console.log('[Depuración] Campo con fórmula:', field.name, '->', field['data-formula']);
-            }
+        .catch(error => {
+            if (spinner) spinner.style.display = 'none';
+            console.error('Error en el envío:', error);
+            Swal.fire('Error de Conexión', 'No se pudo comunicar con el servidor.', 'error');
         });
     });
 
-    // Refuerzo: recalcular también al hacer focusout (por si hay campos que no disparan input)
-    form.addEventListener('change', e => {
-        recalcularTodo();
-    });
-    form.addEventListener('blur', e => {
-        recalcularTodo();
-    }, true);
-
-    // --- FUNCIÓN PARA LOOKUP AUTOMÁTICO ---
-    function procesarLookups() {
-        allFields.forEach(field => {
-            if (typeof field['data-formula'] === 'object' && field['data-formula'].type === 'lookup') {
-                const formula = field['data-formula'];
-                const targetInput = form.querySelector(`[name="${field.name}"]`);
-                if (!targetInput) return;
-
-                // Detecta el/los campos usados en el where (ej: {ComId})
-                const matches = formula.where.match(/{([^}]+)}/g) || [];
-                // Ejecuta el lookup tanto al cargar como al cambiar el campo clave
-                function ejecutarLookup() {
-                    let where = formula.where;
-                    let camposCompletos = true;
-                    matches.forEach(m => {
-                        const n = m.replace(/[{}]/g, '');
-                        const v = form.querySelector(`[name="${n}"]`)?.value || '';
-                        if (!v) camposCompletos = false;
-                        where = where.replace(m, v);
-                    });
-                    if (!camposCompletos) {
-                        targetInput.value = '';
-                        return;
-                    }
-                    fetch(`formulariodinamicologica.php?action=lookup&table=${encodeURIComponent(formula.source.table)}&field=${encodeURIComponent(formula.source.field)}&where=${encodeURIComponent(where)}`)
-                        .then(r => r.json())
-                        .then(result => {
-                            if (result.success) {
-                                targetInput.value = result.value;
-                            } else {
-                                targetInput.value = '';
-                            }
-                        });
-                }
-                // Ejecutar lookup al cargar SOLO si todos los campos requeridos existen y tienen valor
-                ejecutarLookup();
-                // Ejecutar lookup al cambiar el campo clave
-                matches.forEach(match => {
-                    const fieldName = match.replace(/[{}]/g, '');
-                    const sourceInput = form.querySelector(`[name="${fieldName}"]`);
-                    if (sourceInput) {
-                        sourceInput.addEventListener('blur', ejecutarLookup);
-                        sourceInput.addEventListener('input', ejecutarLookup);
-                    }
-                });
-            }
-        });
-    }
-
-    // --- FUNCIÓN PARA INICIALIZAR SELECT2 ---
-    function inicializarSelect2() {
-        // Usa la variable `allFields` que está definida al inicio de `inicializarFormularioDinamico`
-        console.log('[Depuración Select2] Iniciando. ¿Tenemos configuración de campos (allFields)?', allFields);
-        if (!allFields || allFields.length === 0) {
-            console.error('[Depuración Select2] No se puede inicializar porque `allFields` está vacío o no definido.');
-            return; 
-        }
-
-        $('.select2-field').each(function() {
-            const $this = $(this);
-            
-            // CORRECCIÓN 1: Limpiar el nombre del campo para encontrar la configuración.
-            // Un campo 'multiple' puede tener el nombre "paises_visitados[]", pero en el JSON es "paises_visitados".
-            const fieldName = $this.attr('name');
-            const cleanFieldName = fieldName.replace(/\[\]$/, ''); // Elimina '[]' del final si existe.
-            
-            // BUG ARREGLADO: Se busca en 'allFields' (la variable segura) en lugar de 'window.fields'.
-            const fieldConfig = allFields.find(f => f.name === cleanFieldName);
-            
-            let ajaxConfig = {};
-            if (fieldConfig && fieldConfig.data && fieldConfig.data.tabla) {
-                ajaxConfig = {
-                    url: 'ajax/busqueda_select2.php',
-                    dataType: 'json',
-                    delay: 250,
-                    data: function (params) {
-                        return {
-                            q: params.term, // término de búsqueda
-                            tabla: fieldConfig.data.tabla,
-                            campo: fieldConfig.data.campo,
-                            filtro: fieldConfig.data.filtro || '1=1'
-                        };
-                    },
-                    // BUG ARREGLADO: La respuesta del backend ya es {results: [...]}, no se debe tocar.
-                    // Select2 procesará esto correctamente.
-                    processResults: function (data) {
-                        return data;
-                    },
-                    cache: true
-                };
-            }
-
-            $this.select2({
-                theme: "bootstrap",
-                placeholder: $this.attr('placeholder') || 'Seleccione una opción',
-                allowClear: true,
-                ajax: ajaxConfig,
-                language: "es"
-            });
-        });
-    }
-
-    procesarLookups();
-    inicializarSelect2(); // Llamamos a la nueva función aquí
-
-    // --- VALIDACIÓN POR REGEX DESDE JSON ---
-    function validarCamposPorRegex(campos, validaciones) {
-        let errores = [];
-        const mensajeUniversal = 'Por favor, ingrese un valor válido en este campo.';
-        for (const campo of campos) {
-            const nombre = campo.name;
-            const valor = campo.value;
-            if (validaciones[nombre]) {
-                const regex = new RegExp(validaciones[nombre].regex);
-                if (!regex.test(valor)) {
-                    errores.push({
-                        campo: nombre,
-                        mensaje: mensajeUniversal
-                    });
-                }
-            }
-        }
-        return errores;
-    }
-
-    // --- VALIDACIÓN EN TIEMPO REAL Y FEEDBACK VISUAL UNIVERSAL ---
-    function mostrarErrorCampo(input, mensaje) {
-        let errorDiv = input.parentNode.querySelector('.error-feedback');
-        if (!errorDiv) {
-            errorDiv = document.createElement('div');
-            errorDiv.className = 'error-feedback text-danger';
-            input.parentNode.appendChild(errorDiv);
-        }
-        // Mensaje universal de error
-        const mensajeUniversal = 'Por favor, ingrese un valor válido en este campo.';
-        errorDiv.textContent = mensajeUniversal;
-        input.classList.add('is-invalid');
-        // Popup flotante universal
-        if (input._swalTimeout) clearTimeout(input._swalTimeout);
-        input._swalTimeout = setTimeout(() => {
-            if (input.classList.contains('is-invalid')) {
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error de validación',
-                    text: mensajeUniversal,
-                    timer: 2500,
-                    timerProgressBar: true,
-                    toast: true,
-                    position: 'top-end',
-                    showConfirmButton: false
-                });
-            }
-        }, 500);
-    }
-    function limpiarErrorCampo(input) {
-        let errorDiv = input.parentNode.querySelector('.error-feedback');
-        if (errorDiv) errorDiv.textContent = '';
-        input.classList.remove('is-invalid');
-        if (input._swalTimeout) clearTimeout(input._swalTimeout);
-    }
-    function validarCampoIndividual(input, validaciones) {
-        const nombre = input.name.replace(/\[.*\]$/, '');
-        const valor = input.value;
-        if (validaciones[nombre]) {
-            const regex = new RegExp(validaciones[nombre].regex);
-            if (!regex.test(valor)) {
-                mostrarErrorCampo(input, validaciones[nombre].mensaje || '');
-                return false;
-            }
-        }
-        limpiarErrorCampo(input);
-        return true;
-    }
-    // Hook para validación en tiempo real (incluye campos agregados dinámicamente)
-    $(document).ready(function() {
-        let validaciones = window.validacionesJSON || {};
-        $(document).on('input blur', '#formulario input, #formulario textarea, #formulario select', function() {
-            validarCampoIndividual(this, validaciones);
-        });
-    });
-
-    // Hook al submit del formulario
-    $(document).ready(function() {
-        const validaciones = (window.fields && window.fields.length && window.fields[0].validaciones) ? window.fields[0].validaciones : (window.validacionesJSON || {});
-        $('#formulario').on('submit', function(e) {
-            // Obtener validaciones desde variable global pasada por PHP
-            let validaciones = window.validacionesJSON || {};
-            let campos = this.elements;
-            let errores = validarCamposPorRegex(campos, validaciones);
-            if (errores.length > 0) {
-                e.preventDefault();
-                // Mensaje universal de error para todos los campos
-                const mensajeUniversal = 'Por favor, ingrese un valor válido en este campo.';
-                let mensajes = errores.map(err => `<li>${mensajeUniversal}</li>`).join('');
-                $('#mensaje-envio').html(`<div class='alert alert-danger'><b>Error:</b> Por favor, revise los campos marcados en rojo y corrija los datos antes de enviar el formulario.<ul>${mensajes}</ul></div>`);
-                return false;
-            }
-        });
-    });
-
-    // --- SPINNER DE CARGA EN ENVÍO ---
-    $(document).ready(function() {
-        $('#formulario').on('submit', function() {
-            $('#form-spinner').fadeIn(200);
-        });
-        // Ocultar spinner si hay error de validación
-        $('#formulario').on('invalid', function() {
-            $('#form-spinner').fadeOut(200);
-        }, true);
-    });
-
-    // --- GUARDAR ARCHIVO PHP LLAMADOR Y LÓGICA POST-ENVÍO ---
+    // --- 7. EJECUCIÓN INICIAL ---
+    
+    // Añadir campo oculto con el nombre del archivo llamador si no existe
     if (!form.querySelector('[name="archivo_llamador"]')) {
         let hidden = document.createElement('input');
         hidden.type = 'hidden';
@@ -518,15 +421,21 @@ window.inicializarFormularioDinamico = function() {
         hidden.value = window.location.pathname.split('/').pop();
         form.appendChild(hidden);
     }
-    // La lógica post-envío ya está correctamente dentro del .then() del submit principal, no se debe duplicar aquí
 
+    // Inicializar todos los componentes y cálculos
+    procesarLookups();
+    inicializarSelect2();
+    recalcularTodo();
+
+    console.log("Formulario dinámico inicializado correctamente.");
 };
 
-// Autoejecutar si el DOM ya está listo (modo directo o iframe)
+// --- PUNTO DE ENTRADA ---
+// Se asegura de que el DOM esté listo antes de ejecutar el script.
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', window.inicializarFormularioDinamico);
 } else {
+    // El DOM ya está listo
     window.inicializarFormularioDinamico();
 }
-// Fin del archivo JS
 

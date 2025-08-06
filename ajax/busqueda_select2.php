@@ -73,4 +73,5 @@ echo "\n--- CONEXIÓN CERRADA ---\n";
 echo "</pre>";
 
 // echo json_encode($data); // Desactivado para diagnóstico
+
 ?>

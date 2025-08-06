@@ -14,13 +14,12 @@
     <main>
           <?php
         // Ruta absoluta del archivo JSON
-        $_GET['archivo'] = __DIR__ . '/json/FormularioContacto.json';
+        $_GET['archivo'] = __DIR__ . '/json/contactoformulario02.json';
 
-        // Verificar si formulario_dinamico.php existe
-        if (file_exists('formulario_dinamico.php')) {
+        // Verificar si el nuevo motor de formularios existe
+        if (file_exists('FormularioContactoEngine.php')) {
             // Pasar el archivo JSON como parámetro
-          //  $_GET['archivo'] = $archivoJson;
-            include 'formulario_dinamico.php';
+            include 'FormularioContactoEngine.php';
         } else {
             echo "<p>Error: No se pudo cargar el formulario dinámico. Verifica la configuración.</p>";
         }

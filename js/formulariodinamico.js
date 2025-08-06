@@ -423,8 +423,11 @@ window.inicializarFormularioDinamico = function() {
         // Inicializar Select2 en los campos que lo necesiten
         $('.select2-field').each(function() {
             const $this = $(this);
+            // CORRECCIÓN 1: Limpiar el nombre del campo para encontrar la configuración.
+            // Un campo 'multiple' puede tener el nombre "paises_visitados[]", pero en el JSON es "paises_visitados".
             const fieldName = $this.attr('name');
-            const fieldConfig = window.fields.find(f => f.name === fieldName);
+            const cleanFieldName = fieldName.replace(/\[\]$/, ''); // Elimina '[]' del final si existe.
+            const fieldConfig = window.fields.find(f => f.name === cleanFieldName);
             
             let ajaxConfig = {};
             if (fieldConfig && fieldConfig.data && fieldConfig.data.tabla) {
@@ -440,11 +443,9 @@ window.inicializarFormularioDinamico = function() {
                             filtro: fieldConfig.data.filtro || '1=1'
                         };
                     },
-                    processResults: function (data, params) {
-                        // La respuesta del servidor es el array de resultados directamente.
-                        return {
-                            results: data
-                        };
+                    // CORRECCIÓN 2: El backend ya devuelve {results: [...]}, no es necesario volver a envolverlo.
+                    processResults: function (data) {
+                        return data;
                     },
                     cache: true
                 };

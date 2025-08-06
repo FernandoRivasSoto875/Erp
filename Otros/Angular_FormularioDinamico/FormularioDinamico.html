@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es" ng-app="dynamicFormApp">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Formulario Dinámico con AngularJS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+ 
+
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+
+  <script>
+    var formFormat = [
+      { "label": "Nombre", "type": "text", "name": "nombre", "labelPosition": "above", "inputClass": "input-default", "alignment": "left" },
+      { "label": "Edad", "type": "number", "name": "edad", "labelPosition": "left", "inputClass": "input-default", "alignment": "left" },
+      { "label": "Correo Electrónico", "type": "email", "name": "correo", "labelPosition": "above", "inputClass": "input-default", "alignment": "left" },
+      { "label": "Fecha de Nacimiento", "type": "date", "name": "fechaNacimiento", "labelPosition": "above", "inputClass": "input-default", "alignment": "left" },
+      { "label": "Acepto los términos", "type": "checkbox-group", "name": "terminos", "options": ["Opción 1", "Opción 2", "Opción 3"], "groupLabel": "Selecciona opciones", "labelPosition": "above", "inputClass": "input-default", "alignment": "left" },
+      { "label": "Elige una opción", "type": "select", "name": "opcion", "options": ["Opción 1", "Opción 2", "Opción 3"], "labelPosition": "above", "inputClass": "input-default", "alignment": "left" },
+      { "label": "Subir imagen", "type": "image", "name": "imagen", "labelPosition": "left", "inputClass": "input-default", "alignment": "left" }
+    ];
+
+    var formData = {
+      "nombre": "Fernando Rivas S.",
+      "edad": 120,
+      "correo": "FernandoRivasSoto@gmail.com",
+      "fechaNacimiento": "1990-01-01",
+      "terminos": ["Opción 1"],
+      "opcion": "Opción 2",
+      "imagen": ""
+    };
+
+    angular.module('dynamicFormApp', [])
+      .controller('FormController', function ($scope, $timeout) {
+        $scope.formFormat = formFormat;
+        $scope.formData = angular.copy(formData);
+        $scope.formDataModel = angular.copy(formData);
+
+        $scope.jsonOutput = '';
+        $scope.formDataChanges = {};
+
+        $scope.addNewOption = function (field) {
+          var existingOption = prompt("Ingrese o modifique la opción:", $scope.formDataModel[field.name]);
+
+          if (existingOption !== null) {
+            if (field.options.indexOf(existingOption) === -1) {
+              field.options.push(existingOption);
+            } else {
+              field.options[field.options.indexOf(existingOption)] = existingOption;
+            }
+            $scope.formDataModel[field.name] = { ...$scope.formDataModel[field.name], [existingOption]: true };
+            updateJsonOutput();
+          }
+        };
+
+        $scope.removeOption = function (field, option) {
+          var confirmDelete = confirm("¿Está seguro de que desea eliminar la opción?");
+          if (confirmDelete) {
+            field.options.splice(field.options.indexOf(option), 1);
+            delete $scope.formDataModel[field.name][option];
+            updateJsonOutput();
+          }
+        };
+
+        $scope.submitForm = function () {
+          console.log($scope.formDataModel);
+          updateJsonOutput();
+        };
+
+        $scope.$watch('formDataModel', function () {
+          // Calcula las diferencias y actualiza formDataChanges
+          $scope.formDataChanges = diff($scope.formData, $scope.formDataModel);
+          updateJsonOutput();
+        }, true);
+
+        function updateJsonOutput() {
+          $scope.jsonOutput = JSON.stringify($scope.formDataModel, null, 2);
+        }
+
+        $scope.getLabelClass = function (field) {
+          var labelClass = "label-above"; // Valor predeterminado
+          if (field.labelPosition === "left") {
+            labelClass += " label-left";
+          } else if (field.labelPosition === "right") {
+            labelClass += " label-right";
+          }
+          return labelClass;
+        };
+
+        $scope.getLabelStyle = function (field) {
+          var style = { "text-align": field.alignment || "left" };
+          return style;
+        };
+
+        // Función para calcular las diferencias entre dos objetos
+        function diff(obj1, obj2) {
+          var result = {};
+          for (var key in obj1) {
+            if (obj1[key] !== obj2[key]) {
+              result[key] = obj2[key];
+            }
+          }
+          return result;
+        }
+      });
+  </script>
+
+</head>
+
+<body ng-controller="FormController">
+
+  <form ng-submit="submitForm()">
+    <h2>Formulario Dinámico</h2>
+    <div ng-repeat="field in formFormat" class="form-group" ng-style="getLabelStyle(field)">
+      <label ng-class="getLabelClass(field)">{{ field.label }}</label>
+
+      <div ng-if="field.type === 'text' || field.type === 'email' || field.type === 'number'">
+        <input ng-model="formDataModel[field.name]" type="{{ field.type }}" ng-class="field.inputClass" />
+      </div>
+
+      <div ng-if="field.type === 'date'">
+        <input ng-model="formDataModel[field.name]" type="date" ng-class="field.inputClass" />
+      </div>
+
+      <div ng-if="field.type === 'checkbox-group'">
+        <div class="checkbox-group">
+          <label>{{ field.groupLabel }}</label>
+          <div ng-repeat="option in field.options">
+            <label>
+              <input type="checkbox" ng-model="formDataModel[field.name][option]" />
+              {{ option }}
+              <button type="button" ng-click="removeOption(field, option)">Eliminar</button>
+            </label>
+          </div>
+          <button type="button" ng-click="addNewOption(field)">Agregar opción</button>
+        </div>
+      </div>
+
+      <div class="select-group" ng-if="field.type === 'select'">
+        <select ng-model="formDataModel[field.name]" ng-options="option for option in field.options" ng-class="field.inputClass">
+          <option value="">Seleccione...</option>
+        </select>
+        <button type="button" ng-click="addNewOption(field)">Editar opción</button>
+        <button type="button" ng-click="removeOption(field)">Eliminar opción</button>
+      </div>
+
+      <div ng-if="field.type === 'image'">
+        <input type="file" ng-model="formDataModel[field.name]" accept="image/*" ng-class="field.inputClass" />
+        <img ng-src="{{formDataModel[field.name]}}" alt="Vista previa de la imagen" ng-if="formDataModel[field.name]" />
+      </div>
+    </div>
+
+    <div class="action-buttons">
+      <button type="submit">Enviar</button>
+    </div>
+
+    <div class="json-output">
+      <h3>Resultado en formato JSON:</h3>
+      {{ jsonOutput }}
+    </div>
+
+    <!-- Nuevo JSON con name y value -->
+    <div class="json-output">
+      <h3>Objeto JSON con name y value:</h3>
+      {{ formData | json }}
+    </div>
+
+    <!-- Nuevo JSON con estructura name y value -->
+    <div class="json-output">
+      <h3>Objeto JSON con estructura name y value:</h3>
+      {{ formFormat | json }}
+    </div>
+
+    <!-- Nuevo JSON con datos modificados -->
+    <div class="json-output">
+      <h3>Objeto JSON con datos modificados:</h3>
+      {{ formDataChanges | json }}
+    </div>
+  </form>
+
+</body>
+
+</html>

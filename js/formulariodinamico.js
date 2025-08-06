@@ -454,7 +454,8 @@ window.inicializarFormularioDinamico = function() {
                 theme: "bootstrap",
                 placeholder: $this.attr('placeholder') || 'Seleccione una opción',
                 allowClear: true,
-                ajax: ajaxConfig
+                ajax: ajaxConfig,
+                language: "es"
             });
         });
 

@@ -31,7 +31,7 @@ $conn->set_charset("utf8");
 $filtroAdicional = "";
 if (!empty($searchTerm)) {
     // Usar parámetros preparados para prevenir inyección SQL
-    $filtroAdicional = " AND " . $campo . " LIKE ?";
+    $filtroAdicional = " AND LOWER(" . $campo . ") LIKE LOWER(?)";
 }
 
 // La consulta debe devolver 'id' y 'text' para Select2

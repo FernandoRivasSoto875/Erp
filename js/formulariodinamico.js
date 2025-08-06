@@ -351,7 +351,11 @@ window.inicializarFormularioDinamico = function() {
     // --- FUNCIÓN PARA INICIALIZAR SELECT2 ---
     function inicializarSelect2() {
         // Usa la variable `allFields` que está definida al inicio de `inicializarFormularioDinamico`
-        if (!allFields) return; 
+        console.log('[Depuración Select2] Iniciando. ¿Tenemos configuración de campos (allFields)?', allFields);
+        if (!allFields || allFields.length === 0) {
+            console.error('[Depuración Select2] No se puede inicializar porque `allFields` está vacío o no definido.');
+            return; 
+        }
 
         $('.select2-field').each(function() {
             const $this = $(this);
@@ -361,6 +365,8 @@ window.inicializarFormularioDinamico = function() {
             const cleanFieldName = fieldName.replace(/\[\]$/, ''); // Elimina '[]' del final si existe.
             const fieldConfig = allFields.find(f => f.name === cleanFieldName);
             
+            console.log(`[Depuración Select2] Configurando campo: ${fieldName} (limpio: ${cleanFieldName}). Config encontrada:`, fieldConfig);
+
             let ajaxConfig = {};
             if (fieldConfig && fieldConfig.data && fieldConfig.data.tabla) {
                 ajaxConfig = {

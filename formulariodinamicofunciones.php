@@ -195,16 +195,26 @@ if (!function_exists('generarFieldsets')) {
                                 $tabla = $dataConfig['tabla']; $campo = $dataConfig['campo']; $filtro = $dataConfig['filtro'] ?? '1=1';
                                 $html .= "<select name='$name' id='$id'><option value=''>Seleccione...</option>";
                                 $conn = conexionBd();
-                                $sql = "SELECT DISTINCT " . $conn->real_escape_string($campo) . " FROM " . $conn->real_escape_string($tabla) . " WHERE " . $filtro . " ORDER BY " . $conn->real_escape_string($campo);
-                                $result = $conn->query($sql);
-                                if ($result && $result->num_rows > 0) {
-                                    while($row = $result->fetch_assoc()) {
-                                        $optionValue = htmlspecialchars($row[$campo], ENT_QUOTES);
-                                        $selected = ($value == $row[$campo]) ? ' selected' : '';
-                                        $html .= "<option value=\"$optionValue\"$selected>$optionValue</option>";
+                                
+                                // --- INICIO DE LA CORRECCIÓN ---
+                                // Verificar si la conexión a la BD fue exitosa antes de usarla.
+                                if ($conn && $conn->ping()) {
+                                    $sql = "SELECT DISTINCT " . $conn->real_escape_string($campo) . " FROM " . $conn->real_escape_string($tabla) . " WHERE " . $filtro . " ORDER BY " . $conn->real_escape_string($campo);
+                                    $result = $conn->query($sql);
+                                    if ($result && $result->num_rows > 0) {
+                                        while($row = $result->fetch_assoc()) {
+                                            $optionValue = htmlspecialchars($row[$campo], ENT_QUOTES);
+                                            $selected = ($value == $row[$campo]) ? ' selected' : '';
+                                            $html .= "<option value=\"$optionValue\"$selected>$optionValue</option>";
+                                        }
                                     }
+                                    $conn->close();
+                                } else {
+                                    // Si la conexión falla, muestra una opción de error en el select.
+                                    $html .= "<option value='' disabled>Error al cargar datos</option>";
                                 }
-                                $conn->close();
+                                // --- FIN DE LA CORRECCIÓN ---
+
                                 $html .= "</select>";
                             }
                             break;

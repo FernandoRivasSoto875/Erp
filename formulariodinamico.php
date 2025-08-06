@@ -44,13 +44,16 @@ $soloLectura = false;
     <!-- Estilos para el Modo Diseño (Drag and Drop) -->
     <style>
         /* Estilos que solo se aplican en modo diseño */
-        body.design-mode .draggable-fieldset {
+        body.design-mode .draggable-fieldset,
+        body.design-mode .draggable-field {
             cursor: move;
             border: 2px dashed #007bff !important;
             background-color: rgba(0, 123, 255, 0.05);
             transition: background-color 0.3s, border 0.3s;
+            margin-bottom: 10px; /* Espacio para que se vea la separación */
         }
-        body.design-mode .draggable-fieldset:hover {
+        body.design-mode .draggable-fieldset:hover,
+        body.design-mode .draggable-field:hover {
             background-color: rgba(0, 123, 255, 0.1);
         }
         /* Placeholder que muestra dónde se soltará el elemento */
@@ -61,12 +64,15 @@ $soloLectura = false;
         }
         /* Contenedor donde se pueden soltar elementos */
         body.design-mode .tab-pane,
-        body.design-mode [data-col-width] {
+        body.design-mode .sortable-fields-container, /* Fieldsets son contenedores de campos */
+        body.design-mode [data-col-width], /* Columnas son contenedores de fieldsets */
+        body.design-mode #elementos-fuera-container { /* Área exterior es un contenedor */
             min-height: 100px; /* Asegura que haya espacio para soltar */
             background-color: #f8f9fa;
             border: 1px solid #dee2e6;
             border-radius: .25rem;
             padding: 1rem;
+            margin-top: 10px;
         }
         /* Estilos para el interruptor de modo diseño */
         .design-mode-switch {
@@ -90,6 +96,14 @@ $soloLectura = false;
 <body>
 
     <div class="container mt-5 mb-5">
+        <div id="outside-drop-area" class="mb-3">
+            <!-- Este contenedor se renderizará con PHP -->
+            <?php
+                $elementos_fuera = $json_data['elementos_fuera'] ?? [];
+                echo generarContenedorFueraDelFormulario($elementos_fuera, $fieldsets, $valores, $soloLectura);
+            ?>
+        </div>
+
         <div class="card">
             <div class="card-header">
                 <h2><?php echo htmlspecialchars($titulo_formulario); ?></h2>
@@ -161,16 +175,37 @@ $soloLectura = false;
             body.addClass('design-mode');
             saveLayoutBtn.show();
             
-            // Hacer arrastrables los fieldsets dentro de las columnas y pestañas
-            const containers = document.querySelectorAll('[data-col-width], .tab-pane');
-            containers.forEach(container => {
+            // 1. Contenedores de FIELDSETS (columnas, pestañas y el área exterior)
+            const fieldsetContainers = document.querySelectorAll('[data-col-width], .tab-pane, #elementos-fuera-container');
+            fieldsetContainers.forEach(container => {
                 let sortable = Sortable.create(container, {
-                    group: 'shared-fieldsets', // Permite mover fieldsets entre contenedores
+                    group: {
+                        name: 'shared-fieldsets',
+                        put: function (to) {
+                            // Solo permite soltar fieldsets, no campos individuales
+                            return !to.el.classList.contains('sortable-fields-container');
+                        }
+                    },
                     animation: 150,
                     ghostClass: 'sortable-ghost',
-                    draggable: '.draggable-fieldset', // Especifica qué elementos son arrastrables
+                    draggable: '.draggable-fieldset',
                     onEnd: function(evt) {
-                        console.log('Drag ended.');
+                        console.log('Fieldset drag ended.');
+                    }
+                });
+                sortableInstances.push(sortable);
+            });
+
+            // 2. Contenedores de CAMPOS (los fieldsets y el área exterior)
+            const fieldContainers = document.querySelectorAll('.sortable-fields-container, #elementos-fuera-container');
+            fieldContainers.forEach(container => {
+                let sortable = Sortable.create(container, {
+                    group: 'shared-fields', // Un grupo separado para los campos
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    draggable: '.draggable-field', // Solo los campos son arrastrables aquí
+                    onEnd: function(evt) {
+                        console.log('Field drag ended.');
                     }
                 });
                 sortableInstances.push(sortable);
@@ -188,6 +223,7 @@ $soloLectura = false;
         // --- LÓGICA PARA GUARDAR EL DISEÑO ---
         saveLayoutBtn.on('click', function() {
             const nuevoLayout = buildLayoutFromDOM();
+            const elementosFuera = buildOutsideElementsFromDOM();
             const archivoJson = '<?php echo addslashes($archivo_json); ?>';
 
             Swal.fire({
@@ -209,7 +245,8 @@ $soloLectura = false;
                         },
                         body: JSON.stringify({
                             archivo_json: archivoJson,
-                            layout: nuevoLayout
+                            layout: nuevoLayout,
+                            elementos_fuera: elementosFuera
                         })
                     })
                     .then(response => response.json())
@@ -259,6 +296,7 @@ $soloLectura = false;
                             const row = { columns: [] };
                             rowElement.querySelectorAll('[data-col-width]').forEach(colElement => {
                                 const width = colElement.dataset.colWidth;
+                                // Un fieldset puede estar directamente en una columna
                                 const fieldsetElement = colElement.querySelector('[data-fieldset-name]');
                                 if (fieldsetElement) {
                                     const fieldsetName = fieldsetElement.dataset.fieldsetName;
@@ -292,6 +330,30 @@ $soloLectura = false;
             });
             console.log('Layout reconstruido:', layout);
             return layout;
+        }
+
+        function buildOutsideElementsFromDOM() {
+            const outsideElements = [];
+            const container = document.getElementById('elementos-fuera-container');
+            
+            // Buscar fieldsets
+            container.querySelectorAll('.draggable-fieldset').forEach(el => {
+                outsideElements.push({
+                    type: 'fieldset',
+                    name: el.dataset.fieldsetName
+                });
+            });
+
+            // Buscar campos individuales
+            container.querySelectorAll('.draggable-field').forEach(el => {
+                outsideElements.push({
+                    type: 'field',
+                    name: el.dataset.fieldName
+                });
+            });
+            
+            console.log('Elementos fuera reconstruidos:', outsideElements);
+            return outsideElements;
         }
     });
     </script>

@@ -200,22 +200,65 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
     $titulo = $fieldset['titulo'] ?? ucfirst(str_replace('_', ' ', $fieldsetName));
     $html = '';
 
+    // Contenedor principal para el fieldset, ahora draggable
     $html .= "<div class='draggable-fieldset' data-fieldset-name='{$fieldsetName}'>";
-    $html .= "<fieldset class='mb-4 p-3 border rounded'>";
+    // El fieldset en sí, que ahora es un contenedor para campos draggables
+    $html .= "<fieldset class='mb-4 p-3 border rounded sortable-fields-container'>"; 
     if ($titulo) {
         $html .= "<legend class='w-auto px-2 h6'>{$titulo}</legend>";
     }
 
+    // Contenedor para los campos que se pueden ordenar
     foreach ($fieldset['campos'] as $campo) {
         $nombreCampo = $campo['nombre'] ?? 'sin_nombre';
+        // Envolvemos cada campo en un div para que sea un item draggable individual
+        $html .= "<div class='draggable-field' data-field-name='{$nombreCampo}'>";
         $valor = $valores[$nombreCampo] ?? $campo['valor_predeterminado'] ?? '';
         $html .= generarCampo($campo, $valor, $soloLectura);
+        $html .= "</div>"; // Cierre de draggable-field
     }
 
     $html .= '</fieldset>';
+    $html .= '</div>'; // Cierre de draggable-fieldset
+    return $html;
+}
+
+function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valores, $soloLectura) {
+    $html = '<div id="elementos-fuera-container" class="p-3 border rounded bg-light sortable-outside-container">';
+    $html .= '<h5>Elementos Fuera del Formulario</h5>';
+    
+    if (empty($elementos)) {
+        $html .= '<p class="text-muted">Arrastra aquí los campos o grupos que quieras quitar temporalmente.</p>';
+    } else {
+        foreach ($elementos as $item) {
+            if ($item['type'] === 'fieldset') {
+                $html .= generarFieldsetContenido($item['name'], $fieldsetsConfig, $valores, $soloLectura);
+            } elseif ($item['type'] === 'field') {
+                // Lógica para encontrar la configuración del campo y renderizarlo
+                $fieldConfig = null;
+                foreach ($fieldsetsConfig as $fs) {
+                    foreach ($fs['campos'] as $campo) {
+                        if ($campo['nombre'] === $item['name']) {
+                            $fieldConfig = $campo;
+                            break 2;
+                        }
+                    }
+                }
+                if ($fieldConfig) {
+                    $nombreCampo = $fieldConfig['nombre'];
+                    $html .= "<div class='draggable-field' data-field-name='{$nombreCampo}'>";
+                    $valor = $valores[$nombreCampo] ?? $fieldConfig['valor_predeterminado'] ?? '';
+                    $html .= generarCampo($fieldConfig, $valor, $soloLectura);
+                    $html .= "</div>";
+                }
+            }
+        }
+    }
+    
     $html .= '</div>';
     return $html;
 }
+
 // --- FIN: Nuevo motor de renderizado de Layout ---
 
 // --- FUNCIONES AUXILIARES ---

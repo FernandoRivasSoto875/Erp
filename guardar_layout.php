@@ -13,6 +13,8 @@ $input = json_decode(file_get_contents('php://input'), true);
 
 $nombreArchivoJson = $input['archivo_json'] ?? null;
 $nuevoLayout = $input['layout'] ?? null;
+// Aceptamos un nuevo array para los elementos que están fuera del formulario principal
+$elementosFuera = $input['elementos_fuera'] ?? []; 
 
 if (!$nombreArchivoJson || !$nuevoLayout) {
     http_response_code(400); // Bad Request
@@ -46,6 +48,9 @@ try {
 
     // Reemplazar la sección de layout
     $datos['layout'] = $nuevoLayout;
+    
+    // Añadir o actualizar la sección de elementos fuera
+    $datos['elementos_fuera'] = $elementosFuera;
 
     // Guardar el archivo con el nuevo layout
     // JSON_PRETTY_PRINT para que sea legible

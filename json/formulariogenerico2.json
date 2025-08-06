@@ -164,8 +164,8 @@
           "multiple": true,
           "placeholder": "Seleccione  países",
           "labelPosition": "top", 
-          "data": { "tabla": "Pais", "campo": "PaiDes", "filtro": "1=1" } 
-          
+          "data": { "tabla": "Pais", "campo": "PaiDes", "filtro": "1=1" }     
+                
         }
       ]
     },

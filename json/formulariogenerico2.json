@@ -1,12 +1,12 @@
 {
   "parametros": {
-    "titulo": "Formulario Genérico 2",
+    "titulo": "Formulario Genérico 2 - Layout Dinámico",
     "CssDefault": "formulariodinamico-neumorphism.css",
     "tituloimagen": "https://cdn.pixabay.com/photo/2017/05/31/16/39/windows-2360920_1280.png",
-    "comentario": "Observa cómo cada etiqueta y tipo de campo se comporta.",
+    "comentario": "Demostración del nuevo motor de layout con cabecera, pestañas y bloques.",
     "pie": "Gracias por usar nuestro sistema.",
-    "fecha_creacion": "2024-06-20",
-    "cantidadMaximaAdjuntos": 2,
+    "fecha_creacion": "2024-08-06",
+    "cantidadMaximaAdjuntos": 5,
     "limpiar": true,
     "destinatario": "fernandorivassoto@gmail.com",
     "remitente": "gestion@saludenterreno.cl",
@@ -42,13 +42,7 @@
       "limpiar_sesion": true
     },
     "adjuntos": {
-      "tipos_permitidos": [
-        "image/jpeg", "image/png", "image/gif", "application/pdf",
-        "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "text/plain", "application/zip", "application/x-zip-compressed",
-        "application/vnd.ms-powerpoint", "application/octet-stream"
-      ],
+      "tipos_permitidos": ["image/jpeg", "image/png", "application/pdf"],
       "tamano_maximo_mb": 5
     },
     "notificaciones": {
@@ -57,36 +51,39 @@
       "mostrar_modal": true
     }
   },
-  "preformato": [
-    {
-      "titulo": "Boleta de Venta",
-      "archivo_origen": "boleta.xls",
-      "formato_salida": "pdf",
-      "nombre_salida": "boleta_final.pdf",
-      "adjuntar_al_correo": true,
-      "verpreformato": true,
-      "reemplazos": {
-        "{{cliente}}": "Juan Pérez",
-        "{{label:Total}}": "Total a pagar",
-        "{{fecha}}": "2025-07-14"
-      }
+  "layout": {
+    "header": {
+      "type": "header",
+      "fieldsets": ["datos_personales"]
     },
-    {
-      "titulo": "Resumen de Compra",
-      "archivo_origen": "resumen.docx",
-      "formato_salida": "docx",
-      "nombre_salida": "resumen_final.docx",
-      "adjuntar_al_correo": false,
-      "verpreformato": true,
-      "reemplazos": {
-        "{{cliente}}": "Juan Pérez",
-        "{{label:Resumen}}": "Resumen de la compra"
-      }
+    "main": {
+      "type": "tabs",
+      "tabs": [
+        {
+          "title": "Preferencias y Detalles",
+          "rows": [
+            { "cols": [ { "size": 6, "fieldsets": ["preferencias"] }, { "size": 6, "fieldsets": ["detalle_productos"] } ] }
+          ]
+        },
+        {
+          "title": "Todos los Controles",
+          "rows": [
+            { "cols": [ { "size": 12, "fieldsets": ["todos_los_controles"] } ] }
+          ]
+        },
+        {
+          "title": "Pestaña Vacía",
+           "rows": [
+            { "cols": [ { "size": 12, "content": "<h3>Contenido de la tercera pestaña</h3><p>Aquí se puede agregar más contenido o fieldsets.</p>" } ] }
+          ]
+        }
+      ]
     }
-  ],
+  },
   "fieldsets": [
     {
-      "legend": "Datos Personales (Demostración de Posiciones)",
+      "name": "datos_personales",
+      "legend": "Datos Personales (Cabecera)",
       "style": "border:1px solid #007BFF; padding:10px; background:#f9f9f9;",
       "fields": [
         { "name": "nombre", "label": "Nombre", "type": "text", "placeholder": "Ingrese su nombre completo", "required": true, "labelPosition": "top-left" },
@@ -104,19 +101,12 @@
             "where": "ComId = {ComId}" 
           }
         },
-        { "name": "total", "label": "Total  ", "type": "number", "placeholder": "0", "readonly": true, "labelPosition": "top", "data-formula": "10 + 10 * edad" },
-        { "name": "email", "label": "Correo", "type": "email", "placeholder": "ejemplo@correo.com", "required": true, "labelPosition": "top" },
-        { "name": "telefono", "label": "Teléfono", "type": "tel", "placeholder": "Ej: +56912345678", "labelPosition": "top-center" },
-        { "name": "fecha_nacimiento", "label": "Nacimiento", "type": "date", "labelPosition": "top-right" },
-        { "name": "hora_contacto", "label": "Hora", "type": "time", "labelPosition": "bottom" },
-        { "name": "descripcion", "label": "Descripción", "type": "textarea", "placeholder": "Añada una breve descripción...", "rows": 2, "labelPosition": "bottom-left" },
-        { "name": "archivos_adjuntos", "label": "Adjuntos", "type": "file", "multiple": true, "labelPosition": "bottom-center" },
-        { "name": "edad", "label": "Edad", "type": "number", "placeholder": "Ingrese su edad", "labelPosition": "bottom-right" },
-        { "name": "password", "label": "Contraseña", "type": "password", "placeholder": "Ingrese una contraseña segura", "required": true, "labelPosition": "left" }
+        { "name": "email", "label": "Correo", "type": "email", "placeholder": "ejemplo@correo.com", "required": true, "labelPosition": "top" }
       ]
     },
     {
-      "legend": "Preferencias y Otros",
+      "name": "preferencias",
+      "legend": "Preferencias y Otros (Columna 1)",
       "style": "border:1px solid #28a745; padding:10px; background:#f5fff5;",
       "fields": [
         { 
@@ -124,53 +114,24 @@
           "label": "Género", 
           "type": "radio", 
           "required": true, 
-          "labelPosition": "top-center", 
           "layout": "horizontal", 
-          "options": [ 
-            { "value": "masculino", "label": "Masculino" }, 
-            { "value": "femenino", "label": "Femenino" } 
-          ] 
+          "options": [ { "value": "masculino", "label": "Masculino" }, { "value": "femenino", "label": "Femenino" } ] 
         },
-        { "name": "cantidadhijos", "label": "Cantidadhijos", "type": "number", "min": 1, "placeholder": "1" },
-        { "name": "Atrab", "label": "Años.", "type": "number", "step": "0.01", "placeholder": "10000" },
-        { 
-          "name": "intereses", 
-          "label": "Intereses", 
-          "type": "checkbox", 
-          "labelPosition": "top-left", 
-          "options": [ 
-            { "value": "deportes", "label": "Deportes" }, 
-            { "value": "musica", "label": "Música" }, 
-            { "value": "tecnologia", "label": "Tecnología" } 
-          ] 
-        },
-        { 
-          "name": "acepta_terminos", 
-          "label": "Acepto los términos", 
-          "type": "checkbox", 
-          "required": true, 
-          "labelPosition": "right", 
-          "options": [ 
-            { "value": "si", "label": "" } 
-          ] 
-        },
-        { "name": "rango_satisfaccion", "label": "Satisfacción", "type": "range", "min": 1, "max": 10, "labelPosition": "top-right" },
-        { "name": "oculto", "type": "hidden", "value": "valor_oculto" },
-        { "name": "ciudad_2", "label": "Ciudad (SelectData)", "type": "selectdata", "labelPosition": "left", "data": { "tabla": "Comuna", "campo": "ComDes", "filtro": "1=1" } },
         { 
           "name": "paises_visitados", 
-          "label": "Países Visitados Select2", 
+          "label": "Países Visitados (Select2)", 
           "type": "select2", 
           "multiple": true,
-          "placeholder": "Seleccione  países",
+          "placeholder": "Seleccione países",
           "labelPosition": "top", 
-          "data": { "tabla": "Pais", "campo": "PaiDes", "filtro": "1=1" }     
-                
-        }
+          "data": { "tabla": "Pais", "campo": "PaiDes", "filtro": "1=1" }
+        },
+        { "name": "ciudad_2", "label": "Ciudad (SelectData)", "type": "selectdata", "labelPosition": "left", "data": { "tabla": "Comuna", "campo": "ComDes", "filtro": "1=1" } }
       ]
     },
     {
-      "legend": "Detalle de Productos",
+      "name": "detalle_productos",
+      "legend": "Detalle de Productos (Columna 2)",
       "style": "border:1px solid #dc3545; padding:10px; background:#fff5f5;",
       "fields": [
         {
@@ -179,29 +140,38 @@
           "type": "datatable",
           "labelPosition": "top",
           "columns": [
-            { "name": "id_producto", "label": "ID Producto", "type": "text", "placeholder": "PROD-XXX" },
-            { "name": "descripcion", "label": "Descripción", "type": "text", "placeholder": "Nombre del producto" },
-            { "name": "cantidad", "label": "Cantidad", "type": "number", "placeholder": "0" },
-            { 
-              "name": "precio_unitario", 
-              "label": "Precio Unit.", 
-              "type": "number", 
-              "placeholder": "0.00" 
-            },
-            { 
-              "name": "subtotal", 
-              "label": "Subtotal", 
-              "type": "number", 
-              "placeholder": "0.00", 
-              "readonly": true, 
-              "data-formula": "cantidad * precio_unitario * total" 
-            }
+            { "name": "id_producto", "label": "ID Producto", "type": "text" },
+            { "name": "descripcion", "label": "Descripción", "type": "text" },
+            { "name": "cantidad", "label": "Cantidad", "type": "number" },
+            { "name": "precio_unitario", "label": "Precio Unit.", "type": "number" },
+            { "name": "subtotal", "label": "Subtotal", "type": "number", "readonly": true, "data-formula": "cantidad * precio_unitario" }
           ],
           "value": [
-            { "id_producto": "PROD-001", "descripcion": "Mouse Inalámbrico", "cantidad": 2, "precio_unitario": 15000 },
-            { "id_producto": "PROD-002", "descripcion": "Teclado Mecánico", "cantidad": 1, "precio_unitario": 55000 }
+            { "id_producto": "PROD-001", "descripcion": "Mouse", "cantidad": 2, "precio_unitario": 15000 },
+            { "id_producto": "PROD-002", "descripcion": "Teclado", "cantidad": 1, "precio_unitario": 55000 }
           ]
         }
+      ]
+    },
+    {
+      "name": "todos_los_controles",
+      "legend": "Galería Completa de Controles",
+      "style": "border:1px solid #ffc107; padding:10px; background:#fffcf2;",
+      "fields": [
+        { "name": "descripcion_larga", "label": "Textarea", "type": "textarea", "placeholder": "Escriba un texto largo aquí...", "rows": 3 },
+        { "name": "opcion_simple", "label": "Select (Simple)", "type": "select", "options": [ { "value": "1", "label": "Opción A" }, { "value": "2", "label": "Opción B" } ] },
+        { "name": "intereses_multiples", "label": "Intereses (Checkbox)", "type": "checkbox", "options": [ { "value": "deportes", "label": "Deportes" }, { "value": "musica", "label": "Música" }, { "value": "viajes", "label": "Viajes" } ] },
+        { "name": "documento_unico", "label": "Archivo (Único)", "type": "file" },
+        { "name": "documentos_multiples", "label": "Archivos (Múltiples)", "type": "file", "multiple": true },
+        { "name": "clave_secreta", "label": "Contraseña", "type": "password", "placeholder": "Contraseña segura" },
+        { "name": "nivel_satisfaccion", "label": "Nivel de Satisfacción", "type": "range", "min": 0, "max": 10, "value": 5 },
+        { "name": "telefono_contacto", "label": "Teléfono", "type": "tel", "placeholder": "+56912345678" },
+        { "name": "fecha_evento", "label": "Fecha", "type": "date" },
+        { "name": "fecha_hora_evento", "label": "Fecha y Hora", "type": "datetime-local" },
+        { "name": "mes_facturacion", "label": "Mes de Facturación", "type": "month" },
+        { "name": "semana_reunion", "label": "Semana de Reunión", "type": "week" },
+        { "name": "hora_reunion", "label": "Hora de Reunión", "type": "time" },
+        { "name": "campo_oculto", "type": "hidden", "value": "informacion_secreta" }
       ]
     }
   ]

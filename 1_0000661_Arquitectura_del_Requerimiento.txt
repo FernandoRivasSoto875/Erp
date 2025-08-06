@@ -1,5 +1,0 @@
-[Aquí irá el texto extraído y formateado del PDF "1_ 0000661 - Arquitectura del Requerimiento.pdf".]
-
-Nota: El texto será presentado de forma continua, con títulos y secciones claras para facilitar la lectura. Si el PDF contiene tablas o diagramas, se intentará describirlos de manera textual para mantener la comprensión.
-
-(Esta es una plantilla. El siguiente paso es extraer el texto real del PDF y reemplazar este contenido por el texto completo y formateado.)

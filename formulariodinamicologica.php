@@ -85,6 +85,137 @@ require __DIR__ . '/vendor/autoload.php';
 require_once 'formulariodinamicofunciones.php';
 require_once 'funcionessql.php';
 
+// --- INICIO: Nuevo motor de renderizado de Layout ---
+function generarLayout($layoutConfig, $fieldsetsConfig, $valores, $soloLectura) {
+    $html = '';
+    if (empty($layoutConfig)) {
+        // Comportamiento por defecto: renderizar todos los fieldsets verticalmente
+        return generarFieldsets($fieldsetsConfig, $valores, $soloLectura);
+    }
+
+    foreach ($layoutConfig as $block) {
+        switch ($block['type']) {
+            case 'header':
+                $html .= renderHeaderBlock($block, $fieldsetsConfig, $valores, $soloLectura);
+                break;
+            case 'tabs':
+                $html .= renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura);
+                break;
+            case 'free-block':
+                $html .= renderFreeBlock($block, $fieldsetsConfig, $valores, $soloLectura);
+                break;
+        }
+    }
+    return $html;
+}
+
+function renderHeaderBlock($block, $fieldsetsConfig, $valores, $soloLectura) {
+    $html = '<div class="form-header-block mb-4">';
+    // Si 'fieldsets' está definido directamente, lo envolvemos en una estructura de fila/columna por defecto
+    if (!empty($block['fieldsets'])) {
+        $syntheticRow = [
+            'columns' => [
+                ['class' => 'col-12', 'fieldsets' => $block['fieldsets']]
+            ]
+        ];
+        $html .= renderRows([$syntheticRow], $fieldsetsConfig, $valores, $soloLectura);
+    } elseif (!empty($block['rows'])) {
+        $html .= renderRows($block['rows'], $fieldsetsConfig, $valores, $soloLectura);
+    }
+    $html .= '</div>';
+    return $html;
+}
+
+function renderFreeBlock($block, $fieldsetsConfig, $valores, $soloLectura) {
+    $html = '<div class="form-free-block mt-4">';
+     if (!empty($block['fieldsets'])) {
+        $syntheticRow = [
+            'columns' => [
+                ['class' => 'col-12', 'fieldsets' => $block['fieldsets']]
+            ]
+        ];
+        $html .= renderRows([$syntheticRow], $fieldsetsConfig, $valores, $soloLectura);
+    } elseif (!empty($block['rows'])) {
+        $html .= renderRows($block['rows'], $fieldsetsConfig, $valores, $soloLectura);
+    }
+    $html .= '</div>';
+    return $html;
+}
+
+function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura) {
+    $tabsId = 'tabs_' . uniqid();
+    $html = '<ul class="nav nav-tabs" id="' . $tabsId . '" role="tablist">';
+    $isFirstTab = true;
+    foreach (($block['tabs'] ?? []) as $index => $tab) {
+        $tabId = 'tab_' . preg_replace('/[^a-zA-Z0-9]/', '', $tab['title'] ?? 'tab') . '_' . $index;
+        $activeClass = $isFirstTab ? 'active' : '';
+        $html .= '<li class="nav-item" role="presentation">';
+        $html .= '<a class="nav-link ' . $activeClass . '" id="' . $tabId . '-tab" data-toggle="tab" href="#' . $tabId . '" role="tab" aria-controls="' . $tabId . '" aria-selected="' . ($isFirstTab ? 'true' : 'false') . '">' . htmlspecialchars($tab['title'] ?? '') . '</a>';
+        $html .= '</li>';
+        $isFirstTab = false;
+    }
+    $html .= '</ul>';
+
+    $html .= '<div class="tab-content" id="' . $tabsId . 'Content">';
+    $isFirstTab = true;
+    foreach (($block['tabs'] ?? []) as $index => $tab) {
+        $tabId = 'tab_' . preg_replace('/[^a-zA-Z0-9]/', '', $tab['title'] ?? 'tab') . '_' . $index;
+        $activeClass = $isFirstTab ? 'show active' : '';
+        $html .= '<div class="tab-pane fade ' . $activeClass . '" id="' . $tabId . '" role="tabpanel" aria-labelledby="' . $tabId . '-tab">';
+        $html .= '<div class="p-3 border border-top-0">';
+        if (!empty($tab['rows'])) {
+            $html .= renderRows($tab['rows'], $fieldsetsConfig, $valores, $soloLectura);
+        }
+        $html .= '</div>';
+        $html .= '</div>';
+        $isFirstTab = false;
+    }
+    $html .= '</div>';
+    return $html;
+}
+
+function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
+    $html = '';
+    if (!is_array($rows)) {
+        return '';
+    }
+
+    foreach ($rows as $row) {
+        $html .= '<div class="row">';
+        $columns = $row['columns'] ?? $row['cols'] ?? [];
+
+        foreach ($columns as $col) {
+            // Genera la clase de la columna a partir de 'size' si 'class' no está definida, con un prefijo responsivo.
+            $colClass = $col['class'] ?? ('col-md-' . ($col['size'] ?? '12'));
+            $html .= '<div class="' . htmlspecialchars($colClass) . '">';
+
+            if (!empty($col['fieldsets'])) {
+                foreach ($col['fieldsets'] as $fsName) {
+                    $fieldsetData = null;
+                    foreach ($fieldsetsConfig as $fs) {
+                        if (isset($fs['name']) && $fs['name'] === $fsName) {
+                            $fieldsetData = $fs;
+                            break;
+                        }
+                    }
+                    if ($fieldsetData) {
+                        // Reutilizamos la función original para renderizar un solo fieldset
+                        $html .= generarFieldsets([$fieldsetData], $valores, $soloLectura);
+                    }
+                }
+            } elseif (!empty($col['content'])) {
+                // Permite inyectar HTML directamente en una columna.
+                $html .= $col['content'];
+            }
+            
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+    }
+    return $html;
+}
+// --- FIN: Nuevo motor de renderizado de Layout ---
+
 // --- FUNCIONES AUXILIARES ---
 function obtenerTodosLosCampos($fieldsets) { $campos = []; foreach ($fieldsets as $fieldset) { if (!empty($fieldset['fields'])) { $campos = array_merge($campos, $fieldset['fields']); } if (!empty($fieldset['fieldsets'])) { $campos = array_merge($campos, obtenerTodosLosCampos($fieldset['fieldsets'])); } } return $campos; }
 function getFieldInfo($fieldName, $all_fields) { foreach ($all_fields as $field) { if (isset($field['name']) && $field['name'] === $fieldName) { return $field; } } return null; }

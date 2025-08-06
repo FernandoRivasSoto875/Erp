@@ -36,7 +36,10 @@ $cssDefault = $json['parametros']['CssDefault'] ?? 'formulariodinamico.css';
         ?>
         <?php 
         // Genera los campos del formulario usando las variables preparadas.
-        echo generarFieldsets($json['fieldsets'] ?? [], $valores, $soloLectura); 
+        // echo generarFieldsets($json['fieldsets'] ?? [], $valores, $soloLectura); 
+        // --- INICIO: Llamada al nuevo motor de renderizado de Layout ---
+        echo generarLayout($json['layout'] ?? [], $json['fieldsets'] ?? [], $valores, $soloLectura);
+        // --- FIN: Llamada al nuevo motor de renderizado de Layout ---
         ?>
         <?php
         // --- NUEVO: Generar botones desde JSON si existen ---

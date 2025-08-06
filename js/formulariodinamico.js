@@ -420,6 +420,11 @@ window.inicializarFormularioDinamico = function() {
     }
     // Hook para validación en tiempo real (incluye campos agregados dinámicamente)
     $(document).ready(function() {
+        // Inicializar Select2 en los campos que lo necesiten
+        $('.select2-field').select2({
+            theme: "bootstrap" // Opcional: para que se vea como Bootstrap
+        });
+
         let validaciones = window.validacionesJSON || {};
         $(document).on('input blur', '#formulario input, #formulario textarea, #formulario select', function() {
             validarCampoIndividual(this, validaciones);

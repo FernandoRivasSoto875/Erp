@@ -57,6 +57,33 @@
       "mostrar_modal": true
     }
   },
+  "preformato": [
+    {
+      "titulo": "Boleta de Venta",
+      "archivo_origen": "boleta.xls",
+      "formato_salida": "pdf",
+      "nombre_salida": "boleta_final.pdf",
+      "adjuntar_al_correo": true,
+      "verpreformato": true,
+      "reemplazos": {
+        "{{cliente}}": "Juan Pérez",
+        "{{label:Total}}": "Total a pagar",
+        "{{fecha}}": "2025-07-14"
+      }
+    },
+    {
+      "titulo": "Resumen de Compra",
+      "archivo_origen": "resumen.docx",
+      "formato_salida": "docx",
+      "nombre_salida": "resumen_final.docx",
+      "adjuntar_al_correo": false,
+      "verpreformato": true,
+      "reemplazos": {
+        "{{cliente}}": "Juan Pérez",
+        "{{label:Resumen}}": "Resumen de la compra"
+      }
+    }
+  ],
   "fieldsets": [
     {
       "legend": "Datos Personales (Demostración de Posiciones)",

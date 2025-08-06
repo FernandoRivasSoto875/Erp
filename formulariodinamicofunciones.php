@@ -102,6 +102,41 @@ if (!function_exists('generarFieldsets')) {
 
                     $inputHtml = ''; // Generamos el input por separado
                     switch ($type) {
+                        case 'select2':
+                            $attrs = $field;
+                            unset($attrs['type'], $attrs['options']); // Evitar atributos no estándar
+                            $attrs['id'] = $id;
+                            $attrs['name'] = $name;
+                            $attrs['class'] = 'form-control select2-field';
+                            $attrs['style'] = 'width: 100%;';
+                            
+                            $inputHtml .= "<select " . $buildAttrs($attrs) . ">";
+                            if (!empty($field['options'])) {
+                                foreach ($field['options'] as $option) {
+                                    // Soporte para array de strings o array de objetos {value, label}
+                                    $optionValue = is_array($option) ? ($option['value'] ?? '') : $option;
+                                    $optionLabel = is_array($option) ? ($option['label'] ?? '') : $option;
+                                    $selected = ($value == $optionValue) ? ' selected' : '';
+                                    $inputHtml .= "<option value='" . htmlspecialchars($optionValue) . "'$selected>" . htmlspecialchars($optionLabel) . "</option>";
+                                }
+                            }
+                            $inputHtml .= "</select>";
+                            break;
+
+                        case 'date':
+                        case 'datetime-local':
+                        case 'month':
+                        case 'week':
+                        case 'time':
+                            $attrs = $field;
+                            $attrs['type'] = $type;
+                            $attrs['name'] = $name;
+                            $attrs['id'] = $id;
+                            $attrs['value'] = $value;
+                            $attrs['class'] = 'form-control';
+                            $inputHtml = "<input " . $buildAttrs($attrs) . ">";
+                            break;
+
                         case 'textarea':
                             $inputHtml = "<textarea name='$name' id='$id' placeholder='" . ($field['placeholder'] ?? '') . "' rows='" . ($field['rows'] ?? 3) . "'>$value</textarea>";
                             break;
@@ -210,21 +245,15 @@ if (!function_exists('generarFieldsets')) {
                             $inputHtml = "<input" . $buildAttrs($attrs) . ">";
                             break;
 
-                        default:
-                            $attrs = ['type' => $type, 'name' => $name, 'id' => $id, 'value' => $value, 'placeholder' => ($field['placeholder'] ?? '')];
-                            foreach ($field as $k => $v) {
-                                if (in_array($k, ['required', 'readonly', 'multiple', 'min', 'max', 'step']) || strpos($k, 'data-') === 0) {
-                                    // Si es data-formula, solo agregar si es string aritmético
-                                    if ($k === 'data-formula') {
-                                        if ($esFormulaAritmetica($v)) {
-                                            $attrs[$k] = $v;
-                                        }
-                                        // Si no es fórmula aritmética, no agregar nada
-                                    } else {
-                                        $attrs[$k] = $v;
-                                    }
-                                }
-                            }
+                        default: // Para text, number, email, password, etc.
+                            $attrs = $field;
+                            unset($attrs['label']); // Evitar atributos no estándar
+                            $attrs['type'] = $type;
+                            $attrs['name'] = $name;
+                            $attrs['id'] = $id;
+                            $attrs['value'] = $value;
+                            $attrs['class'] = 'form-control';
+                            
                             $inputHtml = "<input" . $buildAttrs($attrs) . ">";
                             break;
                     }

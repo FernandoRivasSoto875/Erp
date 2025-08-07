@@ -174,13 +174,11 @@ if (!isset($fieldsets_disponibles)) {
 </head>
 <body>
 
-    <!-- PALETA DE TIPOS DE CONTROL (para crear nuevos campos) -->
-    <?php echo generarPaletaTiposControl(); ?>
-
-    <!-- PALETA DE COMPONENTES (solo visible en modo diseño) -->
-    <?php
-        echo generarPaletaComponentes($fieldsets_disponibles, $fieldsets);
-    ?>
+    <!-- PALETAS SOLO EN MODO DISEÑO -->
+    <div id="paletas-modo-diseno" style="display:none;">
+        <?php echo generarPaletaTiposControl(); ?>
+        <?php echo generarPaletaComponentes($fieldsets_disponibles, $fieldsets); ?>
+    </div>
 
     <div class="container mt-5 mb-5">
         <div id="outside-drop-area" class="mb-3">
@@ -323,6 +321,7 @@ if (!isset($fieldsets_disponibles)) {
 
         function enableDesignMode(doSaveState = true) {
             body.addClass('design-mode');
+            $('#paletas-modo-diseno').show();
             saveLayoutBtn.show();
             undoBtn.show();
             redoBtn.show();
@@ -416,6 +415,7 @@ if (!isset($fieldsets_disponibles)) {
 
         function disableDesignMode(reinitNormal = true) {
             body.removeClass('design-mode');
+            $('#paletas-modo-diseno').hide();
             saveLayoutBtn.hide();
             undoBtn.hide();
             redoBtn.hide();

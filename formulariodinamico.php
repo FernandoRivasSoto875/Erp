@@ -27,6 +27,29 @@ $layout = $json_data['layout'] ?? [];
 $valores = []; // Aquí se cargarían los datos de un registro existente si fuera necesario
 $soloLectura = false;
 
+// --- LÓGICA PARA LA PALETA DE COMPONENTES (asegura que esté disponible en formulariodinamico.php) ---
+if (!isset($fieldsets_disponibles)) {
+    $todos_los_fieldsets = array_keys($fieldsets);
+    $fieldsets_usados = [];
+    array_walk_recursive($layout, function($item, $key) use (&$fieldsets_usados) {
+        if (is_string($item) && $key !== 'type' && $key !== 'width' && !in_array($item, $fieldsets_usados)) {
+            $fieldsets_usados[] = $item;
+        }
+        if ($key === 'tabs') {
+            foreach ($item as $tab) {
+                if (isset($tab['content']) && is_array($tab['content'])) {
+                    foreach ($tab['content'] as $componente) {
+                        if (is_string($componente) && !in_array($componente, $fieldsets_usados)) {
+                            $fieldsets_usados[] = $componente;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    $fieldsets_disponibles = array_diff($todos_los_fieldsets, $fieldsets_usados);
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="es">

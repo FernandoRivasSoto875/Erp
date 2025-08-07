@@ -155,9 +155,10 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
                         $html .= "<legend class='w-auto px-2 h6'><span class='fieldset-title-text'>".htmlspecialchars($nombre)."</span></legend>";
                     }
                     foreach ($fieldset['rows'] as $fsRow) {
-                        $html .= "<div class='row fieldset-grid-row'>";
+                        $html .= "<div class='row fieldset-grid-row sortable-row'>";
                         foreach ($fsRow['columns'] as $fsCol) {
-                            $html .= "<div class='col fieldset-grid-col'>";
+                            // Cada celda es droppable y draggable en modo diseño
+                            $html .= "<div class='col fieldset-grid-col sortable-col' style='min-height:48px;'>";
                             if (isset($fsCol['field'])) {
                                 // Buscar el campo en todos los fieldsets
                                 $campo = null;
@@ -173,7 +174,18 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
                                 }
                                 if ($campo) {
                                     $valor = $valores[$campo['nombre']] ?? $campo['valor_predeterminado'] ?? '';
+                                    // Envolver en div para drag & drop y edición
+                                    $html .= "<div class='draggable-campo' data-type='field' data-name='".htmlspecialchars($campo['nombre'])."' data-tipo='".htmlspecialchars($campo['tipo'])."' ";
+                                    if (!empty($campo['etiqueta'])) $html .= "data-etiqueta='".htmlspecialchars($campo['etiqueta'])."' ";
+                                    if (!empty($campo['placeholder'])) $html .= "data-placeholder='".htmlspecialchars($campo['placeholder'])."' ";
+                                    if (!empty($campo['opciones'])) $html .= "data-opciones='".htmlspecialchars(is_array($campo['opciones']) ? implode(',', array_values($campo['opciones'])) : $campo['opciones'])."' ";
+                                    if (!empty($campo['style'])) $html .= "data-style='".htmlspecialchars($campo['style'])."' ";
+                                    if (!empty($campo['regex'])) $html .= "data-regex='".htmlspecialchars($campo['regex'])."' ";
+                                    if (!empty($campo['data-source'])) $html .= "data-source='".htmlspecialchars(json_encode($campo['data-source'])) . "' ";
+                                    $html .= ">";
                                     $html .= generarCampo($campo, $valor, $soloLectura);
+                                    $html .= "<i class='fas fa-pencil-alt edit-icon' data-edit-type='field' data-field-name='".htmlspecialchars($campo['nombre'])."' style='display:none; cursor:pointer; margin-left: 5px;'></i>";
+                                    $html .= "</div>";
                                 } else {
                                     $html .= "<div class='alert alert-warning'>Campo '".htmlspecialchars($fsCol['field'])."' no encontrado.</div>";
                                 }

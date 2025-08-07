@@ -158,42 +158,44 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
 }
 
 function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockAttrs) {
+    global $modoDiseno;
     $tabsId = 'tabs_' . uniqid();
     $html = "<div {$blockAttrs}>";
     $html .= '<ul class="nav nav-pills mb-3 sortable-tabs" id="' . $tabsId . '" role="tablist">';
-    
     // Pre-generar IDs para asegurar consistencia entre links y contenido
     $tabDetails = [];
-        foreach (($block['tabs'] ?? []) as $index => $tab) {
-            $tabTitle = htmlspecialchars($tab['title'] ?? 'Pestaña ' . ($index + 1));
-            $tabDetails[] = [
-                'title' => $tabTitle,
-                'id' => 'tab_' . preg_replace('/[^a-zA-Z0-9_]/', '', str_replace(' ', '_', $tab['title'] ?? '')) . '_' . uniqid(),
-                'rows' => $tab['rows'] ?? [],
-                'raw_title' => $tab['title'] ?? 'Pestaña ' . ($index + 1)
-            ];
-        }
-
+    foreach (($block['tabs'] ?? []) as $index => $tab) {
+        $tabTitle = htmlspecialchars($tab['title'] ?? 'Pestaña ' . ($index + 1));
+        $tabDetails[] = [
+            'title' => $tabTitle,
+            'id' => 'tab_' . preg_replace('/[^a-zA-Z0-9_]/', '', str_replace(' ', '_', $tab['title'] ?? '')) . '_' . uniqid(),
+            'rows' => $tab['rows'] ?? [],
+            'raw_title' => $tab['title'] ?? 'Pestaña ' . ($index + 1)
+        ];
+    }
     // Renderizar las pestañas (los links <a>)
     foreach ($tabDetails as $index => $details) {
         $activeClass = ($index === 0) ? 'active' : '';
         $isSelected = ($index === 0) ? 'true' : 'false';
-        
         $html .= '<li class="nav-item" role="presentation">';
         $html .= '<a class="nav-link ' . $activeClass . '" id="' . $details['id'] . '-tab" data-toggle="pill" href="#' . $details['id'] . '" role="tab" aria-controls="' . $details['id'] . '" aria-selected="' . $isSelected . '">';
-            $html .= "<span class='tab-title-text editable-label' contenteditable='false' data-edit-type='tab' data-target-tab-id='" . $details['id'] . "-tab'>" . htmlspecialchars($details['raw_title']) . "</span>";
-        // Icono para editar el título de la pestaña, visible en modo diseño
-        $html .= " <i class='fas fa-pencil-alt edit-icon' data-edit-type='tab' data-target-tab-id='" . $details['id'] . "-tab' style='display:none; cursor:pointer;'></i>";
+        // --- Edición de título solo en modo diseño ---
+        if (!empty($modoDiseno)) {
+            $html .= "<span class='tab-title-text editable-label' contenteditable='true' data-edit-type='tab' data-target-tab-id='" . $details['id'] . "-tab'>" . htmlspecialchars($details['raw_title']) . "</span>";
+            $html .= " <i class='fas fa-pencil-alt edit-icon' data-edit-type='tab' data-target-tab-id='" . $details['id'] . "-tab' style='display:inline; cursor:pointer;'></i>";
+        } else {
+            $html .= "<span class='tab-title-text'>" . htmlspecialchars($details['raw_title']) . "</span>";
+        }
         $html .= '</a>';
         $html .= '</li>';
     }
-    
-    // Botón para agregar nueva pestaña, visible en modo diseño
-    $html .= '<li class="nav-item add-tab-button" role="presentation">';
-    $html .= '<a class="nav-link" href="#" title="Agregar nueva pestaña"><i class="fas fa-plus"></i></a>';
-    $html .= '</li>';
+    // Botón para agregar nueva pestaña, solo en modo diseño
+    if (!empty($modoDiseno)) {
+        $html .= '<li class="nav-item add-tab-button" role="presentation">';
+        $html .= '<a class="nav-link" href="#" title="Agregar nueva pestaña"><i class="fas fa-plus"></i></a>';
+        $html .= '</li>';
+    }
     $html .= '</ul>';
-
     // Renderizar el contenido de las pestañas
     $html .= '<div class="tab-content" id="' . $tabsId . 'Content">';
     foreach ($tabDetails as $index => $details) {
@@ -634,22 +636,24 @@ if (!empty($modoDiseno)) {
 }
 // --- FIN DE LA LÓGICA PARA LA PALETA DE COMPONENTES ---
 
-// --- DEPURACIÓN: Diagnóstico de parámetros visuales JSON SOLO si se activa debug en modo diseño ---
-if (!empty($modoDiseno)) {
-    echo renderDebugButton('debug_paramjson','Depuración Parámetros JSON');
-    $debugParam = '';
-    if (isset($json['parametros']['CssDefault']) || isset($json['parametros']['estilo']) || isset($json['parametros']['tituloimagen']) || isset($json['parametros']['comentario']) || isset($json['parametros']['pie']) || isset($json['parametros']['fecha_creacion'])) {
-        $debugParam .= "<div style='background:#fffbe7;border:2px solid #ffd700;padding:10px;margin:10px 0;'>";
-        $debugParam .= "<b>Diagnóstico de parámetros visuales JSON:</b><br>";
-        if (isset($json['parametros']['CssDefault'])) $debugParam .= "CssDefault: " . htmlspecialchars($json['parametros']['CssDefault']) . "<br>";
-        if (isset($json['parametros']['estilo'])) $debugParam .= "estilo: " . htmlspecialchars($json['parametros']['estilo']) . "<br>";
-        if (isset($json['parametros']['tituloimagen'])) $debugParam .= "tituloimagen: " . htmlspecialchars($json['parametros']['tituloimagen']) . "<br>";
-        if (isset($json['parametros']['comentario'])) $debugParam .= "comentario: " . htmlspecialchars($json['parametros']['comentario']) . "<br>";
-        if (isset($json['parametros']['pie'])) $debugParam .= "pie: " . htmlspecialchars($json['parametros']['pie']) . "<br>";
-        if (isset($json['parametros']['fecha_creacion'])) $debugParam .= "fecha_creacion: " . htmlspecialchars($json['parametros']['fecha_creacion']) . "<br>";
-        $debugParam .= "<span style='color:#888'>(Este bloque es solo para depuración y no se mostrará a los usuarios finales)</span>";
-        $debugParam .= "</div>";
-    }
-    echo renderDebugPanel('debug_paramjson', $debugParam);
-}
+/*
+// --- DEPURACIÓN: Diagnóstico de parámetros visuales JSON ---
+// if (!empty($modoDiseno)) {
+//     echo renderDebugButton('debug_paramjson','Depuración Parámetros JSON');
+//     $debugParam = '';
+//     if (isset($json['parametros']['CssDefault']) || isset($json['parametros']['estilo']) || isset($json['parametros']['tituloimagen']) || isset($json['parametros']['comentario']) || isset($json['parametros']['pie']) || isset($json['parametros']['fecha_creacion'])) {
+//         $debugParam .= "<div style='background:#fffbe7;border:2px solid #ffd700;padding:10px;margin:10px 0;'>";
+//         $debugParam .= "<b>Diagnóstico de parámetros visuales JSON:</b><br>";
+//         if (isset($json['parametros']['CssDefault'])) $debugParam .= "CssDefault: " . htmlspecialchars($json['parametros']['CssDefault']) . "<br>";
+//         if (isset($json['parametros']['estilo'])) $debugParam .= "estilo: " . htmlspecialchars($json['parametros']['estilo']) . "<br>";
+//         if (isset($json['parametros']['tituloimagen'])) $debugParam .= "tituloimagen: " . htmlspecialchars($json['parametros']['tituloimagen']) . "<br>";
+//         if (isset($json['parametros']['comentario'])) $debugParam .= "comentario: " . htmlspecialchars($json['parametros']['comentario']) . "<br>";
+//         if (isset($json['parametros']['pie'])) $debugParam .= "pie: " . htmlspecialchars($json['parametros']['pie']) . "<br>";
+//         if (isset($json['parametros']['fecha_creacion'])) $debugParam .= "fecha_creacion: " . htmlspecialchars($json['parametros']['fecha_creacion']) . "<br>";
+//         $debugParam .= "<span style='color:#888'>(Este bloque es solo para depuración y no se mostrará a los usuarios finales)</span>";
+//         $debugParam .= "</div>";
+//     }
+//     echo renderDebugPanel('debug_paramjson', $debugParam);
+// }
+*/
 ?>

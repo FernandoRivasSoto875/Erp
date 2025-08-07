@@ -224,21 +224,6 @@ if (!isset($fieldsets_disponibles)) {
     </div>
 
 
-    <!-- BLOQUE DE DIAGNÓSTICO VISUAL DE PARÁMETROS JSON -->
-    <div class="container mt-3 mb-3">
-        <div style="background:#ffe;border:2px solid #fc0;padding:10px;margin-bottom:20px;">
-            <b>Diagnóstico de parámetros visuales JSON:</b><br>
-            <ul style="margin-bottom:0;">
-                <li><b>CssDefault:</b> <code><?php echo htmlspecialchars($json_data['parametros']['CssDefault'] ?? ''); ?></code></li>
-                <li><b>estilo:</b> <code><?php echo htmlspecialchars($json_data['parametros']['estilo'] ?? ''); ?></code></li>
-                <li><b>tituloimagen:</b> <code><?php echo htmlspecialchars($json_data['parametros']['tituloimagen'] ?? ''); ?></code></li>
-                <li><b>comentario:</b> <code><?php echo htmlspecialchars($json_data['parametros']['comentario'] ?? ''); ?></code></li>
-                <li><b>pie:</b> <code><?php echo htmlspecialchars($json_data['parametros']['pie'] ?? ''); ?></code></li>
-                <li><b>fecha_creacion:</b> <code><?php echo htmlspecialchars($json_data['parametros']['fecha_creacion'] ?? ''); ?></code></li>
-            </ul>
-            <span style="font-size:0.9em;color:#888;">(Este bloque es solo para depuración y no se mostrará a los usuarios finales)</span>
-        </div>
-    </div>
     <div class="container mt-5 mb-5">
         <div id="outside-drop-area" class="mb-3">
             <!-- Este contenedor se renderizará con PHP -->

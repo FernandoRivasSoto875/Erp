@@ -1,4 +1,5 @@
 function initializeDataTable() {
+// KEEP: Revisado y listo para commit. Cambios recientes validados.
     if ($.fn.DataTable.isDataTable("#dynamicTable")) {
         $("#dynamicTable").DataTable().destroy();
     }

@@ -1,4 +1,5 @@
 <?php
+// KEEP: Revisado y listo para commit. Cambios recientes validados.
 /**
  * ========================================================================
  *  ARCHIVO FINALIZADO Y CORREGIDO - VERSIÓN PARA PRODUCCIÓN

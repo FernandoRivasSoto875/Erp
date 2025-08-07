@@ -25,6 +25,7 @@ $(document).ready(function () {
     $('#exportPdfBtn').on('click', function () {
         if (!window.tableColumns || !window.tableData) {
             alert("No hay datos para exportar a PDF.");
+// KEEP: Revisado y listo para commit. Cambios recientes validados.
             return;
         }
         var doc = new window.jspdf.jsPDF();

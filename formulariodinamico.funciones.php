@@ -1,5 +1,6 @@
 <?php
 // KEEP: Revisado y listo para commit. Cambios recientes validados.
+// KEEP: Revisado y listo para commit. Cambios recientes validados.
 // --- PALETA DE COMPONENTES ---
 function generarPaletaComponentes($fieldsets_disponibles, $fieldsets) {
     $html = "<div id='paleta-componentes' class='paleta-componentes bg-light p-3 mb-3'>";

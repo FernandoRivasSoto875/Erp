@@ -1,4 +1,4 @@
- 
+// KEEP: Revisado y listo para commit. Cambios recientes validados.
   function showDebugPopup(message) {
     $('#debugContent').empty().append('<p>' + message + '</p>');
     $('#debugPopup').modal();

@@ -1,4 +1,5 @@
 <?php
+// KEEP: Revisado y listo para commit. Cambios recientes validados.
 // KEEP: Revisado y listo para commit. Cambios de diagnóstico y mejoras de visibilidad en modo diseño.
 // KEEP: Revisado y listo para commit. Cambios de diagnóstico y mejoras de visibilidad en modo diseño.
 // NO DEBE HABER NADA ANTES DE ESTA LÍNEA. NI ESPACIOS, NI LÍNEAS EN BLANCO.

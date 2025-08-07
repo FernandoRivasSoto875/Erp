@@ -1,4 +1,5 @@
 // File: js/FormularioContacto.js
+// KEEP: Revisado y listo para commit. Cambios recientes validados.
 $(document).ready(function() {
     // Inicializar todos los campos Select2
     $('.select2-field').each(function() {

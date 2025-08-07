@@ -249,7 +249,9 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
 }
 
 function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valores, $soloLectura) {
-    // Solo mostrar en modo diseño (solo-modo-diseno)
+    // Solo mostrar en modo diseño (requiere variable $modoDiseno = true)
+    global $modoDiseno;
+    if (empty($modoDiseno)) return '';
     $html = '<div id="elementos-fuera-container" class="p-3 border rounded bg-light sortable-outside-container solo-modo-diseno">';
     $html .= '<h5>Elementos Fuera del Formulario</h5>';
     if (empty($elementos)) {
@@ -283,6 +285,10 @@ function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valo
     }
     $html .= '</div>';
     return $html;
+}
+$modoDiseno = false;
+if (isset($_GET['modo']) && $_GET['modo'] === 'diseno') {
+    $modoDiseno = true;
 }
 
 // --- FIN: Nuevo motor de renderizado de Layout ---
@@ -607,13 +613,6 @@ array_walk_recursive($layout, function($item, $key) use (&$fieldsets_usados) {
 // 3. Comparar para encontrar los fieldsets disponibles.
 $fieldsets_disponibles = array_diff($todos_los_fieldsets, $fieldsets_usados);
 
-echo "<div style='background:#e0f7fa;border:2px solid #00bcd4;padding:10px;margin:10px 0;'>";
-echo "<b>Fieldsets usados:</b> ";
-var_dump($fieldsets_usados);
-echo "<br><b>Fieldsets disponibles:</b> ";
-var_dump($fieldsets_disponibles);
-echo "</div>";
-// --- FIN DE LA LÓGICA PARA LA PALETA DE COMPONENTES ---
 // --- DEPURACIÓN: Mostrar resultado de la lógica de paleta SOLO en modo diseño ---
 echo "<div class='solo-modo-diseno' style='background:#e0f7fa;border:2px solid #00bcd4;padding:10px;margin:10px 0;'>";
 echo "<b>Fieldsets usados:</b> ";
@@ -622,4 +621,20 @@ echo "<br><b>Fieldsets disponibles:</b> ";
 var_dump($fieldsets_disponibles);
 echo "</div>";
 // --- FIN DE LA LÓGICA PARA LA PALETA DE COMPONENTES ---
+
+/*
+// --- DEPURACIÓN: Diagnóstico de parámetros visuales JSON ---
+if (isset($json['parametros']['CssDefault']) || isset($json['parametros']['estilo']) || isset($json['parametros']['tituloimagen']) || isset($json['parametros']['comentario']) || isset($json['parametros']['pie']) || isset($json['parametros']['fecha_creacion'])) {
+    echo "<div style='background:#fffbe7;border:2px solid #ffd700;padding:10px;margin:10px 0;'>";
+    echo "<b>Diagnóstico de parámetros visuales JSON:</b><br>";
+    if (isset($json['parametros']['CssDefault'])) echo "CssDefault: " . htmlspecialchars($json['parametros']['CssDefault']) . "<br>";
+    if (isset($json['parametros']['estilo'])) echo "estilo: " . htmlspecialchars($json['parametros']['estilo']) . "<br>";
+    if (isset($json['parametros']['tituloimagen'])) echo "tituloimagen: " . htmlspecialchars($json['parametros']['tituloimagen']) . "<br>";
+    if (isset($json['parametros']['comentario'])) echo "comentario: " . htmlspecialchars($json['parametros']['comentario']) . "<br>";
+    if (isset($json['parametros']['pie'])) echo "pie: " . htmlspecialchars($json['parametros']['pie']) . "<br>";
+    if (isset($json['parametros']['fecha_creacion'])) echo "fecha_creacion: " . htmlspecialchars($json['parametros']['fecha_creacion']) . "<br>";
+    echo "<span style='color:#888'>(Este bloque es solo para depuración y no se mostrará a los usuarios finales)</span>";
+    echo "</div>";
+}
+*/
 ?>

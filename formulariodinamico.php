@@ -92,9 +92,72 @@ $soloLectura = false;
         .design-mode-switch .custom-control-label::after {
             cursor: pointer;
         }
+
+        /* Paleta de Componentes */
+        .paleta-componentes {
+            border: 2px dashed #6c757d;
+            border-radius: 8px;
+            background: #f8f9fa;
+            margin-bottom: 24px;
+        }
+        .paleta-componentes .draggable-fieldset {
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+            transition: box-shadow 0.2s;
+        }
+        .paleta-componentes .draggable-fieldset:hover {
+            box-shadow: 0 4px 12px rgba(0,123,255,0.10);
+        }
+        .paleta-componentes .handle {
+            cursor: grab;
+            color: #007bff;
+        }
+
+        /* Paleta de Tipos de Control */
+        #paleta-tipos-control {
+            border: 2px dashed #17a2b8;
+            border-radius: 8px;
+            background: #f8f9fa;
+            margin-bottom: 24px;
+        }
+        #paleta-tipos-control .draggable-tipo {
+            background: #fff;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+            transition: box-shadow 0.2s;
+        }
+        #paleta-tipos-control .draggable-tipo:hover {
+            box-shadow: 0 4px 12px rgba(23,162,184,0.10);
+        }
+        #paleta-tipos-control .handle {
+            cursor: grab;
+            color: #17a2b8;
+        }
+
+        /* Modal Editor de Propiedades */
+        #editorPropiedadesModal .modal-body label {
+            font-weight: 500;
+        }
+        #editorPropiedadesModal input, #editorPropiedadesModal select, #editorPropiedadesModal textarea {
+            margin-bottom: 12px;
+        }
+        #editorPropiedadesModal .form-group {
+            margin-bottom: 1rem;
+        }
     </style>
 </head>
 <body>
+
+    <!-- PALETA DE TIPOS DE CONTROL (para crear nuevos campos) -->
+    <?php echo generarPaletaTiposControl(); ?>
+
+    <!-- PALETA DE COMPONENTES (solo visible en modo diseño) -->
+    <?php
+        echo generarPaletaComponentes($fieldsets_disponibles, $fieldsets);
+    ?>
 
     <div class="container mt-5 mb-5">
         <div id="outside-drop-area" class="mb-3">
@@ -139,6 +202,29 @@ $soloLectura = false;
             <label class="custom-control-label" for="designModeToggle">Modo Diseño</label>
         </div>
         <button id="saveLayoutBtn" class="btn btn-success btn-sm ml-3" style="display: none;">Guardar Diseño</button>
+    </div>
+
+    <!-- MODAL EDITOR DE PROPIEDADES (reutilizable para campo, fieldset o pestaña) -->
+    <div class="modal fade" id="editorPropiedadesModal" tabindex="-1" role="dialog" aria-labelledby="editorPropiedadesLabel" aria-hidden="true">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="editorPropiedadesLabel">Editar Propiedades</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <form id="formEditorPropiedades">
+            <div class="modal-body" id="editorPropiedadesBody">
+              <!-- Aquí se inyectará dinámicamente el formulario de propiedades -->
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary">Guardar</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
 
     <!-- Dependencias de JavaScript -->
@@ -255,6 +341,50 @@ $soloLectura = false;
                 }));
             });
 
+            // --- Paleta de Componentes: Hacer arrastrables los fieldsets disponibles ---
+            document.querySelectorAll('#paleta-componentes .draggable-fieldset').forEach(el => {
+                Sortable.create(el, {
+                    group: {
+                        name: 'shared-blocks',
+                        pull: 'clone',
+                        put: false
+                    },
+                    sort: false,
+                    animation: 150,
+                    handle: '.handle',
+                    onStart: function (evt) {
+                        // Visual feedback opcional
+                        el.classList.add('sortable-ghost');
+                    },
+                    onEnd: function (evt) {
+                        el.classList.remove('sortable-ghost');
+                        saveState();
+                    }
+                });
+            });
+
+            // --- Paleta de Tipos de Control: Hacer arrastrables los tipos (clonables) ---
+            document.querySelectorAll('#paleta-tipos-control .draggable-tipo').forEach(el => {
+                Sortable.create(el, {
+                    group: {
+                        name: 'new-fields',
+                        pull: 'clone',
+                        put: false
+                    },
+                    sort: false,
+                    animation: 150,
+                    handle: '.handle',
+                    onStart: function (evt) {
+                        el.classList.add('sortable-ghost');
+                    },
+                    onEnd: function (evt) {
+                        el.classList.remove('sortable-ghost');
+                        // Aquí se debe abrir el editor visual de propiedades para el nuevo campo
+                        // (Se implementará en el siguiente paso)
+                    }
+                });
+            });
+
             if (doSaveState) {
                 saveState();
             }
@@ -347,6 +477,48 @@ $soloLectura = false;
                 }
             });
         });
+
+        // --- LÓGICA DEL EDITOR VISUAL DE PROPIEDADES ---
+        function abrirEditorPropiedades(tipo, datos, onGuardar) {
+            // tipo: 'field', 'fieldset', 'tab'
+            // datos: objeto con las propiedades actuales (puede estar vacío para nuevo)
+            // onGuardar: callback(datosActualizados)
+            let html = '';
+            if (tipo === 'field') {
+                html += '<div class="form-group">';
+                html += '<label>Tipo de campo</label>';
+                html += '<select class="form-control" name="tipo">';
+                const tipos = ['text','textarea','number','email','password','select','selectdata','radio','checkbox','file','date','datatable','hidden'];
+                tipos.forEach(t => {
+                    html += `<option value="${t}" ${datos.tipo===t?'selected':''}>${t}</option>`;
+                });
+                html += '</select></div>';
+                html += '<div class="form-group"><label>Nombre</label><input class="form-control" name="nombre" value="'+(datos.nombre||'')+'" required></div>';
+                html += '<div class="form-group"><label>Etiqueta</label><input class="form-control" name="etiqueta" value="'+(datos.etiqueta||'')+'"></div>';
+                html += '<div class="form-group"><label>Placeholder</label><input class="form-control" name="placeholder" value="'+(datos.placeholder||'')+'"></div>';
+                html += '<div class="form-group"><label>Valor predeterminado</label><input class="form-control" name="valor_predeterminado" value="'+(datos.valor_predeterminado||'')+'"></div>';
+                html += '<div class="form-group"><label>Atributos (JSON)</label><input class="form-control" name="atributos" value="'+(datos.atributos?JSON.stringify(datos.atributos):'')+'"></div>';
+                html += '<div class="form-group"><label>Opciones (JSON para select/radio/checkbox)</label><input class="form-control" name="opciones" value="'+(datos.opciones?JSON.stringify(datos.opciones):'')+'"></div>';
+                html += '<div class="form-group"><label>Data-source/query (para selectdata)</label><input class="form-control" name="query" value="'+(datos.query||'')+'"></div>';
+                html += '<div class="form-group"><label>Fórmula (para datatable/number)</label><input class="form-control" name="data-formula" value="'+(datos["data-formula"]||'')+'"></div>';
+            } else if (tipo === 'fieldset') {
+                html += '<div class="form-group"><label>Título</label><input class="form-control" name="titulo" value="'+(datos.titulo||'')+'" required></div>';
+            } else if (tipo === 'tab') {
+                html += '<div class="form-group"><label>Título de la pestaña</label><input class="form-control" name="title" value="'+(datos.title||'')+'" required></div>';
+            }
+            $('#editorPropiedadesBody').html(html);
+            $('#editorPropiedadesModal').modal('show');
+            $('#formEditorPropiedades').off('submit').on('submit', function(e){
+                e.preventDefault();
+                const formData = Object.fromEntries(new FormData(this).entries());
+                // Parsear atributos y opciones si corresponde
+                if(formData.atributos){ try{ formData.atributos = JSON.parse(formData.atributos);}catch(e){formData.atributos={};} }
+                if(formData.opciones){ try{ formData.opciones = JSON.parse(formData.opciones);}catch(e){formData.opciones={};} }
+                if(formData["data-formula"]){ formData["data-formula"] = formData["data-formula"]; }
+                $('#editorPropiedadesModal').modal('hide');
+                if(onGuardar) onGuardar(formData);
+            });
+        }
 
         // *** CAMBIO REALIZADO: Nueva función para inicializar la lógica del formulario normal ***
         // Esta función llama al código que está en `js/formulariodinamico.js`.

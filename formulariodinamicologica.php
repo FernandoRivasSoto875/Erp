@@ -538,4 +538,32 @@ foreach ($archivosTemporales as $tmpFile) {
         @unlink($tmpFile);
     }
 }
-?>
+
+// --- LÓGICA PARA LA PALETA DE COMPONENTES ---
+// 1. Obtener todos los nombres de los fieldsets definidos.
+$todos_los_fieldsets = array_keys($fieldsets);
+$fieldsets_usados = [];
+
+// 2. Recorrer el layout para encontrar los fieldsets que ya están en uso.
+array_walk_recursive($layout, function($item, $key) use (&$fieldsets_usados) {
+    if (is_string($item) && $key !== 'type' && $key !== 'width' && !in_array($item, $fieldsets_usados)) {
+        // Asumimos que cualquier string que no sea una propiedad es un nombre de fieldset/componente.
+        $fieldsets_usados[] = $item;
+    }
+    if ($key === 'tabs') {
+        foreach ($item as $tab) {
+            if (isset($tab['content']) && is_array($tab['content'])) {
+                 foreach ($tab['content'] as $componente) {
+                     if (is_string($componente) && !in_array($componente, $fieldsets_usados)) {
+                         $fieldsets_usados[] = $componente;
+                     }
+                 }
+            }
+        }
+    }
+});
+
+// 3. Comparar para encontrar los fieldsets disponibles.
+$fieldsets_disponibles = array_diff($todos_los_fieldsets, $fieldsets_usados);
+// --- FIN DE LA LÓGICA PARA LA PALETA DE COMPONENTES ---
+?>  

@@ -72,6 +72,33 @@
         { "nombre": "aceptar_terminos", "etiqueta": "Acepto los términos y condiciones", "tipo": "checkbox", "opciones": { "si": "" } }
       ]
     }
+    ,
+    "todos_los_controles": {
+      "titulo": "Todos los Tipos de Control",
+      "campos": [
+        { "nombre": "campo_texto", "etiqueta": "Campo de Texto", "tipo": "text", "placeholder": "Texto simple" },
+        { "nombre": "campo_textarea", "etiqueta": "Área de Texto", "tipo": "textarea", "placeholder": "Texto largo" },
+        { "nombre": "campo_numero", "etiqueta": "Número", "tipo": "number", "placeholder": "123" },
+        { "nombre": "campo_email", "etiqueta": "Correo Electrónico", "tipo": "email", "placeholder": "correo@dominio.com" },
+        { "nombre": "campo_password", "etiqueta": "Contraseña", "tipo": "password" },
+        { "nombre": "campo_select", "etiqueta": "Select (Opciones Fijas)", "tipo": "select", "opciones": { "op1": "Opción 1", "op2": "Opción 2", "op3": "Opción 3" } },
+        { "nombre": "campo_selectdata", "etiqueta": "Select (Desde BD)", "tipo": "selectdata", "query": "SELECT id, nombre FROM tabla_ejemplo", "campo_valor": "id", "campo_etiqueta": "nombre" },
+        { "nombre": "campo_radio", "etiqueta": "Radio", "tipo": "radio", "opciones": { "a": "Opción A", "b": "Opción B" } },
+        { "nombre": "campo_checkbox", "etiqueta": "Checkbox", "tipo": "checkbox", "opciones": { "x": "Marca X", "y": "Marca Y" } },
+        { "nombre": "campo_file", "etiqueta": "Archivo", "tipo": "file" },
+        { "nombre": "campo_date", "etiqueta": "Fecha", "tipo": "date" },
+        { "nombre": "campo_hidden", "tipo": "hidden", "valor_predeterminado": "oculto123" },
+        { "nombre": "campo_select_multiple", "etiqueta": "Select Múltiple", "tipo": "select", "atributos": { "multiple": "multiple" }, "opciones": { "uno": "Uno", "dos": "Dos", "tres": "Tres" } },
+        { "nombre": "campo_datatable", "etiqueta": "Datatable (Mixto)", "tipo": "datatable", "columnas": [
+          { "nombre": "col_texto", "etiqueta": "Columna Texto", "tipo": "text" },
+          { "nombre": "col_numero", "etiqueta": "Columna Número", "tipo": "number" },
+          { "nombre": "col_select", "etiqueta": "Columna Select", "tipo": "select", "opciones": { "a": "A", "b": "B" } },
+          { "nombre": "col_selectdata", "etiqueta": "Columna Select BD", "tipo": "selectdata", "query": "SELECT id, nombre FROM tabla_columna", "campo_valor": "id", "campo_etiqueta": "nombre" },
+          { "nombre": "col_fecha", "etiqueta": "Columna Fecha", "tipo": "date" },
+          { "nombre": "col_checkbox", "etiqueta": "Columna Checkbox", "tipo": "checkbox", "opciones": { "si": "Sí", "no": "No" } }
+        ] }
+      ]
+    }
   },
   "layout": {
     "header": {
@@ -95,6 +122,10 @@
         {
           "title": "Campos Diversos",
           "rows": [ { "columns": [ { "width": "12", "fieldset": "campos_variados" } ] } ]
+        },
+        {
+          "title": "Todos los Controles",
+          "rows": [ { "columns": [ { "width": "12", "fieldset": "todos_los_controles" } ] } ]
         }
       ]
     },

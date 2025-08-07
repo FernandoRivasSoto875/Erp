@@ -159,7 +159,7 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
 function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockAttrs) {
     $tabsId = 'tabs_' . uniqid();
     $html = "<div {$blockAttrs}>";
-    $html .= '<ul class="nav nav-pills mb-3" id="' . $tabsId . '" role="tablist">';
+    $html .= '<ul class="nav nav-pills mb-3 sortable-tabs" id="' . $tabsId . '" role="tablist">';
     
     // Pre-generar IDs para asegurar consistencia entre links y contenido
     $tabDetails = [];
@@ -187,7 +187,7 @@ function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $bloc
     }
     
     // Botón para agregar nueva pestaña, visible en modo diseño
-    $html .= '<li class="nav-item" id="add-tab-button" style="display:none;" role="presentation">';
+    $html .= '<li class="nav-item add-tab-button" role="presentation">';
     $html .= '<a class="nav-link" href="#" title="Agregar nueva pestaña"><i class="fas fa-plus"></i></a>';
     $html .= '</li>';
     $html .= '</ul>';

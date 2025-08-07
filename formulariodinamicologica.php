@@ -259,10 +259,12 @@ function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valo
                 // Lógica para encontrar la configuración del campo y renderizarlo
                 $fieldConfig = null;
                 foreach ($fieldsetsConfig as $fs) {
-                    foreach ($fs['campos'] as $campo) {
-                        if ($campo['nombre'] === $item['name']) {
-                            $fieldConfig = $campo;
-                            break 2;
+                    if (isset($fs['campos']) && is_array($fs['campos'])) {
+                        foreach ($fs['campos'] as $campo) {
+                            if ($campo['nombre'] === $item['name']) {
+                                $fieldConfig = $campo;
+                                break 2;
+                            }
                         }
                     }
                 }

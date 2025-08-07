@@ -321,7 +321,10 @@ if (json_last_error() !== JSON_ERROR_NONE) {
     return;
 }
 
-$all_fields = obtenerTodosLosCampos($json['fieldsets'] ?? []);
+$fieldsets = $json['fieldsets'] ?? [];
+$layout = $json['layout'] ?? [];
+// KEEP: Estas líneas aseguran que $fieldsets y $layout siempre estén definidos desde el JSON.
+$all_fields = obtenerTodosLosCampos($fieldsets);
 $valores = [];
 $soloLectura = false;
 $mensaje_envio = '';

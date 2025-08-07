@@ -54,6 +54,8 @@
             {
                 "nombre": "total_factura",
                 "etiqueta": "Total Factura (Fórmula)",
+
+
                 "tipo": "number",
                 "atributos": { "readonly": true, "style": "font-weight: bold; font-size: 1.2em;" },
                 "data-formula": "SUM(detalle_productos.total_linea)"
@@ -113,7 +115,7 @@
           "rows": [ { "columns": [ { "width": "6", "fieldset": "datos_personales" }, { "width": "6", "fieldset": "datos_contacto" } ] } ]
         },
         {
-          "title": "Facturación",
+          "title": "Facturaciónn",
           "rows": [
             { "columns": [ { "width": "12", "fieldset": "productos_factura" } ] },
             { "columns": [ { "width": "12", "fieldset": "resumen_factura" } ] }

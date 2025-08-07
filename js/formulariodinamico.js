@@ -1,3 +1,47 @@
+// --- MODO DISEÑO: Hacer etiquetas editables y sincronizar con JSON ---
+$(document).ready(function() {
+    function toggleEditableLabels(isDesignMode) {
+        $('.editable-label').each(function() {
+            if (isDesignMode) {
+                $(this).attr('contenteditable', 'true');
+                $(this).addClass('editable-label-active');
+            } else {
+                $(this).attr('contenteditable', 'false');
+                $(this).removeClass('editable-label-active');
+            }
+        });
+        // Mostrar/ocultar elementos solo de diseño
+        if (isDesignMode) {
+            $('.solo-modo-diseno').show();
+        } else {
+            $('.solo-modo-diseno').hide();
+        }
+    }
+
+    // Detectar cambio de modo diseño
+    $('#designModeToggle').on('change', function() {
+        toggleEditableLabels(this.checked);
+    });
+    // Inicializar según el estado inicial
+    toggleEditableLabels($('#designModeToggle').is(':checked'));
+
+    // Guardar cambios de etiquetas en el JSON en memoria
+    $(document).on('blur', '.editable-label[contenteditable="true"]', function() {
+        var $el = $(this);
+        var newText = $el.text().trim();
+        // Determinar el tipo de elemento editable
+        if ($el.data('edit-type') === 'tab') {
+            // Actualizar el título de la pestaña en el JSON (requiere lógica extra si hay tabs en el JSON global)
+            // Aquí deberías actualizar el objeto JSON correspondiente
+        } else if ($el.data('edit-type') === 'fieldset') {
+            // Actualizar el título del fieldset en el JSON
+        } else if ($el.closest('label').length > 0) {
+            // Es una etiqueta de campo
+            // Actualizar el campo correspondiente en el JSON
+        }
+        // Marcar el formulario como modificado (puedes agregar lógica extra aquí)
+    });
+});
 // *** CAMBIO REALIZADO: El script ahora se envuelve en una función para ser llamado explícitamente ***
 // No se auto-ejecuta, permitiendo que `formulariodinamico.php` decida cuándo inicializar la lógica.
 function inicializarFormularioDinamico(config) {

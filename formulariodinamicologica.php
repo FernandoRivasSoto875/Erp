@@ -164,14 +164,15 @@ function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $bloc
     
     // Pre-generar IDs para asegurar consistencia entre links y contenido
     $tabDetails = [];
-    foreach (($block['tabs'] ?? []) as $index => $tab) {
-        $tabTitle = htmlspecialchars($tab['title'] ?? 'Pestaña ' . ($index + 1));
-        $tabDetails[] = [
-            'title' => $tabTitle,
-            'id' => 'tab_' . preg_replace('/[^a-zA-Z0-9_]/', '', str_replace(' ', '_', $tab['title'] ?? '')) . '_' . uniqid(),
-            'rows' => $tab['rows'] ?? []
-        ];
-    }
+        foreach (($block['tabs'] ?? []) as $index => $tab) {
+            $tabTitle = htmlspecialchars($tab['title'] ?? 'Pestaña ' . ($index + 1));
+            $tabDetails[] = [
+                'title' => $tabTitle,
+                'id' => 'tab_' . preg_replace('/[^a-zA-Z0-9_]/', '', str_replace(' ', '_', $tab['title'] ?? '')) . '_' . uniqid(),
+                'rows' => $tab['rows'] ?? [],
+                'raw_title' => $tab['title'] ?? 'Pestaña ' . ($index + 1)
+            ];
+        }
 
     // Renderizar las pestañas (los links <a>)
     foreach ($tabDetails as $index => $details) {
@@ -180,7 +181,7 @@ function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $bloc
         
         $html .= '<li class="nav-item" role="presentation">';
         $html .= '<a class="nav-link ' . $activeClass . '" id="' . $details['id'] . '-tab" data-toggle="pill" href="#' . $details['id'] . '" role="tab" aria-controls="' . $details['id'] . '" aria-selected="' . $isSelected . '">';
-        $html .= "<span class='tab-title-text'>" . $details['title'] . "</span>";
+            $html .= "<span class='tab-title-text editable-label' contenteditable='false' data-edit-type='tab' data-target-tab-id='" . $details['id'] . "-tab'>" . htmlspecialchars($details['raw_title']) . "</span>";
         // Icono para editar el título de la pestaña, visible en modo diseño
         $html .= " <i class='fas fa-pencil-alt edit-icon' data-edit-type='tab' data-target-tab-id='" . $details['id'] . "-tab' style='display:none; cursor:pointer;'></i>";
         $html .= '</a>';
@@ -221,7 +222,7 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
     $html .= "<fieldset class='mb-4 p-3 border rounded sortable-fields-container'>"; 
     if ($titulo) {
         $html .= "<legend class='w-auto px-2 h6'>
-                    <span class='fieldset-title-text'>{$titulo}</span>
+                    <span class='fieldset-title-text editable-label' contenteditable='false' data-edit-type='fieldset' data-fieldset-name='{$fieldsetName}'>".htmlspecialchars($titulo)."</span>
                     <i class='fas fa-pencil-alt edit-icon' data-edit-type='fieldset' data-fieldset-name='{$fieldsetName}' style='display:none; cursor:pointer; margin-left: 10px;'></i>
                   </legend>";
     }
@@ -248,7 +249,7 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
 }
 
 function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valores, $soloLectura) {
-    $html = '<div id="elementos-fuera-container" class="p-3 border rounded bg-light sortable-outside-container">';
+    $html = '<div id="elementos-fuera-container" class="p-3 border rounded bg-light sortable-outside-container solo-modo-diseno">';
     $html .= '<h5>Elementos Fuera del Formulario</h5>';
     
     if (empty($elementos)) {

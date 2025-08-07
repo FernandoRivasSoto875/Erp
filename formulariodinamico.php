@@ -198,9 +198,18 @@ if (!isset($fieldsets_disponibles)) {
     });
     $fieldsets_disponibles = array_diff($todos_los_fieldsets, $fieldsets_usados);
     ?>
-    <div id="paletas-modo-diseno" style="display:none;">
-        <?php echo generarPaletaTiposControl(); ?>
-        <?php echo generarPaletaComponentes($fieldsets_disponibles, $fieldsets); ?>
+    <div id="paletas-modo-diseno" style="display:none; border: 2px solid red; background: #fffbe6; padding: 10px; margin-bottom: 20px;">
+        <div style="color: #b94a48; font-weight: bold; margin-bottom: 8px;">[Diagnóstico] Paletas modo diseño: Si ves este mensaje, el contenedor se está generando y mostrando correctamente.</div>
+        <?php 
+            $paletaTipos = generarPaletaTiposControl();
+            $paletaComponentes = generarPaletaComponentes($fieldsets_disponibles, $fieldsets);
+            if (empty(trim($paletaTipos)) && empty(trim($paletaComponentes))) {
+                echo '<div style="color: #a94442;">[Diagnóstico] Las funciones PHP de paleta están retornando vacío. Revisa la generación de fieldsets y tipos de control.</div>';
+            } else {
+                echo $paletaTipos;
+                echo $paletaComponentes;
+            }
+        ?>
     </div>
 
     <div class="container mt-5 mb-5">

@@ -249,9 +249,9 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
 }
 
 function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valores, $soloLectura) {
+    // Solo mostrar en modo diseño (solo-modo-diseno)
     $html = '<div id="elementos-fuera-container" class="p-3 border rounded bg-light sortable-outside-container solo-modo-diseno">';
     $html .= '<h5>Elementos Fuera del Formulario</h5>';
-    
     if (empty($elementos)) {
         $html .= '<p class="text-muted">Arrastra aquí los campos o grupos que quieras quitar temporalmente.</p>';
     } else {
@@ -281,7 +281,6 @@ function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valo
             }
         }
     }
-    
     $html .= '</div>';
     return $html;
 }

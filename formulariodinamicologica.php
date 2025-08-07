@@ -157,6 +157,7 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
     return $html;
 }
 
+// KEEP: Solo mostrar en modo diseño y edición de tabs solo en modo diseño
 function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockAttrs) {
     global $modoDiseno;
     $tabsId = 'tabs_' . uniqid();
@@ -250,6 +251,7 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
     return $html;
 }
 
+// KEEP: Elementos fuera del formulario solo en modo diseño
 function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valores, $soloLectura) {
     // Solo mostrar en modo diseño (requiere variable $modoDiseno = true)
     global $modoDiseno;

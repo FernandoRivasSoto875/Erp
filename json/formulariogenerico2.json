@@ -50,7 +50,7 @@
         "application/vnd.ms-powerpoint", "application/octet-stream"
       ],
       "tamano_maximo_mb": 5
-    },
+    }, 
     "notificaciones": {
       "enviar_correo": true,
       "guardar_bd": false,

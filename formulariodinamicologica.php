@@ -286,7 +286,22 @@ function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valo
 // --- FIN: Nuevo motor de renderizado de Layout ---
 
 // --- FUNCIONES AUXILIARES ---
-function obtenerTodosLosCampos($fieldsets) { $campos = []; foreach ($fieldsets as $fieldset) { if (!empty($fieldset['fields'])) { $campos = array_merge($campos, $fieldset['fields']); } if (!empty($fieldset['fieldsets'])) { $campos = array_merge($campos, obtenerTodosLosCampos($fieldset['fieldsets'])); } } return $campos; }
+function obtenerTodosLosCampos($fieldsets) {
+    $campos = [];
+    foreach ($fieldsets as $fieldset) {
+        // Acepta tanto 'fields' como 'campos' para máxima compatibilidad
+        if (!empty($fieldset['fields']) && is_array($fieldset['fields'])) {
+            $campos = array_merge($campos, $fieldset['fields']);
+        }
+        if (!empty($fieldset['campos']) && is_array($fieldset['campos'])) {
+            $campos = array_merge($campos, $fieldset['campos']);
+        }
+        if (!empty($fieldset['fieldsets'])) {
+            $campos = array_merge($campos, obtenerTodosLosCampos($fieldset['fieldsets']));
+        }
+    }
+    return $campos;
+}
 function getFieldInfo($fieldName, $all_fields) { foreach ($all_fields as $field) { if (isset($field['name']) && $field['name'] === $fieldName) { return $field; } } return null; }
 
 // --- INICIO: Preparación de Variables Globales ---

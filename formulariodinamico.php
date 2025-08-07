@@ -174,7 +174,30 @@ if (!isset($fieldsets_disponibles)) {
 </head>
 <body>
 
+
     <!-- PALETAS SOLO EN MODO DISEÑO -->
+    <?php
+    // Recalcular SIEMPRE los fieldsets disponibles antes de mostrar la paleta
+    $todos_los_fieldsets = array_keys($fieldsets);
+    $fieldsets_usados = [];
+    array_walk_recursive($layout, function($item, $key) use (&$fieldsets_usados) {
+        if (is_string($item) && $key !== 'type' && $key !== 'width' && !in_array($item, $fieldsets_usados)) {
+            $fieldsets_usados[] = $item;
+        }
+        if ($key === 'tabs') {
+            foreach ($item as $tab) {
+                if (isset($tab['content']) && is_array($tab['content'])) {
+                    foreach ($tab['content'] as $componente) {
+                        if (is_string($componente) && !in_array($componente, $fieldsets_usados)) {
+                            $fieldsets_usados[] = $componente;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    $fieldsets_disponibles = array_diff($todos_los_fieldsets, $fieldsets_usados);
+    ?>
     <div id="paletas-modo-diseno" style="display:none;">
         <?php echo generarPaletaTiposControl(); ?>
         <?php echo generarPaletaComponentes($fieldsets_disponibles, $fieldsets); ?>

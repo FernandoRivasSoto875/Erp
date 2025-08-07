@@ -569,6 +569,7 @@ foreach ($archivosTemporales as $tmpFile) {
 // 1. Obtener todos los nombres de los fieldsets definidos.
 
 // --- DEPURACIÓN: Mostrar si $fieldsets y $layout están inicializados correctamente ---
+/*
 echo "<div style='background:#ffe;border:2px solid #fc0;padding:10px;margin:10px 0;'>";
 echo "<b>Depuración rápida:</b><br>";
 echo "<b>fieldsets</b>: ";
@@ -576,6 +577,7 @@ var_dump($fieldsets);
 echo "<br><b>layout</b>: ";
 var_dump($layout);
 echo "</div>";
+*/
 
 // Asegurar que $layout sea un array antes de usar array_walk_recursive
 $todos_los_fieldsets = array_keys(isset($fieldsets) ? $fieldsets : []);
@@ -605,8 +607,15 @@ array_walk_recursive($layout, function($item, $key) use (&$fieldsets_usados) {
 // 3. Comparar para encontrar los fieldsets disponibles.
 $fieldsets_disponibles = array_diff($todos_los_fieldsets, $fieldsets_usados);
 
-// --- DEPURACIÓN: Mostrar resultado de la lógica de paleta ---
 echo "<div style='background:#e0f7fa;border:2px solid #00bcd4;padding:10px;margin:10px 0;'>";
+echo "<b>Fieldsets usados:</b> ";
+var_dump($fieldsets_usados);
+echo "<br><b>Fieldsets disponibles:</b> ";
+var_dump($fieldsets_disponibles);
+echo "</div>";
+// --- FIN DE LA LÓGICA PARA LA PALETA DE COMPONENTES ---
+// --- DEPURACIÓN: Mostrar resultado de la lógica de paleta SOLO en modo diseño ---
+echo "<div class='solo-modo-diseno' style='background:#e0f7fa;border:2px solid #00bcd4;padding:10px;margin:10px 0;'>";
 echo "<b>Fieldsets usados:</b> ";
 var_dump($fieldsets_usados);
 echo "<br><b>Fieldsets disponibles:</b> ";

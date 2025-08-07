@@ -572,10 +572,10 @@ foreach ($archivosTemporales as $tmpFile) {
 // --- DEPURACIÓN: Mostrar si $fieldsets y $layout están inicializados correctamente ---
 echo "<div style='background:#ffe;border:2px solid #fc0;padding:10px;margin:10px 0;'>";
 echo "<b>Depuración rápida:</b><br>";
-echo "<b> 24fieldsets</b>: ";
-var_dump(isset($fieldsets) ? $fieldsets : 'NO DEFINIDO');
-echo "<br><b> 24layout</b>: ";
-var_dump(isset($layout) ? $layout : 'NO DEFINIDO');
+echo "<b>fieldsets</b>: ";
+var_dump($fieldsets);
+echo "<br><b>layout</b>: ";
+var_dump($layout);
 echo "</div>";
 
 // Asegurar que $layout sea un array antes de usar array_walk_recursive

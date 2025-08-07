@@ -70,7 +70,10 @@
     </div>
 
     <main>
-        <!-- Título y comentario del formulario -->
+        <!-- Imagen de título, título y comentario del formulario -->
+        <?php if (!empty($json['parametros']['tituloimagen'])): ?>
+            <img src="<?php echo htmlspecialchars($json['parametros']['tituloimagen']); ?>" alt="Imagen Título" style="max-height: 80px; display:block; margin:0 auto 10px;">
+        <?php endif; ?>
         <h2><?php echo htmlspecialchars($json['parametros']['titulo'] ?? 'Formulario Dinámico'); ?></h2>
         <p><?php echo htmlspecialchars($json['parametros']['comentario'] ?? ''); ?></p>
 

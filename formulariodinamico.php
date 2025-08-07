@@ -59,14 +59,22 @@ if (!isset($fieldsets_disponibles)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo htmlspecialchars($titulo_formulario); ?></title>
-    
+    <title><?php echo htmlspecialchars($json_data['parametros']['titulo'] ?? $titulo_formulario); ?></title>
+
     <!-- Dependencias de Estilos -->
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="css/formularariodinamico.css">
+    <?php
+    // Aplica CssDefault si está definido en parametros
+    if (!empty($json_data['parametros']['CssDefault'])) {
+        $cssDefault = htmlspecialchars($json_data['parametros']['CssDefault']);
+        echo '<link rel="stylesheet" href="css/' . $cssDefault . '">';
+    } else {
+        echo '<link rel="stylesheet" href="css/formularariodinamico.css">';
+    }
+    ?>
 
     <!-- Estilos para el Modo Diseño (Drag and Drop) -->
     <style>
@@ -215,6 +223,7 @@ if (!isset($fieldsets_disponibles)) {
         ?>
     </div>
 
+
     <div class="container mt-5 mb-5">
         <div id="outside-drop-area" class="mb-3">
             <!-- Este contenedor se renderizará con PHP -->
@@ -225,21 +234,29 @@ if (!isset($fieldsets_disponibles)) {
         </div>
 
         <div class="card">
-            <div class="card-header">
-                <h2><?php echo htmlspecialchars($titulo_formulario); ?></h2>
-                <p><?php echo htmlspecialchars($descripcion_formulario); ?></p>
+            <div class="card-header" style="<?php echo htmlspecialchars($json_data['parametros']['estilo'] ?? ''); ?>">
+                <?php if (!empty($json_data['parametros']['tituloimagen'])): ?>
+                    <img src="<?php echo htmlspecialchars($json_data['parametros']['tituloimagen']); ?>" alt="Imagen Título" style="max-height: 80px; display:block; margin:0 auto 10px;">
+                <?php endif; ?>
+                <h2><?php echo htmlspecialchars($json_data['parametros']['titulo'] ?? $titulo_formulario); ?></h2>
+                <?php if (!empty($json_data['parametros']['comentario'])): ?>
+                    <p class="lead"><?php echo htmlspecialchars($json_data['parametros']['comentario']); ?></p>
+                <?php endif; ?>
+                <?php if (!empty($json_data['parametros']['fecha_creacion'])): ?>
+                    <div style="font-size:0.9em;color:#888;">Creado: <?php echo htmlspecialchars($json_data['parametros']['fecha_creacion']); ?></div>
+                <?php endif; ?>
             </div>
             <div class="card-body">
                 <?php if (!empty($mensaje_envio)) echo $mensaje_envio; ?>
-                
                 <form id="formulariodinamico" method="POST" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]) . '?archivo=' . urlencode($archivo_json); ?>" enctype="multipart/form-data">
-                    
                     <?php
                     // El nuevo motor de renderizado se encarga de todo el layout
                     echo generarLayout($layout, $fieldsets, $valores, $soloLectura);
                     ?>
-
                     <div class="form-footer mt-4">
+                        <?php if (!empty($json_data['parametros']['pie'])): ?>
+                            <div class="mb-2 text-muted"><?php echo htmlspecialchars($json_data['parametros']['pie']); ?></div>
+                        <?php endif; ?>
                         <button type="submit" class="btn btn-primary">Guardar</button>
                         <button type="button" class="btn btn-secondary" onclick="window.history.back();">Cancelar</button>
                     </div>

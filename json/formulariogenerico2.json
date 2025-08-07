@@ -40,7 +40,7 @@
       "redireccion": "",
       "mostrar_resumen": true,
       "limpiar_sesion": true
-    },
+    }, 
     "adjuntos": {
       "tipos_permitidos": [
         "image/jpeg", "image/png", "image/gif", "application/pdf",

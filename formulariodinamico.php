@@ -391,15 +391,11 @@ if (!isset($fieldsets_disponibles)) {
             // 3. Contenedor para REORDENAR PESTAÑAS (tabs)
             document.querySelectorAll('.sortable-tabs').forEach(tabsList => {
                 sortableInstances.push(Sortable.create(tabsList, {
-                    group: {
-                        name: 'tabs',
-                        pull: true,
-                        put: true
-                    },
+                    group: 'tabs',
                     animation: 150,
                     draggable: '.nav-item:not(.add-tab-button)',
-                    handle: '.edit-tab-icon, .handle',
-                    filter: '.add-tab-button',
+                    handle: '.nav-link', // Permite arrastrar usando toda la pestaña
+                    filter: '.add-tab-button', // Solo el botón de agregar no es arrastrable
                     onEnd: () => saveState()
                 }));
             });

@@ -55,7 +55,7 @@
       "enviar_correo": true,
       "guardar_bd": false,
       "mostrar_modal": true
-    }
+    } 
   },
   "fieldsets": {
     "datos_personales": {

@@ -31,7 +31,7 @@
         { "nombre": "id_oculto", "tipo": "hidden", "valor_predeterminado": "ABC-123" },
         { "nombre": "cv_adjunto", "etiqueta": "Adjuntar CV (file)", "tipo": "file" }
       ]
-    },
+    }, 
     "productos_factura": {
       "titulo": "Detalle de Productos (Datatable con Fórmula)",
       "campos": [

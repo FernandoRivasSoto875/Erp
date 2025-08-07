@@ -1,4 +1,3 @@
-
 <?php
 // KEEP: UNIFICADO. Incluye funciones de paleta y de generación de campos.
 // ========================================================================

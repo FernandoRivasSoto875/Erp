@@ -144,11 +144,48 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
         $html .= '<div class="row" data-row>';
         foreach ($columns as $column) {
             $width = $column['width'] ?? '12';
-            $fieldsetName = $column['fieldset'] ?? null;
-            
+            $fieldset = $column['fieldset'] ?? null;
             $html .= "<div class='col-md-{$width}' data-col-width='{$width}'>";
-            if ($fieldsetName) {
-                $html .= generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $soloLectura);
+            if ($fieldset) {
+                if (is_array($fieldset) && isset($fieldset['rows'])) {
+                    // Fieldset como grilla interna (estructura avanzada)
+                    $nombre = $fieldset['name'] ?? '';
+                    $html .= "<fieldset class='mb-4 p-3 border rounded fieldset-grid-avanzada'>";
+                    if ($nombre) {
+                        $html .= "<legend class='w-auto px-2 h6'><span class='fieldset-title-text'>".htmlspecialchars($nombre)."</span></legend>";
+                    }
+                    foreach ($fieldset['rows'] as $fsRow) {
+                        $html .= "<div class='row fieldset-grid-row'>";
+                        foreach ($fsRow['columns'] as $fsCol) {
+                            $html .= "<div class='col fieldset-grid-col'>";
+                            if (isset($fsCol['field'])) {
+                                // Buscar el campo en todos los fieldsets
+                                $campo = null;
+                                foreach ($fieldsetsConfig as $fs) {
+                                    if (isset($fs['campos'])) {
+                                        foreach ($fs['campos'] as $c) {
+                                            if ($c['nombre'] === $fsCol['field']) {
+                                                $campo = $c;
+                                                break 2;
+                                            }
+                                        }
+                                    }
+                                }
+                                if ($campo) {
+                                    $valor = $valores[$campo['nombre']] ?? $campo['valor_predeterminado'] ?? '';
+                                    $html .= generarCampo($campo, $valor, $soloLectura);
+                                } else {
+                                    $html .= "<div class='alert alert-warning'>Campo '".htmlspecialchars($fsCol['field'])."' no encontrado.</div>";
+                                }
+                            }
+                            $html .= "</div>";
+                        }
+                        $html .= "</div>";
+                    }
+                    $html .= "</fieldset>";
+                } else if (is_string($fieldset)) {
+                    $html .= generarFieldsetContenido($fieldset, $fieldsetsConfig, $valores, $soloLectura);
+                }
             }
             $html .= '</div>';
         }

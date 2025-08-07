@@ -613,28 +613,43 @@ array_walk_recursive($layout, function($item, $key) use (&$fieldsets_usados) {
 // 3. Comparar para encontrar los fieldsets disponibles.
 $fieldsets_disponibles = array_diff($todos_los_fieldsets, $fieldsets_usados);
 
-// --- DEPURACIÓN: Mostrar resultado de la lógica de paleta SOLO en modo diseño ---
-echo "<div class='solo-modo-diseno' style='background:#e0f7fa;border:2px solid #00bcd4;padding:10px;margin:10px 0;'>";
-echo "<b>Fieldsets usados:</b> ";
-var_dump($fieldsets_usados);
-echo "<br><b>Fieldsets disponibles:</b> ";
-var_dump($fieldsets_disponibles);
-echo "</div>";
+// --- DEPURACIÓN: Mostrar resultado de la lógica de paleta SOLO si se activa debug en modo diseño ---
+if (!function_exists('renderDebugButton')) {
+    function renderDebugButton($id, $label = 'Debug') {
+        return "<button type='button' class='solo-modo-diseno btn btn-warning btn-sm' style='margin:5px 0;' onclick=\"var d=document.getElementById('$id');d.style.display=d.style.display==='none'?'block':'none';\">$label</button>";
+    }
+}
+if (!function_exists('renderDebugPanel')) {
+    function renderDebugPanel($id, $content) {
+        return "<div id='$id' class='solo-modo-diseno' style='display:none;'>$content</div>";
+    }
+}
+if (!empty($modoDiseno)) {
+    echo renderDebugButton('debug_fieldsets','Depuración Fieldsets');
+    $debugContent = "<div style='background:#e0f7fa;border:2px solid #00bcd4;padding:10px;margin:10px 0;'>";
+    $debugContent .= "<b>Fieldsets usados:</b> <pre>" . htmlspecialchars(print_r($fieldsets_usados, true)) . "</pre>";
+    $debugContent .= "<b>Fieldsets disponibles:</b> <pre>" . htmlspecialchars(print_r($fieldsets_disponibles, true)) . "</pre>";
+    $debugContent .= "</div>";
+    echo renderDebugPanel('debug_fieldsets', $debugContent);
+}
 // --- FIN DE LA LÓGICA PARA LA PALETA DE COMPONENTES ---
 
-/*
-// --- DEPURACIÓN: Diagnóstico de parámetros visuales JSON ---
-if (isset($json['parametros']['CssDefault']) || isset($json['parametros']['estilo']) || isset($json['parametros']['tituloimagen']) || isset($json['parametros']['comentario']) || isset($json['parametros']['pie']) || isset($json['parametros']['fecha_creacion'])) {
-    echo "<div style='background:#fffbe7;border:2px solid #ffd700;padding:10px;margin:10px 0;'>";
-    echo "<b>Diagnóstico de parámetros visuales JSON:</b><br>";
-    if (isset($json['parametros']['CssDefault'])) echo "CssDefault: " . htmlspecialchars($json['parametros']['CssDefault']) . "<br>";
-    if (isset($json['parametros']['estilo'])) echo "estilo: " . htmlspecialchars($json['parametros']['estilo']) . "<br>";
-    if (isset($json['parametros']['tituloimagen'])) echo "tituloimagen: " . htmlspecialchars($json['parametros']['tituloimagen']) . "<br>";
-    if (isset($json['parametros']['comentario'])) echo "comentario: " . htmlspecialchars($json['parametros']['comentario']) . "<br>";
-    if (isset($json['parametros']['pie'])) echo "pie: " . htmlspecialchars($json['parametros']['pie']) . "<br>";
-    if (isset($json['parametros']['fecha_creacion'])) echo "fecha_creacion: " . htmlspecialchars($json['parametros']['fecha_creacion']) . "<br>";
-    echo "<span style='color:#888'>(Este bloque es solo para depuración y no se mostrará a los usuarios finales)</span>";
-    echo "</div>";
+// --- DEPURACIÓN: Diagnóstico de parámetros visuales JSON SOLO si se activa debug en modo diseño ---
+if (!empty($modoDiseno)) {
+    echo renderDebugButton('debug_paramjson','Depuración Parámetros JSON');
+    $debugParam = '';
+    if (isset($json['parametros']['CssDefault']) || isset($json['parametros']['estilo']) || isset($json['parametros']['tituloimagen']) || isset($json['parametros']['comentario']) || isset($json['parametros']['pie']) || isset($json['parametros']['fecha_creacion'])) {
+        $debugParam .= "<div style='background:#fffbe7;border:2px solid #ffd700;padding:10px;margin:10px 0;'>";
+        $debugParam .= "<b>Diagnóstico de parámetros visuales JSON:</b><br>";
+        if (isset($json['parametros']['CssDefault'])) $debugParam .= "CssDefault: " . htmlspecialchars($json['parametros']['CssDefault']) . "<br>";
+        if (isset($json['parametros']['estilo'])) $debugParam .= "estilo: " . htmlspecialchars($json['parametros']['estilo']) . "<br>";
+        if (isset($json['parametros']['tituloimagen'])) $debugParam .= "tituloimagen: " . htmlspecialchars($json['parametros']['tituloimagen']) . "<br>";
+        if (isset($json['parametros']['comentario'])) $debugParam .= "comentario: " . htmlspecialchars($json['parametros']['comentario']) . "<br>";
+        if (isset($json['parametros']['pie'])) $debugParam .= "pie: " . htmlspecialchars($json['parametros']['pie']) . "<br>";
+        if (isset($json['parametros']['fecha_creacion'])) $debugParam .= "fecha_creacion: " . htmlspecialchars($json['parametros']['fecha_creacion']) . "<br>";
+        $debugParam .= "<span style='color:#888'>(Este bloque es solo para depuración y no se mostrará a los usuarios finales)</span>";
+        $debugParam .= "</div>";
+    }
+    echo renderDebugPanel('debug_paramjson', $debugParam);
 }
-*/
 ?>

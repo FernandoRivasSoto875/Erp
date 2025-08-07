@@ -33,6 +33,41 @@ function renderCampoVisual(elemento) {
     }
     elemento.innerHTML = html;
 }
+
+// Renderiza un fieldset con soporte de filas y columnas internas (grilla de campos)
+function renderFieldsetVisual(elemento) {
+    if (!elemento.classList.contains('draggable-fieldset')) return;
+    let titulo = elemento.getAttribute('data-etiqueta') || elemento.querySelector('.fieldset-title')?.innerText || '';
+    let rows = parseInt(elemento.getAttribute('data-rows')) || 1;
+    let cols = parseInt(elemento.getAttribute('data-cols')) || 1;
+    // Estructura: fieldset > .fieldset-title + .fieldset-grid (rows x cols)
+    let html = `<div class='fieldset-title'>${titulo}</div><div class='fieldset-grid'></div>`;
+    elemento.innerHTML = html;
+    let grid = elemento.querySelector('.fieldset-grid');
+    for (let r = 0; r < rows; r++) {
+        let row = document.createElement('div');
+        row.className = 'fieldset-row sortable-row';
+        for (let c = 0; c < cols; c++) {
+            let col = document.createElement('div');
+            col.className = 'fieldset-col sortable-col';
+            // Aquí pueden ir campos, fieldsets anidados, grillas, etc.
+            row.appendChild(col);
+        }
+        grid.appendChild(row);
+    }
+    // Permitir drag & drop en cada celda
+    setTimeout(() => {
+        elemento.querySelectorAll('.fieldset-col').forEach(col => {
+            new Sortable(col, {
+                group: { name: 'formulario', pull: true, put: true },
+                animation: 150,
+                draggable: '.draggable-campo, .draggable-fieldset, .draggable-grilla',
+                sort: true,
+                onEnd: function(evt) { actualizarJsonDesdeUI(); }
+            });
+        });
+    }, 100);
+}
 // KEEP: Panel lateral de edición de propiedades (moderno, tipo sidebar)
 // Crea el panel lateral si no existe
 function crearSidebarEdicion() {
@@ -110,8 +145,12 @@ function abrirSidebarEdicion(elemento) {
         }
     } else if (tipo === 'fieldset') {
         let titulo = elemento.querySelector('.fieldset-title')?.innerText || '';
+        let filas = elemento.getAttribute('data-rows') || 1;
+        let cols = elemento.getAttribute('data-cols') || 1;
         html += `<label>Nombre (ID):<input type='text' value='${nombre}' id='edit-nombre' class='input-edit'/></label><br>`;
         html += `<label>Título:<input type='text' value='${titulo}' id='edit-etiqueta' class='input-edit'/></label><br>`;
+        html += `<label>Filas:<input type='number' value='${filas}' min='1' id='edit-rows' class='input-edit'/></label><br>`;
+        html += `<label>Columnas:<input type='number' value='${cols}' min='1' id='edit-cols' class='input-edit'/></label><br>`;
     } else if (tipo === 'grid') {
         let filas = elemento.getAttribute('data-rows') || 2;
         let cols = elemento.getAttribute('data-cols') || 2;
@@ -161,6 +200,12 @@ function abrirSidebarEdicion(elemento) {
         } else if (tipo === 'fieldset') {
             let titulo = elemento.querySelector('.fieldset-title');
             if (titulo) titulo.innerText = nuevaEtiqueta;
+            let filas = document.getElementById('edit-rows').value;
+            let cols = document.getElementById('edit-cols').value;
+            elemento.setAttribute('data-rows', filas);
+            elemento.setAttribute('data-cols', cols);
+            // Redibujar fieldset con nueva grilla
+            renderFieldsetVisual(elemento);
         } else if (tipo === 'grid') {
             let filas = document.getElementById('edit-rows').value;
             let cols = document.getElementById('edit-cols').value;
@@ -194,6 +239,41 @@ observer.observe(document.body, { childList: true, subtree: true });
 // Inicializa al cargar
 document.addEventListener('DOMContentLoaded', function() {
     asignarEventosEdicion();
+    // Agregar botón + para añadir pestañas en modo diseño
+    let tabsContainer = document.querySelector('.tabs-container');
+    if (tabsContainer && !document.getElementById('btn-add-tab')) {
+        let btnAddTab = document.createElement('button');
+        btnAddTab.id = 'btn-add-tab';
+        btnAddTab.innerText = '+';
+        btnAddTab.title = 'Agregar pestaña';
+        btnAddTab.style = 'margin-left:8px;font-size:1.5em;padding:0 10px;cursor:pointer;background:#e8f0fe;border:1px solid #b0c4de;border-radius:4px;';
+        tabsContainer.parentNode.insertBefore(btnAddTab, tabsContainer.nextSibling);
+        btnAddTab.onclick = function() {
+            // Crear nueva pestaña visualmente
+            let nuevaTab = document.createElement('div');
+            nuevaTab.className = 'tab';
+            let tabTitle = document.createElement('div');
+            tabTitle.className = 'tab-title';
+            tabTitle.innerText = 'Nueva Pestaña';
+            tabTitle.contentEditable = 'true';
+            tabTitle.style = 'outline:1px dashed #b0c4de;min-width:80px;display:inline-block;';
+            nuevaTab.appendChild(tabTitle);
+            let rows = document.createElement('div');
+            rows.className = 'rows';
+            nuevaTab.appendChild(rows);
+            tabsContainer.appendChild(nuevaTab);
+            actualizarJsonDesdeUI();
+            asignarEventosEdicion();
+        };
+    }
+    // Permitir editar el título de las pestañas (inline)
+    document.querySelectorAll('.tab-title').forEach(function(tabTitle) {
+        tabTitle.contentEditable = 'true';
+        tabTitle.style = 'outline:1px dashed #b0c4de;min-width:80px;display:inline-block;';
+        tabTitle.onblur = function() {
+            actualizarJsonDesdeUI();
+        };
+    });
 });
 // KEEP: Drag & Drop flexible para campos y fieldsets en formularios dinámicos
 // Requiere SortableJS (https://sortablejs.github.io/Sortable/)
@@ -235,10 +315,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             evt.item.innerText = 'Nuevo Campo';
                             evt.item.setAttribute('data-name', 'nuevo_campo_' + Date.now());
                             evt.item.classList.add('draggable-campo');
+                            renderCampoVisual(evt.item);
                         } else if (tipo === 'fieldset') {
-                            evt.item.innerText = 'Nuevo Grupo';
+                            evt.item.innerHTML = '';
                             evt.item.setAttribute('data-name', 'nuevo_fieldset_' + Date.now());
                             evt.item.classList.add('draggable-fieldset');
+                            evt.item.setAttribute('data-rows', 1);
+                            evt.item.setAttribute('data-cols', 2);
+                            renderFieldsetVisual(evt.item);
                         } else if (tipo === 'row') {
                             evt.item.innerText = 'Nueva Fila';
                             evt.item.classList.add('draggable-fila');
@@ -282,7 +366,7 @@ function actualizarJsonDesdeUI() {
     let nuevoJson = JSON.parse(JSON.stringify(window.formularioJsonOriginal));
 
 
-    // --- Reconstruir layout.main.tabs con soporte para filas, columnas, grillas y campos sueltos ---
+    // --- Reconstruir layout.main.tabs con soporte para filas, columnas, grillas, fieldsets con grilla interna y campos sueltos ---
     let tabs = [];
     document.querySelectorAll('.tabs-container > .tab').forEach(tabEl => {
         let tabObj = {
@@ -292,12 +376,34 @@ function actualizarJsonDesdeUI() {
         tabEl.querySelectorAll('.rows').forEach(rowEl => {
             let rowObj = { columns: [] };
             rowEl.querySelectorAll('.columns').forEach(colEl => {
-                // Puede contener fieldset, campo, grilla, fila, columna
                 let colObj = {};
-                // Fieldset
+                // Fieldset con grilla interna
                 let fieldset = colEl.querySelector('.draggable-fieldset');
                 if (fieldset) {
-                    colObj.fieldset = fieldset.getAttribute('data-name');
+                    let fsRows = parseInt(fieldset.getAttribute('data-rows')) || 1;
+                    let fsCols = parseInt(fieldset.getAttribute('data-cols')) || 1;
+                    let fsObj = {
+                        name: fieldset.getAttribute('data-name'),
+                        rows: []
+                    };
+                    let grid = fieldset.querySelector('.fieldset-grid');
+                    if (grid) {
+                        grid.querySelectorAll('.fieldset-row').forEach(fsRowEl => {
+                            let fsRowObj = { columns: [] };
+                            fsRowEl.querySelectorAll('.fieldset-col').forEach(fsColEl => {
+                                let fsColObj = {};
+                                let camp = fsColEl.querySelector('.draggable-campo');
+                                if (camp) fsColObj.field = camp.getAttribute('data-name');
+                                let fset = fsColEl.querySelector('.draggable-fieldset');
+                                if (fset) fsColObj.fieldset = fset.getAttribute('data-name');
+                                let gridInt = fsColEl.querySelector('.draggable-grilla');
+                                if (gridInt) fsColObj.grid = { name: gridInt.getAttribute('data-name') };
+                                fsRowObj.columns.push(fsColObj);
+                            });
+                            fsObj.rows.push(fsRowObj);
+                        });
+                    }
+                    colObj.fieldset = fsObj;
                 }
                 // Campo suelto
                 let campo = colEl.querySelector('.draggable-campo');
@@ -321,8 +427,6 @@ function actualizarJsonDesdeUI() {
                         colObj.grid.rows.push(grillaRowObj);
                     });
                 }
-                // Fila/columna anidada (opcional, para layouts avanzados)
-                // ...
                 rowObj.columns.push(colObj);
             });
             tabObj.rows.push(rowObj);

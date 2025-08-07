@@ -185,6 +185,35 @@
         {
           "title": "Todos los Controles",
           "rows": [ { "columns": [ { "width": "12", "fieldset": "todos_los_controles" } ] } ]
+        },
+        {
+          "title": "Ejemplo Grilla en Fieldset",
+          "rows": [
+            {
+              "columns": [
+                {
+                  "width": "12",
+                  "fieldset": {
+                    "name": "grupo_grilla_ejemplo",
+                    "rows": [
+                      {
+                        "columns": [
+                          { "field": "campo_texto" },
+                          { "field": "campo_numero" }
+                        ]
+                      },
+                      {
+                        "columns": [
+                          { "field": "campo_email" },
+                          { "field": "campo_select" }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
         }
       ]
     },

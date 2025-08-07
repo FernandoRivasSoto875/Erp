@@ -1,4 +1,12 @@
 <?php
+/*
+====================================================================================
+  KEEP: UNIFICADO
+  Este archivo contiene TODAS las funciones de generación de campos y paleta.
+  NO debe ser sobrescrito ni fragmentado. Mantener siempre esta versión unificada.
+  Si se actualiza, conservar este bloque y toda la lógica unificada.
+====================================================================================
+*/
 // KEEP: UNIFICADO. Incluye funciones de paleta y de generación de campos.
 // ========================================================================
 //  - Contiene las funciones para generar cada tipo de campo del formulario.

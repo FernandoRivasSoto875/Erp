@@ -225,15 +225,19 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
     }
 
     // Contenedor para los campos que se pueden ordenar
-    foreach ($fieldset['campos'] as $campo) {
-        $nombreCampo = $campo['nombre'] ?? 'sin_nombre';
-        // Envolvemos cada campo en un div para que sea un item draggable individual
-        $html .= "<div class='draggable-field' data-field-name='{$nombreCampo}'>";
-        $valor = $valores[$nombreCampo] ?? $campo['valor_predeterminado'] ?? '';
-        $html .= generarCampo($campo, $valor, $soloLectura);
-        // Añadimos el ícono de edición para el campo
-        $html .= "<i class='fas fa-pencil-alt edit-icon' data-edit-type='field' data-field-name='{$nombreCampo}' style='display:none; cursor:pointer; margin-left: 5px;'></i>";
-        $html .= "</div>"; // Cierre de draggable-field
+    if (isset($fieldset['campos']) && is_array($fieldset['campos']) && count($fieldset['campos']) > 0) {
+        foreach ($fieldset['campos'] as $campo) {
+            $nombreCampo = $campo['nombre'] ?? 'sin_nombre';
+            // Envolvemos cada campo en un div para que sea un item draggable individual
+            $html .= "<div class='draggable-field' data-field-name='{$nombreCampo}'>";
+            $valor = $valores[$nombreCampo] ?? $campo['valor_predeterminado'] ?? '';
+            $html .= generarCampo($campo, $valor, $soloLectura);
+            // Añadimos el ícono de edición para el campo
+            $html .= "<i class='fas fa-pencil-alt edit-icon' data-edit-type='field' data-field-name='{$nombreCampo}' style='display:none; cursor:pointer; margin-left: 5px;'></i>";
+            $html .= "</div>"; // Cierre de draggable-field
+        }
+    } else {
+        $html .= "<div class='alert alert-info'>Este fieldset no tiene campos definidos.</div>";
     }
 
     $html .= '</fieldset>';

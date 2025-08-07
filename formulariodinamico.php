@@ -1,4 +1,6 @@
 <?php
+// KEEP: Revisado y listo para commit. Cambios de diagnóstico y mejoras de visibilidad en modo diseño.
+// KEEP: Revisado y listo para commit. Cambios de diagnóstico y mejoras de visibilidad en modo diseño.
 // NO DEBE HABER NADA ANTES DE ESTA LÍNEA. NI ESPACIOS, NI LÍNEAS EN BLANCO.
 // filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\formulariodinamico.php
 // Paso 1: Incluir toda la lógica de negocio desde el archivo PHP dedicado.

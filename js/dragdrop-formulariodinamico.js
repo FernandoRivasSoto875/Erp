@@ -1,0 +1,372 @@
+// Renderiza visualmente un campo según sus atributos data-*
+function renderCampoVisual(elemento) {
+    if (!elemento.classList.contains('draggable-campo')) return;
+    let tipo = elemento.getAttribute('data-tipo') || 'text';
+    let etiqueta = elemento.getAttribute('data-etiqueta') || elemento.innerText || '';
+    let placeholder = elemento.getAttribute('data-placeholder') || '';
+    let requerido = elemento.getAttribute('data-required') === 'true';
+    let opciones = elemento.getAttribute('data-opciones') || '';
+    let estilo = elemento.getAttribute('data-style') || '';
+    let regex = elemento.getAttribute('data-regex') || '';
+    let mensajeRegex = elemento.getAttribute('data-regex-msg') || '';
+    let dataSource = elemento.getAttribute('data-source') || '';
+    let dataSourceValue = elemento.getAttribute('data-source-value') || '';
+    let dataSourceLabel = elemento.getAttribute('data-source-label') || '';
+
+    let html = '';
+    if (tipo === 'text' || tipo === 'email' || tipo === 'number' || tipo === 'date' || tipo === 'password') {
+        html = `<label>${etiqueta}<input type='${tipo}' placeholder='${placeholder}' ${requerido ? 'required' : ''} style='${estilo}' ${regex ? `pattern='${regex}'` : ''}></label>`;
+    } else if (tipo === 'file') {
+        html = `<label>${etiqueta}<input type='file' style='${estilo}'></label>`;
+    } else if (tipo === 'select') {
+        let opts = opciones.split(',').map(o => `<option value='${o.trim()}'>${o.trim()}</option>`).join('');
+        html = `<label>${etiqueta}<select style='${estilo}' ${requerido ? 'required' : ''}>${opts}</select></label>`;
+    } else if (tipo === 'selectdata') {
+        // Simulación visual, no consulta real
+        html = `<label>${etiqueta}<select style='${estilo}' ${requerido ? 'required' : ''}><option>[dinámico: ${dataSourceLabel || 'etiqueta'}]</option></select></label>`;
+    } else if (tipo === 'radio') {
+        let opts = opciones.split(',').map(o => `<label><input type='radio' name='${etiqueta}'>${o.trim()}</label>`).join(' ');
+        html = `<span style='${estilo}'>${etiqueta}: ${opts}</span>`;
+    } else if (tipo === 'checkbox') {
+        let opts = opciones.split(',').map(o => `<label><input type='checkbox' name='${etiqueta}'>${o.trim()}</label>`).join(' ');
+        html = `<span style='${estilo}'>${etiqueta}: ${opts}</span>`;
+    }
+    elemento.innerHTML = html;
+}
+// KEEP: Panel lateral de edición de propiedades (moderno, tipo sidebar)
+// Crea el panel lateral si no existe
+function crearSidebarEdicion() {
+    if (document.getElementById('sidebar-edicion')) return;
+    let sidebar = document.createElement('div');
+    sidebar.id = 'sidebar-edicion';
+    sidebar.style.position = 'fixed';
+    sidebar.style.top = '0';
+    sidebar.style.right = '-400px';
+    sidebar.style.width = '400px';
+    sidebar.style.height = '100%';
+    sidebar.style.background = '#fff';
+    sidebar.style.boxShadow = '-2px 0 12px rgba(0,0,0,0.15)';
+    sidebar.style.transition = 'right 0.3s';
+    sidebar.style.zIndex = '9999';
+    sidebar.innerHTML = `
+        <div style="padding:16px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+            <span id="sidebar-edicion-titulo" style="font-weight:bold;font-size:1.2em;">Propiedades</span>
+            <button id="sidebar-edicion-cerrar" style="background:none;border:none;font-size:1.5em;cursor:pointer;">&times;</button>
+        </div>
+        <div id="sidebar-edicion-body" style="padding:16px;overflow-y:auto;height:calc(100% - 56px);"></div>
+    `;
+    document.body.appendChild(sidebar);
+    document.getElementById('sidebar-edicion-cerrar').onclick = function() {
+        sidebar.style.right = '-400px';
+    };
+}
+
+// Abre el panel lateral y muestra el formulario de edición de propiedades
+function abrirSidebarEdicion(elemento) {
+    crearSidebarEdicion();
+    let sidebar = document.getElementById('sidebar-edicion');
+    let body = document.getElementById('sidebar-edicion-body');
+    let tipo = elemento.getAttribute('data-type');
+    let nombre = elemento.getAttribute('data-name') || '';
+    let html = '';
+    if (tipo === 'field') {
+        // Detección de propiedades existentes
+        let etiqueta = elemento.innerText;
+        let tipoCampo = elemento.getAttribute('data-tipo') || 'text';
+        let placeholder = elemento.getAttribute('data-placeholder') || '';
+        let requerido = elemento.getAttribute('data-required') === 'true';
+        let opciones = elemento.getAttribute('data-opciones') || '';
+        let estilo = elemento.getAttribute('data-style') || '';
+        let regex = elemento.getAttribute('data-regex') || '';
+        let mensajeRegex = elemento.getAttribute('data-regex-msg') || '';
+        let dataSource = elemento.getAttribute('data-source') || '';
+        let dataSourceValue = elemento.getAttribute('data-source-value') || '';
+        let dataSourceLabel = elemento.getAttribute('data-source-label') || '';
+        html += `<label>Nombre (ID):<input type='text' value='${nombre}' id='edit-nombre' class='input-edit'/></label><br>`;
+        html += `<label>Etiqueta:<input type='text' value='${etiqueta}' id='edit-etiqueta' class='input-edit'/></label><br>`;
+        html += `<label>Tipo:
+            <select id='edit-tipo' class='input-edit'>
+                <option value='text' ${tipoCampo==='text'?'selected':''}>Texto</option>
+                <option value='email' ${tipoCampo==='email'?'selected':''}>Email</option>
+                <option value='number' ${tipoCampo==='number'?'selected':''}>Número</option>
+                <option value='date' ${tipoCampo==='date'?'selected':''}>Fecha</option>
+                <option value='select' ${tipoCampo==='select'?'selected':''}>Select</option>
+                <option value='selectdata' ${tipoCampo==='selectdata'?'selected':''}>Select (BD)</option>
+                <option value='radio' ${tipoCampo==='radio'?'selected':''}>Radio</option>
+                <option value='checkbox' ${tipoCampo==='checkbox'?'selected':''}>Checkbox</option>
+                <option value='file' ${tipoCampo==='file'?'selected':''}>Archivo</option>
+                <option value='password' ${tipoCampo==='password'?'selected':''}>Password</option>
+            </select></label><br>`;
+        html += `<label>Placeholder:<input type='text' value='${placeholder}' id='edit-placeholder' class='input-edit'/></label><br>`;
+        html += `<label>Requerido: <input type='checkbox' id='edit-required' ${requerido?'checked':''}/></label><br>`;
+        html += `<label>Opciones (para select/radio/checkbox, separadas por coma):<input type='text' value='${opciones}' id='edit-opciones' class='input-edit'/></label><br>`;
+        html += `<label>Estilo CSS:<input type='text' value='${estilo}' id='edit-style' class='input-edit'/></label><br>`;
+        html += `<label>Regex validación:<input type='text' value='${regex}' id='edit-regex' class='input-edit'/></label><br>`;
+        html += `<label>Mensaje error regex:<input type='text' value='${mensajeRegex}' id='edit-regex-msg' class='input-edit'/></label><br>`;
+        if (tipoCampo === 'selectdata') {
+            html += `<label>Data Source (SQL):<input type='text' value='${dataSource}' id='edit-datasource' class='input-edit'/></label><br>`;
+            html += `<label>Campo Valor:<input type='text' value='${dataSourceValue}' id='edit-datasource-value' class='input-edit'/></label><br>`;
+            html += `<label>Campo Etiqueta:<input type='text' value='${dataSourceLabel}' id='edit-datasource-label' class='input-edit'/></label><br>`;
+        }
+    } else if (tipo === 'fieldset') {
+        let titulo = elemento.querySelector('.fieldset-title')?.innerText || '';
+        html += `<label>Nombre (ID):<input type='text' value='${nombre}' id='edit-nombre' class='input-edit'/></label><br>`;
+        html += `<label>Título:<input type='text' value='${titulo}' id='edit-etiqueta' class='input-edit'/></label><br>`;
+    } else if (tipo === 'grid') {
+        let filas = elemento.getAttribute('data-rows') || 2;
+        let cols = elemento.getAttribute('data-cols') || 2;
+        html += `<label>Nombre (ID):<input type='text' value='${nombre}' id='edit-nombre' class='input-edit'/></label><br>`;
+        html += `<label>Filas:<input type='number' value='${filas}' min='1' id='edit-rows' class='input-edit'/></label><br>`;
+        html += `<label>Columnas:<input type='number' value='${cols}' min='1' id='edit-cols' class='input-edit'/></label><br>`;
+    }
+    html += `<button id='guardar-propiedades' style='margin-top:16px;padding:8px 16px;'>Guardar</button>`;
+    body.innerHTML = html;
+    sidebar.style.right = '0';
+
+    // Guardar cambios
+    document.getElementById('guardar-propiedades').onclick = function() {
+        let nuevoNombre = document.getElementById('edit-nombre').value;
+        let nuevaEtiqueta = document.getElementById('edit-etiqueta')?.value;
+        elemento.setAttribute('data-name', nuevoNombre);
+        if (tipo === 'field') {
+            // Actualiza atributos
+            let nuevoTipo = document.getElementById('edit-tipo').value;
+            let nuevoPlaceholder = document.getElementById('edit-placeholder').value;
+            let nuevoRequerido = document.getElementById('edit-required').checked;
+            let nuevasOpciones = document.getElementById('edit-opciones').value;
+            let nuevoEstilo = document.getElementById('edit-style').value;
+            let nuevoRegex = document.getElementById('edit-regex').value;
+            let nuevoRegexMsg = document.getElementById('edit-regex-msg').value;
+            elemento.setAttribute('data-tipo', nuevoTipo);
+            elemento.setAttribute('data-placeholder', nuevoPlaceholder);
+            elemento.setAttribute('data-required', nuevoRequerido);
+            elemento.setAttribute('data-opciones', nuevasOpciones);
+            elemento.setAttribute('data-style', nuevoEstilo);
+            elemento.setAttribute('data-regex', nuevoRegex);
+            elemento.setAttribute('data-regex-msg', nuevoRegexMsg);
+            elemento.setAttribute('data-etiqueta', nuevaEtiqueta);
+            if (nuevoTipo === 'selectdata') {
+                let ds = document.getElementById('edit-datasource').value;
+                let dsv = document.getElementById('edit-datasource-value').value;
+                let dsl = document.getElementById('edit-datasource-label').value;
+                elemento.setAttribute('data-source', ds);
+                elemento.setAttribute('data-source-value', dsv);
+                elemento.setAttribute('data-source-label', dsl);
+            } else {
+                elemento.removeAttribute('data-source');
+                elemento.removeAttribute('data-source-value');
+                elemento.removeAttribute('data-source-label');
+            }
+            renderCampoVisual(elemento);
+        } else if (tipo === 'fieldset') {
+            let titulo = elemento.querySelector('.fieldset-title');
+            if (titulo) titulo.innerText = nuevaEtiqueta;
+        } else if (tipo === 'grid') {
+            let filas = document.getElementById('edit-rows').value;
+            let cols = document.getElementById('edit-cols').value;
+            elemento.setAttribute('data-rows', filas);
+            elemento.setAttribute('data-cols', cols);
+            // (Opcional) Redibujar la grilla si cambian filas/columnas
+        }
+        sidebar.style.right = '-400px';
+        actualizarJsonDesdeUI();
+        setTimeout(asignarEventosEdicion, 100); // Refresca eventos
+    };
+}
+
+// Asigna evento click a todos los elementos editables del formulario
+function asignarEventosEdicion() {
+    document.querySelectorAll('.draggable-campo, .draggable-fieldset, .draggable-grilla').forEach(el => {
+        el.onclick = function(e) {
+            e.stopPropagation();
+            abrirSidebarEdicion(this);
+        };
+        el.style.cursor = 'pointer';
+    });
+}
+
+// Inicializar eventos de edición tras cada render/movimiento
+const observer = new MutationObserver(function() {
+    asignarEventosEdicion();
+});
+observer.observe(document.body, { childList: true, subtree: true });
+
+// Inicializa al cargar
+document.addEventListener('DOMContentLoaded', function() {
+    asignarEventosEdicion();
+});
+// KEEP: Drag & Drop flexible para campos y fieldsets en formularios dinámicos
+// Requiere SortableJS (https://sortablejs.github.io/Sortable/)
+
+// Inicializa drag & drop en todas las zonas droppables del formulario
+
+// KEEP: Inicializa la paleta de objetos para clonar (campo, grupo, fila, columna, grilla)
+
+// KEEP: Inicialización avanzada de drag & drop para máxima flexibilidad
+document.addEventListener('DOMContentLoaded', function() {
+    // Paleta de objetos (debe tener clase .sortable-paleta)
+    var paleta = document.querySelector('.sortable-paleta');
+    if (paleta) {
+        new Sortable(paleta, {
+            group: { name: 'formulario', pull: 'clone', put: false },
+            sort: false,
+            animation: 150,
+            draggable: '.objeto-paleta'
+        });
+    }
+
+    // Todas las zonas droppables posibles
+    const zonas = [
+        '.sortable-tab', '.sortable-row', '.sortable-col', '.sortable-fieldset', '.sortable-campo', '.sortable-fuera',
+        '.sortable-grilla', '.grilla-row', '.grilla-col'
+    ];
+    zonas.forEach(selector => {
+        document.querySelectorAll(selector).forEach(function(el) {
+            new Sortable(el, {
+                group: { name: 'formulario', pull: true, put: true },
+                animation: 150,
+                draggable: '.draggable-fieldset, .draggable-campo, .draggable-fila, .draggable-col, .draggable-grilla',
+                sort: true,
+                onAdd: function(evt) {
+                    // Si el origen es la paleta, clonar y crear nuevo objeto
+                    if (evt.from.classList.contains('sortable-paleta')) {
+                        let tipo = evt.item.getAttribute('data-type');
+                        if (tipo === 'field') {
+                            evt.item.innerText = 'Nuevo Campo';
+                            evt.item.setAttribute('data-name', 'nuevo_campo_' + Date.now());
+                            evt.item.classList.add('draggable-campo');
+                        } else if (tipo === 'fieldset') {
+                            evt.item.innerText = 'Nuevo Grupo';
+                            evt.item.setAttribute('data-name', 'nuevo_fieldset_' + Date.now());
+                            evt.item.classList.add('draggable-fieldset');
+                        } else if (tipo === 'row') {
+                            evt.item.innerText = 'Nueva Fila';
+                            evt.item.classList.add('draggable-fila');
+                        } else if (tipo === 'col') {
+                            evt.item.innerText = 'Nueva Columna';
+                            evt.item.classList.add('draggable-col');
+                        } else if (tipo === 'grid') {
+                            let rows = evt.item.getAttribute('data-rows') || 2;
+                            let cols = evt.item.getAttribute('data-cols') || 2;
+                            evt.item.innerText = 'Grilla ' + rows + 'x' + cols;
+                            evt.item.classList.add('draggable-grilla');
+                            // Crear estructura DOM para la grilla
+                            let grilla = document.createElement('div');
+                            grilla.className = 'sortable-grilla';
+                            for (let r = 0; r < rows; r++) {
+                                let grillaRow = document.createElement('div');
+                                grillaRow.className = 'grilla-row';
+                                for (let c = 0; c < cols; c++) {
+                                    let grillaCol = document.createElement('div');
+                                    grillaCol.className = 'grilla-col';
+                                    grillaRow.appendChild(grillaCol);
+                                }
+                                grilla.appendChild(grillaRow);
+                            }
+                            evt.item.appendChild(grilla);
+                        }
+                    }
+                },
+                onEnd: function (evt) {
+                    actualizarJsonDesdeUI();
+                }
+            });
+        });
+    });
+});
+
+// KEEP: Actualiza el JSON global según la nueva estructura visual
+
+// KEEP: Reconstruye el JSON de layout y elementos_fuera desde el DOM visual
+function actualizarJsonDesdeUI() {
+    let nuevoJson = JSON.parse(JSON.stringify(window.formularioJsonOriginal));
+
+
+    // --- Reconstruir layout.main.tabs con soporte para filas, columnas, grillas y campos sueltos ---
+    let tabs = [];
+    document.querySelectorAll('.tabs-container > .tab').forEach(tabEl => {
+        let tabObj = {
+            title: tabEl.querySelector('.tab-title')?.innerText || 'Pestaña',
+            rows: []
+        };
+        tabEl.querySelectorAll('.rows').forEach(rowEl => {
+            let rowObj = { columns: [] };
+            rowEl.querySelectorAll('.columns').forEach(colEl => {
+                // Puede contener fieldset, campo, grilla, fila, columna
+                let colObj = {};
+                // Fieldset
+                let fieldset = colEl.querySelector('.draggable-fieldset');
+                if (fieldset) {
+                    colObj.fieldset = fieldset.getAttribute('data-name');
+                }
+                // Campo suelto
+                let campo = colEl.querySelector('.draggable-campo');
+                if (campo && !fieldset) {
+                    colObj.field = campo.getAttribute('data-name');
+                }
+                // Grilla
+                let grilla = colEl.querySelector('.draggable-grilla');
+                if (grilla) {
+                    colObj.grid = { rows: [], name: grilla.getAttribute('data-name') || '' };
+                    grilla.querySelectorAll('.grilla-row').forEach(grillaRow => {
+                        let grillaRowObj = { columns: [] };
+                        grillaRow.querySelectorAll('.grilla-col').forEach(grillaCol => {
+                            let grillaColObj = {};
+                            let fset = grillaCol.querySelector('.draggable-fieldset');
+                            if (fset) grillaColObj.fieldset = fset.getAttribute('data-name');
+                            let camp = grillaCol.querySelector('.draggable-campo');
+                            if (camp && !fset) grillaColObj.field = camp.getAttribute('data-name');
+                            grillaRowObj.columns.push(grillaColObj);
+                        });
+                        colObj.grid.rows.push(grillaRowObj);
+                    });
+                }
+                // Fila/columna anidada (opcional, para layouts avanzados)
+                // ...
+                rowObj.columns.push(colObj);
+            });
+            tabObj.rows.push(rowObj);
+        });
+        tabs.push(tabObj);
+    });
+    if (nuevoJson.layout && nuevoJson.layout.main && nuevoJson.layout.main.tabs) {
+        nuevoJson.layout.main.tabs = tabs;
+    }
+
+    // --- Reconstruir elementos_fuera ---
+    let elementosFuera = [];
+    document.querySelectorAll('#elementos-fuera-container .draggable-fieldset, #elementos-fuera-container .draggable-campo').forEach(el => {
+        let tipo = el.classList.contains('draggable-fieldset') ? 'fieldset' : 'field';
+        elementosFuera.push({ type: tipo, name: el.getAttribute('data-name') });
+    });
+    nuevoJson.elementos_fuera = elementosFuera;
+
+    // Puedes agregar aquí reconstrucción de filas, columnas, grillas, campos sueltos, etc.
+
+    guardarJson(nuevoJson);
+}
+
+// KEEP: Guarda el JSON actualizado en el backend
+function guardarJson(json) {
+    fetch('guardar_json.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(json)
+    })
+    .then(resp => resp.json())
+    .then(data => {
+        if(data.success) {
+            alert('Cambios guardados');
+        } else {
+            alert('Error al guardar');
+        }
+    });
+}
+
+// KEEP: Marca visualmente los cambios KEEP en la UI (opcional)
+function marcarKeepUI() {
+    document.querySelectorAll('[data-keep]').forEach(el => {
+        el.style.border = '2px solid orange';
+        el.title = 'KEEP: Modificado';
+    });
+}

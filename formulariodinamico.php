@@ -388,18 +388,26 @@ if (!isset($fieldsets_disponibles)) {
                 }));
             });
 
-            // 3. Contenedor para REORDENAR PESTAÑAS
+            // 3. Contenedor para REORDENAR PESTAÑAS (tabs)
             document.querySelectorAll('.sortable-tabs').forEach(tabsList => {
                 sortableInstances.push(Sortable.create(tabsList, {
+                    group: {
+                        name: 'tabs',
+                        pull: true,
+                        put: true
+                    },
                     animation: 150,
                     draggable: '.nav-item:not(.add-tab-button)',
+                    handle: '.edit-tab-icon, .handle',
+                    filter: '.add-tab-button',
                     onEnd: () => saveState()
                 }));
             });
 
-            // --- Paleta de Componentes: Hacer arrastrables los fieldsets disponibles ---
-            document.querySelectorAll('#paleta-componentes .draggable-fieldset').forEach(el => {
-                Sortable.create(el, {
+            // --- Paleta de Componentes: Hacer arrastrables los fieldsets disponibles (como grupo, no individualmente) ---
+            const paletaComponentes = document.getElementById('paleta-componentes');
+            if (paletaComponentes) {
+                sortableInstances.push(Sortable.create(paletaComponentes, {
                     group: {
                         name: 'shared-blocks',
                         pull: 'clone',
@@ -408,16 +416,16 @@ if (!isset($fieldsets_disponibles)) {
                     sort: false,
                     animation: 150,
                     handle: '.handle',
+                    draggable: '.draggable-fieldset',
                     onStart: function (evt) {
-                        // Visual feedback opcional
-                        el.classList.add('sortable-ghost');
+                        evt.item.classList.add('sortable-ghost');
                     },
                     onEnd: function (evt) {
-                        el.classList.remove('sortable-ghost');
+                        evt.item.classList.remove('sortable-ghost');
                         saveState();
                     }
-                });
-            });
+                }));
+            }
 
             // --- Paleta de Tipos de Control: Hacer arrastrables los tipos (clonables) ---
             document.querySelectorAll('#paleta-tipos-control .draggable-tipo').forEach(el => {

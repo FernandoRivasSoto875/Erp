@@ -59,7 +59,7 @@
   },
   "fieldsets": {
     "datos_personales": {
-      "titulo": "Datos Personales",
+      "titulo": "Datos Personales.......................",
       "campos": [
         { "nombre": "nombre_completo", "etiqueta": "Nombre Completo (text)", "tipo": "text", "placeholder": "Ingrese su nombre", "atributos": { "required": true } },
         { "nombre": "email", "etiqueta": "Correo Electrónico (email)", "tipo": "email", "placeholder": "ejemplo@dominio.com" },

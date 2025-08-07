@@ -575,9 +575,12 @@ echo "<br><b> 24layout</b>: ";
 var_dump(isset($layout) ? $layout : 'NO DEFINIDO');
 echo "</div>";
 
+// Asegurar que $layout sea un array antes de usar array_walk_recursive
 $todos_los_fieldsets = array_keys(isset($fieldsets) ? $fieldsets : []);
 $fieldsets_usados = [];
-
+if (!is_array($layout)) {
+    $layout = [];
+}
 // 2. Recorrer el layout para encontrar los fieldsets que ya están en uso.
 array_walk_recursive($layout, function($item, $key) use (&$fieldsets_usados) {
     if (is_string($item) && $key !== 'type' && $key !== 'width' && !in_array($item, $fieldsets_usados)) {

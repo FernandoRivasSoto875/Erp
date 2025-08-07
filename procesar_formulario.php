@@ -184,6 +184,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['json_file'])) {
     $config = json_decode(file_get_contents($jsonPath), true);
     $params = $config['parametros'] ?? [];
     $formData = $_POST;
+    // --- MANEJO DE ARCHIVOS ADJUNTOS ---
+    $archivosAdjuntos = [];
+    if (!empty($_FILES)) {
+        $tiposPermitidos = $params['adjuntos']['tipos_permitidos'] ?? [];
+        $tamanoMaximoMB = $params['adjuntos']['tamano_maximo_mb'] ?? 5;
+        $tamanoMaximoBytes = $tamanoMaximoMB * 1024 * 1024;
+        foreach ($_FILES as $campo => $archivo) {
+            if ($archivo['error'] === UPLOAD_ERR_OK) {
+                $tipo = $archivo['type'];
+                $tamano = $archivo['size'];
+                if ((!empty($tiposPermitidos) && !in_array($tipo, $tiposPermitidos)) || $tamano > $tamanoMaximoBytes) {
+                    continue; // Salta archivos no válidos
+                }
+                $nombreSeguro = preg_replace('/[^A-Za-z0-9._-]/', '_', basename($archivo['name']));
+                $rutaDestino = $uploadsDir . uniqid('adj_') . '_' . $nombreSeguro;
+                if (move_uploaded_file($archivo['tmp_name'], $rutaDestino)) {
+                    $archivosAdjuntos[] = $rutaDestino;
+                    $formData[$campo] = $nombreSeguro;
+                }
+            }
+        }
+    }
     $fieldsets = $config['fieldsets'] ?? [];
     $uploadsDir = 'uploads/';
     if (!is_dir($uploadsDir)) mkdir($uploadsDir, 0755, true);
@@ -209,7 +231,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['json_file'])) {
         if (in_array('htmlc', $formatosAgenerar) && !empty($params['destinatario'])) {
             $headers = "MIME-Version: 1.0\r\nContent-type:text/html;charset=UTF-8\r\n";
             $headers .= 'From: <' . ($params['mailDe'] ?? 'noreply@example.com') . ">\r\n";
-            mail($params['destinatario'], $params['subject'], $cuerpoHtml, $headers);
+            // Adjuntar archivos si existen
+            if (!empty($archivosAdjuntos)) {
+                $boundary = md5(uniqid(time()));
+                $headers .= "Content-Type: multipart/mixed; boundary=\"$boundary\"\r\n";
+                $mensaje = "--$boundary\r\n";
+                $mensaje .= "Content-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n";
+                $mensaje .= $cuerpoHtml . "\r\n";
+                foreach ($archivosAdjuntos as $rutaAdj) {
+                    $nombreAdj = basename($rutaAdj);
+                    $contenidoAdj = chunk_split(base64_encode(file_get_contents($rutaAdj)));
+                    $tipoAdj = mime_content_type($rutaAdj);
+                    $mensaje .= "--$boundary\r\n";
+                    $mensaje .= "Content-Type: $tipoAdj; name=\"$nombreAdj\"\r\n";
+                    $mensaje .= "Content-Disposition: attachment; filename=\"$nombreAdj\"\r\n";
+                    $mensaje .= "Content-Transfer-Encoding: base64\r\n\r\n";
+                    $mensaje .= $contenidoAdj . "\r\n";
+                }
+                $mensaje .= "--$boundary--";
+                mail($params['destinatario'], $params['subject'], $mensaje, $headers);
+            } else {
+                mail($params['destinatario'], $params['subject'], $cuerpoHtml, $headers);
+            }
             $formatosGenerados[] = 'Correo (htmlc)';
         }
         if (in_array('html', $formatosAgenerar)) {

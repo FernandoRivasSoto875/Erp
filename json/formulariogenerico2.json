@@ -38,7 +38,7 @@
         {
           "nombre": "detalle_productos",
           "tipo": "datatable",
-          "etiqueta": "Productos",
+          "etiqueta": "Producto",
           "columnas": [
             { "nombre": "producto", "etiqueta": "Producto", "tipo": "text" },
             { "nombre": "precio", "etiqueta": "Precio", "tipo": "number", "atributos": { "class": "calculo-datatable" } },

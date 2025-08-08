@@ -1,4 +1,5 @@
 // --- FUNCION AUXILIAR FALTANTE: renderRows ---
+<?php
 function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
     $html = '';
     foreach ($rows as $row) {
@@ -772,3 +773,4 @@ if (!empty($modoDiseno)) {
     $debugContent .= "</div>";
     echo renderDebugPanel('debug_fieldsets', $debugContent);
 }
+?>

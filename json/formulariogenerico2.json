@@ -58,165 +58,164 @@
     }
   },
   "fieldsets": {
-        "datos_personales": {
-          "titulo": "Datos Personales.......................",
-          "campos": [
-            { "nombre": "nombre_completo", "etiqueta": "Nombre Completo (text)", "tipo": "text", "placeholder": "Ingrese su nombre", "atributos": { "required": true } },
-            { "nombre": "email", "etiqueta": "Correo Electrónico (email)", "tipo": "email", "placeholder": "ejemplo@dominio.com" },
-            { "nombre": "clave_acceso", "etiqueta": "Contraseña (password)", "tipo": "password" }
-          ]
-        },
-        "datos_contacto": {
-          "titulo": "Información de Contacto",
-          "campos": [
-            { "nombre": "telefono", "etiqueta": "Teléfono (text)", "tipo": "text", "placeholder": "+56 9 1234 5678" },
-            { "nombre": "direccion", "etiqueta": "Dirección (textarea)", "tipo": "textarea", "placeholder": "Calle, número, comuna, ciudad" }
-          ]
-        },
-        "campos_variados": {
-          "titulo": "Tipos de Campos Variados",
-          "campos": [
-            { "nombre": "fecha_nacimiento", "etiqueta": "Fecha de Nacimiento (date)", "tipo": "date" },
-            { "nombre": "edad", "etiqueta": "Edad (number)", "tipo": "number", "placeholder": "30" },
-            { "nombre": "genero", "etiqueta": "Género (radio)", "tipo": "radio", "opciones": { "masculino": "Masculino", "femenino": "Femenino", "otro": "Otro" } },
-            { "nombre": "pais_db", "etiqueta": "País (cargado desde BD)", "tipo": "select", "data-source": { "tabla": "Pais", "campo_valor": "PaiDes", "campo_etiqueta": "nombre_pais" } },
-            { "nombre": "ciudad_db", "etiqueta": "Ciudad (depende del país)", "tipo": "select", "data-source": { "tabla": "Ciudad", "campo_valor": "id_ciudad", "campo_etiqueta": "nombre_ciudad", "depende_de": "pais_db", "depende_columna": "id_pais_fk" } },
-            { "nombre": "habilidades", "etiqueta": "Habilidades (select2 múltiple)", "tipo": "select", "atributos": { "multiple": "multiple" }, "opciones": { "php": "PHP", "js": "JavaScript", "css": "CSS", "sql": "SQL", "react": "React" } },
-            { "nombre": "acepta_notificaciones", "etiqueta": "Acepta recibir notificaciones (checkbox)", "tipo": "checkbox", "opciones": { "si": "" } },
-            { "nombre": "id_oculto", "tipo": "hidden", "valor_predeterminado": "ABC-123" },
-            { "nombre": "cv_adjunto", "etiqueta": "Adjuntar CV (file)", "tipo": "file" }
-          ]
-        },
-        "productos_factura": {
-          "titulo": "Detalle de Productos (Datatable con Fórmula)",
-          "campos": [
-            {
-              "nombre": "detalle_productos",
-              "tipo": "datatable",
-              "etiqueta": "Producto",
-              "columnas": [
-                { "nombre": "producto", "etiqueta": "Producto", "tipo": "text" },
-                { "nombre": "precio", "etiqueta": "Precio", "tipo": "number", "atributos": { "class": "calculo-datatable" } },
-                { "nombre": "cantidad", "etiqueta": "Cantidad", "tipo": "number", "atributos": { "class": "calculo-datatable" } },
-                { "nombre": "total_linea", "etiqueta": "Total", "tipo": "number", "atributos": { "readonly": true }, "data-formula": "precio * cantidad" }
-              ]
-            }
-          ]
-        },
-        "resumen_factura": {
-            "titulo": "Resumen y Totales",
-            "campos": [
-                {
-                    "nombre": "total_factura",
-                    "etiqueta": "Total Factura (Fórmula)",
-                    "tipo": "number",
-                    "atributos": { "readonly": true, "style": "font-weight: bold; font-size: 1.2em;" },
-                    "data-formula": "SUM(detalle_productos.total_linea)"
-                }
-            ]
-        },
-        "header_info": {
-          "titulo": "Información General del Formulario",
-          "campos": [
-            { "nombre": "tipo_solicitud", "etiqueta": "Tipo de Solicitud", "tipo": "text", "valor_predeterminado": "Postulación Completa", "atributos": { "readonly": true } }
-          ]
-        },
-        "footer_legal": {
-          "titulo": "Términos y Condiciones",
-          "campos": [
-            { "nombre": "aceptar_terminos", "etiqueta": "Acepto los términos y condiciones", "tipo": "checkbox", "opciones": { "si": "" } }
-          ]
-        },
-        "todos_los_controles": {
-          "titulo": "Todos los Tipos de Control",
-          "campos": [
-            { "nombre": "campo_texto", "etiqueta": "Campo de Texto", "tipo": "text", "placeholder": "Texto simple" },
-            { "nombre": "campo_textarea", "etiqueta": "Área de Texto", "tipo": "textarea", "placeholder": "Texto largo" },
-            { "nombre": "campo_numero", "etiqueta": "Número", "tipo": "number", "placeholder": "123" },
-            { "nombre": "campo_email", "etiqueta": "Correo Electrónico", "tipo": "email", "placeholder": "correo@dominio.com" },
-            { "nombre": "campo_password", "etiqueta": "Contraseña", "tipo": "password" },
-            { "nombre": "campo_select", "etiqueta": "Select (Opciones Fijas)", "tipo": "select", "opciones": { "op1": "Opción 1", "op2": "Opción 2", "op3": "Opción 3" } },
-            { "nombre": "campo_selectdata", "etiqueta": "Select (Desde BD)", "tipo": "selectdata", "query": "SELECT id, nombre FROM tabla_ejemplo", "campo_valor": "id", "campo_etiqueta": "nombre" },
-            { "nombre": "campo_radio", "etiqueta": "Radio", "tipo": "radio", "opciones": { "a": "Opción A", "b": "Opción B" } },
-            { "nombre": "campo_checkbox", "etiqueta": "Checkbox", "tipo": "checkbox", "opciones": { "x": "Marca X", "y": "Marca Y" } },
-            { "nombre": "campo_file", "etiqueta": "Archivo", "tipo": "file" },
-            { "nombre": "campo_date", "etiqueta": "Fecha", "tipo": "date" },
-            { "nombre": "campo_hidden", "tipo": "hidden", "valor_predeterminado": "oculto123" },
-            { "nombre": "campo_select_multiple", "etiqueta": "Select Múltiple", "tipo": "select", "atributos": { "multiple": "multiple" }, "opciones": { "uno": "Uno", "dos": "Dos", "tres": "Tres" } },
-            { "nombre": "campo_datatable", "etiqueta": "Datatable (Mixto)", "tipo": "datatable", "columnas": [
-              { "nombre": "col_texto", "etiqueta": "Columna Texto", "tipo": "text" },
-              { "nombre": "col_numero", "etiqueta": "Columna Número", "tipo": "number" },
-              { "nombre": "col_select", "etiqueta": "Columna Select", "tipo": "select", "opciones": { "a": "A", "b": "B" } },
-              { "nombre": "col_selectdata", "etiqueta": "Columna Select BD", "tipo": "selectdata", "query": "SELECT id, nombre FROM tabla_columna", "campo_valor": "id", "campo_etiqueta": "nombre" },
-              { "nombre": "col_fecha", "etiqueta": "Columna Fecha", "tipo": "date" },
-              { "nombre": "col_checkbox", "etiqueta": "Columna Checkbox", "tipo": "checkbox", "opciones": { "si": "Sí", "no": "No" } }
-            ] }
-          ]
-        },
-        "grupo_grilla_ejemplo": {
-          "titulo": "Grilla de Ejemplo en Fieldset",
-          "campos": [
-            {
-              "nombre": "grilla_ejemplo",
-              "tipo": "datatable",
-              "etiqueta": "Grilla de Ejemplo",
-              "columnas": [
-                { "nombre": "col1", "etiqueta": "Columna 1", "tipo": "text" },
-                { "nombre": "col2", "etiqueta": "Columna 2", "tipo": "number" },
-                { "nombre": "col3", "etiqueta": "Columna 3", "tipo": "select", "opciones": { "a": "A", "b": "B" } }
-              ]
-            }
-          ]
-        }
-      },
-      "layout": {
-        "header": {
-          "type": "header",
-          "rows": [ { "columns": [ { "width": "12", "fieldset": "header_info" } ] } ]
-        },
-        "main": {
-          "type": "tabs",
-          "tabs": [
-            {
-              "title": "Información Personal",
-              "rows": [ { "columns": [ { "width": "6", "fieldset": "datos_personales" }, { "width": "6", "fieldset": "datos_contacto" } ] } ]
-            },
-            {
-              "title": "Facturaciónn",
-              "rows": [
-                { "columns": [ { "width": "12", "fieldset": "productos_factura" } ] },
-                { "columns": [ { "width": "12", "fieldset": "resumen_factura" } ] }
-              ]
-            },
-            {
-              "title": "Campos Diversos",
-              "rows": [ { "columns": [ { "width": "12", "fieldset": "campos_variados" } ] } ]
-            },
-            {
-              "title": "Todos los Controles",
-              "rows": [ { "columns": [ { "width": "12", "fieldset": "todos_los_controles" } ] } ]
-            },
-            {
-              "title": "Ejemplo Grilla en Fieldset",
-              "rows": [
-                {
-                  "columns": [
-                    {
-                      "width": "12",
-                      "fieldset": "grupo_grilla_ejemplo"
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        "footer": {
-          "type": "footer",
-          "rows": [ { "columns": [ { "width": "12", "fieldset": "footer_legal" } ] } ]
-        }
-      }
+    "datos_personales": {
+      "titulo": "Datos Personales.......................",
+      "campos": [
+        { "nombre": "nombre_completo", "etiqueta": "Nombre Completo (text)", "tipo": "text", "placeholder": "Ingrese su nombre", "atributos": { "required": true } },
+        { "nombre": "email", "etiqueta": "Correo Electrónico (email)", "tipo": "email", "placeholder": "ejemplo@dominio.com" },
+        { "nombre": "clave_acceso", "etiqueta": "Contraseña (password)", "tipo": "password" }
+      ]
     },
+    "datos_contacto": {
+      "titulo": "Información de Contacto",
+      "campos": [
+        { "nombre": "telefono", "etiqueta": "Teléfono (text)", "tipo": "text", "placeholder": "+56 9 1234 5678" },
+        { "nombre": "direccion", "etiqueta": "Dirección (textarea)", "tipo": "textarea", "placeholder": "Calle, número, comuna, ciudad" }
+      ]
+    },
+    "campos_variados": {
+      "titulo": "Tipos de Campos Variados",
+      "campos": [
+        { "nombre": "fecha_nacimiento", "etiqueta": "Fecha de Nacimiento (date)", "tipo": "date" },
+        { "nombre": "edad", "etiqueta": "Edad (number)", "tipo": "number", "placeholder": "30" },
+        { "nombre": "genero", "etiqueta": "Género (radio)", "tipo": "radio", "opciones": { "masculino": "Masculino", "femenino": "Femenino", "otro": "Otro" } },
+        { "nombre": "pais_db", "etiqueta": "País (cargado desde BD)", "tipo": "select", "data-source": { "tabla": "Pais", "campo_valor": "PaiDes", "campo_etiqueta": "nombre_pais" } },
+        { "nombre": "ciudad_db", "etiqueta": "Ciudad (depende del país)", "tipo": "select", "data-source": { "tabla": "Ciudad", "campo_valor": "id_ciudad", "campo_etiqueta": "nombre_ciudad", "depende_de": "pais_db", "depende_columna": "id_pais_fk" } },
+        { "nombre": "habilidades", "etiqueta": "Habilidades (select2 múltiple)", "tipo": "select", "atributos": { "multiple": "multiple" }, "opciones": { "php": "PHP", "js": "JavaScript", "css": "CSS", "sql": "SQL", "react": "React" } },
+        { "nombre": "acepta_notificaciones", "etiqueta": "Acepta recibir notificaciones (checkbox)", "tipo": "checkbox", "opciones": { "si": "" } },
+        { "nombre": "id_oculto", "tipo": "hidden", "valor_predeterminado": "ABC-123" },
+        { "nombre": "cv_adjunto", "etiqueta": "Adjuntar CV (file)", "tipo": "file" }
+      ]
+    },
+    "productos_factura": {
+      "titulo": "Detalle de Productos (Datatable con Fórmula)",
+      "campos": [
+        {
+          "nombre": "detalle_productos",
+          "tipo": "datatable",
+          "etiqueta": "Producto",
+          "columnas": [
+            { "nombre": "producto", "etiqueta": "Producto", "tipo": "text" },
+            { "nombre": "precio", "etiqueta": "Precio", "tipo": "number", "atributos": { "class": "calculo-datatable" } },
+            { "nombre": "cantidad", "etiqueta": "Cantidad", "tipo": "number", "atributos": { "class": "calculo-datatable" } },
+            { "nombre": "total_linea", "etiqueta": "Total", "tipo": "number", "atributos": { "readonly": true }, "data-formula": "precio * cantidad" }
+          ]
+        }
+      ]
+    },
+    "resumen_factura": {
+      "titulo": "Resumen y Totales",
+      "campos": [
+        {
+          "nombre": "total_factura",
+          "etiqueta": "Total Factura (Fórmula)",
+          "tipo": "number",
+          "atributos": { "readonly": true, "style": "font-weight: bold; font-size: 1.2em;" },
+          "data-formula": "SUM(detalle_productos.total_linea)"
+        }
+      ]
+    },
+    "header_info": {
+      "titulo": "Información General del Formulario",
+      "campos": [
+        { "nombre": "tipo_solicitud", "etiqueta": "Tipo de Solicitud", "tipo": "text", "valor_predeterminado": "Postulación Completa", "atributos": { "readonly": true } }
+      ]
+    },
+    "footer_legal": {
+      "titulo": "Términos y Condiciones",
+      "campos": [
+        { "nombre": "aceptar_terminos", "etiqueta": "Acepto los términos y condiciones", "tipo": "checkbox", "opciones": { "si": "" } }
+      ]
+    },
+    "todos_los_controles": {
+      "titulo": "Todos los Tipos de Control",
+      "campos": [
+        { "nombre": "campo_texto", "etiqueta": "Campo de Texto", "tipo": "text", "placeholder": "Texto simple" },
+        { "nombre": "campo_textarea", "etiqueta": "Área de Texto", "tipo": "textarea", "placeholder": "Texto largo" },
+        { "nombre": "campo_numero", "etiqueta": "Número", "tipo": "number", "placeholder": "123" },
+        { "nombre": "campo_email", "etiqueta": "Correo Electrónico", "tipo": "email", "placeholder": "correo@dominio.com" },
+        { "nombre": "campo_password", "etiqueta": "Contraseña", "tipo": "password" },
+        { "nombre": "campo_select", "etiqueta": "Select (Opciones Fijas)", "tipo": "select", "opciones": { "op1": "Opción 1", "op2": "Opción 2", "op3": "Opción 3" } },
+        { "nombre": "campo_selectdata", "etiqueta": "Select (Desde BD)", "tipo": "selectdata", "query": "SELECT id, nombre FROM tabla_ejemplo", "campo_valor": "id", "campo_etiqueta": "nombre" },
+        { "nombre": "campo_radio", "etiqueta": "Radio", "tipo": "radio", "opciones": { "a": "Opción A", "b": "Opción B" } },
+        { "nombre": "campo_checkbox", "etiqueta": "Checkbox", "tipo": "checkbox", "opciones": { "x": "Marca X", "y": "Marca Y" } },
+        { "nombre": "campo_file", "etiqueta": "Archivo", "tipo": "file" },
+        { "nombre": "campo_date", "etiqueta": "Fecha", "tipo": "date" },
+        { "nombre": "campo_hidden", "tipo": "hidden", "valor_predeterminado": "oculto123" },
+        { "nombre": "campo_select_multiple", "etiqueta": "Select Múltiple", "tipo": "select", "atributos": { "multiple": "multiple" }, "opciones": { "uno": "Uno", "dos": "Dos", "tres": "Tres" } },
+        { "nombre": "campo_datatable", "etiqueta": "Datatable (Mixto)", "tipo": "datatable", "columnas": [
+          { "nombre": "col_texto", "etiqueta": "Columna Texto", "tipo": "text" },
+          { "nombre": "col_numero", "etiqueta": "Columna Número", "tipo": "number" },
+          { "nombre": "col_select", "etiqueta": "Columna Select", "tipo": "select", "opciones": { "a": "A", "b": "B" } },
+          { "nombre": "col_selectdata", "etiqueta": "Columna Select BD", "tipo": "selectdata", "query": "SELECT id, nombre FROM tabla_columna", "campo_valor": "id", "campo_etiqueta": "nombre" },
+          { "nombre": "col_fecha", "etiqueta": "Columna Fecha", "tipo": "date" },
+          { "nombre": "col_checkbox", "etiqueta": "Columna Checkbox", "tipo": "checkbox", "opciones": { "si": "Sí", "no": "No" } }
+        ] }
+      ]
+    },
+    "grupo_grilla_ejemplo": {
+      "titulo": "Grilla de Ejemplo en Fieldset",
+      "campos": [
+        {
+          "nombre": "grilla_ejemplo",
+          "tipo": "datatable",
+          "etiqueta": "Grilla de Ejemplo",
+          "columnas": [
+            { "nombre": "col1", "etiqueta": "Columna 1", "tipo": "text" },
+            { "nombre": "col2", "etiqueta": "Columna 2", "tipo": "number" },
+            { "nombre": "col3", "etiqueta": "Columna 3", "tipo": "select", "opciones": { "a": "A", "b": "B" } }
+          ]
+        }
+      ]
+    }
+  },
+  "layout": {
+    "header": {
+      "type": "header",
+      "rows": [ { "columns": [ { "width": "12", "fieldset": "header_info" } ] } ]
+    },
+    "main": {
+      "type": "tabs",
+      "tabs": [
+        {
+          "title": "Información Personal",
+          "rows": [ { "columns": [ { "width": "6", "fieldset": "datos_personales" }, { "width": "6", "fieldset": "datos_contacto" } ] } ]
+        },
+        {
+          "title": "Facturaciónn",
+          "rows": [
+            { "columns": [ { "width": "12", "fieldset": "productos_factura" } ] },
+            { "columns": [ { "width": "12", "fieldset": "resumen_factura" } ] }
+          ]
+        },
+        {
+          "title": "Campos Diversos",
+          "rows": [ { "columns": [ { "width": "12", "fieldset": "campos_variados" } ] } ]
+        },
+        {
+          "title": "Todos los Controles",
+          "rows": [ { "columns": [ { "width": "12", "fieldset": "todos_los_controles" } ] } ]
+        },
+        {
+          "title": "Ejemplo Grilla en Fieldset",
+          "rows": [
+            {
+              "columns": [
+                {
+                  "width": "12",
+                  "fieldset": "grupo_grilla_ejemplo"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "footer": {
+      "type": "footer",
+      "rows": [ { "columns": [ { "width": "12", "fieldset": "footer_legal" } ] } ]
+    }
+  },
   "elementos_fuera": []
 }
 

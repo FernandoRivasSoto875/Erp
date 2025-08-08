@@ -1,7 +1,71 @@
 <?php
-// KEEP: Revisado y listo para commit. Cambios recientes validados.
-// KEEP: Revisado y listo para commit. Cambios recientes validados.
-// Elimina cualquier salida previa para evitar errores de headers
+function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
+    $html = '';
+    foreach ($rows as $row) {
+        $columns = $row['columns'] ?? [];
+        $html .= '<div class="row" data-row>';
+        foreach ($columns as $column) {
+            $width = $column['width'] ?? '12';
+            $fieldset = $column['fieldset'] ?? null;
+            $html .= "<div class='col-md-{$width}' data-col-width='{$width}'>";
+            if ($fieldset) {
+                if (is_array($fieldset) && isset($fieldset['rows'])) {
+                    $nombre = $fieldset['name'] ?? '';
+                    $html .= "<div class='draggable-fieldset sortable-fieldset' data-type='fieldset' data-name='".htmlspecialchars($nombre)."'>";
+                    $html .= "<fieldset class='mb-4 p-3 border rounded fieldset-grid-avanzada'>";
+                    if ($nombre) {
+                        $html .= "<legend class='w-auto px-2 h6'><span class='fieldset-title-text editable-label' contenteditable='false' data-edit-type='fieldset' data-fieldset-name='".htmlspecialchars($nombre)."'>".htmlspecialchars($nombre)."</span></legend>";
+                    }
+                    foreach ($fieldset['rows'] as $fsRow) {
+                        $html .= "<div class='row fieldset-grid-row sortable-row'>";
+                        foreach ($fsRow['columns'] as $fsCol) {
+                            $html .= "<div class='col fieldset-grid-col sortable-col' style='min-height:48px;'>";
+                            if (isset($fsCol['field'])) {
+                                $campo = null;
+                                foreach ($fieldsetsConfig as $fs) {
+                                    if (isset($fs['campos'])) {
+                                        foreach ($fs['campos'] as $c) {
+                                            if ($c['nombre'] === $fsCol['field']) {
+                                                $campo = $c;
+                                                break 2;
+                                            }
+                                        }
+                                    }
+                                }
+                                if ($campo) {
+                                    $valor = $valores[$campo['nombre']] ?? $campo['valor_predeterminado'] ?? '';
+                                    $html .= "<div class='draggable-campo sortable-campo' data-type='field' data-name='".htmlspecialchars($campo['nombre'])."' data-tipo='".htmlspecialchars($campo['tipo'])."' ";
+                                    if (!empty($campo['etiqueta'])) $html .= "data-etiqueta='".htmlspecialchars($campo['etiqueta'])."' ";
+                                    if (!empty($campo['placeholder'])) $html .= "data-placeholder='".htmlspecialchars($campo['placeholder'])."' ";
+                                    if (!empty($campo['opciones'])) $html .= "data-opciones='".htmlspecialchars(is_array($campo['opciones']) ? implode(',', array_values($campo['opciones'])) : $campo['opciones'])."' ";
+                                    if (!empty($campo['style'])) $html .= "data-style='".htmlspecialchars($campo['style'])."' ";
+                                    if (!empty($campo['regex'])) $html .= "data-regex='".htmlspecialchars($campo['regex'])."' ";
+                                    if (!empty($campo['data-source'])) $html .= "data-source='".htmlspecialchars(json_encode($campo['data-source']))."' ";
+                                    $html .= ">";
+                                    $html .= generarCampo($campo, $valor, $soloLectura);
+                                    $html .= "<i class='fas fa-pencil-alt edit-icon' data-edit-type='field' data-field-name='".htmlspecialchars($campo['nombre'])."' style='display:none; cursor:pointer; margin-left: 5px;'></i>";
+                                    $html .= "</div>";
+                                } else {
+                                    $html .= "<div class='alert alert-warning'>Campo '".htmlspecialchars($fsCol['field'])."' no encontrado.</div>";
+                                }
+                            }
+                            $html .= "</div>";
+                        }
+                        $html .= "</div>";
+                    }
+                    $html .= "</fieldset>";
+                    $html .= "</div>";
+                } else if (is_string($fieldset)) {
+                    $html .= generarFieldsetContenido($fieldset, $fieldsetsConfig, $valores, $soloLectura);
+                }
+            }
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+    }
+    return $html;
+}
+// ...existing code...
 if (ob_get_level() === 0) ob_start();
 // No mostrar error HTML si es petición AJAX (ej: fetch, XMLHttpRequest)
 $isAjax = (
@@ -21,7 +85,6 @@ if (headers_sent($file, $line) && !$isAjax) {
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
-// --- PRIORIDAD 0: LOOKUP AJAX PARA CAMPOS CON data-formula tipo lookup ---
 // --- PRIORIDAD -1: GUARDAR NUEVO DISEÑO (layout/fieldsets) DESDE JS ---
 if (isset($_GET['action']) && $_GET['action'] === 'guardar_diseno_json') {
     // Solo aceptar POST y JSON
@@ -56,52 +119,252 @@ if (isset($_GET['action']) && $_GET['action'] === 'guardar_diseno_json') {
 if (isset($_GET['action']) && $_GET['action'] === 'lookup') {
     ob_clean();
     header('Content-Type: application/json');
+    flush(); // <-- Asegura que el buffer esté limpio antes de los headers
+    ini_set('display_errors', 1); // Mostrar errores solo para depuración
+    ini_set('display_startup_errors', 1);
+    error_reporting(E_ALL);
+    $table = $_GET['table'] ?? '';
+    $field = $_GET['field'] ?? '';
+    $where = $_GET['where'] ?? '';
 
+    if (!$table || !$field || !$where) {
+        echo json_encode(['success' => false, 'error' => 'Faltan parámetros']);
+        exit;
+    }
 
-@@ -214,8 +244,8 @@ function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $bloc
+    $config_path = __DIR__ . '/config/conexion.json';
+    if (!file_exists($config_path)) {
+        echo json_encode(['success' => false, 'error' => 'No existe config/conexion.json']);
+        exit;
+    }
+    $config = json_decode(file_get_contents($config_path), true);
+    if (!$config || !isset($config['host'], $config['user'], $config['password'], $config['database'])) {
+        echo json_encode(['success' => false, 'error' => 'config/conexion.json inválido']);
+        exit;
+    }
+    $mysqli = new mysqli($config['host'], $config['user'], $config['password'], $config['database']);
+    if ($mysqli->connect_errno) {
+        echo json_encode(['success' => false, 'error' => 'Error de conexión: ' . $mysqli->connect_error]);
+        exit;
+    }
+
+    if (!preg_match('/^[a-zA-Z0-9_]+$/', $table) || !preg_match('/^[a-zA-Z0-9_]+$/', $field)) {
+        echo json_encode(['success' => false, 'error' => 'Parámetros inválidos']);
+        exit;
+    }
+
+    $sql = "SELECT `$field` FROM `$table` WHERE $where LIMIT 1";
+    $result = $mysqli->query($sql);
+    if ($result && $row = $result->fetch_assoc()) {
+        echo json_encode(['success' => true, 'value' => $row[$field]]);
+    } else {
+        echo json_encode(['success' => false, 'value' => '', 'sql' => $sql, 'mysqli_error' => $mysqli->error]);
+    }
+    $mysqli->close();
+    exit;
+}
+
+// Elimino el header global, solo se debe usar en respuestas AJAX
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// --- INICIO: Integración con Librerías ---
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+require_once 'fpdf/fpdf.php';
+require __DIR__ . '/vendor/autoload.php';
+// --- FIN: Integración con Librerías ---
+
+// --- Inclusiones de funciones ---
+require_once 'formulariodinamicofunciones.php';
+require_once 'funcionessql.php';
+
+// --- INICIO: Nuevo motor de renderizado de Layout RECURSIVO ---
+function generarLayout($layoutConfig, $fieldsetsConfig, $valores, $soloLectura) {
+    $html = '';
+    if (empty($layoutConfig)) {
+        $html .= '<!-- Layout no definido, renderizando fallback -->';
+        $html .= '<div class="layout-container fallback-layout">';
+        foreach (array_keys($fieldsetsConfig) as $fieldsetName) {
+            $html .= generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $soloLectura);
+        }
+        $html .= '</div>';
+        return $html;
+    }
+
+    $html .= '<div class="layout-container" data-layout-container>';
+    foreach ($layoutConfig as $blockName => $blockData) {
+        $html .= renderBlock($blockData, $fieldsetsConfig, $valores, $soloLectura, $blockName);
+    }
+    $html .= '</div>';
+    
+    return $html;
+}
+
+function renderBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockName = 'generic') {
+    $type = $block['type'] ?? 'generic';
+    $html = '';
+    $blockAttrs = "data-block-type='{$type}' data-block-name='{$blockName}'";
+
+    switch ($type) {
+        case 'header':
+            $html .= "<div class='form-block form-header-block mb-4' {$blockAttrs}>";
+            $html .= renderRows($block['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
+            $html .= '</div>';
+// --- DEPURACIÓN: Diagnóstico de parámetros visuales JSON ---
+// if (!empty($modoDiseno)) {
+//     echo renderDebugButton('debug_paramjson','Depuración Parámetros JSON');
+//     $debugParam = '';
+//     if (isset($json['parametros']['CssDefault']) || isset($json['parametros']['estilo']) || isset($json['parametros']['tituloimagen']) || isset($json['parametros']['comentario']) || isset($json['parametros']['pie']) || isset($json['parametros']['fecha_creacion'])) {
+//         $debugParam .= "<div style='background:#fffbe7;border:2px solid #ffd700;padding:10px;margin:10px 0;'>";
+//         $debugParam .= "<b>Diagnóstico de parámetros visuales JSON:</b><br>";
+//         if (isset($json['parametros']['CssDefault'])) $debugParam .= "CssDefault: " . htmlspecialchars($json['parametros']['CssDefault']) . "<br>";
+//         if (isset($json['parametros']['estilo'])) $debugParam .= "estilo: " . htmlspecialchars($json['parametros']['estilo']) . "<br>";
+//         if (isset($json['parametros']['tituloimagen'])) $debugParam .= "tituloimagen: " . htmlspecialchars($json['parametros']['tituloimagen']) . "<br>";
+//         if (isset($json['parametros']['comentario'])) $debugParam .= "comentario: " . htmlspecialchars($json['parametros']['comentario']) . "<br>";
+//         if (isset($json['parametros']['pie'])) $debugParam .= "pie: " . htmlspecialchars($json['parametros']['pie']) . "<br>";
+//         if (isset($json['parametros']['fecha_creacion'])) $debugParam .= "fecha_creacion: " . htmlspecialchars($json['parametros']['fecha_creacion']) . "<br>";
+//         $debugParam .= "<span style='color:#888'>(Este bloque es solo para depuración y no se mostrará a los usuarios finales)</span>";
+//         $debugParam .= "</div>";
+//     }
+//     echo renderDebugPanel('debug_paramjson', $debugParam);
+// }
+    $html = '';
+    foreach ($rows as $row) {
+        $columns = $row['columns'] ?? [];
+        $html .= '<div class="row" data-row>';
+        foreach ($columns as $column) {
+            $width = $column['width'] ?? '12';
+            $fieldset = $column['fieldset'] ?? null;
+            $html .= "<div class='col-md-{$width}' data-col-width='{$width}'>";
+            if ($fieldset) {
+                if (is_array($fieldset) && isset($fieldset['rows'])) {
+                    // Fieldset como grilla interna (estructura avanzada)
+                    $nombre = $fieldset['name'] ?? '';
+                    // Fieldset/grupo entero es draggable y droppable
+                    $html .= "<div class='draggable-fieldset sortable-fieldset' data-type='fieldset' data-name='".htmlspecialchars($nombre)."'>";
+                    $html .= "<fieldset class='mb-4 p-3 border rounded fieldset-grid-avanzada'>";
+                    if ($nombre) {
+                        $html .= "<legend class='w-auto px-2 h6'><span class='fieldset-title-text editable-label' contenteditable='false' data-edit-type='fieldset' data-fieldset-name='".htmlspecialchars($nombre)."'>".htmlspecialchars($nombre)."</span></legend>";
+                    }
+                    foreach ($fieldset['rows'] as $fsRow) {
+                        $html .= "<div class='row fieldset-grid-row sortable-row'>";
+                        foreach ($fsRow['columns'] as $fsCol) {
+                            // Cada celda es droppable y draggable
+                            $html .= "<div class='col fieldset-grid-col sortable-col' style='min-height:48px;'>";
+                            if (isset($fsCol['field'])) {
+                                // Buscar el campo en todos los fieldsets
+                                $campo = null;
+                                foreach ($fieldsetsConfig as $fs) {
+                                    if (isset($fs['campos'])) {
+                                        foreach ($fs['campos'] as $c) {
+                                            if ($c['nombre'] === $fsCol['field']) {
+                                                $campo = $c;
+                                                break 2;
+                                            }
+                                        }
+                                    }
+                                }
+                                if ($campo) {
+                                    $valor = $valores[$campo['nombre']] ?? $campo['valor_predeterminado'] ?? '';
+                                    // Envolver en div para drag & drop y edición
+                                    $html .= "<div class='draggable-campo sortable-campo' data-type='field' data-name='".htmlspecialchars($campo['nombre'])."' data-tipo='".htmlspecialchars($campo['tipo'])."' ";
+                                    if (!empty($campo['etiqueta'])) $html .= "data-etiqueta='".htmlspecialchars($campo['etiqueta'])."' ";
+                                    if (!empty($campo['placeholder'])) $html .= "data-placeholder='".htmlspecialchars($campo['placeholder'])."' ";
+                                    if (!empty($campo['opciones'])) $html .= "data-opciones='".htmlspecialchars(is_array($campo['opciones']) ? implode(',', array_values($campo['opciones'])) : $campo['opciones'])."' ";
+                                    if (!empty($campo['style'])) $html .= "data-style='".htmlspecialchars($campo['style'])."' ";
+                                    if (!empty($campo['regex'])) $html .= "data-regex='".htmlspecialchars($campo['regex'])."' ";
+                                    if (!empty($campo['data-source'])) $html .= "data-source='".htmlspecialchars(json_encode($campo['data-source'])) . "' ";
+                                    $html .= ">";
+                                    $html .= generarCampo($campo, $valor, $soloLectura);
+                                    $html .= "<i class='fas fa-pencil-alt edit-icon' data-edit-type='field' data-field-name='".htmlspecialchars($campo['nombre'])."' style='display:none; cursor:pointer; margin-left: 5px;'></i>";
+                                    $html .= "</div>";
+                                } else {
+                                    $html .= "<div class='alert alert-warning'>Campo '".htmlspecialchars($fsCol['field'])."' no encontrado.</div>";
+                                }
+                            }
+                            $html .= "</div>";
+                        }
+                        $html .= "</div>";
+                    }
+                    $html .= "</fieldset>";
+                    $html .= "</div>";
+                } else if (is_string($fieldset)) {
+                    $html .= generarFieldsetContenido($fieldset, $fieldsetsConfig, $valores, $soloLectura);
+                }
+            }
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+    }
+    return $html;
+}
+
+// KEEP: Solo mostrar en modo diseño y edición de tabs solo en modo diseño
+function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockAttrs) {
     global $modoDiseno;
     $tabsId = 'tabs_' . uniqid();
     $html = "<div {$blockAttrs}>";
     // SortableJS requiere sortable-tabs en <ul> y draggable-tab en cada <li>
     $html .= '<ul class="nav nav-pills mb-3 sortable-tabs" id="' . $tabsId . '" role="tablist">';
-    // Pre-generar IDs para asegurar consistencia entre links y contenido
     $tabDetails = [];
     foreach (($block['tabs'] ?? []) as $index => $tab) {
         $tabTitle = htmlspecialchars($tab['title'] ?? 'Pestaña ' . ($index + 1));
-
-@@ -226,13 +256,12 @@ function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $bloc
+        $tabDetails[] = [
+            'title' => $tabTitle,
+            'id' => 'tab_' . preg_replace('/[^a-zA-Z0-9_]/', '', str_replace(' ', '_', $tab['title'] ?? '')) . '_' . uniqid(),
+            'rows' => $tab['rows'] ?? [],
             'raw_title' => $tab['title'] ?? 'Pestaña ' . ($index + 1)
         ];
     }
-    // Renderizar las pestañas (los links <a>)
     foreach ($tabDetails as $index => $details) {
         $activeClass = ($index === 0) ? 'active' : '';
         $isSelected = ($index === 0) ? 'true' : 'false';
-        $html .= '<li class="nav-item" role="presentation">';
         // Agregar clase draggable-tab y data-index para SortableJS
         $html .= '<li class="nav-item draggable-tab" role="presentation" data-tab-index="' . $index . '">';
         $html .= '<a class="nav-link ' . $activeClass . '" id="' . $details['id'] . '-tab" data-toggle="pill" href="#' . $details['id'] . '" role="tab" aria-controls="' . $details['id'] . '" aria-selected="' . $isSelected . '">';
-        // --- Edición de título solo en modo diseño ---
         if (!empty($modoDiseno)) {
             $html .= "<span class='tab-title-text editable-label' contenteditable='true' data-edit-type='tab' data-target-tab-id='" . $details['id'] . "-tab'>" . htmlspecialchars($details['raw_title']) . "</span>";
             $html .= " <i class='fas fa-pencil-alt edit-icon' data-edit-type='tab' data-target-tab-id='" . $details['id'] . "-tab' style='display:inline; cursor:pointer;'></i>";
-
-@@ -245,7 +274,7 @@ function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $bloc
+        } else {
+            $html .= "<span class='tab-title-text'>" . htmlspecialchars($details['raw_title']) . "</span>";
+        }
+        $html .= '</a>';
+        $html .= '</li>';
+    }
     // Botón para agregar nueva pestaña, solo en modo diseño
     if (!empty($modoDiseno)) {
         $html .= '<li class="nav-item add-tab-button" role="presentation">';
-        $html .= '<a class="nav-link" href="#" title="Agregar nueva pestaña"><i class="fas fa-plus"></i></a>';
         $html .= '<a class="nav-link" href="#" title="Agregar nueva pestaña" id="add-tab-btn-' . $tabsId . '"><i class="fas fa-plus"></i></a>';
         $html .= '</li>';
     }
     $html .= '</ul>';
+    // Renderizar el contenido de las pestañas
+    $html .= '<div class="tab-content" id="' . $tabsId . 'Content">';
+    foreach ($tabDetails as $index => $details) {
+        $activeClass = ($index === 0) ? 'show active' : '';
+        $html .= '<div class="tab-pane fade ' . $activeClass . '" id="' . $details['id'] . '" role="tabpanel" aria-labelledby="' . $details['id'] . '-tab" data-tab-title="' . htmlspecialchars($details['title']) . '">';
+        $html .= renderRows($details['rows'], $fieldsetsConfig, $valores, $soloLectura);
+        $html .= '</div>';
+    }
+    $html .= '</div>';
+    $html .= '</div>';
+    return $html;
+}
 
+function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $soloLectura) {
+    if (!isset($fieldsetsConfig[$fieldsetName])) {
+        return "<div class='alert alert-warning'>Fieldset '{$fieldsetName}' no encontrado.</div>";
+    }
 
-@@ -273,7 +302,64 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
+    $fieldset = $fieldsetsConfig[$fieldsetName];
+    $titulo = $fieldset['titulo'] ?? ucfirst(str_replace('_', ' ', $fieldsetName));
+    $html = '';
 
     // Contenedor principal para el fieldset, ahora draggable
     $html .= "<div class='draggable-fieldset' data-fieldset-name='{$fieldsetName}'>";
-    // El fieldset en sí, que ahora es un contenedor para campos draggables
 
     // --- Soporte para fieldsets avanzados con filas/columnas (grilla interna) ---
     if (isset($fieldset['rows']) && is_array($fieldset['rows'])) {
@@ -131,7 +394,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'lookup') {
                     }
                     if ($campo) {
                         $valor = $valores[$campo['nombre']] ?? $campo['valor_predeterminado'] ?? '';
-                        $html .= "<div class='draggable-campo sortable-campo' data-type='field' data-name='".htmlspecialchars($campo['nombre'])."' data-tipo='".htmlspecialchars($campo['tipo'])."' ";
+                        // Unificar: todos los campos individuales usan .draggable-field
+                        $html .= "<div class='draggable-field sortable-campo' data-type='field' data-name='".htmlspecialchars($campo['nombre'])."' data-tipo='".htmlspecialchars($campo['tipo'])."' ";
                         if (!empty($campo['etiqueta'])) $html .= "data-etiqueta='".htmlspecialchars($campo['etiqueta'])."' ";
                         if (!empty($campo['placeholder'])) $html .= "data-placeholder='".htmlspecialchars($campo['placeholder'])."' ";
                         if (!empty($campo['opciones'])) $html .= "data-opciones='".htmlspecialchars(is_array($campo['opciones']) ? implode(',', array_values($campo['opciones'])) : $campo['opciones'])."' ";
@@ -154,31 +418,25 @@ if (isset($_GET['action']) && $_GET['action'] === 'lookup') {
             }
             $html .= "</div>";
         }
-        $html .= '</fieldset>';
-        $html .= '</div>'; // Cierre de draggable-fieldset
-        return $html;
     }
 
     // --- Modo clásico (campos en lista vertical) ---
     $html .= "<fieldset class='mb-4 p-3 border rounded sortable-fields-container'>"; 
     if ($titulo) {
         $html .= "<legend class='w-auto px-2 h6'>
-
-@@ -282,432 +368,429 @@
+                    <span class='fieldset-title-text editable-label' contenteditable='false' data-edit-type='fieldset' data-fieldset-name='{$fieldsetName}'>".htmlspecialchars($titulo)."</span>
+                    <i class='fas fa-pencil-alt edit-icon' data-edit-type='fieldset' data-fieldset-name='{$fieldsetName}' style='display:none; cursor:pointer; margin-left: 10px;'></i>
                   </legend>";
     }
 
-    // Contenedor para los campos que se pueden ordenar
     if (isset($fieldset['campos']) && is_array($fieldset['campos']) && count($fieldset['campos']) > 0) {
         foreach ($fieldset['campos'] as $campo) {
             $nombreCampo = $campo['nombre'] ?? 'sin_nombre';
-            // Envolvemos cada campo en un div para que sea un item draggable individual
+            // Unificar: todos los campos individuales usan .draggable-field
             $html .= "<div class='draggable-field' data-field-name='{$nombreCampo}'>";
             $valor = $valores[$nombreCampo] ?? $campo['valor_predeterminado'] ?? '';
             $html .= generarCampo($campo, $valor, $soloLectura);
-            // Añadimos el ícono de edición para el campo
             $html .= "<i class='fas fa-pencil-alt edit-icon' data-edit-type='field' data-field-name='{$nombreCampo}' style='display:none; cursor:pointer; margin-left: 5px;'></i>";
-            $html .= "</div>"; // Cierre de draggable-field
             $html .= "</div>";
         }
     } else {
@@ -229,65 +487,6 @@ function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valo
     $html .= '</div>';
     return $html;
 }
-$modoDiseno = false;
-if (isset($_GET['modo']) && $_GET['modo'] === 'diseno') {
-    $modoDiseno = true;
-}
-
-// --- FIN: Nuevo motor de renderizado de Layout ---
-
-// --- FUNCIONES AUXILIARES ---
-function obtenerTodosLosCampos($fieldsets) {
-    $campos = [];
-    foreach ($fieldsets as $fieldset) {
-        // Acepta tanto 'fields' como 'campos' para máxima compatibilidad
-        if (!empty($fieldset['fields']) && is_array($fieldset['fields'])) {
-            $campos = array_merge($campos, $fieldset['fields']);
-        }
-        if (!empty($fieldset['campos']) && is_array($fieldset['campos'])) {
-            $campos = array_merge($campos, $fieldset['campos']);
-        }
-        if (!empty($fieldset['fieldsets'])) {
-            $campos = array_merge($campos, obtenerTodosLosCampos($fieldset['fieldsets']));
-        }
-    }
-    return $campos;
-}
-function getFieldInfo($fieldName, $all_fields) { foreach ($all_fields as $field) { if (isset($field['name']) && $field['name'] === $fieldName) { return $field; } } return null; }
-
-// --- INICIO: Preparación de Variables Globales ---
-$archivo_json = $_GET['archivo'] ?? 'formulariogenerico.json';
-$archivo_json = basename($archivo_json); // Seguridad: solo nombre, sin ruta
-$json_path = __DIR__ . "/json/" . $archivo_json;
-if (!file_exists($json_path)) {
-    $mensaje_envio = "<div class='alert alert-danger'>Error: El archivo de configuración '$json_path' no existe.</div>";
-    return;
-}
-$json = json_decode(file_get_contents($json_path), true);
-if (json_last_error() !== JSON_ERROR_NONE) {
-    $mensaje_envio = "<div class='alert alert-danger'>Error: El archivo JSON contiene errores. " . json_last_error_msg() . "</div>";
-    return;
-}
-
-$fieldsets = $json['fieldsets'] ?? [];
-$layout = $json['layout'] ?? [];
-// KEEP: Estas líneas aseguran que $fieldsets y $layout siempre estén definidos desde el JSON.
-$all_fields = obtenerTodosLosCampos($fieldsets);
-$valores = [];
-$soloLectura = false;
-$mensaje_envio = '';
-
-// --- NUEVO: Cargar parámetros universales del JSON ---
-$param_mensajes = $json['parametros']['mensajes'] ?? [
-    'exito' => 'Formulario guardado y procesado con éxito.',
-    'error' => 'Ocurrió un error al procesar el formulario.',
-    'advertencia' => 'Por favor, revisa los campos resaltados.'
-];
-$param_validaciones = $json['parametros']['validaciones'] ?? [];
-$param_botones = $json['parametros']['botones'] ?? [];
-$param_post_envio = $json['parametros']['post_envio'] ?? [];
-$param_adjuntos = $json['parametros']['adjuntos'] ?? [];
-$param_notificaciones = $json['parametros']['notificaciones'] ?? [];
 
 // --- FUNCIONALIDAD PRINCIPAL ---
 // --- PRIORIDAD 1: PROCESAR EL ENVÍO DEL FORMULARIO (POST) ---
@@ -513,10 +712,8 @@ foreach ($archivosTemporales as $tmpFile) {
         @unlink($tmpFile);
     }
 }
-
 // --- LÓGICA PARA LA PALETA DE COMPONENTES ---
 // 1. Obtener todos los nombres de los fieldsets definidos.
-
 // --- DEPURACIÓN: Mostrar si $fieldsets y $layout están inicializados correctamente ---
 /*
 echo "<div style='background:#ffe;border:2px solid #fc0;padding:10px;margin:10px 0;'>";
@@ -527,7 +724,6 @@ echo "<br><b>layout</b>: ";
 var_dump($layout);
 echo "</div>";
 */
-
 // Asegurar que $layout sea un array antes de usar array_walk_recursive
 $todos_los_fieldsets = array_keys(isset($fieldsets) ? $fieldsets : []);
 $fieldsets_usados = [];
@@ -552,10 +748,8 @@ array_walk_recursive($layout, function($item, $key) use (&$fieldsets_usados) {
         }
     }
 });
-
 // 3. Comparar para encontrar los fieldsets disponibles.
 $fieldsets_disponibles = array_diff($todos_los_fieldsets, $fieldsets_usados);
-
 // --- DEPURACIÓN: Mostrar resultado de la lógica de paleta SOLO si se activa debug en modo diseño ---
 if (!function_exists('renderDebugButton')) {
     function renderDebugButton($id, $label = 'Debug') {
@@ -575,26 +769,4 @@ if (!empty($modoDiseno)) {
     $debugContent .= "</div>";
     echo renderDebugPanel('debug_fieldsets', $debugContent);
 }
-// --- FIN DE LA LÓGICA PARA LA PALETA DE COMPONENTES ---
-
-/*
-// --- DEPURACIÓN: Diagnóstico de parámetros visuales JSON ---
-// if (!empty($modoDiseno)) {
-//     echo renderDebugButton('debug_paramjson','Depuración Parámetros JSON');
-//     $debugParam = '';
-//     if (isset($json['parametros']['CssDefault']) || isset($json['parametros']['estilo']) || isset($json['parametros']['tituloimagen']) || isset($json['parametros']['comentario']) || isset($json['parametros']['pie']) || isset($json['parametros']['fecha_creacion'])) {
-//         $debugParam .= "<div style='background:#fffbe7;border:2px solid #ffd700;padding:10px;margin:10px 0;'>";
-//         $debugParam .= "<b>Diagnóstico de parámetros visuales JSON:</b><br>";
-//         if (isset($json['parametros']['CssDefault'])) $debugParam .= "CssDefault: " . htmlspecialchars($json['parametros']['CssDefault']) . "<br>";
-//         if (isset($json['parametros']['estilo'])) $debugParam .= "estilo: " . htmlspecialchars($json['parametros']['estilo']) . "<br>";
-//         if (isset($json['parametros']['tituloimagen'])) $debugParam .= "tituloimagen: " . htmlspecialchars($json['parametros']['tituloimagen']) . "<br>";
-//         if (isset($json['parametros']['comentario'])) $debugParam .= "comentario: " . htmlspecialchars($json['parametros']['comentario']) . "<br>";
-//         if (isset($json['parametros']['pie'])) $debugParam .= "pie: " . htmlspecialchars($json['parametros']['pie']) . "<br>";
-//         if (isset($json['parametros']['fecha_creacion'])) $debugParam .= "fecha_creacion: " . htmlspecialchars($json['parametros']['fecha_creacion']) . "<br>";
-//         $debugParam .= "<span style='color:#888'>(Este bloque es solo para depuración y no se mostrará a los usuarios finales)</span>";
-//         $debugParam .= "</div>";
-//     }
-//     echo renderDebugPanel('debug_paramjson', $debugParam);
-// }
-*/
-?> 
+?>

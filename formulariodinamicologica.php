@@ -1,6 +1,6 @@
 <?php
 // KEEP: Revisado y listo para commit. Lógica de negocio y procesamiento del formulario dinámico.
-<?php
+ 
 // KEEP: Revisado y listo para commit. Cambios recientes validados.
 // KEEP: Revisado y listo para commit. Cambios recientes validados.
 // Elimina cualquier salida previa para evitar errores de headers

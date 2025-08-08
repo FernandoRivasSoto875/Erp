@@ -227,6 +227,32 @@ function renderBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockNam
             $html .= "<div class='form-block form-header-block mb-4' {$blockAttrs}>";
             $html .= renderRows($block['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
             $html .= '</div>';
+            break;
+        case 'footer':
+            $html .= "<div class='form-block form-footer-block mt-4' {$blockAttrs}>";
+            $html .= renderRows($block['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
+            $html .= '</div>';
+            break;
+        case 'fieldset':
+            $fieldsetName = $block['name'] ?? '';
+            $html .= "<div class='form-block fieldset-block' {$blockAttrs}>";
+            $html .= generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $soloLectura);
+            $html .= '</div>';
+            break;
+        case 'tabs':
+            $html .= renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockAttrs);
+            break;
+        default:
+            // Bloque genérico
+            $html .= "<div class='form-block form-generic-block' {$blockAttrs}>";
+            $html .= renderRows($block['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
+            $html .= '</div>';
+            break;
+    }
+
+    return $html;
+}
+
 // --- DEPURACIÓN: Diagnóstico de parámetros visuales JSON ---
 // if (!empty($modoDiseno)) {
 //     echo renderDebugButton('debug_paramjson','Depuración Parámetros JSON');

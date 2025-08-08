@@ -15,7 +15,7 @@ require_once 'formulariodinamicologica.php';
 // --- FIN DE LA LÓGICA DEL FORMULARIO ---
 
 // Cargar la configuración del formulario desde el archivo JSON
-$archivo_json = $_GET['archivo'] ?? 'formulariogenerico.json';
+$archivo_json = $_GET['archivo'] ?? 'formulariogenerico2.json';
 $json_path = __DIR__ . "/json/" . basename($archivo_json);
 
 if (!file_exists($json_path)) {

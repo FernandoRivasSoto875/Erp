@@ -64,6 +64,7 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
         }
         $html .= '</div>';
     }
+}
     return $html;
 }
 <?php

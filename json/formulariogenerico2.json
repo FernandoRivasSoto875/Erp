@@ -193,23 +193,7 @@
               "columns": [
                 {
                   "width": "12",
-                  "fieldset": {
-                    "name": "grupo_grilla_ejemplo",
-                    "rows": [
-                      {
-                        "columns": [
-                          { "field": "campo_texto" },
-                          { "field": "campo_numero" }
-                        ]
-                      },
-                      {
-                        "columns": [
-                          { "field": "campo_email" },
-                          { "field": "campo_select" }
-                        ]
-                      }
-                    ]
-                  }
+                  "fieldset": "grupo_grilla_ejemplo"
                 }
               ]
             }

@@ -1,4 +1,3 @@
-@@ -1,27 +1,57 @@
 <?php
 // KEEP: Revisado y listo para commit. Cambios recientes validados.
 // KEEP: Revisado y listo para commit. Cambios recientes validados.

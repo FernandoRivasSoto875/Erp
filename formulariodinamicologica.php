@@ -1,5 +1,9 @@
 <?php
 function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
+    // Validación robusta para evitar warnings/notices
+    if (!is_array($rows)) {
+        $rows = [];
+    }
     $html = '';
     foreach ($rows as $row) {
         $columns = $row['columns'] ?? [];
@@ -32,7 +36,7 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
                                                 break 2;
                                             }
                                         }
-                                    } 
+                                    }
                                 }
                                 if ($campo) {
                                     $valor = $valores[$campo['nombre']] ?? $campo['valor_predeterminado'] ?? '';

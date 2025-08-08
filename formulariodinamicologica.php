@@ -1,41 +1,108 @@
 <?php
-// --- INICIO: Integración con Librerías ---
+if (session_status() === PHP_SESSION_NONE) session_start();
+
+// Integraciones opcionales
+if (file_exists(__DIR__ . '/vendor/autoload.php')) require __DIR__ . '/vendor/autoload.php';
+if (file_exists(__DIR__ . '/fpdf/fpdf.php')) require_once __DIR__ . '/fpdf/fpdf.php';
+
+// Dependencias de funciones (idempotentes)
+if (file_exists(__DIR__ . '/formulariodinamicofunciones.php')) require_once __DIR__ . '/formulariodinamicofunciones.php';
+if (file_exists(__DIR__ . '/funcionessql.php')) require_once __DIR__ . '/funcionessql.php';
+
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
-require_once 'fpdf/fpdf.php';
-require __DIR__ . '/vendor/autoload.php';
-// --- FIN: Integración con Librerías ---
 
-// --- Inclusiones de funciones ---
-require_once 'formulariodinamicofunciones.php';
-require_once 'funcionessql.php';
-
-// --- INICIO: Nuevo motor de renderizado de Layout RECURSIVO ---
-function generarLayout($layoutConfig, $fieldsetsConfig, $valores, $soloLectura) {
+// -------------------- Render del Layout --------------------
+function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
+    if (!is_array($rows)) $rows = [];
     $html = '';
-    if (empty($layoutConfig)) {
-        $html .= '<!-- Layout no definido, renderizando fallback -->';
-        $html .= '<div class="layout-container fallback-layout">';
-        foreach (array_keys($fieldsetsConfig) as $fieldsetName) {
-            $html .= generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $soloLectura);
+    foreach ($rows as $row) {
+        $columns = $row['columns'] ?? [];
+        $html .= '<div class="row" data-row>';
+        foreach ($columns as $column) {
+            $width = (int)($column['width'] ?? 12);
+            if ($width < 1 || $width > 12) $width = 12;
+            $html .= "<div class='col-md-{$width}' data-col-width='{$width}'>";
+            $fieldset = $column['fieldset'] ?? null;
+
+            if ($fieldset) {
+                if (is_array($fieldset) && isset($fieldset['rows'])) {
+                    // Fieldset embebido con grilla interna
+                    $nombre = $fieldset['name'] ?? '';
+                    $html .= "<fieldset class='mb-4 p-3 border rounded fieldset-grid-avanzada'>";
+                    if (!empty($nombre)) {
+                        $html .= "<legend class='w-auto px-2 h6'>".htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8')."</legend>";
+                    }
+                    foreach (($fieldset['rows'] ?? []) as $fsRow) {
+                        $html .= "<div class='row fieldset-grid-row'>";
+                        foreach (($fsRow['columns'] ?? []) as $fsCol) {
+                            $html .= "<div class='col fieldset-grid-col' style='min-height:48px;'>";
+                            if (isset($fsCol['field'])) {
+                                // Buscar campo por nombre en todos los fieldsets
+                                $campo = null;
+                                foreach ($fieldsetsConfig as $fs) {
+                                    foreach (($fs['campos'] ?? []) as $c) {
+                                        if (($c['nombre'] ?? null) === $fsCol['field']) { $campo = $c; break 2; }
+                                    }
+                                }
+                                if ($campo) {
+                                    $valor = $valores[$campo['nombre']] ?? ($campo['valor_predeterminado'] ?? '');
+                                    $html .= "<div class='draggable-field' data-type='field' data-name='".htmlspecialchars($campo['nombre'], ENT_QUOTES, 'UTF-8')."'>";
+                                    $html .= generarCampo($campo, $valor, $soloLectura);
+                                    $html .= "</div>";
+                                } else {
+                                    $html .= "<div class='alert alert-warning mb-2'>Campo '".htmlspecialchars($fsCol['field'], ENT_QUOTES, 'UTF-8')."' no encontrado.</div>";
+                                }
+                            } elseif (isset($fsCol['fieldset']) && is_string($fsCol['fieldset'])) {
+                                $html .= generarFieldsetContenido($fsCol['fieldset'], $fieldsetsConfig, $valores, $soloLectura);
+                            }
+                            $html .= "</div>";
+                        }
+                        $html .= "</div>";
+                    }
+                    $html .= "</fieldset>";
+                } elseif (is_string($fieldset)) {
+                    $html .= generarFieldsetContenido($fieldset, $fieldsetsConfig, $valores, $soloLectura);
+                }
+            }
+
+            $html .= '</div>';
         }
         $html .= '</div>';
-        return $html;
     }
+    return $html;
+}
 
-    $html .= '<div class="layout-container" data-layout-container>';
-    foreach ($layoutConfig as $blockName => $blockData) {
-        $html .= renderBlock($blockData, $fieldsetsConfig, $valores, $soloLectura, $blockName);
+function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockAttrs = '') {
+    $tabsId = 'tabs_'.uniqid();
+    $html = "<div {$blockAttrs}>";
+    $html .= '<ul class="nav nav-pills mb-3" id="'.$tabsId.'" role="tablist">';
+    $tabDetails = [];
+    foreach (($block['tabs'] ?? []) as $index => $tab) {
+        $title = $tab['title'] ?? ('Pestaña '.($index+1));
+        $id = 'tab_'.preg_replace('/[^a-zA-Z0-9_]/', '', str_replace(' ', '_', $title)).'_'.uniqid();
+        $tabDetails[] = ['id'=>$id, 'title'=>$title, 'rows'=>$tab['rows'] ?? []];
+        $active = $index === 0 ? 'active' : '';
+        $html .= '<li class="nav-item" role="presentation">';
+        $html .= '<a class="nav-link '.$active.'" id="'.$id.'-tab" data-toggle="pill" href="#'.$id.'" role="tab" aria-controls="'.$id.'" aria-selected="'.($index===0?'true':'false').'">'.htmlspecialchars($title, ENT_QUOTES, 'UTF-8').'</a>';
+        $html .= '</li>';
     }
-    $html .= '</div>';
-    
+    $html .= '</ul>';
+    $html .= '<div class="tab-content" id="'.$tabsId.'Content">';
+    foreach ($tabDetails as $i => $details) {
+        $activeClass = $i === 0 ? 'show active' : '';
+        $html .= '<div class="tab-pane fade '.$activeClass.'" id="'.$details['id'].'" role="tabpanel" aria-labelledby="'.$details['id'].'-tab">';
+        $html .= renderRows($details['rows'], $fieldsetsConfig, $valores, $soloLectura);
+        $html .= '</div>';
+    }
+    $html .= '</div></div>';
     return $html;
 }
 
 function renderBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockName = 'generic') {
     $type = $block['type'] ?? 'generic';
     $html = '';
-    $blockAttrs = "data-block-type='{$type}' data-block-name='{$blockName}'";
+    $blockAttrs = "data-block-type='".htmlspecialchars($type, ENT_QUOTES, 'UTF-8')."' data-block-name='".htmlspecialchars($blockName, ENT_QUOTES, 'UTF-8')."'";
 
     switch ($type) {
         case 'header':
@@ -58,280 +125,86 @@ function renderBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockNam
             $html .= renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockAttrs);
             break;
         default:
-            // Bloque genérico
             $html .= "<div class='form-block form-generic-block' {$blockAttrs}>";
             $html .= renderRows($block['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
             $html .= '</div>';
             break;
     }
-
-    return $html;
-}
-
-function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
-    // Validación robusta para evitar warnings/notices
-    if (!is_array($rows)) {
-        $rows = [];
-    }
-    $html = '';
-    foreach ($rows as $row) {
-        $columns = $row['columns'] ?? [];
-        $html .= '<div class="row" data-row>';
-        foreach ($columns as $column) {
-            $width = $column['width'] ?? '12';
-            $fieldset = $column['fieldset'] ?? null;
-            $html .= "<div class='col-md-{$width}' data-col-width='{$width}'>";
-            if ($fieldset) {
-                if (is_array($fieldset) && isset($fieldset['rows'])) {
-                    $nombre = $fieldset['name'] ?? '';
-                    $html .= "<div class='draggable-fieldset sortable-fieldset' data-type='fieldset' data-name='" . htmlspecialchars($nombre) . "'>";
-                    $html .= "<fieldset class='mb-4 p-3 border rounded fieldset-grid-avanzada'>";
-                    if ($nombre) {
-                        $html .= "<legend class='w-auto px-2 h6'>
-                                    <span class='fieldset-title-text editable-label' contenteditable='false' data-edit-type='fieldset' data-fieldset-name='" . htmlspecialchars($nombre) . "'>" . htmlspecialchars($nombre) . "</span>
-                                  </legend>";
-                    }
-                    foreach ($fieldset['rows'] as $fsRow) {
-                        $html .= "<div class='row fieldset-grid-row sortable-row'>";
-                        foreach (($fsRow['columns'] ?? []) as $fsCol) { // <--- endurecido
-                            $html .= "<div class='col fieldset-grid-col sortable-col' style='min-height:48px;'>";
-                            if (isset($fsCol['field'])) {
-                                $campo = null;
-                                foreach ($fieldsetsConfig as $fs) {
-                                    if (isset($fs['campos'])) {
-                                        foreach ($fs['campos'] as $c) {
-                                            if ($c['nombre'] === $fsCol['field']) {
-                                                $campo = $c;
-                                                break 2;
-                                            }
-                                        }
-                                    }
-                                }
-                                if ($campo) {
-                                    $valor = $valores[$campo['nombre']] ?? $campo['valor_predeterminado'] ?? '';
-                                    $html .= "<div class='draggable-campo sortable-campo' data-type='field' data-name='" . htmlspecialchars($campo['nombre']) . "' data-tipo='" . htmlspecialchars($campo['tipo']) . "' ";
-                                    if (!empty($campo['etiqueta'])) {
-                                        $html .= "data-etiqueta='" . htmlspecialchars($campo['etiqueta']) . "' ";
-                                    }
-                                    if (!empty($campo['placeholder'])) {
-                                        $html .= "data-placeholder='" . htmlspecialchars($campo['placeholder']) . "' ";
-                                    }
-                                    if (!empty($campo['opciones'])) {
-                                        $html .= "data-opciones='" . htmlspecialchars(is_array($campo['opciones']) ? implode(',', array_values($campo['opciones'])) : $campo['opciones']) . "' ";
-                                    }
-                                    if (!empty($campo['style'])) {
-                                        $html .= "data-style='" . htmlspecialchars($campo['style']) . "' ";
-                                    }
-                                    if (!empty($campo['regex'])) {
-                                        $html .= "data-regex='" . htmlspecialchars($campo['regex']) . "' ";
-                                    }
-                                    if (!empty($campo['data-source'])) {
-                                        // <--- corregido (JSON seguro y comillas)
-                                        $html .= "data-source='" . htmlspecialchars(json_encode($campo['data-source'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES) . "' ";
-                                    }
-                                    $html .= ">";
-                                    $html .= generarCampo($campo, $valor, $soloLectura);
-                                    $html .= "<i class='fas fa-pencil-alt edit-icon' data-edit-type='field' data-field-name='" . htmlspecialchars($campo['nombre']) . "' style='display:none; cursor:pointer; margin-left: 5px;'></i>";
-                                    $html .= "</div>";
-                                } else {
-                                    $html .= "<div class='alert alert-warning'>Campo '" . htmlspecialchars($fsCol['field']) . "' no encontrado.</div>";
-                                }
-                            }
-                            $html .= "</div>";
-                        }
-                        $html .= "</div>";
-                    }
-                    $html .= "</fieldset>";
-                    $html .= "</div>";
-                } elseif (is_string($fieldset)) {
-                    $html .= generarFieldsetContenido($fieldset, $fieldsetsConfig, $valores, $soloLectura);
-                }
-            }
-            $html .= '</div>';
-        }
-        $html .= '</div>';
-    }
-    return $html;
-}
-
-// Elimino el header global, solo se debe usar en respuestas AJAX
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// --- DEPURACIÓN: Diagnóstico de parámetros visuales JSON ---
-// if (!empty($modoDiseno)) {
-//     echo renderDebugButton('debug_paramjson','Depuración Parámetros JSON');
-//     $debugParam = '';
-//     if (isset($json['parametros']['CssDefault']) || isset($json['parametros']['estilo']) || isset($json['parametros']['tituloimagen']) || isset($json['parametros']['comentario']) || isset($json['parametros']['pie']) || isset($json['parametros']['fecha_creacion'])) {
-//         $debugParam .= "<div style='background:#fffbe7;border:2px solid #ffd700;padding:10px;margin:10px 0;'>";
-//         $debugParam .= "<b>Diagnóstico de parámetros visuales JSON:</b><br>";
-//         if (isset($json['parametros']['CssDefault'])) $debugParam .= "CssDefault: " . htmlspecialchars($json['parametros']['CssDefault']) . "<br>";
-//         if (isset($json['parametros']['estilo'])) $debugParam .= "estilo: " . htmlspecialchars($json['parametros']['estilo']) . "<br>";
-//         if (isset($json['parametros']['tituloimagen'])) $debugParam .= "tituloimagen: " . htmlspecialchars($json['parametros']['tituloimagen']) . "<br>";
-//         if (isset($json['parametros']['comentario'])) $debugParam .= "comentario: " . htmlspecialchars($json['parametros']['comentario']) . "<br>";
-//         if (isset($json['parametros']['pie'])) $debugParam .= "pie: " . htmlspecialchars($json['parametros']['pie']) . "<br>";
-//         if (isset($json['parametros']['fecha_creacion'])) $debugParam .= "fecha_creacion: " . htmlspecialchars($json['parametros']['fecha_creacion']) . "<br>";
-//         $debugParam .= "<span style='color:#888'>(Este bloque es solo para depuración y no se mostrará a los usuarios finales)</span>";
-//         $debugParam .= "</div>";
-//     }
-//     echo renderDebugPanel('debug_paramjson', $debugParam);
-// }
-
-// ELIMINADO: bloque suelto que usaba $rows fuera de funciones (causaba Notice en línea 279)
-
-// Continúa con la siguiente función:
-function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockAttrs) {
-    global $modoDiseno;
-    $tabsId = 'tabs_' . uniqid();
-    $html = "<div {$blockAttrs}>";
-    // SortableJS requiere sortable-tabs en <ul> y draggable-tab en cada <li>
-    $html .= '<ul class="nav nav-pills mb-3 sortable-tabs" id="' . $tabsId . '" role="tablist">';
-    $tabDetails = [];
-    foreach (($block['tabs'] ?? []) as $index => $tab) {
-        $tabTitle = htmlspecialchars($tab['title'] ?? 'Pestaña ' . ($index + 1));
-        $tabDetails[] = [
-            'title' => $tabTitle,
-            'id' => 'tab_' . preg_replace('/[^a-zA-Z0-9_]/', '', str_replace(' ', '_', $tab['title'] ?? '')) . '_' . uniqid(),
-            'rows' => $tab['rows'] ?? [],
-            'raw_title' => $tab['title'] ?? 'Pestaña ' . ($index + 1)
-        ];
-    }
-    foreach ($tabDetails as $index => $details) {
-        $activeClass = ($index === 0) ? 'active' : '';
-        $isSelected = ($index === 0) ? 'true' : 'false';
-        // Agregar clase draggable-tab y data-index para SortableJS
-        $html .= '<li class="nav-item draggable-tab" role="presentation" data-tab-index="' . $index . '">';
-        $html .= '<a class="nav-link ' . $activeClass . '" id="' . $details['id'] . '-tab" data-toggle="pill" href="#' . $details['id'] . '" role="tab" aria-controls="' . $details['id'] . '" aria-selected="' . $isSelected . '">';
-        if (!empty($modoDiseno)) {
-            $html .= "<span class='tab-title-text editable-label' contenteditable='true' data-edit-type='tab' data-target-tab-id='" . $details['id'] . "-tab'>" . htmlspecialchars($details['raw_title']) . "</span>";
-            $html .= " <i class='fas fa-pencil-alt edit-icon' data-edit-type='tab' data-target-tab-id='" . $details['id'] . "-tab' style='display:inline; cursor:pointer;'></i>";
-        } else {
-            $html .= "<span class='tab-title-text'>" . htmlspecialchars($details['raw_title']) . "</span>";
-        }
-        $html .= '</a>';
-        $html .= '</li>';
-    }
-    // Botón para agregar nueva pestaña, solo en modo diseño
-    if (!empty($modoDiseno)) {
-        $html .= '<li class="nav-item add-tab-button" role="presentation">';
-        $html .= '<a class="nav-link" href="#" title="Agregar nueva pestaña" id="add-tab-btn-' . $tabsId . '"><i class="fas fa-plus"></i></a>';
-        $html .= '</li>';
-    }
-    $html .= '</ul>';
-    // Renderizar el contenido de las pestañas
-    $html .= '<div class="tab-content" id="' . $tabsId . 'Content">';
-    foreach ($tabDetails as $index => $details) {
-        $activeClass = ($index === 0) ? 'show active' : '';
-        $html .= '<div class="tab-pane fade ' . $activeClass . '" id="' . $details['id'] . '" role="tabpanel" aria-labelledby="' . $details['id'] . '-tab" data-tab-title="' . htmlspecialchars($details['title']) . '">';
-        $html .= renderRows($details['rows'], $fieldsetsConfig, $valores, $soloLectura);
-        $html .= '</div>';
-    }
-    $html .= '</div>';
-    $html .= '</div>';
     return $html;
 }
 
 function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $soloLectura) {
-    if (!isset($fieldsetsConfig[$fieldsetName])) {
-        return "<div class='alert alert-warning'>Fieldset '{$fieldsetName}' no encontrado.</div>";
+    if (!is_string($fieldsetName) || $fieldsetName === '' || !isset($fieldsetsConfig[$fieldsetName])) {
+        return "<div class='alert alert-warning mb-2'>Fieldset '".htmlspecialchars((string)$fieldsetName, ENT_QUOTES, 'UTF-8')."' no encontrado.</div>";
     }
-
     $fieldset = $fieldsetsConfig[$fieldsetName];
     $titulo = $fieldset['titulo'] ?? ucfirst(str_replace('_', ' ', $fieldsetName));
-    $html = '';
+    $html = "<div class='draggable-fieldset' data-fieldset-name='".htmlspecialchars($fieldsetName, ENT_QUOTES, 'UTF-8')."'>";
 
-    // Contenedor principal para el fieldset, ahora draggable
-    $html .= "<div class='draggable-fieldset' data-fieldset-name='{$fieldsetName}'>";
+    $renderizado = false;
 
-    // --- Soporte para fieldsets avanzados con filas/columnas (grilla interna) ---
-    if (isset($fieldset['rows']) && is_array($fieldset['rows'])) {
+    // Grilla interna (exclusiva)
+    if (!empty($fieldset['rows']) && is_array($fieldset['rows'])) {
+        $renderizado = true;
         $html .= "<fieldset class='mb-4 p-3 border rounded fieldset-grid-avanzada'>";
-        if ($titulo) {
-            $html .= "<legend class='w-auto px-2 h6'>
-                        <span class='fieldset-title-text editable-label' contenteditable='false' data-edit-type='fieldset' data-fieldset-name='{$fieldsetName}'>".htmlspecialchars($titulo)."</span>
-                        <i class='fas fa-pencil-alt edit-icon' data-edit-type='fieldset' data-fieldset-name='{$fieldsetName}' style='display:none; cursor:pointer; margin-left: 10px;'></i>
-                      </legend>";
+        if (!empty($titulo)) {
+            $html .= "<legend class='w-auto px-2 h6'>".htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8')."</legend>";
         }
         foreach ($fieldset['rows'] as $fsRow) {
-            $html .= "<div class='row fieldset-grid-row sortable-row'>";
-            foreach (($fsRow['columns'] ?? []) as $fsCol) { // endurecido
-                $html .= "<div class='col fieldset-grid-col sortable-col' style='min-height:48px;'>";
+            $html .= "<div class='row fieldset-grid-row'>";
+            foreach (($fsRow['columns'] ?? []) as $fsCol) {
+                $html .= "<div class='col fieldset-grid-col' style='min-height:48px;'>";
                 if (isset($fsCol['field'])) {
-                    // Buscar el campo en todos los fieldsets
                     $campo = null;
                     foreach ($fieldsetsConfig as $fs) {
-                        if (isset($fs['campos'])) {
-                            foreach ($fs['campos'] as $c) {
-                                if ($c['nombre'] === $fsCol['field']) {
-                                    $campo = $c;
-                                    break 2;
-                                }
-                            }
+                        foreach (($fs['campos'] ?? []) as $c) {
+                            if (($c['nombre'] ?? null) === $fsCol['field']) { $campo = $c; break 2; }
                         }
                     }
                     if ($campo) {
-                        $valor = $valores[$campo['nombre']] ?? $campo['valor_predeterminado'] ?? '';
-                        // Unificar: todos los campos individuales usan .draggable-field
-                        $html .= "<div class='draggable-field sortable-campo' data-type='field' data-name='".htmlspecialchars($campo['nombre'])."' data-tipo='".htmlspecialchars($campo['tipo'])."' ";
-                        if (!empty($campo['etiqueta'])) $html .= "data-etiqueta='".htmlspecialchars($campo['etiqueta'])."' ";
-                        if (!empty($campo['placeholder'])) $html .= "data-placeholder='".htmlspecialchars($campo['placeholder'])."' ";
-                        if (!empty($campo['opciones'])) $html .= "data-opciones='".htmlspecialchars(is_array($campo['opciones']) ? implode(',', array_values($campo['opciones'])) : $campo['opciones'])."' ";
-                        if (!empty($campo['style'])) $html .= "data-style='".htmlspecialchars($campo['style'])."' ";
-                        if (!empty($campo['regex'])) $html .= "data-regex='".htmlspecialchars($campo['regex'])."' ";
-                        if (!empty($campo['data-source'])) {
-                            $html .= "data-source='" . htmlspecialchars(json_encode($campo['data-source'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES) . "' ";
-                        }
-                        $html .= ">";
+                        $valor = $valores[$campo['nombre']] ?? ($campo['valor_predeterminado'] ?? '');
+                        $html .= "<div class='draggable-field' data-type='field' data-name='".htmlspecialchars($campo['nombre'], ENT_QUOTES, 'UTF-8')."'>";
                         $html .= generarCampo($campo, $valor, $soloLectura);
-                        $html .= "<i class='fas fa-pencil-alt edit-icon' data-edit-type='field' data-field-name='".htmlspecialchars($campo['nombre'])."' style='display:none; cursor:pointer; margin-left: 5px;'></i>";
                         $html .= "</div>";
                     } else {
-                        $html .= "<div class='alert alert-warning'>Campo '".htmlspecialchars($fsCol['field'])."' no encontrado.</div>";
+                        $html .= "<div class='alert alert-warning mb-2'>Campo '".htmlspecialchars($fsCol['field'], ENT_QUOTES, 'UTF-8')."' no encontrado.</div>";
                     }
-                } elseif (isset($fsCol['fieldset'])) {
-                    // Permitir fieldsets anidados (grupo dentro de grupo)
+                } elseif (isset($fsCol['fieldset']) && is_string($fsCol['fieldset'])) {
                     $html .= generarFieldsetContenido($fsCol['fieldset'], $fieldsetsConfig, $valores, $soloLectura);
                 }
                 $html .= "</div>";
             }
             $html .= "</div>";
         }
-        $html .= "</fieldset>"; // cierre del fieldset avanzado
+        $html .= "</fieldset>";
     }
 
-    // --- Modo clásico (campos en lista vertical) ---
-    $html .= "<fieldset class='mb-4 p-3 border rounded sortable-fields-container'>"; 
-    if ($titulo) {
-        $html .= "<legend class='w-auto px-2 h6'>
-                    <span class='fieldset-title-text editable-label' contenteditable='false' data-edit-type='fieldset' data-fieldset-name='{$fieldsetName}'>".htmlspecialchars($titulo)."</span>
-                    <i class='fas fa-pencil-alt edit-icon' data-edit-type='fieldset' data-fieldset-name='{$fieldsetName}' style='display:none; cursor:pointer; margin-left: 10px;'></i>
-                  </legend>";
-    }
-
-    if (isset($fieldset['campos']) && is_array($fieldset['campos']) && count($fieldset['campos']) > 0) {
+    // Modo clásico (si no hubo grilla)
+    if (!$renderizado && !empty($fieldset['campos']) && is_array($fieldset['campos'])) {
+        $html .= "<fieldset class='mb-4 p-3 border rounded sortable-fields-container'>";
+        if (!empty($titulo)) {
+            $html .= "<legend class='w-auto px-2 h6'>".htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8')."</legend>";
+        }
         foreach ($fieldset['campos'] as $campo) {
             $nombreCampo = $campo['nombre'] ?? 'sin_nombre';
-            // Unificar: todos los campos individuales usan .draggable-field
-            $html .= "<div class='draggable-field' data-field-name='{$nombreCampo}'>";
-            $valor = $valores[$nombreCampo] ?? $campo['valor_predeterminado'] ?? '';
+            $valor = $valores[$nombreCampo] ?? ($campo['valor_predeterminado'] ?? '');
+            $html .= "<div class='draggable-field' data-field-name='".htmlspecialchars($nombreCampo, ENT_QUOTES, 'UTF-8')."'>";
             $html .= generarCampo($campo, $valor, $soloLectura);
-            $html .= "<i class='fas fa-pencil-alt edit-icon' data-edit-type='field' data-field-name='{$nombreCampo}' style='display:none; cursor:pointer; margin-left: 5px;'></i>";
             $html .= "</div>";
         }
-    } else {
+        $html .= "</fieldset>";
+        $renderizado = true;
+    }
+
+    if (!$renderizado) {
         $html .= "<div class='alert alert-info'>Este fieldset no tiene campos definidos.</div>";
     }
 
-    $html .= '</fieldset>';
-    $html .= '</div>'; // Cierre de draggable-fieldset
+    $html .= "</div>";
     return $html;
 }
 
-// KEEP: Elementos fuera del formulario solo en modo diseño
 function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valores, $soloLectura) {
-    // Solo mostrar en modo diseño (requiere variable $modoDiseno = true)
     global $modoDiseno;
     if (empty($modoDiseno)) return '';
     $html = '<div id="elementos-fuera-container" class="p-3 border rounded bg-light sortable-outside-container solo-modo-diseno">';
@@ -340,25 +213,20 @@ function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valo
         $html .= '<p class="text-muted">Arrastra aquí los campos o grupos que quieras quitar temporalmente.</p>';
     } else {
         foreach ($elementos as $item) {
-            if ($item['type'] === 'fieldset') {
+            if (($item['type'] ?? '') === 'fieldset' && !empty($item['name'])) {
                 $html .= generarFieldsetContenido($item['name'], $fieldsetsConfig, $valores, $soloLectura);
-            } elseif ($item['type'] === 'field') {
-                // Lógica para encontrar la configuración del campo y renderizarlo
+            } elseif (($item['type'] ?? '') === 'field' && !empty($item['name'])) {
+                // Buscar field config
                 $fieldConfig = null;
                 foreach ($fieldsetsConfig as $fs) {
-                    if (isset($fs['campos']) && is_array($fs['campos'])) {
-                        foreach ($fs['campos'] as $campo) {
-                            if ($campo['nombre'] === $item['name']) {
-                                $fieldConfig = $campo;
-                                break 2;
-                            }
-                        }
+                    foreach (($fs['campos'] ?? []) as $campo) {
+                        if (($campo['nombre'] ?? null) === $item['name']) { $fieldConfig = $campo; break 2; }
                     }
                 }
                 if ($fieldConfig) {
                     $nombreCampo = $fieldConfig['nombre'];
-                    $html .= "<div class='draggable-field' data-field-name='{$nombreCampo}'>";
-                    $valor = $valores[$nombreCampo] ?? $fieldConfig['valor_predeterminado'] ?? '';
+                    $valor = $valores[$nombreCampo] ?? ($fieldConfig['valor_predeterminado'] ?? '');
+                    $html .= "<div class='draggable-field' data-field-name='".htmlspecialchars($nombreCampo, ENT_QUOTES, 'UTF-8')."'>";
                     $html .= generarCampo($fieldConfig, $valor, $soloLectura);
                     $html .= "</div>";
                 }
@@ -369,277 +237,7 @@ function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valo
     return $html;
 }
 
-// --- FUNCIONALIDAD PRINCIPAL ---
-// --- PRIORIDAD 1: PROCESAR EL ENVÍO DEL FORMULARIO (POST) ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $params = $json['parametros'] ?? [];
-
-    // Defaults seguros (evitan notices si faltan en el JSON)
-    $param_adjuntos = $params['adjuntos'] ?? [];
-    $param_mensajes = $params['mensajes'] ?? [
-        'exito'       => 'Datos enviados correctamente.',
-        'advertencia' => 'Advertencias durante el envío:',
-        'error'       => 'Ocurrió un error durante el envío.'
-    ];
-    if (!isset($all_fields) || !is_array($all_fields)) $all_fields = [];
-    if (!isset($archivo_json) || $archivo_json === '') $archivo_json = $_GET['archivo'] ?? 'form';
-
-    $postData = $_POST;
-    $uploadsDir = 'uploads/';
-    if (!is_dir($uploadsDir)) mkdir($uploadsDir, 0755, true);
-
-    $formData = [];
-    $adjuntosWarnings = [];
-    $erroresValidacion = [];
-    // --- Validación por regex desde JSON (backend) ---
-    foreach (($json['parametros']['validaciones'] ?? []) as $campo => $regla) {
-        if (isset($postData[$campo]) && $regla['regex']) {
-            if (!preg_match('/' . $regla['regex'] . '/u', $postData[$campo])) {
-                $erroresValidacion[] = $regla['mensaje'] ?? ("Valor inválido en $campo");
-            }
-        }
-    }
-    if (!empty($erroresValidacion)) {
-        $mensaje_envio = "<div class='alert alert-danger'><b>Errores de validación:</b><ul><li>" . implode('</li><li>', $erroresValidacion) . "</li></ul></div>";
-        $valores = $postData;
-        echo $mensaje_envio;
-        exit;
-    }
-
-    $formData = [];
-    $adjuntosWarnings = [];
-    // --- Configuración de validaciones de adjuntos ---
-    $allowedMimeTypes = $param_adjuntos['tipos_permitidos'] ?? [
-        'image/jpeg', 'image/png', 'image/gif', 'application/pdf',
-        'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'text/plain', 'application/zip', 'application/x-zip-compressed',
-        'application/vnd.ms-powerpoint', 'application/octet-stream'
-    ];
-    $maxFileSize = ($param_adjuntos['tamano_maximo_mb'] ?? 5) * 1024 * 1024; // 5 MB
-    $archivosTemporales = [];
-    foreach ($all_fields as $field) {
-        $fieldName = $field['name'];
-        if ($field['type'] === 'datatable') {
-            $formData[$fieldName] = isset($postData[$fieldName]) ? $postData[$fieldName] : [];
-        } else if ($field['type'] === 'file') {
-            $formData[$fieldName] = [];
-            if (isset($_FILES[$fieldName]) && is_array($_FILES[$fieldName]['name'])) {
-                foreach ($_FILES[$fieldName]['name'] as $idx => $fileName) {
-                    if ($_FILES[$fieldName]['error'][$idx] === UPLOAD_ERR_OK) {
-                        $tmpName = $_FILES[$fieldName]['tmp_name'][$idx];
-                        $fileType = mime_content_type($tmpName);
-                        $fileSize = $_FILES[$fieldName]['size'][$idx];
-                        if (!in_array($fileType, $allowedMimeTypes)) {
-                            $adjuntosWarnings[] = "Tipo de archivo no permitido: $fileName ($fileType)";
-                            continue;
-                        }
-                        if ($fileSize > $maxFileSize) {
-                            $adjuntosWarnings[] = "Archivo demasiado grande: $fileName (" . round($fileSize/1024/1024,2) . " MB)";
-                            continue;
-                        }
-                        // Seguridad: nombre único para archivos adjuntos
-                        $destPath = $uploadsDir . uniqid('adj_', true) . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', basename($fileName));
-                        if (move_uploaded_file($tmpName, $destPath)) {
-                            $formData[$fieldName][] = $destPath;
-                        } else {
-                            $adjuntosWarnings[] = "No se pudo guardar el archivo adjunto: $fileName";
-                        }
-                    } else if ($_FILES[$fieldName]['error'][$idx] !== UPLOAD_ERR_NO_FILE) {
-                        $adjuntosWarnings[] = "Error al subir archivo adjunto: $fileName, código: " . $_FILES[$fieldName]['error'][$idx];
-                    }
-                }
-            } else if (isset($_FILES[$fieldName]) && !is_array($_FILES[$fieldName]['name']) && $_FILES[$fieldName]['error'] === UPLOAD_ERR_OK) {
-                $tmpName = $_FILES[$fieldName]['tmp_name'];
-                $fileName = $_FILES[$fieldName]['name'];
-                $fileType = mime_content_type($tmpName);
-                $fileSize = $_FILES[$fieldName]['size'];
-                if (!in_array($fileType, $allowedMimeTypes)) {
-                    $adjuntosWarnings[] = "Tipo de archivo no permitido: $fileName ($fileType)";
-                } elseif ($fileSize > $maxFileSize) {
-                    $adjuntosWarnings[] = "Archivo demasiado grande: $fileName (" . round($fileSize/1024/1024,2) . " MB)";
-                } else {
-                    $destPath = $uploadsDir . uniqid('adj_', true) . '_' . preg_replace('/[^a-zA-Z0-9._-]/', '_', basename($fileName));
-                    if (move_uploaded_file($tmpName, $destPath)) {
-                        $formData[$fieldName][] = $destPath;
-                    } else {
-                        $adjuntosWarnings[] = "No se pudo guardar el archivo adjunto (single): $fileName";
-                    }
-                }
-            } else if (isset($_FILES[$fieldName]) && $_FILES[$fieldName]['error'] !== UPLOAD_ERR_NO_FILE) {
-                $adjuntosWarnings[] = "Error al subir archivo adjunto (single): " . $_FILES[$fieldName]['name'] . ", código: " . $_FILES[$fieldName]['error'];
-            }
-        } else {
-            $formData[$fieldName] = isset($postData[$fieldName]) ? $postData[$fieldName] : null;
-        }
-    }
-
-    $firstField = reset($all_fields);
-    $id_registro = null;
-    if ($firstField && array_key_exists($firstField['name'], $formData)) {
-        $id_registro = $formData[$firstField['name']];
-        $sessionKey = 'form_data_' . $archivo_json . '_' . $id_registro;
-        $_SESSION[$sessionKey] = $formData;
-    }
-    
-    try {
-        // Generación de archivos y correo (sin cambios)
-        $formatosAgenerar = array_map('trim', explode(',', $params['tipoformatoenvio'] ?? ''));
-        $archivosAdjuntar = [];
-        $baseFilename = $uploadsDir . 'formulario_' . date('Ymd_His');
-        $cuerpoHtml = "<h1>" . htmlspecialchars($params['subject'] ?? 'Datos del Formulario') . "</h1>";
-        $datosParaArchivos = [];
-        foreach ($formData as $key => $value) {
-            $fieldInfo = getFieldInfo($key, $all_fields);
-            if (!$fieldInfo) continue;
-            $label = $fieldInfo['label'] ?? ucfirst($key);
-            $displayValue = '';
-            $valorParaArchivo = '';
-            if ($fieldInfo['type'] === 'datatable' && is_array($value)) {
-                $displayValue .= "<table border='1' cellpadding='5' style='width:100%; border-collapse:collapse; margin-top:5px;'><thead><tr>";
-                foreach($fieldInfo['columns'] as $col) { $displayValue .= "<th>" . htmlspecialchars($col['label']) . "</th>"; }
-                $displayValue .= "</tr></thead><tbody>";
-                foreach($value as $row) { $displayValue .= "<tr>"; foreach($fieldInfo['columns'] as $col) { $displayValue .= "<td>" . htmlspecialchars($row[$col['name']] ?? '') . "</td>"; } $displayValue .= "</tr>"; }
-                $displayValue .= "</tbody></table>";
-                $valorParaArchivo = json_encode($value);
-            } else if ($fieldInfo['type'] === 'file' && is_array($value)) {
-                $displayValue = implode('<br>', array_map('htmlspecialchars', $value));
-                $valorParaArchivo = implode(', ', $value);
-                foreach ($value as $filePath) {
-                    if (file_exists($filePath)) {
-                        $archivosAdjuntar[] = $filePath;
-                    } else {
-                        $adjuntosWarnings[] = "Archivo adjunto no encontrado para adjuntar: $filePath";
-                    }
-                }
-            } else {
-                $displayValue = is_array($value) ? implode(', ', array_map('htmlspecialchars', $value)) : nl2br(htmlspecialchars($value));
-                $valorParaArchivo = is_array($value) ? implode(', ', $value) : $value;
-            }
-            $datosParaArchivos[] = ['label' => $label, 'value' => $valorParaArchivo, 'type' => $fieldInfo['type'], 'columns' => $fieldInfo['columns'] ?? []];
-            $cuerpoHtml .= "<h3>" . htmlspecialchars($label) . "</h3><div>{$displayValue}</div><hr>";
-        }
-        if (in_array('html', $formatosAgenerar)) { $path = $baseFilename . '.html'; file_put_contents($path, $cuerpoHtml); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path; }
-        if (in_array('json', $formatosAgenerar)) { $path = $baseFilename . '.json'; file_put_contents($path, json_encode($formData, JSON_PRETTY_PRINT)); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path; }
-        if (in_array('csv', $formatosAgenerar) || in_array('cvs', $formatosAgenerar)) { $path = $baseFilename . '.csv'; $fp = fopen($path, 'w'); fputcsv($fp, ['Campo', 'Valor']); foreach ($datosParaArchivos as $dato) { fputcsv($fp, [$dato['label'], $dato['value']]); } fclose($fp); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path; }
-        if (in_array('xml', $formatosAgenerar)) { $path = $baseFilename . '.xml'; $xml = new SimpleXMLElement('<formulario/>'); foreach ($datosParaArchivos as $dato) { $xml->addChild(preg_replace('/[^A-Za-z0-9_]/', '', $dato['label']), htmlspecialchars($dato['value'])); } $xml->asXML($path); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path; }
-        if (in_array('doc', $formatosAgenerar)) { $path = $baseFilename . '.doc'; file_put_contents($path, $cuerpoHtml); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path; }
-        if (in_array('xls', $formatosAgenerar) || in_array('xlsx', $formatosAgenerar)) { $path = $baseFilename . '.xls'; $xlsContent = "<html xmlns:x='urn:schemas-microsoft-com:office:excel'><head><meta charset='UTF-8'></head><body>"; $xlsContent .= "<h3>Datos Principales</h3><table border='1'>"; $xlsContent .= "<tr><th>Campo</th><th>Valor</th></tr>"; foreach ($datosParaArchivos as $dato) { if ($dato['type'] !== 'datatable') { $xlsContent .= "<tr><td>" . htmlspecialchars($dato['label']) . "</td><td>" . htmlspecialchars($dato['value']) . "</td></tr>"; } } $xlsContent .= "</table><br/><br/>"; foreach ($datosParaArchivos as $dato) { if ($dato['type'] === 'datatable') { $xlsContent .= "<h3>" . htmlspecialchars($dato['label']) . "</h3><table border='1'>"; $tableData = json_decode($dato['value'], true); $xlsContent .= "<tr>"; foreach($dato['columns'] as $col) { $xlsContent .= "<th>" . htmlspecialchars($col['label']) . "</th>"; } $xlsContent .= "</tr>"; foreach($tableData as $row) { $xlsContent .= "<tr>"; foreach($dato['columns'] as $col) { $xlsContent .= "<td>" . htmlspecialchars($row[$col['name']] ?? '') . "</td>"; } $xlsContent .= "</tr>"; } $xlsContent .= "</table><br/>"; } } $xlsContent .= "</body></html>"; file_put_contents($path, $xlsContent); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path; }
-        if (in_array('pdf', $formatosAgenerar)) { try { $path = $baseFilename . '.pdf'; $pdf = new FPDF('P', 'mm', 'A4'); $pdf->AddPage(); $pdf->SetFont('Arial', 'B', 16); $pdf->Cell(0, 10, utf8_decode($params['subject'] ?? 'Datos del Formulario'), 0, 1, 'C'); $pdf->Ln(10); foreach ($datosParaArchivos as $dato) { $pdf->SetFont('Arial', 'B', 12); $pdf->Cell(50, 8, utf8_decode($dato['label'] . ':'), 0, 0); $pdf->SetFont('Arial', '', 12); if ($dato['type'] === 'datatable') { $pdf->Ln(10); $tableData = json_decode($dato['value'], true); $pdf->SetFont('Arial', 'B', 10); foreach($dato['columns'] as $col) { $pdf->Cell(40, 7, utf8_decode($col['label']), 1); } $pdf->Ln(); $pdf->SetFont('Arial', '', 10); foreach($tableData as $row) { foreach($dato['columns'] as $col) { $pdf->Cell(40, 7, utf8_decode($row[$col['name']] ?? ''), 1); } $pdf->Ln(); } $pdf->Ln(5); } else { $pdf->MultiCell(0, 8, utf8_decode($dato['value'])); $pdf->Ln(2); } } $pdf->Output('F', $path); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path; } catch (Exception $e) { /* Ignorar error de PDF */ } }
-        if (in_array('htmlc', $formatosAgenerar) && !empty($params['destinatario'])) {
-            try {
-                $mail = new PHPMailer(true);
-                $mail->isSendmail();
-                $mail->CharSet = 'UTF-8';
-                $mail->setFrom($params['mailDe'] ?? 'noreply@example.com', 'Formulario Web');
-                $mail->addAddress($params['destinatario']);
-                if (!empty($params['mailCc'])) { $mail->addCC($params['mailCc']); }
-                $mail->isHTML(true);
-                $mail->Subject = $params['subject'] ?? 'Nuevo Envío de Formulario';
-                $mail->Body    = $cuerpoHtml;
-                $logAdjuntos = [];
-                foreach ($archivosAdjuntar as $rutaArchivo) {
-                    if (file_exists($rutaArchivo)) {
-                        $mail->addAttachment($rutaArchivo);
-                        $logAdjuntos[] = $rutaArchivo;
-                    }
-                }
-                $mail->send();
-                error_log('Correo enviado a: ' . $params['destinatario'] . ' | Adjuntos: ' . implode(', ', $logAdjuntos));
-            } catch (Exception $e) {
-                $adjuntosWarnings[] = 'No se pudo enviar el correo: ' . $mail->ErrorInfo;
-            }
-        }
-        $mensajeFinal = $param_mensajes['exito'];
-        if (!empty($adjuntosWarnings)) {
-            $mensajeFinal .= "<br><div class='alert alert-warning mt-2'><b>" . $param_mensajes['advertencia'] . "</b><ul><li>" . implode('</li><li>', $adjuntosWarnings) . "</li></ul></div>";
-        }
-        $_SESSION['mensaje_flash'] = $mensajeFinal;
-        header("Location: formulariodinamico.php?archivo=" . urlencode($archivo_json) . "&status=saved");
-        error_log('Redirigiendo a formulariodinamico.php tras guardar. Adjuntos: ' . implode(', ', $archivosAdjuntar));
-        exit;
-    } catch (Exception $e) {
-        $mensaje_envio = "<div class='alert alert-danger'>" . $param_mensajes['error'] . "<br>" . $e->getMessage() . "</div>";
-        if (!empty($adjuntosWarnings)) {
-            $mensaje_envio .= "<br><div class='alert alert-warning mt-2'><b>" . $param_mensajes['advertencia'] . "</b><ul><li>" . implode('</li><li>', $adjuntosWarnings) . "</li></ul></div>";
-        }
-        $valores = $formData;
-        echo $mensaje_envio;
-        exit;
-    }
-}
-// --- PRIORIDAD 2: PROCESAR PETICIONES AJAX PARA CARGAR DATOS ---
-// Esta es AHORA la ÚNICA forma de cargar datos en el formulario.
-else if (isset($_GET['action']) && $_GET['action'] === 'load_data') {
-    header('Content-Type: application/json');
-    $formName = $_GET['archivo'] ?? ''; 
-    $key = $_GET['key'] ?? '';
-
-    if (empty($formName) || empty($key)) {
-        echo json_encode(['error' => 'Faltan parámetros para la carga.']);
-        exit;
-    }
-
-    $sessionKey = 'form_data_' . $formName . '_' . $key;
-    if (isset($_SESSION[$sessionKey])) {
-        echo json_encode(['success' => true, 'data' => $_SESSION[$sessionKey]]);
-    } else {
-        echo json_encode(['success' => false]);
-    }
-    exit;
-}
-// --- PRIORIDAD 3: LÓGICA PARA MOSTRAR MENSAJES (SI NO ES POST NI AJAX) ---
-// Esto se ejecuta en la carga normal de la página.
-if (isset($_SESSION['mensaje_flash'])) {
-    $mensaje_envio = "<div class='alert alert-success'>" . $_SESSION['mensaje_flash'] . "</div>";
-    unset($_SESSION['mensaje_flash']);
-}
-
-// --- Limpieza automática de archivos temporales generados (no adjuntos subidos por usuario) ---
-if (!isset($archivosTemporales) || !is_array($archivosTemporales)) {
-    $archivosTemporales = [];
-}
-foreach ($archivosTemporales as $tmpFile) {
-    if (file_exists($tmpFile)) {
-        @unlink($tmpFile);
-    }
-}
-// --- LÓGICA PARA LA PALETA DE COMPONENTES ---
-// 1. Obtener todos los nombres de los fieldsets definidos.
-// --- DEPURACIÓN: Mostrar si $fieldsets y $layout están inicializados correctamente ---
-/*
-echo "<div style='background:#ffe;border:2px solid #fc0;padding:10px;margin:10px 0;'>";
-echo "<b>Depuración rápida:</b><br>";
-echo "<b>fieldsets</b>: ";
-var_dump($fieldsets);
-echo "<br><b>layout</b>: ";
-var_dump($layout);
-echo "</div>";
-*/
-// Asegurar que $layout sea un array antes de usar array_walk_recursive
-$todos_los_fieldsets = array_keys(is_array($fieldsets ?? null) ? $fieldsets : []);
-$fieldsets_usados = [];
-$layout_for_scan = is_array($layout ?? null) ? $layout : [];
-// 2. Recorrer el layout para encontrar los fieldsets que ya están en uso.
-array_walk_recursive($layout_for_scan, function($item, $key) use (&$fieldsets_usados) {
-    if (is_string($item) && $key !== 'type' && $key !== 'width' && !in_array($item, $fieldsets_usados)) {
-        $fieldsets_usados[] = $item;
-    }
-    if ($key === 'tabs') {
-        foreach ($item as $tab) {
-            if (isset($tab['content']) && is_array($tab['content'])) {
-                 foreach ($tab['content'] as $componente) {
-                     if (is_string($componente) && !in_array($componente, $fieldsets_usados)) {
-                         $fieldsets_usados[] = $componente;
-                     }
-                 }
-            }
-        }
-    }
-});
-// 3. Comparar para encontrar los fieldsets disponibles.
-$fieldsets_disponibles = array_diff($todos_los_fieldsets, $fieldsets_usados);
-// --- DEPURACIÓN: Mostrar resultado de la lógica de paleta SOLO si se activa debug en modo diseño ---
+// Debug helpers (opcionales)
 if (!function_exists('renderDebugButton')) {
     function renderDebugButton($id, $label = 'Debug') {
         return "<button type='button' class='solo-modo-diseno btn btn-warning btn-sm' style='margin:5px 0;' onclick=\"var d=document.getElementById('$id');d.style.display=d.style.display==='none'?'block':'none';\">$label</button>";
@@ -650,37 +248,324 @@ if (!function_exists('renderDebugPanel')) {
         return "<div id='$id' class='solo-modo-diseno' style='display:none;'>$content</div>";
     }
 }
-if (!empty($modoDiseno)) {
-    echo renderDebugButton('debug_fieldsets','Depuración Fieldsets');
-    $debugContent = "<div style='background:#e0f7fa;border:2px solid #00bcd4;padding:10px;margin:10px 0;'>";
-    $debugContent .= "<b>Fieldsets usados:</b> <pre>" . htmlspecialchars(print_r($fieldsets_usados, true)) . "</pre>";
-    $debugContent .= "<b>Fieldsets disponibles:</b> <pre>" . htmlspecialchars(print_r($fieldsets_disponibles, true)) . "</pre>";
-    $debugContent .= "</div>";
-    echo renderDebugPanel('debug_fieldsets', $debugContent);
-}
 
-// Defaults seguros antes del render (colocar al final del archivo)
-$modoDiseno   = isset($modoDiseno) ? (int)$modoDiseno : (int)($_GET['modoDiseno'] ?? 0);
-$valores      = isset($valores) && is_array($valores) ? $valores : [];
-$soloLectura  = isset($soloLectura) ? (bool)$soloLectura : false;
-$layout       = isset($layout) && is_array($layout) ? $layout : null;
-$fieldsets    = isset($fieldsets) && is_array($fieldsets) ? $fieldsets : null;
-$mensaje_envio = $mensaje_envio ?? '';
+// -------------------- Backend: POST y AJAX --------------------
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Variables de contexto del host
+    $json         = $json         ?? [];
+    $all_fields   = (isset($all_fields) && is_array($all_fields)) ? $all_fields : [];
+    $archivo_json = $archivo_json ?? ($_GET['archivo'] ?? 'form');
+    $params       = $json['parametros'] ?? [];
 
-// Render final controlado (NO cerrar PHP con ?>)
-if (!empty($modoDiseno)) {
-    echo "<div class='alert alert-info'>El formulario está desactivado en modo diseño. Solo disponible para edición.</div>";
-    return;
-}
+    $uploadsDir = __DIR__ . '/uploads/';
+    if (!is_dir($uploadsDir)) @mkdir($uploadsDir, 0755, true);
 
-// Si no hay layout, usar fallback de generarLayout pasando []
-$layoutSafe = is_array($layout) ? $layout : [];
+    $postData = $_POST;
+    $formData = [];
+    $adjuntosWarnings = [];
+    $erroresValidacion = [];
 
-if (is_array($fieldsets)) {
-    if ($mensaje_envio !== '') {
-        echo $mensaje_envio;
+    // Validaciones regex (robustas)
+    foreach (($params['validaciones'] ?? []) as $campo => $regla) {
+        if (!isset($postData[$campo])) continue;
+        if (is_array($regla) && !empty($regla['regex'])) {
+            $pattern = '/' . str_replace('/', '\/', (string)$regla['regex']) . '/u';
+            if (@preg_match($pattern, '') === false) continue;
+            if (!preg_match($pattern, (string)$postData[$campo])) {
+                $erroresValidacion[] = $regla['mensaje'] ?? ("Valor inválido en $campo");
+            }
+        }
     }
-    echo generarLayout($layoutSafe, $fieldsets, $valores, $soloLectura);
-} else {
-    echo "<div class='alert alert-warning'>Sin configuración de fieldsets para renderizar.</div>";
+    if (!empty($erroresValidacion)) {
+        $_SESSION['mensaje_flash'] = "<div class='alert alert-danger'><b>Errores de validación:</b><ul><li>" . implode('</li><li>', $erroresValidacion) . "</li></ul></div>";
+        header("Location: formulariodinamico.php?archivo=" . urlencode($archivo_json) . "&status=invalid");
+        exit;
+    }
+
+    // Adjuntos config
+    $param_adjuntos = $params['adjuntos'] ?? [];
+    $allowedMimeTypes = $param_adjuntos['tipos_permitidos'] ?? [
+        'image/jpeg','image/png','image/gif','application/pdf',
+        'application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'text/plain','application/zip','application/x-zip-compressed',
+        'application/vnd.ms-powerpoint','application/octet-stream'
+    ];
+    $maxFileSize = (int)(($param_adjuntos['tamano_maximo_mb'] ?? 5) * 1024 * 1024);
+
+    // Construcción de datos según $all_fields; fallback para archivos si faltan
+    $fileFieldNames = array_keys($_FILES ?? []);
+    foreach ($all_fields as $field) {
+        $fieldName = $field['name'] ?? null;
+        $fieldType = $field['type'] ?? null;
+        if (!$fieldName) continue;
+
+        if ($fieldType === 'datatable') {
+            $formData[$fieldName] = isset($postData[$fieldName]) ? $postData[$fieldName] : [];
+        } elseif ($fieldType === 'file') {
+            $formData[$fieldName] = [];
+            if (isset($_FILES[$fieldName])) {
+                $files = $_FILES[$fieldName];
+                if (is_array($files['name'])) {
+                    foreach ($files['name'] as $idx => $fileName) {
+                        if ($files['error'][$idx] === UPLOAD_ERR_OK) {
+                            $tmpName = $files['tmp_name'][$idx];
+                            $fileType = @mime_content_type($tmpName) ?: ($files['type'][$idx] ?? '');
+                            $fileSize = (int)$files['size'][$idx];
+                            if (!in_array($fileType, $allowedMimeTypes, true)) { $adjuntosWarnings[] = "Tipo no permitido: $fileName ($fileType)"; continue; }
+                            if ($fileSize > $maxFileSize) { $adjuntosWarnings[] = "Archivo grande: $fileName"; continue; }
+                            $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', basename($fileName));
+                            $destPath = $uploadsDir . uniqid('adj_', true) . '_' . $safeName;
+                            if (move_uploaded_file($tmpName, $destPath)) $formData[$fieldName][] = $destPath;
+                            else $adjuntosWarnings[] = "Error guardando: $fileName";
+                        } elseif ($files['error'][$idx] !== UPLOAD_ERR_NO_FILE) {
+                            $adjuntosWarnings[] = "Error subiendo: $fileName (code ".$files['error'][$idx].")";
+                        }
+                    }
+                } else {
+                    // Single
+                    if ($files['error'] === UPLOAD_ERR_OK) {
+                        $tmpName = $files['tmp_name'];
+                        $fileName = $files['name'];
+                        $fileType = @mime_content_type($tmpName) ?: ($files['type'] ?? '');
+                        $fileSize = (int)$files['size'];
+                        if (!in_array($fileType, $allowedMimeTypes, true)) { $adjuntosWarnings[] = "Tipo no permitido: $fileName ($fileType)"; }
+                        elseif ($fileSize > $maxFileSize) { $adjuntosWarnings[] = "Archivo grande: $fileName"; }
+                        else {
+                            $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', basename($fileName));
+                            $destPath = $uploadsDir . uniqid('adj_', true) . '_' . $safeName;
+                            if (move_uploaded_file($tmpName, $destPath)) $formData[$fieldName][] = $destPath;
+                            else $adjuntosWarnings[] = "Error guardando: $fileName";
+                        }
+                    } elseif ($files['error'] !== UPLOAD_ERR_NO_FILE) {
+                        $adjuntosWarnings[] = "Error subiendo: ".$files['name']." (code ".$files['error'].")";
+                    }
+                }
+            }
+        } else {
+            $formData[$fieldName] = $postData[$fieldName] ?? null;
+        }
+    }
+    // Fallback: si hay archivos no declarados en $all_fields
+    foreach ($fileFieldNames as $fname) {
+        if (!array_key_exists($fname, $formData)) {
+            $formData[$fname] = []; // evita perder adjuntos no mapeados
+            $files = $_FILES[$fname];
+            if (is_array($files['name'])) {
+                foreach ($files['name'] as $i => $fn) {
+                    if ($files['error'][$i] === UPLOAD_ERR_OK) {
+                        $tmp = $files['tmp_name'][$i];
+                        $ft  = @mime_content_type($tmp) ?: ($files['type'][$i] ?? '');
+                        $fsz = (int)$files['size'][$i];
+                        if (!in_array($ft, $allowedMimeTypes, true) || $fsz > $maxFileSize) continue;
+                        $safe = preg_replace('/[^a-zA-Z0-9._-]/', '_', basename($fn));
+                        $dest = $uploadsDir . uniqid('adj_', true) . '_' . $safe;
+                        if (move_uploaded_file($tmp, $dest)) $formData[$fname][] = $dest;
+                    }
+                }
+            }
+        }
+    }
+
+    // Persistencia mínima para AJAX load (opcional)
+    $firstField = reset($all_fields);
+    if ($firstField && isset($firstField['name']) && array_key_exists($firstField['name'], $formData)) {
+        $id_registro = $formData[$firstField['name']];
+        $sessionKey = 'form_data_' . $archivo_json . '_' . $id_registro;
+        $_SESSION[$sessionKey] = $formData;
+    }
+
+    // Generación de archivos y correo
+    $formatosAgenerar = array_filter(array_map('trim', explode(',', $params['tipoformatoenvio'] ?? '')));
+    $archivosAdjuntar = [];
+    $archivosTemporales = [];
+    $baseFilename = rtrim($uploadsDir, '/\\') . '/formulario_' . date('Ymd_His');
+    $cuerpoHtml = "<h1>" . htmlspecialchars($params['subject'] ?? 'Datos del Formulario', ENT_QUOTES, 'UTF-8') . "</h1>";
+    $datosParaArchivos = [];
+
+    // getFieldInfo proviene de formulariodinamicofunciones.php
+    foreach ($formData as $key => $value) {
+        $fieldInfo = function_exists('getFieldInfo') ? getFieldInfo($key, $all_fields) : ['label'=>ucfirst($key), 'type'=>'text'];
+        if (!$fieldInfo) $fieldInfo = ['label'=>ucfirst($key), 'type'=>'text'];
+        $label = $fieldInfo['label'] ?? ucfirst($key);
+        $displayValue = '';
+        $valorParaArchivo = '';
+
+        if (($fieldInfo['type'] ?? '') === 'datatable' && is_array($value)) {
+            $displayValue .= "<table border='1' cellpadding='5' style='width:100%; border-collapse:collapse; margin-top:5px;'><thead><tr>";
+            foreach (($fieldInfo['columns'] ?? []) as $col) { $displayValue .= "<th>" . htmlspecialchars($col['label'] ?? '', ENT_QUOTES, 'UTF-8') . "</th>"; }
+            $displayValue .= "</tr></thead><tbody>";
+            foreach ($value as $row) {
+                $displayValue .= "<tr>";
+                foreach (($fieldInfo['columns'] ?? []) as $col) {
+                    $displayValue .= "<td>" . htmlspecialchars((string)($row[$col['name']] ?? ''), ENT_QUOTES, 'UTF-8') . "</td>";
+                }
+                $displayValue .= "</tr>";
+            }
+            $displayValue .= "</tbody></table>";
+            $valorParaArchivo = json_encode($value);
+        } elseif (($fieldInfo['type'] ?? '') === 'file' && is_array($value)) {
+            $displayValue = implode('<br>', array_map('htmlspecialchars', $value));
+            $valorParaArchivo = implode(', ', $value);
+            foreach ($value as $filePath) {
+                if (file_exists($filePath)) $archivosAdjuntar[] = $filePath;
+            }
+        } else {
+            $displayValue = is_array($value) ? implode(', ', array_map('htmlspecialchars', $value)) : nl2br(htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'));
+            $valorParaArchivo = is_array($value) ? implode(', ', $value) : (string)$value;
+        }
+
+        $datosParaArchivos[] = [
+            'label'   => $label,
+            'value'   => $valorParaArchivo,
+            'type'    => $fieldInfo['type'] ?? 'text',
+            'columns' => $fieldInfo['columns'] ?? []
+        ];
+        $cuerpoHtml .= "<h3>" . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . "</h3><div>{$displayValue}</div><hr>";
+    }
+
+    // HTML
+    if (in_array('html', $formatosAgenerar, true)) {
+        $path = $baseFilename . '.html';
+        file_put_contents($path, $cuerpoHtml);
+        $archivosAdjuntar[] = $path; $archivosTemporales[] = $path;
+    }
+    // JSON
+    if (in_array('json', $formatosAgenerar, true)) {
+        $path = $baseFilename . '.json';
+        file_put_contents($path, json_encode($formData, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));
+        $archivosAdjuntar[] = $path; $archivosTemporales[] = $path;
+    }
+    // CSV
+    if (in_array('csv', $formatosAgenerar, true) || in_array('cvs', $formatosAgenerar, true)) {
+        $path = $baseFilename . '.csv';
+        $fp = fopen($path, 'w'); fputcsv($fp, ['Campo','Valor']);
+        foreach ($datosParaArchivos as $d) { fputcsv($fp, [$d['label'], $d['value']]); }
+        fclose($fp); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path;
+    }
+    // XML
+    if (in_array('xml', $formatosAgenerar, true)) {
+        $path = $baseFilename . '.xml';
+        $xml = new SimpleXMLElement('<formulario/>');
+        foreach ($datosParaArchivos as $d) { $xml->addChild(preg_replace('/[^A-Za-z0-9_]/', '', $d['label']), htmlspecialchars($d['value'])); }
+        $xml->asXML($path); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path;
+    }
+    // DOC (HTML plano)
+    if (in_array('doc', $formatosAgenerar, true)) {
+        $path = $baseFilename . '.doc';
+        file_put_contents($path, $cuerpoHtml);
+        $archivosAdjuntar[] = $path; $archivosTemporales[] = $path;
+    }
+    // XLS simple (HTML)
+    if (in_array('xls', $formatosAgenerar, true) || in_array('xlsx', $formatosAgenerar, true)) {
+        $path = $baseFilename . '.xls';
+        $xls = "<html xmlns:x='urn:schemas-microsoft-com:office:excel'><head><meta charset='UTF-8'></head><body>";
+        $xls .= "<h3>Datos</h3><table border='1'><tr><th>Campo</th><th>Valor</th></tr>";
+        foreach ($datosParaArchivos as $d) { if ($d['type'] !== 'datatable') $xls .= "<tr><td>".htmlspecialchars($d['label'], ENT_QUOTES, 'UTF-8')."</td><td>".htmlspecialchars($d['value'], ENT_QUOTES, 'UTF-8')."</td></tr>"; }
+        $xls .= "</table><br/>";
+        foreach ($datosParaArchivos as $d) {
+            if ($d['type'] === 'datatable') {
+                $xls .= "<h3>".htmlspecialchars($d['label'], ENT_QUOTES, 'UTF-8')."</h3><table border='1'>";
+                $tableData = json_decode($d['value'], true) ?: [];
+                $xls .= "<tr>"; foreach ($d['columns'] as $col) $xls .= "<th>".htmlspecialchars($col['label'] ?? '', ENT_QUOTES, 'UTF-8')."</th>"; $xls .= "</tr>";
+                foreach ($tableData as $row) { $xls .= "<tr>"; foreach ($d['columns'] as $col) $xls .= "<td>".htmlspecialchars($row[$col['name']] ?? '', ENT_QUOTES, 'UTF-8')."</td>"; $xls .= "</tr>"; }
+                $xls .= "</table><br/>";
+            }
+        }
+        $xls .= "</body></html>";
+        file_put_contents($path, $xls); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path;
+    }
+    // PDF (FPDF)
+    if (in_array('pdf', $formatosAgenerar, true) && class_exists('FPDF')) {
+        try {
+            $path = $baseFilename . '.pdf';
+            $pdf = new FPDF('P','mm','A4'); $pdf->AddPage();
+            $pdf->SetFont('Arial','B',16);
+            $pdf->Cell(0,10,utf8_decode($params['subject'] ?? 'Datos del Formulario'),0,1,'C'); $pdf->Ln(10);
+            foreach ($datosParaArchivos as $d) {
+                $pdf->SetFont('Arial','B',12);
+                $pdf->Cell(50,8,utf8_decode($d['label'].':'),0,0);
+                $pdf->SetFont('Arial','',12);
+                if ($d['type'] === 'datatable') {
+                    $pdf->Ln(10);
+                    $table = json_decode($d['value'], true) ?: [];
+                    $pdf->SetFont('Arial','B',10);
+                    foreach ($d['columns'] as $col) { $pdf->Cell(40,7,utf8_decode($col['label'] ?? ''),1); }
+                    $pdf->Ln();
+                    $pdf->SetFont('Arial','',10);
+                    foreach ($table as $row) {
+                        foreach ($d['columns'] as $col) { $pdf->Cell(40,7,utf8_decode($row[$col['name']] ?? ''),1); }
+                        $pdf->Ln();
+                    }
+                    $pdf->Ln(5);
+                } else {
+                    $pdf->MultiCell(0,8,utf8_decode((string)$d['value'])); $pdf->Ln(2);
+                }
+            }
+            $pdf->Output('F', $path);
+            $archivosAdjuntar[] = $path; $archivosTemporales[] = $path;
+        } catch (\Throwable $e) { /* silencioso */ }
+    }
+
+    // Envío de correo (si se pide htmlc)
+    if (in_array('htmlc', $formatosAgenerar, true) && !empty($params['destinatario']) && class_exists(PHPMailer::class)) {
+        try {
+            $mail = new PHPMailer(true);
+            // Transporte básico
+            if (!empty($params['smtp_host'])) {
+                $mail->isSMTP();
+                $mail->Host = $params['smtp_host'];
+                $mail->SMTPAuth = !empty($params['smtp_user']);
+                if (!empty($params['smtp_user'])) $mail->Username = $params['smtp_user'];
+                if (!empty($params['smtp_pass'])) $mail->Password = $params['smtp_pass'];
+                if (!empty($params['smtp_secure'])) $mail->SMTPSecure = $params['smtp_secure'];
+                if (!empty($params['smtp_port'])) $mail->Port = (int)$params['smtp_port'];
+            } else {
+                $mail->isSendmail();
+            }
+            $mail->CharSet = 'UTF-8';
+            $mail->setFrom($params['mailDe'] ?? 'noreply@example.com', $params['from_name'] ?? 'Formulario Web');
+            $mail->addAddress($params['destinatario']);
+            if (!empty($params['mailCc'])) $mail->addCC($params['mailCc']);
+            if (!empty($params['mailBcc'])) $mail->addBCC($params['mailBcc']);
+            $mail->isHTML(true);
+            $mail->Subject = $params['subject'] ?? 'Nuevo Envío de Formulario';
+            $mail->Body    = $cuerpoHtml;
+            foreach ($archivosAdjuntar as $rutaArchivo) if (file_exists($rutaArchivo)) $mail->addAttachment($rutaArchivo);
+            $mail->send();
+        } catch (Exception $e) {
+            $adjuntosWarnings[] = 'No se pudo enviar el correo: ' . $e->getMessage();
+        }
+    }
+
+    // Mensaje y redirección
+    $param_mensajes = $params['mensajes'] ?? [
+        'exito'       => 'Datos enviados correctamente.',
+        'advertencia' => 'Advertencias durante el envío:',
+        'error'       => 'Ocurrió un error durante el envío.'
+    ];
+    $mensajeFinal = $param_mensajes['exito'];
+    if (!empty($adjuntosWarnings)) {
+        $mensajeFinal .= "<br><div class='alert alert-warning mt-2'><b>" . $param_mensajes['advertencia'] . "</b><ul><li>" . implode('</li><li>', $adjuntosWarnings) . "</li></ul></div>";
+    }
+    $_SESSION['mensaje_flash'] = $mensajeFinal;
+
+    // Limpieza de temporales generados (no borra uploads del usuario)
+    foreach (($archivosTemporales ?? []) as $tmp) if (file_exists($tmp)) @unlink($tmp);
+
+    header("Location: formulariodinamico.php?archivo=" . urlencode($archivo_json) . "&status=saved");
+    exit;
 }
+// AJAX: load_data
+else if (isset($_GET['action']) && $_GET['action'] === 'load_data') {
+    header('Content-Type: application/json; charset=utf-8');
+    $formName = $_GET['archivo'] ?? '';
+    $key = $_GET['key'] ?? '';
+    if ($formName === '' || $key === '') { echo json_encode(['error'=>'Faltan parámetros']); exit; }
+    $sessionKey = 'form_data_' . $formName . '_' . $key;
+    if (isset($_SESSION[$sessionKey])) echo json_encode(['success'=>true,'data'=>$_SESSION[$sessionKey]]);
+    else echo json_encode(['success'=>false]);
+    exit;
+}
+
+// GET: no render aquí (lo hace formulariodinamico.php). No cerrar PHP.

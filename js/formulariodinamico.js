@@ -474,4 +474,66 @@ function inicializarFormularioDinamico(config) {
     recalcularTodo();
 
     console.log("Formulario dinámico inicializado correctamente.");
+
+    // --- 8. FUNCIONALIDAD DE DRAG & DROP (SORTABLES) ---
+    function initAllSortables() {
+        // Campos dentro de fieldsets clásicos
+        document.querySelectorAll('.sortable-fields-container').forEach(container => {
+            Sortable.create(container, {
+                group: 'fields',
+                animation: 150,
+                handle: '.draggable-field',
+                draggable: '.draggable-field',
+                onEnd: actualizarJsonDespuesDeMover
+            });
+        });
+
+        // Columnas y filas de grillas internas
+        document.querySelectorAll('.fieldset-grid-row').forEach(row => {
+            Sortable.create(row, {
+                group: 'grid-cols',
+                animation: 150,
+                handle: '.draggable-campo, .draggable-fieldset',
+                draggable: '.draggable-campo, .draggable-fieldset',
+                onEnd: actualizarJsonDespuesDeMover
+            });
+        });
+
+        // Fieldsets/grupos completos (para mover grupos)
+        document.querySelectorAll('.sortable-fieldset').forEach(container => {
+            Sortable.create(container, {
+                group: 'fieldsets',
+                animation: 150,
+                handle: '.draggable-fieldset',
+                draggable: '.draggable-fieldset',
+                onEnd: actualizarJsonDespuesDeMover
+            });
+        });
+
+        // Tabs
+        document.querySelectorAll('.sortable-tabs').forEach(tabList => {
+            Sortable.create(tabList, {
+                group: 'tabs',
+                animation: 150,
+                handle: '.draggable-tab',
+                draggable: '.draggable-tab',
+                filter: '.add-tab-button',
+                onEnd: actualizarJsonDespuesDeMover
+            });
+        });
+
+        // Paleta de componentes y elementos fuera del formulario
+        document.querySelectorAll('.sortable-outside-container').forEach(container => {
+            Sortable.create(container, {
+                group: 'fields',
+                animation: 150,
+                handle: '.draggable-field, .draggable-fieldset',
+                draggable: '.draggable-field, .draggable-fieldset',
+                onEnd: actualizarJsonDespuesDeMover
+            });
+        });
+    }
+
+    // Llama a esta función después de renderizar el formulario:
+    initAllSortables();
 }

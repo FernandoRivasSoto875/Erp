@@ -64,10 +64,8 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
         }
         $html .= '</div>';
     }
-} 
     return $html;
 }
-<?php
 if (ob_get_level() === 0) ob_start();
 // No mostrar error HTML si es petición AJAX (ej: fetch, XMLHttpRequest)
 $isAjax = (
@@ -774,4 +772,3 @@ if (!empty($modoDiseno)) {
     $debugContent .= "</div>";
     echo renderDebugPanel('debug_fieldsets', $debugContent);
 }
-?>

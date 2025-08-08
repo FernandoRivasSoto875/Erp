@@ -417,68 +417,7 @@ function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valo
             }
         }
     }
-    $html .= '</div>';
-    return $html;
-}
-$modoDiseno = false;
-if (isset($_GET['modo']) && $_GET['modo'] === 'diseno') {
-    $modoDiseno = true;
-}
 
-// --- FIN: Nuevo motor de renderizado de Layout ---
-
-// --- FUNCIONES AUXILIARES ---
-function obtenerTodosLosCampos($fieldsets) {
-    $campos = [];
-    foreach ($fieldsets as $fieldset) {
-        // Acepta tanto 'fields' como 'campos' para máxima compatibilidad
-        if (!empty($fieldset['fields']) && is_array($fieldset['fields'])) {
-            $campos = array_merge($campos, $fieldset['fields']);
-        }
-        if (!empty($fieldset['campos']) && is_array($fieldset['campos'])) {
-            $campos = array_merge($campos, $fieldset['campos']);
-        }
-        if (!empty($fieldset['fieldsets'])) {
-            $campos = array_merge($campos, obtenerTodosLosCampos($fieldset['fieldsets']));
-        }
-    }
-    return $campos;
-}
-function getFieldInfo($fieldName, $all_fields) { foreach ($all_fields as $field) { if (isset($field['name']) && $field['name'] === $fieldName) { return $field; } } return null; }
-
-// --- INICIO: Preparación de Variables Globales ---
-$archivo_json = $_GET['archivo'] ?? 'formulariogenerico.json';
-$archivo_json = basename($archivo_json); // Seguridad: solo nombre, sin ruta
-$json_path = __DIR__ . "/json/" . $archivo_json;
-if (!file_exists($json_path)) {
-    $mensaje_envio = "<div class='alert alert-danger'>Error: El archivo de configuración '$json_path' no existe.</div>";
-    return;
-}
-$json = json_decode(file_get_contents($json_path), true);
-if (json_last_error() !== JSON_ERROR_NONE) {
-    $mensaje_envio = "<div class='alert alert-danger'>Error: El archivo JSON contiene errores. " . json_last_error_msg() . "</div>";
-    return;
-}
-
-$fieldsets = $json['fieldsets'] ?? [];
-$layout = $json['layout'] ?? [];
-// KEEP: Estas líneas aseguran que $fieldsets y $layout siempre estén definidos desde el JSON.
-$all_fields = obtenerTodosLosCampos($fieldsets);
-$valores = [];
-$soloLectura = false;
-$mensaje_envio = '';
-
-// --- NUEVO: Cargar parámetros universales del JSON ---
-$param_mensajes = $json['parametros']['mensajes'] ?? [
-    'exito' => 'Formulario guardado y procesado con éxito.',
-    'error' => 'Ocurrió un error al procesar el formulario.',
-    'advertencia' => 'Por favor, revisa los campos resaltados.'
-];
-$param_validaciones = $json['parametros']['validaciones'] ?? [];
-$param_botones = $json['parametros']['botones'] ?? [];
-$param_post_envio = $json['parametros']['post_envio'] ?? [];
-$param_adjuntos = $json['parametros']['adjuntos'] ?? [];
-$param_notificaciones = $json['parametros']['notificaciones'] ?? [];
 
 // --- FUNCIONALIDAD PRINCIPAL ---
 // --- PRIORIDAD 1: PROCESAR EL ENVÍO DEL FORMULARIO (POST) ---

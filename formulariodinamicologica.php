@@ -485,6 +485,8 @@ function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valo
             }
         }
     }
+    $html .= '</div>';
+    return $html;
 
 
 // --- FUNCIONALIDAD PRINCIPAL ---

@@ -373,6 +373,17 @@ function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valo
 // --- PRIORIDAD 1: PROCESAR EL ENVÍO DEL FORMULARIO (POST) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $params = $json['parametros'] ?? [];
+
+    // Defaults seguros (evitan notices si faltan en el JSON)
+    $param_adjuntos = $params['adjuntos'] ?? [];
+    $param_mensajes = $params['mensajes'] ?? [
+        'exito'       => 'Datos enviados correctamente.',
+        'advertencia' => 'Advertencias durante el envío:',
+        'error'       => 'Ocurrió un error durante el envío.'
+    ];
+    if (!isset($all_fields) || !is_array($all_fields)) $all_fields = [];
+    if (!isset($archivo_json) || $archivo_json === '') $archivo_json = $_GET['archivo'] ?? 'form';
+
     $postData = $_POST;
     $uploadsDir = 'uploads/';
     if (!is_dir($uploadsDir)) mkdir($uploadsDir, 0755, true);

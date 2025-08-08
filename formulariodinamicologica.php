@@ -24,7 +24,7 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
                     }
                     foreach ($fieldset['rows'] as $fsRow) {
                         $html .= "<div class='row fieldset-grid-row sortable-row'>";
-                        foreach ($fsRow['columns'] as $fsCol) {
+                        foreach (($fsRow['columns'] ?? []) as $fsCol) { // <--- endurecido
                             $html .= "<div class='col fieldset-grid-col sortable-col' style='min-height:48px;'>";
                             if (isset($fsCol['field'])) {
                                 $campo = null;
@@ -57,7 +57,8 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
                                         $html .= "data-regex='" . htmlspecialchars($campo['regex']) . "' ";
                                     }
                                     if (!empty($campo['data-source'])) {
-                                        $html .= "data-source='" . htmlspecialchars(json_encode($campo['data-source'])) . "' ";
+                                        // <--- corregido (JSON seguro y comillas)
+                                        $html .= "data-source='" . htmlspecialchars(json_encode($campo['data-source'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES) . "' ";
                                     }
                                     $html .= ">";
                                     $html .= generarCampo($campo, $valor, $soloLectura);
@@ -745,12 +746,46 @@ if (!empty($modoDiseno)) {
     $debugContent .= "</div>";
     echo renderDebugPanel('debug_fieldsets', $debugContent);
 }
-?>
-// ...antes de renderizar el formulario principal...
+
+// IMPORTANTE: no cerrar PHP aquí (elimina cualquier "?>")
+
+// Defaults seguros antes del render
+$modoDiseno   = isset($modoDiseno) ? $modoDiseno : ((int)($_GET['modoDiseno'] ?? 0));
+$valores      = isset($valores) ? $valores : [];
+$soloLectura  = isset($soloLectura) ? $soloLectura : false;
+$layout       = isset($layout) ? $layout : null;
+$fieldsets    = isset($fieldsets) ? $fieldsets : null;
+<?php
+// ...existing code...
+// Asegurar que $layout sea un array antes de usar array_walk_recursive
+$todos_los_fieldsets = array_keys(is_array($fieldsets ?? null) ? $fieldsets : []);
+$fieldsets_usados = [];
+$layout_for_scan = is_array($layout ?? null) ? $layout : [];
+// 2. Recorrer el layout para encontrar los fieldsets que ya están en uso.
+array_walk_recursive($layout_for_scan, function($item, $key) use (&$fieldsets_usados) {
+    if (is_string($item) && $key !== 'type' && $key !== 'width' && !in_array($item, $fieldsets_usados)) {
+        $fieldsets_usados[] = $item;
+    }
+    if ($key === 'tabs') {
+        foreach ($item as $tab) {
+            if (isset($tab['content']) && is_array($tab['content'])) {
+                 foreach ($tab['content'] as $componente) {
+                     if (is_string($componente) && !in_array($componente, $fieldsets_usados)) {
+                         $fieldsets_usados[] = $componente;
+                     }
+                 }
+            }
+        }
+    }
+});
+// ...existing code...
+// Render controlado
 if (!empty($modoDiseno)) {
     echo "<div class='alert alert-info'>El formulario está desactivado en modo diseño. Solo disponible para edición.</div>";
-    // return; // Descomenta si quieres que no se procese nada más
 } else {
-    // Aquí va el renderizado normal del formulario
-    echo generarLayout($layout, $fieldsets, $valores, $soloLectura);
+    if (is_array($layout) && is_array($fieldsets)) {
+        echo generarLayout($layout, $fieldsets, $valores, $soloLectura);
+    } else {
+        echo "<div class='alert alert-warning'>Sin configuración de layout/fieldsets para renderizar.</div>";
+    }
 }

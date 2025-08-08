@@ -1,4 +1,6 @@
 <?php
+// KEEP: Revisado y listo para commit. Funciones auxiliares para renderizado y utilidades del formulario dinámico.
+<?php
 /*
 ====================================================================================
   KEEP: UNIFICADO

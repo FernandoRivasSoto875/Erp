@@ -1,4 +1,5 @@
 // js/formulariodinamico.js
+// KEEP: Revisado y listo para commit. Lógica de modo diseño, drag & drop, undo/redo y editor visual del formulario dinámico.
 // Lógica de modo diseño, drag & drop, undo/redo, y utilidades para el formulario dinámico
 
 $(document).ready(function() {

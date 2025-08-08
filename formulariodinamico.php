@@ -1,4 +1,5 @@
 <?php
+// KEEP: Revisado y listo para commit. Archivo principal del formulario dinámico.
 // KEEP: Revisado y listo para commit. Cambios recientes validados.
 // KEEP: Revisado y listo para commit. Cambios de diagnóstico y mejoras de visibilidad en modo diseño.
 // KEEP: Revisado y listo para commit. Cambios de diagnóstico y mejoras de visibilidad en modo diseño.

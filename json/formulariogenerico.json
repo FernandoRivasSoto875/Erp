@@ -84,6 +84,20 @@
       }
     }
   ],
+  "layout": {
+    "main": {
+      "type": "generic",
+      "rows": [
+        {
+          "columns": [
+            { "width": 12, "fieldset": 0 },
+            { "width": 12, "fieldset": 1 },
+            { "width": 12, "fieldset": 2 }
+          ]
+        }
+      ]
+    }
+  },
   "fieldsets": [
     {
       "legend": "Datos Personales (Demostración de Posiciones)",

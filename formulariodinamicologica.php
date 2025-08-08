@@ -1,5 +1,4 @@
 <?php
-<?php
 function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
     $html = '';
     foreach ($rows as $row) {

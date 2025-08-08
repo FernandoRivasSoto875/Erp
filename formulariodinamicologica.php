@@ -1,8 +1,4 @@
 <?php
-// KEEP: Revisado y listo para commit. Lógica de negocio y procesamiento del formulario dinámico.
- // KEEP: Revisado y listo para commit. Cambios recientes validados.
-// KEEP: Revisado y listo para commit. Cambios recientes validados.
-// Elimina cualquier salida previa para evitar errores de headers
 if (ob_get_level() === 0) ob_start();
 // No mostrar error HTML si es petición AJAX (ej: fetch, XMLHttpRequest)
 $isAjax = (

@@ -773,8 +773,3 @@ if (!empty($modoDiseno)) {
     $debugContent .= "</div>";
     echo renderDebugPanel('debug_fieldsets', $debugContent);
 }
-// --- FIN DE LA LÓGICA PARA LA PALETA DE COMPONENTES ---
-
-// ...existing code...
-?>
-// ...existing code...

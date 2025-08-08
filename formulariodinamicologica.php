@@ -32,7 +32,7 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
                                                 break 2;
                                             }
                                         }
-                                    }
+                                    } 
                                 }
                                 if ($campo) {
                                     $valor = $valores[$campo['nombre']] ?? $campo['valor_predeterminado'] ?? '';

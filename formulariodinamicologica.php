@@ -275,77 +275,10 @@ function renderBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockNam
 //     }
 //     echo renderDebugPanel('debug_paramjson', $debugParam);
 // }
-$html = '';
-foreach ($rows as $row) {
-    $columns = $row['columns'] ?? [];
-    $html .= '<div class="row" data-row>';
-    foreach ($columns as $column) {
-        $width = $column['width'] ?? '12';
-        $fieldset = $column['fieldset'] ?? null;
-        $html .= "<div class='col-md-{$width}' data-col-width='{$width}'>";
-        if ($fieldset) {
-            if (is_array($fieldset) && isset($fieldset['rows'])) {
-                // Fieldset como grilla interna (estructura avanzada)
-                $nombre = $fieldset['name'] ?? '';
-                // Fieldset/grupo entero es draggable y droppable
-                $html .= "<div class='draggable-fieldset sortable-fieldset' data-type='fieldset' data-name='".htmlspecialchars($nombre)."'>";
-                $html .= "<fieldset class='mb-4 p-3 border rounded fieldset-grid-avanzada'>";
-                if ($nombre) {
-                    $html .= "<legend class='w-auto px-2 h6'><span class='fieldset-title-text editable-label' contenteditable='false' data-edit-type='fieldset' data-fieldset-name='".htmlspecialchars($nombre)."'>".htmlspecialchars($nombre)."</span></legend>";
-                }
-                foreach ($fieldset['rows'] as $fsRow) {
-                    $html .= "<div class='row fieldset-grid-row sortable-row'>";
-                    foreach ($fsRow['columns'] as $fsCol) {
-                        // Cada celda es droppable y draggable
-                        $html .= "<div class='col fieldset-grid-col sortable-col' style='min-height:48px;'>";
-                        if (isset($fsCol['field'])) {
-                            // Buscar el campo en todos los fieldsets
-                            $campo = null;
-                            foreach ($fieldsetsConfig as $fs) {
-                                if (isset($fs['campos'])) {
-                                    foreach ($fs['campos'] as $c) {
-                                        if ($c['nombre'] === $fsCol['field']) {
-                                            $campo = $c;
-                                            break 2;
-                                        }
-                                    }
-                                }
-                            }
-                            if ($campo) {
-                                $valor = $valores[$campo['nombre']] ?? $campo['valor_predeterminado'] ?? '';
-                                // Envolver en div para drag & drop y edición
-                                $html .= "<div class='draggable-campo sortable-campo' data-type='field' data-name='".htmlspecialchars($campo['nombre'])."' data-tipo='".htmlspecialchars($campo['tipo'])."' ";
-                                if (!empty($campo['etiqueta'])) $html .= "data-etiqueta='".htmlspecialchars($campo['etiqueta'])."' ";
-                                if (!empty($campo['placeholder'])) $html .= "data-placeholder='".htmlspecialchars($campo['placeholder'])."' ";
-                                if (!empty($campo['opciones'])) $html .= "data-opciones='".htmlspecialchars(is_array($campo['opciones']) ? implode(',', array_values($campo['opciones'])) : $campo['opciones'])."' ";
-                                if (!empty($campo['style'])) $html .= "data-style='".htmlspecialchars($campo['style'])."' ";
-                                if (!empty($campo['regex'])) $html .= "data-regex='".htmlspecialchars($campo['regex'])."' ";
-                                if (!empty($campo['data-source'])) $html .= "data-source='".htmlspecialchars(json_encode($campo['data-source'])) . "' ";
-                                $html .= ">";
-                                $html .= generarCampo($campo, $valor, $soloLectura);
-                                $html .= "<i class='fas fa-pencil-alt edit-icon' data-edit-type='field' data-field-name='".htmlspecialchars($campo['nombre'])."' style='display:none; cursor:pointer; margin-left: 5px;'></i>";
-                                $html .= "</div>";
-                            } else {
-                                $html .= "<div class='alert alert-warning'>Campo '".htmlspecialchars($fsCol['field'])."' no encontrado.</div>";
-                            }
-                        }
-                        $html .= "</div>";
-                    }
-                    $html .= "</div>";
-                }
-                $html .= "</fieldset>";
-                $html .= "</div>";
-            } else if (is_string($fieldset)) {
-                $html .= generarFieldsetContenido($fieldset, $fieldsetsConfig, $valores, $soloLectura);
-            }
-        }
-        $html .= '</div>';
-    }
-    $html .= '</div>';
-}
-return $html;
 
-// KEEP: Solo mostrar en modo diseño y edición de tabs solo en modo diseño
+// ELIMINADO: bloque suelto que usaba $rows fuera de funciones (causaba Notice en línea 279)
+
+// Continúa con la siguiente función:
 function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockAttrs) {
     global $modoDiseno;
     $tabsId = 'tabs_' . uniqid();

@@ -305,6 +305,26 @@ $(document).ready(function() {
         }
     }
 
+
+    // --- Función defensiva para inicializar datatables y evitar errores de find sobre undefined ---
+    function inicializarFormularioDinamico(config) {
+        // Busca todos los fieldsets y campos tipo datatable en el DOM o en window.FORM_CONFIG si existe
+        let fieldsets = window.FORM_CONFIG && window.FORM_CONFIG.fieldsets ? window.FORM_CONFIG.fieldsets : null;
+        if (!fieldsets && typeof config === 'object' && config.archivo_json) {
+            // Si tienes una variable global con el JSON cargado, úsala aquí
+            // Si no, omite y solo protege el DOM
+        }
+        // Si tienes los datos en el DOM, puedes recorrerlos aquí
+        // Protección defensiva para todos los datatable renderizados
+        $("[data-tipo='datatable']").each(function() {
+            let campo = $(this).data();
+            if (!Array.isArray(campo.columnas)) {
+                campo.columnas = [];
+            }
+        });
+        // Si tienes lógica adicional para inicializar datatables, agrégala aquí
+    }
+
     // *** CAMBIO REALIZADO: Se llama a la lógica del formulario al cargar la página ***
     // Esto asegura que el formulario sea funcional desde el principio.
     inicializarLogicaFormulario();

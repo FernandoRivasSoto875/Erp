@@ -812,8 +812,7 @@ if (!empty($modoDiseno)) {
     $debugContent .= "</div>";
     echo renderDebugPanel('debug_fieldsets', $debugContent);
 }
-?>
-<?php
+
 // ...antes de renderizar el formulario principal...
 if (!empty($modoDiseno)) {
     echo "<div class='alert alert-info'>El formulario está desactivado en modo diseño. Solo disponible para edición.</div>";
@@ -821,4 +820,5 @@ if (!empty($modoDiseno)) {
 } else {
     // Aquí va el renderizado normal del formulario
     echo generarLayout($layout, $fieldsets, $valores, $soloLectura);
-}
+
+?> 

@@ -665,6 +665,7 @@ $valores      = isset($valores) && is_array($valores) ? $valores : [];
 $soloLectura  = isset($soloLectura) ? (bool)$soloLectura : false;
 $layout       = isset($layout) && is_array($layout) ? $layout : null;
 $fieldsets    = isset($fieldsets) && is_array($fieldsets) ? $fieldsets : null;
+$mensaje_envio = $mensaje_envio ?? '';
 
 // Render final controlado (NO cerrar PHP con ?>)
 if (!empty($modoDiseno)) {
@@ -672,11 +673,14 @@ if (!empty($modoDiseno)) {
     return;
 }
 
-if (is_array($layout) && is_array($fieldsets)) {
-    if (!empty($mensaje_envio)) {
+// Si no hay layout, usar fallback de generarLayout pasando []
+$layoutSafe = is_array($layout) ? $layout : [];
+
+if (is_array($fieldsets)) {
+    if ($mensaje_envio !== '') {
         echo $mensaje_envio;
     }
-    echo generarLayout($layout, $fieldsets, $valores, $soloLectura);
+    echo generarLayout($layoutSafe, $fieldsets, $valores, $soloLectura);
 } else {
-    echo "<div class='alert alert-warning'>Sin configuración de layout/fieldsets para renderizar.</div>";
+    echo "<div class='alert alert-warning'>Sin configuración de fieldsets para renderizar.</div>";
 }

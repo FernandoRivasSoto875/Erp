@@ -354,7 +354,7 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
         }
         foreach ($fieldset['rows'] as $fsRow) {
             $html .= "<div class='row fieldset-grid-row sortable-row'>";
-            foreach ($fsRow['columns'] as $fsCol) {
+            foreach (($fsRow['columns'] ?? []) as $fsCol) { // endurecido
                 $html .= "<div class='col fieldset-grid-col sortable-col' style='min-height:48px;'>";
                 if (isset($fsCol['field'])) {
                     // Buscar el campo en todos los fieldsets
@@ -378,7 +378,9 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
                         if (!empty($campo['opciones'])) $html .= "data-opciones='".htmlspecialchars(is_array($campo['opciones']) ? implode(',', array_values($campo['opciones'])) : $campo['opciones'])."' ";
                         if (!empty($campo['style'])) $html .= "data-style='".htmlspecialchars($campo['style'])."' ";
                         if (!empty($campo['regex'])) $html .= "data-regex='".htmlspecialchars($campo['regex'])."' ";
-                        if (!empty($campo['data-source'])) $html .= "data-source='".htmlspecialchars(json_encode($campo['data-source'])) . "' ";
+                        if (!empty($campo['data-source'])) {
+                            $html .= "data-source='" . htmlspecialchars(json_encode($campo['data-source'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES) . "' ";
+                        }
                         $html .= ">";
                         $html .= generarCampo($campo, $valor, $soloLectura);
                         $html .= "<i class='fas fa-pencil-alt edit-icon' data-edit-type='field' data-field-name='".htmlspecialchars($campo['nombre'])."' style='display:none; cursor:pointer; margin-left: 5px;'></i>";
@@ -388,13 +390,13 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
                     }
                 } elseif (isset($fsCol['fieldset'])) {
                     // Permitir fieldsets anidados (grupo dentro de grupo)
-                    $nombreAnidado = $fsCol['fieldset'];
-                    $html .= generarFieldsetContenido($nombreAnidado, $fieldsetsConfig, $valores, $soloLectura);
+                    $html .= generarFieldsetContenido($fsCol['fieldset'], $fieldsetsConfig, $valores, $soloLectura);
                 }
                 $html .= "</div>";
             }
             $html .= "</div>";
         }
+        $html .= "</fieldset>"; // cierre del fieldset avanzado
     }
 
     // --- Modo clásico (campos en lista vertical) ---
@@ -702,15 +704,12 @@ var_dump($layout);
 echo "</div>";
 */
 // Asegurar que $layout sea un array antes de usar array_walk_recursive
-$todos_los_fieldsets = array_keys(isset($fieldsets) ? $fieldsets : []);
+$todos_los_fieldsets = array_keys(is_array($fieldsets ?? null) ? $fieldsets : []);
 $fieldsets_usados = [];
-if (!is_array($layout)) {
-    $layout = [];
-}
+$layout_for_scan = is_array($layout ?? null) ? $layout : [];
 // 2. Recorrer el layout para encontrar los fieldsets que ya están en uso.
-array_walk_recursive($layout, function($item, $key) use (&$fieldsets_usados) {
+array_walk_recursive($layout_for_scan, function($item, $key) use (&$fieldsets_usados) {
     if (is_string($item) && $key !== 'type' && $key !== 'width' && !in_array($item, $fieldsets_usados)) {
-        // Asumimos que cualquier string que no sea una propiedad es un nombre de fieldset/componente.
         $fieldsets_usados[] = $item;
     }
     if ($key === 'tabs') {
@@ -755,37 +754,3 @@ $valores      = isset($valores) ? $valores : [];
 $soloLectura  = isset($soloLectura) ? $soloLectura : false;
 $layout       = isset($layout) ? $layout : null;
 $fieldsets    = isset($fieldsets) ? $fieldsets : null;
-<?php
-// ...existing code...
-// Asegurar que $layout sea un array antes de usar array_walk_recursive
-$todos_los_fieldsets = array_keys(is_array($fieldsets ?? null) ? $fieldsets : []);
-$fieldsets_usados = [];
-$layout_for_scan = is_array($layout ?? null) ? $layout : [];
-// 2. Recorrer el layout para encontrar los fieldsets que ya están en uso.
-array_walk_recursive($layout_for_scan, function($item, $key) use (&$fieldsets_usados) {
-    if (is_string($item) && $key !== 'type' && $key !== 'width' && !in_array($item, $fieldsets_usados)) {
-        $fieldsets_usados[] = $item;
-    }
-    if ($key === 'tabs') {
-        foreach ($item as $tab) {
-            if (isset($tab['content']) && is_array($tab['content'])) {
-                 foreach ($tab['content'] as $componente) {
-                     if (is_string($componente) && !in_array($componente, $fieldsets_usados)) {
-                         $fieldsets_usados[] = $componente;
-                     }
-                 }
-            }
-        }
-    }
-});
-// ...existing code...
-// Render controlado
-if (!empty($modoDiseno)) {
-    echo "<div class='alert alert-info'>El formulario está desactivado en modo diseño. Solo disponible para edición.</div>";
-} else {
-    if (is_array($layout) && is_array($fieldsets)) {
-        echo generarLayout($layout, $fieldsets, $valores, $soloLectura);
-    } else {
-        echo "<div class='alert alert-warning'>Sin configuración de layout/fieldsets para renderizar.</div>";
-    }
-}

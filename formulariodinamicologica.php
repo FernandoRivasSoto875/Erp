@@ -795,5 +795,5 @@ if (!empty($modoDiseno)) {
 //     }
 //     echo renderDebugPanel('debug_paramjson', $debugParam);
 // }
-*/
+?>
 ?>

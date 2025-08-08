@@ -316,6 +316,8 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
         }
         foreach ($fieldset['rows'] as $fsRow) {
             $html .= "<div class='row fieldset-grid-row sortable-row'>";
+        foreach ($fieldset['rows'] as $fsRow) {
+            $html .= "<div class='row fieldset-grid-row sortable-row'>";
             foreach ($fsRow['columns'] as $fsCol) {
                 $html .= "<div class='col fieldset-grid-col sortable-col' style='min-height:48px;'>";
                 if (isset($fsCol['field'])) {
@@ -333,7 +335,8 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
                     }
                     if ($campo) {
                         $valor = $valores[$campo['nombre']] ?? $campo['valor_predeterminado'] ?? '';
-                        $html .= "<div class='draggable-campo sortable-campo' data-type='field' data-name='".htmlspecialchars($campo['nombre'])."' data-tipo='".htmlspecialchars($campo['tipo'])."' ";
+                        // Unificar: todos los campos individuales usan .draggable-field
+                        $html .= "<div class='draggable-field sortable-campo' data-type='field' data-name='".htmlspecialchars($campo['nombre'])."' data-tipo='".htmlspecialchars($campo['tipo'])."' ";
                         if (!empty($campo['etiqueta'])) $html .= "data-etiqueta='".htmlspecialchars($campo['etiqueta'])."' ";
                         if (!empty($campo['placeholder'])) $html .= "data-placeholder='".htmlspecialchars($campo['placeholder'])."' ";
                         if (!empty($campo['opciones'])) $html .= "data-opciones='".htmlspecialchars(is_array($campo['opciones']) ? implode(',', array_values($campo['opciones'])) : $campo['opciones'])."' ";
@@ -356,9 +359,6 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
             }
             $html .= "</div>";
         }
-        $html .= '</fieldset>';
-        $html .= '</div>'; // Cierre de draggable-fieldset
-        return $html;
     }
 
     // --- Modo clásico (campos en lista vertical) ---
@@ -373,6 +373,7 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
     if (isset($fieldset['campos']) && is_array($fieldset['campos']) && count($fieldset['campos']) > 0) {
         foreach ($fieldset['campos'] as $campo) {
             $nombreCampo = $campo['nombre'] ?? 'sin_nombre';
+            // Unificar: todos los campos individuales usan .draggable-field
             $html .= "<div class='draggable-field' data-field-name='{$nombreCampo}'>";
             $valor = $valores[$nombreCampo] ?? $campo['valor_predeterminado'] ?? '';
             $html .= generarCampo($campo, $valor, $soloLectura);

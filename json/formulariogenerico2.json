@@ -215,7 +215,8 @@
           "type": "footer",
           "rows": [ { "columns": [ { "width": "12", "fieldset": "footer_legal" } ] } ]
         }
-      },
+      }
+    },
   "elementos_fuera": []
 }
 

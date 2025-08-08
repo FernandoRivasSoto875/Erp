@@ -1,4 +1,73 @@
 <?php
+// --- INICIO: Integración con Librerías ---
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+require_once 'fpdf/fpdf.php';
+require __DIR__ . '/vendor/autoload.php';
+// --- FIN: Integración con Librerías ---
+
+// --- Inclusiones de funciones ---
+require_once 'formulariodinamicofunciones.php';
+require_once 'funcionessql.php';
+
+// --- INICIO: Nuevo motor de renderizado de Layout RECURSIVO ---
+function generarLayout($layoutConfig, $fieldsetsConfig, $valores, $soloLectura) {
+    $html = '';
+    if (empty($layoutConfig)) {
+        $html .= '<!-- Layout no definido, renderizando fallback -->';
+        $html .= '<div class="layout-container fallback-layout">';
+        foreach (array_keys($fieldsetsConfig) as $fieldsetName) {
+            $html .= generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $soloLectura);
+        }
+        $html .= '</div>';
+        return $html;
+    }
+
+    $html .= '<div class="layout-container" data-layout-container>';
+    foreach ($layoutConfig as $blockName => $blockData) {
+        $html .= renderBlock($blockData, $fieldsetsConfig, $valores, $soloLectura, $blockName);
+    }
+    $html .= '</div>';
+    
+    return $html;
+}
+
+function renderBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockName = 'generic') {
+    $type = $block['type'] ?? 'generic';
+    $html = '';
+    $blockAttrs = "data-block-type='{$type}' data-block-name='{$blockName}'";
+
+    switch ($type) {
+        case 'header':
+            $html .= "<div class='form-block form-header-block mb-4' {$blockAttrs}>";
+            $html .= renderRows($block['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
+            $html .= '</div>';
+            break;
+        case 'footer':
+            $html .= "<div class='form-block form-footer-block mt-4' {$blockAttrs}>";
+            $html .= renderRows($block['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
+            $html .= '</div>';
+            break;
+        case 'fieldset':
+            $fieldsetName = $block['name'] ?? '';
+            $html .= "<div class='form-block fieldset-block' {$blockAttrs}>";
+            $html .= generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $soloLectura);
+            $html .= '</div>';
+            break;
+        case 'tabs':
+            $html .= renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockAttrs);
+            break;
+        default:
+            // Bloque genérico
+            $html .= "<div class='form-block form-generic-block' {$blockAttrs}>";
+            $html .= renderRows($block['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
+            $html .= '</div>';
+            break;
+    }
+
+    return $html;
+}
+
 function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
     // Validación robusta para evitar warnings/notices
     if (!is_array($rows)) {
@@ -84,178 +153,11 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
     }
     return $html;
 }
-// ...existing code...
-if (ob_get_level() === 0) ob_start();
-// No mostrar error HTML si es petición AJAX (ej: fetch, XMLHttpRequest)
-$isAjax = (
-    (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') ||
-    (isset($_GET['action']) && in_array($_GET['action'], ['lookup', 'load_data']))
-);
-if (headers_sent($file, $line) && !$isAjax) {
-    $msg = '<div style="color:red;font-weight:bold">Error: No se puede iniciar sesión porque los headers ya fueron enviados.';
-    $msg .= '<br>Archivo: <b>' . htmlspecialchars($file) . '</b> línea <b>' . $line . '</b>.';
-    $msg .= '<br>Revisa que no haya espacios, saltos de línea, <code>echo</code>, <code>print</code>, <code>var_dump</code> o <code>?&gt;</code> fuera de lugar antes de este archivo.';
-    $msg .= '<br>Consejo: Busca en tu código <code>echo</code>, <code>print</code>, <code>var_dump</code>, <code>?&gt;</code> y espacios antes de <code>&lt;?php</code>.';
-    $msg .= '</div>';
-    error_log("[HEADERS_SENT] Headers enviados antes de tiempo en $file línea $line");
-    die($msg);
-}
-
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-// --- PRIORIDAD -1: GUARDAR NUEVO DISEÑO (layout/fieldsets) DESDE JS ---
-if (isset($_GET['action']) && $_GET['action'] === 'guardar_diseno_json') {
-    // Solo aceptar POST y JSON
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['json'])) {
-        header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => 'Método o datos inválidos']);
-        exit;
-    }
-    $archivo_json = $_GET['archivo'] ?? 'formulariogenerico.json';
-    $archivo_json = basename($archivo_json);
-    $json_path = __DIR__ . "/json/" . $archivo_json;
-    $nuevo_json = json_decode($_POST['json'], true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => 'JSON inválido: ' . json_last_error_msg()]);
-        exit;
-    }
-    // Opcional: respaldo antes de sobrescribir
-    if (file_exists($json_path)) {
-        @copy($json_path, $json_path . '.' . date('Ymd_His') . '.bak');
-    }
-    $ok = file_put_contents($json_path, json_encode($nuevo_json, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-    if ($ok === false) {
-        header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'error' => 'No se pudo guardar el archivo']);
-        exit;
-    }
-    header('Content-Type: application/json');
-    echo json_encode(['success' => true]);
-    exit;
-}
-if (isset($_GET['action']) && $_GET['action'] === 'lookup') {
-    ob_clean();
-    header('Content-Type: application/json');
-    flush(); // <-- Asegura que el buffer esté limpio antes de los headers
-    ini_set('display_errors', 1); // Mostrar errores solo para depuración
-    ini_set('display_startup_errors', 1);
-    error_reporting(E_ALL);
-    $table = $_GET['table'] ?? '';
-    $field = $_GET['field'] ?? '';
-    $where = $_GET['where'] ?? '';
-
-    if (!$table || !$field || !$where) {
-        echo json_encode(['success' => false, 'error' => 'Faltan parámetros']);
-        exit;
-    }
-
-    $config_path = __DIR__ . '/config/conexion.json';
-    if (!file_exists($config_path)) {
-        echo json_encode(['success' => false, 'error' => 'No existe config/conexion.json']);
-        exit;
-    }
-    $config = json_decode(file_get_contents($config_path), true);
-    if (!$config || !isset($config['host'], $config['user'], $config['password'], $config['database'])) {
-        echo json_encode(['success' => false, 'error' => 'config/conexion.json inválido']);
-        exit;
-    }
-    $mysqli = new mysqli($config['host'], $config['user'], $config['password'], $config['database']);
-    if ($mysqli->connect_errno) {
-        echo json_encode(['success' => false, 'error' => 'Error de conexión: ' . $mysqli->connect_error]);
-        exit;
-    }
-
-    if (!preg_match('/^[a-zA-Z0-9_]+$/', $table) || !preg_match('/^[a-zA-Z0-9_]+$/', $field)) {
-        echo json_encode(['success' => false, 'error' => 'Parámetros inválidos']);
-        exit;
-    }
-
-    $sql = "SELECT `$field` FROM `$table` WHERE $where LIMIT 1";
-    $result = $mysqli->query($sql);
-    if ($result && $row = $result->fetch_assoc()) {
-        echo json_encode(['success' => true, 'value' => $row[$field]]);
-    } else {
-        echo json_encode(['success' => false, 'value' => '', 'sql' => $sql, 'mysqli_error' => $mysqli->error]);
-    }
-    $mysqli->close();
-    exit;
-}
 
 // Elimino el header global, solo se debe usar en respuestas AJAX
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
-}
-
-// --- INICIO: Integración con Librerías ---
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-require_once 'fpdf/fpdf.php';
-require __DIR__ . '/vendor/autoload.php';
-// --- FIN: Integración con Librerías ---
-
-// --- Inclusiones de funciones ---
-require_once 'formulariodinamicofunciones.php';
-require_once 'funcionessql.php';
-
-// --- INICIO: Nuevo motor de renderizado de Layout RECURSIVO ---
-function generarLayout($layoutConfig, $fieldsetsConfig, $valores, $soloLectura) {
-    $html = '';
-    if (empty($layoutConfig)) {
-        $html .= '<!-- Layout no definido, renderizando fallback -->';
-        $html .= '<div class="layout-container fallback-layout">';
-        foreach (array_keys($fieldsetsConfig) as $fieldsetName) {
-            $html .= generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $soloLectura);
-        }
-        $html .= '</div>';
-        return $html;
-    }
-
-    $html .= '<div class="layout-container" data-layout-container>';
-    foreach ($layoutConfig as $blockName => $blockData) {
-        $html .= renderBlock($blockData, $fieldsetsConfig, $valores, $soloLectura, $blockName);
-    }
-    $html .= '</div>';
-    
-    return $html;
-}
-
-function renderBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockName = 'generic') {
-    $type = $block['type'] ?? 'generic';
-    $html = '';
-    $blockAttrs = "data-block-type='{$type}' data-block-name='{$blockName}'";
-
-    switch ($type) {
-        case 'header':
-            $html .= "<div class='form-block form-header-block mb-4' {$blockAttrs}>";
-            $html .= renderRows($block['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
-            $html .= '</div>';
-            break;
-        case 'footer':
-            $html .= "<div class='form-block form-footer-block mt-4' {$blockAttrs}>";
-            $html .= renderRows($block['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
-            $html .= '</div>';
-            break;
-        case 'fieldset':
-            $fieldsetName = $block['name'] ?? '';
-            $html .= "<div class='form-block fieldset-block' {$blockAttrs}>";
-            $html .= generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $soloLectura);
-            $html .= '</div>';
-            break;
-        case 'tabs':
-            $html .= renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockAttrs);
-            break;
-        default:
-            // Bloque genérico
-            $html .= "<div class='form-block form-generic-block' {$blockAttrs}>";
-            $html .= renderRows($block['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
-            $html .= '</div>';
-            break;
-    }
-
-    return $html;
 }
 
 // --- DEPURACIÓN: Diagnóstico de parámetros visuales JSON ---
@@ -746,11 +648,24 @@ if (!empty($modoDiseno)) {
     echo renderDebugPanel('debug_fieldsets', $debugContent);
 }
 
-// IMPORTANTE: no cerrar PHP aquí (elimina cualquier "?>")
+// Defaults seguros antes del render (colocar al final del archivo)
+$modoDiseno   = isset($modoDiseno) ? (int)$modoDiseno : (int)($_GET['modoDiseno'] ?? 0);
+$valores      = isset($valores) && is_array($valores) ? $valores : [];
+$soloLectura  = isset($soloLectura) ? (bool)$soloLectura : false;
+$layout       = isset($layout) && is_array($layout) ? $layout : null;
+$fieldsets    = isset($fieldsets) && is_array($fieldsets) ? $fieldsets : null;
 
-// Defaults seguros antes del render
-$modoDiseno   = isset($modoDiseno) ? $modoDiseno : ((int)($_GET['modoDiseno'] ?? 0));
-$valores      = isset($valores) ? $valores : [];
-$soloLectura  = isset($soloLectura) ? $soloLectura : false;
-$layout       = isset($layout) ? $layout : null;
-$fieldsets    = isset($fieldsets) ? $fieldsets : null;
+// Render final controlado (NO cerrar PHP con ?>)
+if (!empty($modoDiseno)) {
+    echo "<div class='alert alert-info'>El formulario está desactivado en modo diseño. Solo disponible para edición.</div>";
+    return;
+}
+
+if (is_array($layout) && is_array($fieldsets)) {
+    if (!empty($mensaje_envio)) {
+        echo $mensaje_envio;
+    }
+    echo generarLayout($layout, $fieldsets, $valores, $soloLectura);
+} else {
+    echo "<div class='alert alert-warning'>Sin configuración de layout/fieldsets para renderizar.</div>";
+}

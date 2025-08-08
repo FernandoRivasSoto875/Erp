@@ -212,13 +212,19 @@ if (!isset($fieldsets_disponibles)) {
     <div id="paletas-modo-diseno" style="display:none; border: 2px solid red; background: #fffbe6; padding: 10px; margin-bottom: 20px;">
         <div style="color: #b94a48; font-weight: bold; margin-bottom: 8px;">[Diagnóstico] Paletas modo diseño: Si ves este mensaje, el contenedor se está generando y mostrando correctamente.</div>
         <?php 
-            $paletaTipos = generarPaletaTiposControl();
-            $paletaComponentes = generarPaletaComponentes($fieldsets_disponibles, $fieldsets);
-            if (empty(trim($paletaTipos)) && empty(trim($paletaComponentes))) {
+            $paletaTipos = trim(generarPaletaTiposControl());
+            $paletaComponentes = trim(generarPaletaComponentes($fieldsets_disponibles, $fieldsets));
+            if (empty($paletaTipos) && empty($paletaComponentes)) {
                 echo '<div style="color: #a94442;">[Diagnóstico] Las funciones PHP de paleta están retornando vacío. Revisa la generación de fieldsets y tipos de control.</div>';
             } else {
-                echo $paletaTipos;
-                echo $paletaComponentes;
+                // Envolver la paleta de tipos de control con el ID esperado por JS
+                if (!empty($paletaTipos)) {
+                    echo '<div id="paleta-tipos-control">' . $paletaTipos . '</div>';
+                }
+                // Envolver la paleta de componentes con el ID esperado por JS
+                if (!empty($paletaComponentes)) {
+                    echo '<div id="paleta-componentes">' . $paletaComponentes . '</div>';
+                }
             }
         ?>
     </div>

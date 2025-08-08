@@ -1,4 +1,3 @@
-// --- FUNCION AUXILIAR FALTANTE: renderRows ---
 <?php
 function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
     $html = '';

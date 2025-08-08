@@ -308,4 +308,8 @@ $(document).ready(function() {
     // *** CAMBIO REALIZADO: Se llama a la lógica del formulario al cargar la página ***
     // Esto asegura que el formulario sea funcional desde el principio.
     inicializarLogicaFormulario();
+
+    // --- Habilitar modo diseño automáticamente al cargar la página ---
+    designModeToggle.prop('checked', true);
+    enableDesignMode();
 });

@@ -88,13 +88,9 @@
     "main": {
       "type": "generic",
       "rows": [
-        {
-          "columns": [
-            { "width": 12, "fieldset": 0 },
-            { "width": 12, "fieldset": 1 },
-            { "width": 12, "fieldset": 2 }
-          ]
-        }
+        { "columns": [ { "width": 12, "fieldset": "Datos Personales (Demostración de Posiciones)" } ] },
+        { "columns": [ { "width": 12, "fieldset": "Preferencias y Otros" } ] },
+        { "columns": [ { "width": 12, "fieldset": "Detalle de Productos" } ] }
       ]
     }
   },

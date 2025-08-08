@@ -1,4 +1,5 @@
 <?php
+// --- FUNCIONES AUXILIARES ---
 function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
     $html = '';
     foreach ($rows as $row) {
@@ -10,7 +11,6 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
             $html .= "<div class='col-md-{$width}' data-col-width='{$width}'>";
             if ($fieldset) {
                 if (is_array($fieldset) && isset($fieldset['rows'])) {
-                    // Fieldset como grilla interna (estructura avanzada)
                     $nombre = $fieldset['name'] ?? '';
                     $html .= "<div class='draggable-fieldset sortable-fieldset' data-type='fieldset' data-name='".htmlspecialchars($nombre)."'>";
                     $html .= "<fieldset class='mb-4 p-3 border rounded fieldset-grid-avanzada'>";
@@ -41,7 +41,7 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
                                     if (!empty($campo['opciones'])) $html .= "data-opciones='".htmlspecialchars(is_array($campo['opciones']) ? implode(',', array_values($campo['opciones'])) : $campo['opciones'])."' ";
                                     if (!empty($campo['style'])) $html .= "data-style='".htmlspecialchars($campo['style'])."' ";
                                     if (!empty($campo['regex'])) $html .= "data-regex='".htmlspecialchars($campo['regex'])."' ";
-                                    if (!empty($campo['data-source'])) $html .= "data-source='".htmlspecialchars(json_encode($campo['data-source'])) . "' ";
+                                    if (!empty($campo['data-source'])) $html .= "data-source='".htmlspecialchars(json_encode($campo['data-source']))."' ";
                                     $html .= ">";
                                     $html .= generarCampo($campo, $valor, $soloLectura);
                                     $html .= "<i class='fas fa-pencil-alt edit-icon' data-edit-type='field' data-field-name='".htmlspecialchars($campo['nombre'])."' style='display:none; cursor:pointer; margin-left: 5px;'></i>";
@@ -66,6 +66,7 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
     }
     return $html;
 }
+// ...existing code...
 if (ob_get_level() === 0) ob_start();
 // No mostrar error HTML si es petición AJAX (ej: fetch, XMLHttpRequest)
 $isAjax = (

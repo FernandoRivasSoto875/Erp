@@ -8,10 +8,11 @@
 // Paso 1: Incluir toda la lógica de negocio desde el archivo PHP dedicado.
 
 // Activar modo diseño para que se rendericen los elementos interactivos (tabs, lápiz, drag handles, etc.)
+
 $modoDiseno = true;
-require_once 'formulariodinamicofunciones.php';
 // --- INICIO DE LA LÓGICA DEL FORMULARIO ---
 require_once 'formulariodinamicologica.php';
+require_once 'formulariodinamicofunciones.php';
 // --- FIN DE LA LÓGICA DEL FORMULARIO ---
 
 // Cargar la configuración del formulario desde el archivo JSON

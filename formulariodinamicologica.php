@@ -340,7 +340,6 @@ function renderBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockNam
         $html .= '</div>';
     }
     return $html;
-}
 
 // KEEP: Solo mostrar en modo diseño y edición de tabs solo en modo diseño
 function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockAttrs) {

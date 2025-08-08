@@ -157,6 +157,21 @@
           { "nombre": "col_checkbox", "etiqueta": "Columna Checkbox", "tipo": "checkbox", "opciones": { "si": "Sí", "no": "No" } }
         ] }
       ]
+    },
+    "grupo_grilla_ejemplo": {
+      "titulo": "Grilla de Ejemplo en Fieldset",
+      "campos": [
+        {
+          "nombre": "grilla_ejemplo",
+          "tipo": "datatable",
+          "etiqueta": "Grilla de Ejemplo",
+          "columnas": [
+            { "nombre": "col1", "etiqueta": "Columna 1", "tipo": "text" },
+            { "nombre": "col2", "etiqueta": "Columna 2", "tipo": "number" },
+            { "nombre": "col3", "etiqueta": "Columna 3", "tipo": "select", "opciones": { "a": "A", "b": "B" } }
+          ]
+        }
+      ]
     }
   },
    "layout": {

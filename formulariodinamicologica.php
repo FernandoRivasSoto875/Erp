@@ -713,10 +713,8 @@ foreach ($archivosTemporales as $tmpFile) {
         @unlink($tmpFile);
     }
 }
-
 // --- LÓGICA PARA LA PALETA DE COMPONENTES ---
 // 1. Obtener todos los nombres de los fieldsets definidos.
-
 // --- DEPURACIÓN: Mostrar si $fieldsets y $layout están inicializados correctamente ---
 /*
 echo "<div style='background:#ffe;border:2px solid #fc0;padding:10px;margin:10px 0;'>";
@@ -727,7 +725,6 @@ echo "<br><b>layout</b>: ";
 var_dump($layout);
 echo "</div>";
 */
-
 // Asegurar que $layout sea un array antes de usar array_walk_recursive
 $todos_los_fieldsets = array_keys(isset($fieldsets) ? $fieldsets : []);
 $fieldsets_usados = [];
@@ -752,10 +749,8 @@ array_walk_recursive($layout, function($item, $key) use (&$fieldsets_usados) {
         }
     }
 });
-
 // 3. Comparar para encontrar los fieldsets disponibles.
 $fieldsets_disponibles = array_diff($todos_los_fieldsets, $fieldsets_usados);
-
 // --- DEPURACIÓN: Mostrar resultado de la lógica de paleta SOLO si se activa debug en modo diseño ---
 if (!function_exists('renderDebugButton')) {
     function renderDebugButton($id, $label = 'Debug') {
@@ -775,4 +770,3 @@ if (!empty($modoDiseno)) {
     $debugContent .= "</div>";
     echo renderDebugPanel('debug_fieldsets', $debugContent);
 }
-?>

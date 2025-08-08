@@ -310,8 +310,6 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
         }
         foreach ($fieldset['rows'] as $fsRow) {
             $html .= "<div class='row fieldset-grid-row sortable-row'>";
-        foreach ($fieldset['rows'] as $fsRow) {
-            $html .= "<div class='row fieldset-grid-row sortable-row'>";
             foreach ($fsRow['columns'] as $fsCol) {
                 $html .= "<div class='col fieldset-grid-col sortable-col' style='min-height:48px;'>";
                 if (isset($fsCol['field'])) {

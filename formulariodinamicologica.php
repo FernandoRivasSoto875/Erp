@@ -150,14 +150,16 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
                 if (is_array($fieldset) && isset($fieldset['rows'])) {
                     // Fieldset como grilla interna (estructura avanzada)
                     $nombre = $fieldset['name'] ?? '';
+                    // Fieldset/grupo entero es draggable y droppable
+                    $html .= "<div class='draggable-fieldset sortable-fieldset' data-type='fieldset' data-name='".htmlspecialchars($nombre)."'>";
                     $html .= "<fieldset class='mb-4 p-3 border rounded fieldset-grid-avanzada'>";
                     if ($nombre) {
-                        $html .= "<legend class='w-auto px-2 h6'><span class='fieldset-title-text'>".htmlspecialchars($nombre)."</span></legend>";
+                        $html .= "<legend class='w-auto px-2 h6'><span class='fieldset-title-text editable-label' contenteditable='false' data-edit-type='fieldset' data-fieldset-name='".htmlspecialchars($nombre)."'>".htmlspecialchars($nombre)."</span></legend>";
                     }
                     foreach ($fieldset['rows'] as $fsRow) {
                         $html .= "<div class='row fieldset-grid-row sortable-row'>";
                         foreach ($fsRow['columns'] as $fsCol) {
-                            // Cada celda es droppable y draggable en modo diseño
+                            // Cada celda es droppable y draggable
                             $html .= "<div class='col fieldset-grid-col sortable-col' style='min-height:48px;'>";
                             if (isset($fsCol['field'])) {
                                 // Buscar el campo en todos los fieldsets
@@ -175,7 +177,7 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
                                 if ($campo) {
                                     $valor = $valores[$campo['nombre']] ?? $campo['valor_predeterminado'] ?? '';
                                     // Envolver en div para drag & drop y edición
-                                    $html .= "<div class='draggable-campo' data-type='field' data-name='".htmlspecialchars($campo['nombre'])."' data-tipo='".htmlspecialchars($campo['tipo'])."' ";
+                                    $html .= "<div class='draggable-campo sortable-campo' data-type='field' data-name='".htmlspecialchars($campo['nombre'])."' data-tipo='".htmlspecialchars($campo['tipo'])."' ";
                                     if (!empty($campo['etiqueta'])) $html .= "data-etiqueta='".htmlspecialchars($campo['etiqueta'])."' ";
                                     if (!empty($campo['placeholder'])) $html .= "data-placeholder='".htmlspecialchars($campo['placeholder'])."' ";
                                     if (!empty($campo['opciones'])) $html .= "data-opciones='".htmlspecialchars(is_array($campo['opciones']) ? implode(',', array_values($campo['opciones'])) : $campo['opciones'])."' ";
@@ -195,6 +197,7 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
                         $html .= "</div>";
                     }
                     $html .= "</fieldset>";
+                    $html .= "</div>";
                 } else if (is_string($fieldset)) {
                     $html .= generarFieldsetContenido($fieldset, $fieldsetsConfig, $valores, $soloLectura);
                 }

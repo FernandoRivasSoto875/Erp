@@ -487,7 +487,7 @@ function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valo
     }
     $html .= '</div>';
     return $html;
-
+}
 
 // --- FUNCIONALIDAD PRINCIPAL ---
 // --- PRIORIDAD 1: PROCESAR EL ENVÍO DEL FORMULARIO (POST) ---

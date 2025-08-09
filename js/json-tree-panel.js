@@ -10,7 +10,8 @@
     if ($('#json-tree-panel-styles')) return;
     const css = `
     .json-tree-panel{ position:fixed; top:70px; bottom:16px; ${CONFIG.side}:16px; width:${CONFIG.width}px; z-index:1060;
-      background:#fff; border:1px solid #dee2e6; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.15); display:flex; flex-direction:column; overflow:hidden; }
+      background:#fff; border:1px solid #dee2e6; border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.15); display:flex; flex-direction:column; overflow:hidden;
+      resize: horizontal; min-width: 260px; max-width: 75vw; }
     .json-tree-header{ padding:8px 12px; border-bottom:1px solid #eee; display:flex; align-items:center; gap:8px; }
     .json-tree-title{ font-weight:600; margin:0; font-size:14px; flex:1; }
     .json-tree-actions button{ border:none; background:transparent; color:#6c757d; cursor:pointer; }

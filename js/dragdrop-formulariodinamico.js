@@ -457,39 +457,6 @@ $(function(){
   function inDesign(){ const r=root(); return !!(r && r.classList.contains('design-mode')); }
   function getArchivoJson(){ return (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || ''; }
 
-  // NUEVO: Anota el DOM generado por PHP para que el builder reconozca tabs/fieldsets/campos
-  function setupDomHints() {
-    // Asegura el contenedor de layout para la serialización
-    const form = document.getElementById('formulariodinamico');
-    if (form && !form.hasAttribute('data-layout-container')) {
-      form.setAttribute('data-layout-container','');
-    }
-
-    // Asegura bloque de tabs y dropzones en panes
-    document.querySelectorAll('#fd-root ul.nav[role="tablist"]').forEach(nav => {
-      // Encuentra el bloque que contiene nav y .tab-content
-      let block = nav.closest('[data-block-type="tabs"]');
-      if (!block) {
-        const parent = nav.parentElement;
-        if (parent && parent.querySelector('.tab-content')) block = parent;
-        else if (parent && parent.parentElement && parent.parentElement.querySelector('.tab-content')) block = parent.parentElement;
-      }
-      if (block && !block.getAttribute('data-block-type')) {
-        block.setAttribute('data-block-type', 'tabs');
-      }
-      const content = block ? block.querySelector('.tab-content') : null;
-      if (content) {
-        content.querySelectorAll('.tab-pane').forEach(p => {
-          if (!p.hasAttribute('data-dropzone')) p.setAttribute('data-dropzone','tab-pane');
-        });
-      }
-    });
-
-    // Asegura clases para drag de fieldsets y fields ya presentes
-    document.querySelectorAll('#fd-root [data-fieldset-name]').forEach(el => el.classList.add('draggable-fieldset'));
-    document.querySelectorAll('#fd-root [data-field-name]').forEach(el => el.classList.add('draggable-field'));
-  }
-
   // Serializa bloques genéricos
   function serializeGenericBlock(blockEl){
     const rows = [];
@@ -773,8 +740,6 @@ $(function(){
   function destroySortables(){ sortables.forEach(s=>{ try{s.destroy();}catch(e){} }); sortables=[]; }
   function initSortable() {
     if (!inDesign() || typeof Sortable === 'undefined') return;
-    // Asegurar pistas de DOM antes de inicializar sortables
-    setupDomHints();
 
     document.querySelectorAll('#fd-root [data-col-width], #fd-root [data-dropzone="tab-pane"], #elementos-fuera-container').forEach(el => {
       sortables.push(Sortable.create(el, {
@@ -812,8 +777,6 @@ $(function(){
 
   function activateDesignMode() {
     if (!inDesign()) return;
-    // Asegurar pistas de DOM también al activar diseño
-    setupDomHints();
     destroySortables();
     ensureCrudUI();
     initSortable();
@@ -833,8 +796,111 @@ $(function(){
   });
 
   document.addEventListener('DOMContentLoaded', function(){
-    // Asegurar pistas de DOM al cargar
-    setupDomHints();
     if (inDesign()) activateDesignMode();
+  });
+})();
+
+(function(){
+  // Alias para evitar ReferenceError si alguien llama a buildLayoutFromDOM()
+  if (typeof window.buildLayoutFromDOM !== 'function') {
+    window.buildLayoutFromDOM = function(){ 
+      return (typeof buildLayoutFromDOMObject === 'function') ? buildLayoutFromDOMObject() : {};
+    };
+  }
+
+  // Utilidad para IDs
+  function slugify(s){ return (s||'').toString().toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'').slice(0,40); }
+
+  // Hidrata las pestañas desde el JSON si el backend no las renderizó
+  function hydrateTabsFromJson() {
+    try {
+      const hasTabsDOM = document.querySelector('#fd-root [data-block-type="tabs"]');
+      const j = (window.formularioJsonOriginal || {});
+      const main = j.layout && j.layout.main;
+      const tabsJson = (main && main.type === 'tabs' && Array.isArray(main.tabs)) ? main.tabs : null;
+      if (hasTabsDOM || !tabsJson || tabsJson.length === 0) return;
+
+      const container = document.querySelector('#fd-root [data-layout-container]') 
+                     || document.getElementById('formulariodinamico') 
+                     || document.getElementById('fd-root');
+      if (!container) return;
+
+      const block = document.createElement('div');
+      block.setAttribute('data-block-type', 'tabs');
+
+      const ul = document.createElement('ul');
+      ul.className = 'nav nav-tabs';
+      ul.setAttribute('role','tablist');
+
+      const content = document.createElement('div');
+      content.className = 'tab-content';
+
+      tabsJson.forEach((t, i) => {
+        const title = (t && t.title) ? String(t.title) : `Pestaña ${i+1}`;
+        const id = `tab_${slugify(title)||('t'+i)}_${Date.now()+i}`;
+
+        // nav
+        const li = document.createElement('li');
+        li.className = 'nav-item';
+        li.innerHTML = `<a class="nav-link ${i===0?'active':''}" data-toggle="pill" href="#${id}" role="tab" aria-controls="${id}" aria-selected="${i===0?'true':'false'}">${title}</a>`;
+        ul.appendChild(li);
+
+        // pane
+        const pane = document.createElement('div');
+        pane.id = id;
+        pane.className = `tab-pane fade ${i===0?'show active':''}`;
+        pane.setAttribute('role','tabpanel');
+        pane.setAttribute('data-dropzone','tab-pane');
+
+        // Coloca placeholders de fieldsets definidos en el JSON (si existen)
+        const rows = Array.isArray(t.rows) ? t.rows : [];
+        const cols = rows.length ? (rows[0].columns || []) : [];
+        cols.forEach(c => {
+          if (c && c.fieldset) {
+            const ph = document.createElement('div');
+            ph.className = 'draggable-fieldset';
+            ph.setAttribute('data-fieldset-name', c.fieldset);
+            ph.setAttribute('data-fieldset-title', c.fieldset);
+            ph.innerHTML = `<div class="p-2 border rounded bg-light text-muted">[${c.fieldset}]</div>`;
+            pane.appendChild(ph);
+          }
+        });
+
+        content.appendChild(pane);
+      });
+
+      block.appendChild(ul);
+      block.appendChild(content);
+
+      // Si hay un header ya renderizado, inserta después; si no, al inicio
+      const header = container.querySelector('[data-block-type="header"]');
+      if (header && header.nextSibling) header.parentNode.insertBefore(block, header.nextSibling);
+      else container.insertBefore(block, container.firstChild);
+
+      // Asegura hints, CRUD y sortable tras hidratar
+      if (typeof setupDomHints === 'function') setupDomHints();
+      if (typeof ensureCrudUI === 'function') ensureCrudUI();
+      if (typeof initSortable === 'function') initSortable();
+    } catch(e) {
+      console.warn('hydrateTabsFromJson()', e);
+    }
+  }
+
+  // Llamar al hidratar al cargar y al activar diseño
+  const _origActivate = (window.DnDFormBuilder && window.DnDFormBuilder.activateDesignMode) || null;
+  function activateDesignModeWrapper() {
+    hydrateTabsFromJson();
+    if (typeof setupDomHints === 'function') setupDomHints();
+    if (typeof ensureCrudUI === 'function') ensureCrudUI();
+    if (typeof initSortable === 'function') initSortable();
+    if (_origActivate) _origActivate();
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    hydrateTabsFromJson();
+  });
+
+  window.DnDFormBuilder = Object.assign({}, window.DnDFormBuilder || {}, {
+    activateDesignMode: activateDesignModeWrapper
   });
 })();

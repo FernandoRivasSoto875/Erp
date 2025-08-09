@@ -43,7 +43,10 @@ try {
 
         case 'fieldset':
             if ($fieldset === '' || !isset($fieldsets[$fieldset])) throw new InvalidArgumentException('Fieldset no encontrado');
-            if (isset($_POST['titulo'])) $fieldsets[$fieldset]['titulo'] = (string)$_POST['titulo'];
+            foreach (['titulo','descripcion'] as $k) {
+                if (array_key_exists($k, $_POST)) $fieldsets[$fieldset][$k] = (string)$_POST[$k];
+            }
+            $json['fieldsets'] = $fieldsets;
             break;
 
         case 'field':
@@ -76,29 +79,17 @@ try {
 
             $fieldsets[$fieldset]['campos'] = $campos;
             $json['fieldsets'] = $fieldsets;
-
-            $backup = $path.'.bak-'.date('Ymd_His');
-            @copy($path, $backup);
-            file_put_contents($path, json_encode($json, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES), LOCK_EX);
-
-            echo json_encode([
-                'success'=>true,
-                'message'=>'Campo actualizado',
-                'backup'=>basename($backup),
-                'field'=>$json['fieldsets'][$fieldset]['campos'][$idx] ?? null
-            ], JSON_UNESCAPED_UNICODE);
-            return;
+            break;
 
         default:
             throw new InvalidArgumentException('Tipo no soportado');
     }
 
-    $json['fieldsets'] = $fieldsets;
     $backup = $path.'.bak-'.date('Ymd_His');
     @copy($path, $backup);
     file_put_contents($path, json_encode($json, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES), LOCK_EX);
 
-    echo json_encode(['success'=>true,'message'=>'Propiedades actualizadas','backup'=>basename($backup)], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['success'=>true,'message'=>'Actualizado','backup'=>basename($backup)], JSON_UNESCAPED_UNICODE);
 } catch (Throwable $e) {
     http_response_code(400);
     echo json_encode(['success'=>false,'error'=>$e->getMessage()], JSON_UNESCAPED_UNICODE);

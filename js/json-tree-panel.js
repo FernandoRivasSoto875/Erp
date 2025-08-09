@@ -72,6 +72,7 @@
         <div class="json-tree-header">
           <h6 class="json-tree-title"><i class="fas fa-sitemap"></i> Árbol del JSON</h6>
           <div class="json-tree-actions">
+            <button title="Inicializar estructura" id="jsonTreeInit"><i class="fas fa-seedling"></i></button>
             <button title="Colapsar/Expandir" id="jsonTreeToggleAll"><i class="fas fa-compress-alt"></i></button>
             <button title="Refrescar" id="jsonTreeRefresh"><i class="fas fa-sync-alt"></i></button>
             <button title="Cerrar" id="jsonTreeClose"><i class="fas fa-times"></i></button>
@@ -85,6 +86,8 @@
       $('#jsonTreeRefresh').addEventListener('click', buildTree);
       $('#jsonTreeToggleAll').addEventListener('click', toggleAll);
       $('#jsonTreeFilter').addEventListener('input', filterTree);
+      // NUEVO: inicializar estructura base
+      $('#jsonTreeInit').addEventListener('click', ensureBaseStructureInteractive);
     }
     return panel;
   }
@@ -139,12 +142,25 @@
     const root = path && path[0];
     return root === 'parametros' || root === 'layout' || root === 'fieldsets' || root === 'elementos_fuera';
   }
-  function actionsForNode(path, type){
+  // NUEVO: acciones contextuales ampliadas (añade “wrap main a tabs” y “encapsular en tabset/grupo”)
+  function actionsForNode(path, val, type){ // <--- Acepta val
     const isArrayItem = typeof path[path.length-1] === 'number';
     const isRootEditable = isEditablePath(path);
+
+    // Heurísticas de contexto
+    const isLayoutMainObject = (type==='object' && path.length===2 && path[0]==='layout' && path[1]==='main');
+    const isLayoutColumnObject = (type==='object' && path[0]==='layout' && path.includes('rows') && path.includes('columns') && typeof path[path.length-1] !== 'string');
+    const columnHasFieldset = isLayoutColumnObject && val && typeof val==='object' && !!val.fieldset;
+    const columnHasTabset   = isLayoutColumnObject && val && typeof val==='object' && !!val.tabset;
+    const columnHasGroup    = isLayoutColumnObject && val && typeof val==='object' && !!val.group;
+    const isTabsetObject = (type==='object' && val && (val.type==='tabs' || Array.isArray(val.tabs)));
+    const isTabsArray = (type==='array' && path[path.length-1]==='tabs');
+    const isGroupObject = (type==='object' && val && (val.type==='fieldset-group' || val.items));
+    const isGroupItemsArray = (type==='array' && path[path.length-1]==='items');
+
     const parts = [];
     if (isRootEditable) parts.push(`<button class="btn-icon act-edit" title="Editar"><i class="fas fa-pencil-alt"></i></button>`);
-    if (isRootEditable && (type==='object' || type==='array')) parts.push(`<button class="btn-icon act-add" title="Agregar hijo"><i class="fas fa-plus"></i></button>`);
+    if (isRootEditable && (type==='object' || type==='array')) parts.push(`<button class="btn-icon act-add" title="Agregar hijo (genérico)"><i class="fas fa-plus"></i></button>`);
     if (isArrayItem) {
       parts.push(`<button class="btn-icon act-add-sibling" title="Insertar hermano"><i class="fas fa-level-down-alt"></i></button>`);
       parts.push(`<button class="btn-icon act-up" title="Subir"><i class="fas fa-arrow-up"></i></button>`);
@@ -152,10 +168,31 @@
     }
     if (isRootEditable) {
       parts.push(`<button class="btn-icon act-dup" title="Duplicar"><i class="fas fa-clone"></i></button>`);
-      // Renombrar clave solo tiene sentido si el padre es objeto (último segmento es string)
       if (!isArrayItem) parts.push(`<button class="btn-icon act-rename" title="Renombrar clave"><i class="fas fa-i-cursor"></i></button>`);
       parts.push(`<button class="btn-icon act-del" title="Eliminar" style="color:#dc3545"><i class="fas fa-trash-alt"></i></button>`);
     }
+
+    // Diseño: TabSet/Grupo
+    if (isLayoutMainObject) {
+      parts.push(`<button class="btn-icon act-wrap-main-tabs" title="Convertir main en Tabs (no destructivo)"><i class="fas fa-folder-plus"></i></button>`);
+    }
+    if (isLayoutColumnObject) {
+      parts.push(`<button class="btn-icon act-new-tabset" title="Nuevo TabSet en esta columna"><i class="fas fa-folder-plus"></i></button>`);
+      parts.push(`<button class="btn-icon act-new-group" title="Nuevo Grupo de Fieldsets"><i class="fas fa-object-group"></i></button>`);
+      if (columnHasFieldset || columnHasGroup) {
+        parts.push(`<button class="btn-icon act-encapsulate-tabset" title="Encapsular contenido en TabSet"><i class="fas fa-layer-group"></i></button>`);
+      }
+      if (columnHasFieldset || columnHasTabset) {
+        parts.push(`<button class="btn-icon act-encapsulate-group" title="Encapsular contenido en Grupo"><i class="fas fa-boxes"></i></button>`);
+      }
+    }
+    if (isTabsetObject || isTabsArray) {
+      parts.push(`<button class="btn-icon act-add-tab" title="Agregar pestaña"><i class="fas fa-plus-square"></i></button>`);
+    }
+    if (isGroupObject || isGroupItemsArray) {
+      parts.push(`<button class="btn-icon act-add-group-item" title="Agregar item al grupo"><i class="fas fa-plus-circle"></i></button>`);
+    }
+
     return parts.length ? `<span class="json-node-actions">${parts.join('')}</span>` : '';
   }
 
@@ -164,11 +201,11 @@
     if (t === 'object') {
       const det = document.createElement('details'); det.open = open;
       det.innerHTML = `<summary>
-        <span class="json-tree-node" data-path='${JSON.stringify(path)}'>
+        <span class="json-tree-node" data-path='${JSON.stringify(path)}' draggable="true">
           <i class="far fa-folder"></i>
           <span class="json-node-key">${esc(key)}</span>
           <span class="json-node-meta">object</span>
-          ${actionsForNode(path, 'object')}
+          ${actionsForNode(path, val, 'object')}
         </span>
       </summary>`;
       const wrap = document.createElement('div'); wrap.style.paddingLeft='12px';
@@ -179,11 +216,11 @@
     if (t === 'array') {
       const det = document.createElement('details'); det.open = open;
       det.innerHTML = `<summary>
-        <span class="json-tree-node" data-path='${JSON.stringify(path)}'>
+        <span class="json-tree-node" data-path='${JSON.stringify(path)}' draggable="true">
           <i class="far fa-folder-open"></i>
           <span class="json-node-key">${esc(key)}</span>
           <span class="json-node-meta">array(${val.length})</span>
-          ${actionsForNode(path, 'array')}
+          ${actionsForNode(path, val, 'array')}
         </span>
       </summary>`;
       const wrap = document.createElement('div'); wrap.style.paddingLeft='12px';
@@ -194,11 +231,12 @@
     const div = document.createElement('div');
     div.className = 'json-tree-node';
     div.setAttribute('data-path', JSON.stringify(path));
+    div.setAttribute('draggable', 'true'); // <- DnD
     div.innerHTML = `
       <i class="far fa-dot-circle"></i>
       <span class="json-node-key">${esc(key)}</span>
       <span class="json-node-meta">${renderValueInline(val)}</span>
-      ${actionsForNode(path, 'leaf')}
+      ${actionsForNode(path, val, 'leaf')}
     `;
     return div;
   }
@@ -213,7 +251,9 @@
     if ('elementos_fuera' in data) body.appendChild(renderAnyNode('elementos_fuera', data.elementos_fuera, ['elementos_fuera'], true));
     const handled = new Set(['parametros','layout','fieldsets','elementos_fuera']);
     Object.keys(data).forEach(k=>{ if (!handled.has(k)) body.appendChild(renderAnyNode(k, data[k], [k], true)); });
+
     bindEditActions(body);
+    bindTreeDragAndDrop(body); // <- NUEVO
   }
 
   // Interacción
@@ -253,7 +293,6 @@
       const btn = e.target.closest('.json-node-actions button'); if (!btn) return;
       const { nodeEl, path } = getClickedNodeAndPath(btn);
       if (!nodeEl || !Array.isArray(path)) { if (window.Swal) Swal.fire('Error', 'Ruta no encontrada.', 'error'); return; }
-
       try {
         if (btn.classList.contains('act-edit')) return await editNodeByPath(path, nodeEl);
         if (btn.classList.contains('act-add')) return await addChildAtPath(path);
@@ -263,6 +302,15 @@
         if (btn.classList.contains('act-dup')) return await duplicateAtPath(path);
         if (btn.classList.contains('act-rename')) return await renameAtPath(path);
         if (btn.classList.contains('act-del')) return await deleteAtPath(path);
+
+        // NUEVO
+        if (btn.classList.contains('act-wrap-main-tabs')) return await wrapMainIntoTabs(path);
+        if (btn.classList.contains('act-new-tabset')) return await addTabsetAtColumn(path);
+        if (btn.classList.contains('act-add-tab')) return await addTabToTabset(path);
+        if (btn.classList.contains('act-new-group')) return await addGroupAtColumn(path);
+        if (btn.classList.contains('act-add-group-item')) return await addItemToGroup(path);
+        if (btn.classList.contains('act-encapsulate-tabset')) return await encapsulateColumnIntoTabset(path);
+        if (btn.classList.contains('act-encapsulate-group')) return await encapsulateColumnIntoGroup(path);
       } catch(err){
         if (window.Swal) Swal.fire('Error', String(err.message||err), 'error');
       }
@@ -464,3 +512,198 @@
 
   document.addEventListener('DOMContentLoaded', init);
 })();
+
+// ====== NUEVO: Drag & Drop en árbol ======
+let dragSrcPath = null;
+
+function pathsEqual(a,b){ if (!a || !b || a.length!==b.length) return false; return a.every((v,i)=> v===b[i]); }
+function isAncestorPath(anc, child){
+  if (!anc || !child || anc.length>=child.length) return false;
+  for (let i=0;i<anc.length;i++){ if (anc[i] !== child[i]) return false; }
+  return true;
+}
+
+function getDataRoot(){ return window.formularioJsonOriginal || {}; }
+function getRootObj(rootKey){ const d=getDataRoot(); return deepClone(d[rootKey]); }
+function removeAtPath(rootObj, path){
+  const parentPath = path.slice(1, -1); // dentro del root
+  const key = path[path.length-1];
+  const parent = parentPath.length ? getAtPath(rootObj, parentPath) : rootObj;
+  if (Array.isArray(parent) && typeof key==='number'){ parent.splice(key,1); return true; }
+  if (parent && typeof parent==='object' && typeof key==='string'){ delete parent[key]; return true; }
+  return false;
+}
+function insertIntoArray(rootObj, arrayPath, idx, value){
+  const arr = getAtPath(rootObj, arrayPath) || [];
+  if (!Array.isArray(arr)) throw new Error('Destino no es array');
+  const copy = arr.slice();
+  if (idx == null || idx < 0 || idx > copy.length) copy.push(value);
+  else copy.splice(idx, 0, value);
+  setAtPath(rootObj, arrayPath, copy);
+}
+async function insertIntoObject(rootObj, objPath, value, suggestedKey){
+  const obj = getAtPath(rootObj, objPath) || {};
+  if (typeof obj !== 'object' || Array.isArray(obj)) throw new Error('Destino no es objeto');
+  let key = suggestedKey || '';
+  if (!key || Object.prototype.hasOwnProperty.call(obj, key)) {
+    const { value: k } = await Swal.fire({
+      title:'Clave para nuevo hijo', input:'text', inputValue: key || '',
+      inputPlaceholder:'nombre_propiedad', showCancelButton:true, confirmButtonText:'Agregar',
+      preConfirm: (v)=>{ if(!v){ Swal.showValidationMessage('Ingresa una clave'); return false; } if (obj.hasOwnProperty(v)) { Swal.showValidationMessage('La clave ya existe'); return false; } return v; }
+    });
+    if (!k) return false;
+    key = k;
+  }
+  obj[key] = value;
+  setAtPath(rootObj, objPath, obj);
+  return true;
+}
+
+function getNodePathFromEl(el){
+  const n = el.closest('.json-tree-node'); if (!n) return null;
+  try { return JSON.parse(n.getAttribute('data-path')); } catch { return null; }
+}
+
+function getDropTargetInfo(el){
+  // Determina destino lógico (objeto/array padre cuando se apunta a hoja o ítem)
+  const data = getDataRoot();
+  const rawPath = getNodePathFromEl(el);
+  if (!rawPath) return null;
+  const rootKey = rawPath[0];
+  const rootObj = data[rootKey];
+  let targetPath = rawPath.slice(1); // dentro del root
+  let targetVal = targetPath.length ? getAtPath(rootObj, targetPath) : rootObj;
+
+  // Si el target es ítem de array -> se inserta después de ese índice
+  if (typeof rawPath[rawPath.length-1] === 'number') {
+    return { rootKey, kind:'array-item', parentPath: rawPath.slice(0,-1), insertAfterIndex: rawPath[rawPath.length-1] };
+  }
+  // Si no es objeto/array, usar su padre como destino
+  const t = typeOf(targetVal);
+  if (t!=='object' && t!=='array') {
+    return { rootKey, kind:'parent', parentPath: rawPath.slice(0,-1) };
+  }
+  // Si es objeto o array
+  return { rootKey, kind: t, path: rawPath };
+}
+
+function addDragStyles(){
+  if ($('#json-tree-dnd-styles')) return;
+  const css = `
+    .json-tree-node.drag-src{ opacity:.6; }
+    .json-tree-node.drop-ok{ outline:2px dashed #0d6efd; }
+    .json-tree-node.drop-bad{ outline:2px dashed #dc3545; }
+  `;
+  const st = document.createElement('style'); st.id='json-tree-dnd-styles'; st.textContent = css;
+  document.head.appendChild(st);
+}
+
+function canMove(srcPath, targetInfo){
+  if (!targetInfo) return false;
+  // Misma raíz
+  if (srcPath[0] !== targetInfo.rootKey) return false;
+  // Evita mover dentro de sí mismo o un descendiente
+  const tgtPath = targetInfo.path || targetInfo.parentPath;
+  if (tgtPath && isAncestorPath(srcPath, tgtPath)) return false;
+  // Debe caer en objeto o array (o item/parent que derive en ellos)
+  return targetInfo.kind === 'object' || targetInfo.kind === 'array' || targetInfo.kind === 'array-item' || targetInfo.kind === 'parent';
+}
+
+function bindTreeDragAndDrop(root){
+  addDragStyles();
+
+  root.addEventListener('dragstart', (e)=>{
+    const node = e.target.closest('.json-tree-node'); if (!node) return;
+    const path = getNodePathFromEl(node); if (!path || !isEditablePath(path)) { e.preventDefault(); return; }
+    dragSrcPath = path;
+    node.classList.add('drag-src');
+    try { e.dataTransfer.setData('application/json', JSON.stringify(path)); } catch {}
+    e.dataTransfer.effectAllowed = 'move';
+  });
+
+  root.addEventListener('dragend', (e)=>{
+    dragSrcPath = null;
+    $all('.json-tree-node.drag-src', root).forEach(n=> n.classList.remove('drag-src'));
+    $all('.json-tree-node.drop-ok', root).forEach(n=> n.classList.remove('drop-ok'));
+    $all('.json-tree-node.drop-bad', root).forEach(n=> n.classList.remove('drop-bad'));
+  });
+
+  root.addEventListener('dragover', (e)=>{
+    if (!dragSrcPath) return;
+    const over = e.target.closest('.json-tree-node'); if (!over) return;
+    const info = getDropTargetInfo(over);
+    if (!canMove(dragSrcPath, info)) { over.classList.add('drop-bad'); over.classList.remove('drop-ok'); return; }
+    e.preventDefault(); // permitir drop
+    e.dataTransfer.dropEffect = 'move';
+    over.classList.add('drop-ok'); over.classList.remove('drop-bad');
+  });
+
+  root.addEventListener('dragleave', (e)=>{
+    const over = e.target.closest('.json-tree-node'); if (!over) return;
+    over.classList.remove('drop-ok','drop-bad');
+  });
+
+  root.addEventListener('drop', async (e)=>{
+    const over = e.target.closest('.json-tree-node'); if (!over) return;
+    const info = getDropTargetInfo(over);
+    $all('.json-tree-node.drop-ok,.json-tree-node.drop-bad', root).forEach(n=> n.classList.remove('drop-ok','drop-bad'));
+    if (!dragSrcPath || !canMove(dragSrcPath, info)) return;
+
+    e.preventDefault();
+    const srcRoot = dragSrcPath[0];
+    const data = getDataRoot();
+    let srcRootObj = getRootObj(srcRoot);
+    const srcParentPathInsideRoot = dragSrcPath.slice(1, -1);
+    const srcKey = dragSrcPath[dragSrcPath.length-1];
+    const srcParent = srcParentPathInsideRoot.length ? getAtPath(srcRootObj, srcParentPathInsideRoot) : srcRootObj;
+    const movingVal = Array.isArray(srcParent) ? deepClone(srcParent[srcKey]) : deepClone(srcParent[srcKey]);
+
+    // Eliminar del origen primero (tendrá efecto si destino es el mismo padre)
+    removeAtPath(srcRootObj, dragSrcPath);
+
+    const finishPersist = async ()=>{
+      await persistRoot(srcRoot, srcRootObj, dragSrcPath);
+      buildTree();
+    };
+
+    // Calcular inserción según destino
+    if (info.kind === 'array-item') {
+      const parentInsideRoot = info.parentPath.slice(1); // quita root
+      const idx = info.insertAfterIndex + 1;
+      insertIntoArray(srcRootObj, parentInsideRoot, idx, movingVal);
+      return finishPersist();
+    }
+
+    if (info.kind === 'array') {
+      const arrPathInsideRoot = info.path.slice(1);
+      insertIntoArray(srcRootObj, arrPathInsideRoot, null, movingVal);
+      return finishPersist();
+    }
+
+    if (info.kind === 'parent') {
+      // usa el padre real; decidir inserción por tipo del padre
+      const parentRaw = info.parentPath;
+      const parentInsideRoot = parentRaw.slice(1);
+      const parentVal = parentInsideRoot.length ? getAtPath(srcRootObj, parentInsideRoot) : srcRootObj;
+
+      if (Array.isArray(parentVal)) {
+        insertIntoArray(srcRootObj, parentInsideRoot, null, movingVal);
+        return finishPersist();
+      }
+      if (parentVal && typeof parentVal==='object') {
+        await insertIntoObject(srcRootObj, parentInsideRoot, movingVal, (typeof dragSrcPath[dragSrcPath.length-1]==='string' ? dragSrcPath[dragSrcPath.length-1] : 'nuevo'));
+        return finishPersist();
+      }
+      // si no es objeto/array, no mover
+      return buildTree();
+    }
+
+    if (info.kind === 'object') {
+      const objPathInsideRoot = info.path.slice(1);
+      const suggestedKey = (typeof dragSrcPath[dragSrcPath.length-1]==='string' ? dragSrcPath[dragSrcPath.length-1] : '');
+      const ok = await insertIntoObject(srcRootObj, objPathInsideRoot, movingVal, suggestedKey);
+      if (ok) return finishPersist();
+      else return buildTree();
+    }
+  });
+}

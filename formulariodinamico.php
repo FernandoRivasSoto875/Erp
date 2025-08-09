@@ -61,6 +61,22 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 .design-mode-switch { position: fixed; right: 16px; bottom: 16px; z-index: 1050; background: #fff; border-radius: 999px; padding: 8px 12px; box-shadow: 0 4px 12px rgba(0,0,0,.15); display: flex; align-items: center; gap: 8px; }
 .edit-icon { cursor: pointer; color: #6c757d; margin-left: 6px; }
 .edit-icon:hover { color: #0d6efd; }
+/* CRUD de tabs visible en diseño */
+#fd-root:not(.design-mode) .add-tab-button,
+#fd-root:not(.design-mode) .edit-tab-icon,
+#fd-root:not(.design-mode) .delete-tab-icon { display: none !important; }
+
+#fd-root [data-block-type="tabs"] .nav .edit-tab-icon,
+#fd-root [data-block-type="tabs"] .nav .delete-tab-icon {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  font-size: .9rem;
+  cursor: pointer;
+  color: #6c757d;
+}
+#fd-root.design-mode [data-block-type="tabs"] .nav .edit-tab-icon:hover,
+#fd-root.design-mode [data-block-type="tabs"] .nav .delete-tab-icon:hover { color: #0d6efd; }
 </style>
 </head>
 <body>

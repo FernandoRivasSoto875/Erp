@@ -190,23 +190,97 @@ function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valo
     return $html;
 }
 
-function generarLayout($layoutConfig, $fieldsetsConfig, $valores, $soloLectura) {
-    $html = '<div class="layout-container" data-layout-container>';
-    if (!is_array($layoutConfig) || !$layoutConfig) {
-        foreach (array_keys($fieldsetsConfig ?? []) as $fsName) {
-            $html .= "<div class='row'><div class='col-md-12' data-col-width='12' data-dropzone='column'>";
-            $html .= generarFieldsetContenido($fsName, $fieldsetsConfig, $valores, $soloLectura);
-            $html .= "</div></div>";
+// Renderiza bloques genéricos (header/footer/generic) permitiendo fieldsets y, opcionalmente, campos individuales
+if (!function_exists('renderGenericBlock')) {
+function renderGenericBlock(array $block, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
+    $type = htmlspecialchars($block['type'] ?? 'generic', ENT_QUOTES, 'UTF-8');
+    $html = '<div class="fd-block" data-block-type="'.$type.'">';
+    foreach (($block['rows'] ?? []) as $row) {
+        $html .= '<div class="row" data-row>';
+        foreach (($row['columns'] ?? []) as $col) {
+            $w = (int)($col['width'] ?? 12); $w = max(1, min(12, $w));
+            $html .= '<div class="col-md-'.$w.'" data-col-width="'.$w.'">';
+
+            // Fieldset completo
+            if (!empty($col['fieldset'])) {
+                $fsName = (string)$col['fieldset'];
+                if (isset($fieldsets[$fsName])) {
+                    $html .= generarFieldsetContenido($fsName, $fieldsets, $valores, $soloLectura);
+                }
+            }
+
+            // Campos individuales (opcional, si el layout los define)
+            if (!empty($col['fields']) && is_array($col['fields'])) {
+                foreach ($col['fields'] as $ref) {
+                    if (is_array($ref) && isset($ref['fieldset'], $ref['field'])) {
+                        $html .= renderSingleField((string)$ref['fieldset'], (string)$ref['field'], $fieldsets, $valores, $soloLectura);
+                    } elseif (is_string($ref)) {
+                        // Buscar por nombre en cualquier fieldset
+                        foreach ($fieldsets as $fsName => $fs) {
+                            foreach (($fs['campos'] ?? []) as $c) {
+                                if (($c['nombre'] ?? '') === $ref) {
+                                    $html .= renderSingleField((string)$fsName, (string)$ref, $fieldsets, $valores, $soloLectura);
+                                    break 2;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            $html .= '</div>';
         }
         $html .= '</div>';
-        return $html;
-    }
-    foreach ($layoutConfig as $block) {
-        $html .= renderBlock($block, $fieldsetsConfig, $valores, $soloLectura);
     }
     $html .= '</div>';
     return $html;
-}
+}}
+
+// Renderiza un solo campo (sin envolver en fieldset), manteniendo compatibilidad con edición en modo diseño
+if (!function_exists('renderSingleField')) {
+function renderSingleField(string $fieldsetName, string $fieldName, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
+    $fs = $fieldsets[$fieldsetName] ?? null;
+    if (!$fs) return '';
+    $campo = null;
+    foreach (($fs['campos'] ?? []) as $c) {
+        if (($c['nombre'] ?? '') === $fieldName) { $campo = $c; break; }
+    }
+    if (!$campo) return '';
+    $valor = $valores[$fieldName] ?? ($campo['valor_predeterminado'] ?? '');
+
+    $html  = "<div class='draggable-field' data-field-name='".htmlspecialchars($fieldName, ENT_QUOTES, 'UTF-8')."'>";
+    $html .= "  <div class='w-100'>".generarCampo($campo, $valor, $soloLectura)."</div>";
+    // Ícono de edición siempre presente; CSS lo oculta fuera de diseño
+    $html .= "  <span class='edit-icon' data-edit='field' data-fieldset='".htmlspecialchars($fieldsetName, ENT_QUOTES, 'UTF-8')."' data-field='".htmlspecialchars($fieldName, ENT_QUOTES, 'UTF-8')."' title='Editar campo'><i class='fas fa-pencil-alt'></i></span>";
+    $html .= "</div>";
+    return $html;
+}}
+
+// Genera el layout completo incluyendo header y footer
+if (!function_exists('generarLayout')) {
+function generarLayout(array $layout, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
+    $html = '<div data-layout-container>';
+
+    if (!empty($layout['header']) && (($layout['header']['type'] ?? '') === 'header')) {
+        $html .= renderGenericBlock($layout['header'], $fieldsets, $valores, $soloLectura);
+    }
+
+    if (!empty($layout['main'])) {
+        $main = $layout['main'];
+        if (($main['type'] ?? '') === 'tabs') {
+            $html .= renderTabsBlock($main, $fieldsets, $valores, $soloLectura);
+        } else {
+            $html .= renderGenericBlock($main, $fieldsets, $valores, $soloLectura);
+        }
+    }
+
+    if (!empty($layout['footer']) && (($layout['footer']['type'] ?? '') === 'footer')) {
+        $html .= renderGenericBlock($layout['footer'], $fieldsets, $valores, $soloLectura);
+    }
+
+    $html .= '</div>';
+    return $html;
+}}
 
 // -------------------- Backend: POST y AJAX --------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -353,8 +427,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $displayValue .= "</tr></thead><tbody>";
             foreach ($value as $row) {
                 $displayValue .= "<tr>";
-                foreach (($fieldInfo['columns'] ?? []) as $col) {
-                    $displayValue .= "<td>" . htmlspecialchars((string)($row[$col['name']] ?? ''), ENT_QUOTES, 'UTF-8') . "</td>";
+                foreach ($row as $cell) {
+                    $displayValue .= "<td>" . htmlspecialchars((string)$cell, ENT_QUOTES, 'UTF-8') . "</td>";
                 }
                 $displayValue .= "</tr>";
             }

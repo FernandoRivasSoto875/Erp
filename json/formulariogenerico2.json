@@ -167,56 +167,53 @@
           ]
         }
       ]
+    },
+    "header": {
+      "titulo": "Cabecera",
+      "campos": [
+        { "nombre": "fecha", "tipo": "date", "etiqueta": "Fecha", "valor_predeterminado": "" },
+        { "nombre": "documento", "tipo": "text", "etiqueta": "Documento", "placeholder": "N° doc." }
+      ]
+    },
+    "principal": {
+      "titulo": "Datos principales",
+      "campos": [
+        { "nombre": "cliente", "tipo": "text", "etiqueta": "Cliente" },
+        { "nombre": "importe", "tipo": "number", "etiqueta": "Importe" }
+      ]
+    },
+    "footer": {
+      "titulo": "Pie",
+      "campos": [
+        { "nombre": "observaciones", "tipo": "textarea", "etiqueta": "Observaciones" }
+      ]
     }
   },
   "layout": {
     "header": {
       "type": "header",
-      "rows": [ { "columns": [ { "width": "12", "fieldset": "header_info" } ] } ]
+      "rows": [
+        { "columns": [ { "width": 12, "fieldset": "header" } ] }
+      ]
     },
     "main": {
       "type": "tabs",
       "tabs": [
         {
-          "title": "Información Personal",
-          "rows": [ { "columns": [ { "width": "6", "fieldset": "datos_personales" }, { "width": "6", "fieldset": "datos_contacto" } ] } ]
-        },
-        {
-          "title": "Facturaciónn",
+          "title": "General",
           "rows": [
-            { "columns": [ { "width": "12", "fieldset": "productos_factura" } ] },
-            { "columns": [ { "width": "12", "fieldset": "resumen_factura" } ] }
-          ]
-        },
-        {
-          "title": "Campos Diversos",
-          "rows": [ { "columns": [ { "width": "12", "fieldset": "campos_variados" } ] } ]
-        },
-        {
-          "title": "Todos los Controles",
-          "rows": [ { "columns": [ { "width": "12", "fieldset": "todos_los_controles" } ] } ]
-        },
-        {
-          "title": "Ejemplo Grilla en Fieldset",
-          "rows": [
-            {
-              "columns": [
-                {
-                  "width": "12",
-                  "fieldset": "grupo_grilla_ejemplo"
-                }
-              ]
-            }
+            { "columns": [ { "width": 12, "fieldset": "principal" } ] }
           ]
         }
       ]
     },
     "footer": {
       "type": "footer",
-      "rows": [ { "columns": [ { "width": "12", "fieldset": "footer_legal" } ] } ]
+      "rows": [
+        { "columns": [ { "width": 12, "fieldset": "footer" } ] }
+      ]
     }
-  },
-  "elementos_fuera": []
+  }
 }
 
 

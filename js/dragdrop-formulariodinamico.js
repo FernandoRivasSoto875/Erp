@@ -457,9 +457,10 @@ $(function(){
     function inDesign() { const r = root(); return !!(r && r.classList.contains('design-mode')); }
     function getArchivoJson() { return (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || ''; }
 
-    // ——— Serialización ———
+    let sortables = [];
+
     function collectElementosFuera() {
-        const out = document.querySelector('#elementos-fuera-container');
+        const out = document.getElementById('elementos-fuera-container');
         if (!out) return [];
         const items = [];
         out.querySelectorAll('.draggable-fieldset[data-fieldset-name]').forEach(fs => {
@@ -488,7 +489,7 @@ $(function(){
     }
     function buildLayoutFromDOM() {
         const layout = [];
-        const container = document.querySelector('[data-layout-container]');
+        const container = document.querySelector('#fd-root [data-layout-container]');
         if (!container) return layout;
 
         // Tabs
@@ -502,19 +503,15 @@ $(function(){
                 const id = pane.id;
                 const title = idToTitle[id] || 'Pestaña';
                 const row = { columns: [] };
-                // Cada fieldset en la pestaña como columna col-12 (simple)
                 const names = Array.from(pane.querySelectorAll('.draggable-fieldset[data-fieldset-name]')).map(fs => fs.getAttribute('data-fieldset-name'));
-                if (names.length) {
-                    names.forEach(n => row.columns.push({ width: 12, fieldset: n }));
-                } else {
-                    row.columns.push({ width: 12 });
-                }
+                if (names.length) names.forEach(n => row.columns.push({ width: 12, fieldset: n }));
+                else row.columns.push({ width: 12 });
                 tabs.push({ title, rows: [row] });
             });
             layout.push({ type: 'tabs', tabs });
         });
 
-        // Bloques genéricos/header/footer
+        // Otros bloques
         container.querySelectorAll('[data-block-type="generic"],[data-block-type="header"],[data-block-type="footer"]').forEach(block => {
             const type = block.getAttribute('data-block-type') || 'generic';
             const rows = [];
@@ -523,11 +520,8 @@ $(function(){
                 r.querySelectorAll('[data-col-width]').forEach(colEl => {
                     const width = parseInt(colEl.getAttribute('data-col-width') || '12', 10);
                     const fsets = Array.from(colEl.querySelectorAll('.draggable-fieldset[data-fieldset-name]'));
-                    if (fsets.length) {
-                        fsets.forEach(fs => row.columns.push({ width, fieldset: fs.getAttribute('data-fieldset-name') || '' }));
-                    } else {
-                        row.columns.push({ width });
-                    }
+                    if (fsets.length) fsets.forEach(fs => row.columns.push({ width, fieldset: fs.getAttribute('data-fieldset-name') || '' }));
+                    else row.columns.push({ width });
                 });
                 rows.push(row);
             });
@@ -536,7 +530,6 @@ $(function(){
 
         return layout;
     }
-
     function saveDesign() {
         const archivo = getArchivoJson();
         if (!archivo) return;
@@ -544,49 +537,47 @@ $(function(){
         const fieldsets = reorderFieldsetsFromDOM(original);
         const layout = buildLayoutFromDOM();
         const elementos_fuera = collectElementosFuera();
-        const layout_html = (document.querySelector('[data-layout-container]') || {}).innerHTML || '';
+        const layout_html = (document.querySelector('#fd-root [data-layout-container]') || {}).innerHTML || '';
 
-        const payload = {
+        $.post('guardar_layout.php', {
             archivo,
             layout: JSON.stringify(layout),
             elementos_fuera: JSON.stringify(elementos_fuera),
             fieldsets: JSON.stringify(fieldsets),
             layout_html
-        };
-
-        $.post('guardar_layout.php', payload)
-         .done(resp => { if (!(resp && resp.success)) Swal.fire('Error', (resp && resp.error) || 'No se pudo guardar', 'error'); })
-         .fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
+        }).fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
     }
 
-    // ——— DnD ———
+    function destroySortables() {
+        sortables.forEach(s => { try { s.destroy(); } catch(e){} });
+        sortables = [];
+    }
     function initSortable() {
         if (!inDesign() || typeof Sortable === 'undefined') return;
 
-        // Campos: dentro y entre fieldsets
-        document.querySelectorAll('.sortable-fields-container').forEach(el => {
-            Sortable.create(el, {
+        document.querySelectorAll('#fd-root .sortable-fields-container').forEach(el => {
+            sortables.push(Sortable.create(el, {
                 group: { name: 'fields', pull: true, put: true },
                 draggable: '.draggable-field',
                 animation: 150,
-                onEnd: () => saveDesign()
-            });
+                ghostClass: 'sortable-ghost',
+                onEnd: () => { window.__designHistory?.saveState(); saveDesign(); }
+            }));
         });
 
-        // Fieldsets: entre columnas, panes y parking
-        document.querySelectorAll('[data-col-width], [data-dropzone="tab-pane"], #elementos-fuera-container').forEach(el => {
-            Sortable.create(el, {
+        document.querySelectorAll('#fd-root [data-col-width], #fd-root [data-dropzone="tab-pane"], #elementos-fuera-container').forEach(el => {
+            sortables.push(Sortable.create(el, {
                 group: { name: 'fieldsets', pull: true, put: true },
                 draggable: '.draggable-fieldset',
                 animation: 150,
+                ghostClass: 'sortable-ghost',
                 handle: 'legend,[data-fieldset-title]',
-                onEnd: () => saveDesign()
-            });
+                onEnd: () => { window.__designHistory?.saveState(); saveDesign(); }
+            }));
         });
 
-        // Reordenar pestañas
-        document.querySelectorAll('ul.nav[role="tablist"]').forEach(nav => {
-            Sortable.create(nav, {
+        document.querySelectorAll('#fd-root ul.nav[role="tablist"]').forEach(nav => {
+            sortables.push(Sortable.create(nav, {
                 group: 'tabs',
                 animation: 150,
                 draggable: '.nav-item',
@@ -602,18 +593,17 @@ $(function(){
                         const pane = content.querySelector('#'+CSS.escape(id));
                         if (pane) content.appendChild(pane);
                     });
+                    window.__designHistory?.saveState();
                     saveDesign();
                 }
-            });
+            }));
         });
     }
 
-    // ——— Editores de propiedades ———
     function initPropertyEditors() {
-        if (!inDesign()) return;
-
-        // Form: título
-        $(document).on('click', '[data-edit="form-title"]', function(){
+        // Editar título del form
+        $(document).off('click.fd.formtitle').on('click.fd.formtitle', '[data-edit="form-title"]', function(){
+            if (!inDesign()) return;
             const titleEl = $('#form-title');
             const current = titleEl.clone().children().remove().end().text().trim();
             Swal.fire({ title: 'Título del formulario', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' })
@@ -625,16 +615,18 @@ $(function(){
             });
         });
 
-        // Tabs: renombrar
-        $(document).on('click', '.edit-tab-icon', function(){
+        // Renombrar tab
+        $(document).off('click.fd.tabedit').on('click.fd.tabedit', '.edit-tab-icon', function(){
+            if (!inDesign()) return;
             const a = $(this).closest('.nav-item').find('.nav-link');
             const current = a.text().trim();
             Swal.fire({ title: 'Título de pestaña', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' })
             .then(res => { if (res.isConfirmed && res.value) { a.text(res.value); saveDesign(); } });
         });
 
-        // Fieldset: título
-        $(document).on('click', '.edit-icon[data-edit="fieldset"]', function(){
+        // Fieldset título
+        $(document).off('click.fd.fsedit').on('click.fd.fsedit', '.edit-icon[data-edit="fieldset"]', function(){
+            if (!inDesign()) return;
             const fs = $(this).closest('.draggable-fieldset');
             const name = fs.data('fieldsetName') || fs.attr('data-fieldset-name') || '';
             const legend = fs.find('[data-fieldset-title]');
@@ -649,15 +641,15 @@ $(function(){
             });
         });
 
-        // Campo: propiedades completas (etiqueta, placeholder, tipo, valor, opciones, atributos)
-        $(document).on('click', '.edit-icon[data-edit="field"]', function(){
+        // Campo propiedades
+        $(document).off('click.fd.fieldedit').on('click.fd.fieldedit', '.edit-icon[data-edit="field"]', function(){
+            if (!inDesign()) return;
             const fieldWrapper = $(this).closest('.draggable-field');
             const fieldName = fieldWrapper.data('fieldName') || fieldWrapper.attr('data-field-name') || '';
             const fieldsetWrapper = fieldWrapper.closest('.draggable-fieldset');
             const fieldsetName = fieldsetWrapper.data('fieldsetName') || fieldsetWrapper.attr('data-fieldset-name') || '';
             const labelEl = fieldWrapper.find('label').get(0);
             const lbl = labelEl ? $(labelEl).text().trim() : '';
-
             if (!fieldsetName || !fieldName) return;
 
             Swal.fire({
@@ -733,9 +725,30 @@ $(function(){
         });
     }
 
-    document.addEventListener('DOMContentLoaded', function(){
-        if (!inDesign()) return; // No activar nada en modo normal
+    function activateDesignMode() {
+        if (!inDesign()) return;
+        destroySortables();
         initSortable();
         initPropertyEditors();
+        document.getElementById('undoBtn') && (document.getElementById('undoBtn').style.display = '');
+        document.getElementById('redoBtn') && (document.getElementById('redoBtn').style.display = '');
+        document.getElementById('saveLayoutBtn') && (document.getElementById('saveLayoutBtn').style.display = '');
+    }
+    function deactivateDesignMode() {
+        destroySortables();
+        document.getElementById('undoBtn') && (document.getElementById('undoBtn').style.display = 'none');
+        document.getElementById('redoBtn') && (document.getElementById('redoBtn').style.display = 'none');
+        document.getElementById('saveLayoutBtn') && (document.getElementById('saveLayoutBtn').style.display = 'none');
+        // No removemos handlers; están protegidos por inDesign()
+    }
+
+    // Exponer API al toggle
+    window.DnDFormBuilder = Object.assign({}, window.DnDFormBuilder || {}, {
+        saveDesign, activateDesignMode, deactivateDesignMode
+    });
+
+    // Si vino ya en diseño desde PHP, activarlo al cargar
+    document.addEventListener('DOMContentLoaded', function(){
+        if (inDesign()) activateDesignMode();
     });
 })();

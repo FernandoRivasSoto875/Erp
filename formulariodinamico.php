@@ -154,6 +154,9 @@ $(function(){
         const url = new URL(location.href);
         url.searchParams.set('modoDiseno', on ? '1' : '0');
         history.replaceState(null, '', url.toString());
+
+        // NUEVO: notificar a paneles (árbol JSON, etc.)
+        window.dispatchEvent(new CustomEvent('design-mode-changed', { detail: { on: !!on } }));
     }
 
     $toggle.on('change', function(){ uiSetDesignMode(this.checked); });
@@ -164,5 +167,6 @@ $(function(){
 </script>
 <script src="js/formulariodinamico.js"></script>
 <script src="js/dragdrop-formulariodinamico.js"></script>
+<script src="js/json-tree-panel.js"></script>
 </body>
 </html>

@@ -69,26 +69,30 @@ $(document).ready(function() {
         redoBtn.show();
         $('.edit-icon, .tab-block-handle, .edit-tab-icon, .add-tab-button').show();
 
+        // Deshabilitar solo el submit en modo diseño
+        $('form#formulariodinamico button[type="submit"]').prop('disabled', true);
+
         if ($('select.form-control').data('select2')) {
             $('select.form-control').select2('destroy');
         }
 
-        // 1. Contenedores que aceptan GRUPOS (Fieldsets y Bloque de Pestañas)
-        document.querySelectorAll('[data-col-width], #elementos-fuera-container').forEach(container => {
+        // 1) Fieldsets: mover grupos entre columnas y panes de tabs + parking
+        document.querySelectorAll('[data-col-width], [data-dropzone="tab-pane"], #elementos-fuera-container').forEach(container => {
             sortableInstances.push(Sortable.create(container, {
-                group: 'shared-blocks',
+                group: { name: 'fieldsets', pull: true, put: true },
                 animation: 150,
                 ghostClass: 'sortable-ghost',
-                draggable: '.draggable-fieldset, .draggable-tab-block',
-                handle: '.handle',
+                draggable: '.draggable-fieldset',
+                // usar el título del fieldset como "handle" si existe
+                handle: 'legend, [data-fieldset-title], .draggable-fieldset',
                 onEnd: () => saveState()
             }));
         });
 
-        // 2. Contenedores que aceptan CAMPOS individuales
+        // 2) Campos: mover campos dentro y entre fieldsets
         document.querySelectorAll('.sortable-fields-container, #elementos-fuera-container').forEach(container => {
             sortableInstances.push(Sortable.create(container, {
-                group: 'shared-fields',
+                group: { name: 'fields', pull: true, put: true },
                 animation: 150,
                 ghostClass: 'sortable-ghost',
                 draggable: '.draggable-field',
@@ -96,7 +100,7 @@ $(document).ready(function() {
             }));
         });
 
-        // 3. Contenedor para REORDENAR PESTAÑAS (tabs)
+        // 3) Pestañas: reordenar pestañas y sincronizar panes
         document.querySelectorAll('ul.nav[role="tablist"]').forEach(tabsList => {
             sortableInstances.push(Sortable.create(tabsList, {
                 group: 'tabs',
@@ -104,58 +108,50 @@ $(document).ready(function() {
                 draggable: '.nav-item:not(.add-tab-button)',
                 handle: '.nav-link',
                 filter: '.add-tab-button',
-                onEnd: () => saveState()
-            }));
-        });
-
-        // --- Paleta de Componentes: Hacer arrastrables los fieldsets disponibles (como grupo, no individualmente) ---
-        const paletaComponentes = document.getElementById('paleta-componentes');
-        if (paletaComponentes) {
-            sortableInstances.push(Sortable.create(paletaComponentes, {
-                group: {
-                    name: 'shared-blocks',
-                    pull: 'clone',
-                    put: false
-                },
-                sort: false,
-                animation: 150,
-                handle: '.handle',
-                draggable: '.draggable-fieldset',
-                onStart: function (evt) {
-                    evt.item.classList.add('sortable-ghost');
-                },
-                onEnd: function (evt) {
-                    evt.item.classList.remove('sortable-ghost');
+                onEnd: () => {
+                    const block = tabsList.closest('[data-block-type="tabs"]');
+                    if (!block) return;
+                    const content = block.querySelector('.tab-content');
+                    if (!content) return;
+                    const ids = Array.from(tabsList.querySelectorAll('.nav-link'))
+                        .map(a => (a.getAttribute('href') || '').replace('#',''))
+                        .filter(Boolean);
+                    ids.forEach(id => {
+                        const pane = content.querySelector('#'+CSS.escape(id));
+                        if (pane) content.appendChild(pane);
+                    });
                     saveState();
                 }
             }));
+        });
+
+        // Paleta de componentes (fieldsets clonables)
+        const paletaComponentes = document.getElementById('paleta-componentes');
+        if (paletaComponentes) {
+            sortableInstances.push(Sortable.create(paletaComponentes, {
+                group: { name: 'fieldsets', pull: 'clone', put: false },
+                sort: false,
+                animation: 150,
+                handle: '.handle, [data-fieldset-title]',
+                draggable: '.draggable-fieldset',
+                onStart: (evt) => evt.item.classList.add('sortable-ghost'),
+                onEnd:   (evt) => { evt.item.classList.remove('sortable-ghost'); saveState(); }
+            }));
         }
 
-        // --- Paleta de Tipos de Control: Hacer arrastrables los tipos (clonables) ---
+        // Paleta de tipos de control (campos clonables)
         document.querySelectorAll('#paleta-tipos-control .draggable-tipo').forEach(el => {
             Sortable.create(el, {
-                group: {
-                    name: 'new-fields',
-                    pull: 'clone',
-                    put: false
-                },
+                group: { name: 'new-fields', pull: 'clone', put: false },
                 sort: false,
                 animation: 150,
                 handle: '.handle',
-                onStart: function (evt) {
-                    el.classList.add('sortable-ghost');
-                },
-                onEnd: function (evt) {
-                    el.classList.remove('sortable-ghost');
-                    // Aquí se debe abrir el editor visual de propiedades para el nuevo campo
-                    // (Se implementará en el siguiente paso)
-                }
+                onStart: () => el.classList.add('sortable-ghost'),
+                onEnd:   () => { el.classList.remove('sortable-ghost'); /* abrir editor de nuevo campo aquí si aplica */ }
             });
         });
 
-        if (doSaveState) {
-            saveState();
-        }
+        if (doSaveState) saveState();
         updateUndoRedoButtons();
     }
 
@@ -166,6 +162,10 @@ $(document).ready(function() {
         undoBtn.hide();
         redoBtn.hide();
         $('.edit-icon, .tab-block-handle, .edit-tab-icon, .add-tab-button').hide();
+
+        // Rehabilitar el submit en modo normal
+        $('form#formulariodinamico button[type="submit"]').prop('disabled', false);
+
         sortableInstances.forEach(s => s.destroy());
         sortableInstances = [];
         if (reinitNormal) {
@@ -174,13 +174,11 @@ $(document).ready(function() {
     }
     
     // --- Eventos de los Botones ---
-
+    // Al cambiar el toggle, recargar con el query param modoDiseno=1|0
     designModeToggle.on('change', function() {
-        if (this.checked) {
-            enableDesignMode();
-        } else {
-            disableDesignMode();
-        }
+        const url = new URL(window.location.href);
+        url.searchParams.set('modoDiseno', this.checked ? '1' : '0');
+        window.location.href = url.toString();
     });
 
     // Lógica para editar el nombre de la pestaña

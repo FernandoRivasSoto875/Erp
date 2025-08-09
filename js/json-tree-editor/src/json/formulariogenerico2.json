@@ -1,0 +1,65 @@
+{
+  "parametros": {
+    "titulo": "Formulario Genérico",
+    "descripcion": "Este es un formulario de ejemplo para la edición de datos JSON.",
+    "version": 1.0
+  },
+  "layout": {
+    "secciones": [
+      {
+        "nombre": "Información Personal",
+        "campos": [
+          {
+            "tipo": "texto",
+            "nombre": "nombre",
+            "etiqueta": "Nombre",
+            "requerido": true
+          },
+          {
+            "tipo": "texto",
+            "nombre": "apellido",
+            "etiqueta": "Apellido",
+            "requerido": true
+          },
+          {
+            "tipo": "correo",
+            "nombre": "email",
+            "etiqueta": "Correo Electrónico",
+            "requerido": true
+          }
+        ]
+      },
+      {
+        "nombre": "Detalles del Proyecto",
+        "campos": [
+          {
+            "tipo": "textarea",
+            "nombre": "descripcion_proyecto",
+            "etiqueta": "Descripción del Proyecto",
+            "requerido": false
+          },
+          {
+            "tipo": "fecha",
+            "nombre": "fecha_inicio",
+            "etiqueta": "Fecha de Inicio",
+            "requerido": true
+          }
+        ]
+      }
+    ]
+  },
+  "fieldsets": {
+    "informacion_adicional": {
+      "titulo": "Información Adicional",
+      "campos": [
+        {
+          "tipo": "checkbox",
+          "nombre": "suscripcion",
+          "etiqueta": "Suscribirse a boletín",
+          "valor_por_defecto": false
+        }
+      ]
+    }
+  },
+  "elementos_fuera": []
+}

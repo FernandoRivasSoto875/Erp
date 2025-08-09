@@ -141,12 +141,20 @@
   }
   function actionsForNode(path, type){
     const isArrayItem = typeof path[path.length-1] === 'number';
+    const isRootEditable = isEditablePath(path);
     const parts = [];
-    if (isEditablePath(path)) parts.push(`<button class="btn-icon act-edit" title="Editar"><i class="fas fa-pencil-alt"></i></button>`);
-    if (isEditablePath(path) && (type==='object' || type==='array')) parts.push(`<button class="btn-icon act-add" title="Agregar hijo"><i class="fas fa-plus"></i></button>`);
+    if (isRootEditable) parts.push(`<button class="btn-icon act-edit" title="Editar"><i class="fas fa-pencil-alt"></i></button>`);
+    if (isRootEditable && (type==='object' || type==='array')) parts.push(`<button class="btn-icon act-add" title="Agregar hijo"><i class="fas fa-plus"></i></button>`);
     if (isArrayItem) {
+      parts.push(`<button class="btn-icon act-add-sibling" title="Insertar hermano"><i class="fas fa-level-down-alt"></i></button>`);
       parts.push(`<button class="btn-icon act-up" title="Subir"><i class="fas fa-arrow-up"></i></button>`);
       parts.push(`<button class="btn-icon act-down" title="Bajar"><i class="fas fa-arrow-down"></i></button>`);
+    }
+    if (isRootEditable) {
+      parts.push(`<button class="btn-icon act-dup" title="Duplicar"><i class="fas fa-clone"></i></button>`);
+      // Renombrar clave solo tiene sentido si el padre es objeto (último segmento es string)
+      if (!isArrayItem) parts.push(`<button class="btn-icon act-rename" title="Renombrar clave"><i class="fas fa-i-cursor"></i></button>`);
+      parts.push(`<button class="btn-icon act-del" title="Eliminar" style="color:#dc3545"><i class="fas fa-trash-alt"></i></button>`);
     }
     return parts.length ? `<span class="json-node-actions">${parts.join('')}</span>` : '';
   }
@@ -242,16 +250,19 @@
     }, true);
 
     root.addEventListener('click', async function(e){
-      const btn = e.target.closest('.json-node-actions button');
-      if (!btn) return;
+      const btn = e.target.closest('.json-node-actions button'); if (!btn) return;
       const { nodeEl, path } = getClickedNodeAndPath(btn);
-      if (!nodeEl || !Array.isArray(path)) { if (window.Swal) Swal.fire('Error', 'No se pudo determinar la ruta del nodo.', 'error'); return; }
+      if (!nodeEl || !Array.isArray(path)) { if (window.Swal) Swal.fire('Error', 'Ruta no encontrada.', 'error'); return; }
 
       try {
         if (btn.classList.contains('act-edit')) return await editNodeByPath(path, nodeEl);
         if (btn.classList.contains('act-add')) return await addChildAtPath(path);
+        if (btn.classList.contains('act-add-sibling')) return await insertSiblingAtPath(path);
         if (btn.classList.contains('act-up')) return await moveArrayItem(path, -1);
         if (btn.classList.contains('act-down')) return await moveArrayItem(path, +1);
+        if (btn.classList.contains('act-dup')) return await duplicateAtPath(path);
+        if (btn.classList.contains('act-rename')) return await renameAtPath(path);
+        if (btn.classList.contains('act-del')) return await deleteAtPath(path);
       } catch(err){
         if (window.Swal) Swal.fire('Error', String(err.message||err), 'error');
       }

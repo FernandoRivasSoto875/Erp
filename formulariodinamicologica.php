@@ -78,6 +78,53 @@ if (!function_exists('generarFieldsetContenido')) {
     }
 }
 
+if (!function_exists('renderColumnContent')) {
+    function renderColumnContent(array $col, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
+        // 1) Un solo fieldset
+        if (!empty($col['fieldset'])) {
+            $fsName = (string)$col['fieldset'];
+            return $fsName !== '' ? generarFieldsetContenido($fsName, $fieldsets, $valores, $soloLectura) : '';
+        }
+        // 2) Bloque de tabs embebido en la columna
+        if (isset($col['tabset']) && is_array($col['tabset'])) {
+            $tabset = $col['tabset'];
+            // Asegura estructura mínima
+            if (!isset($tabset['type'])) $tabset['type'] = 'tabs';
+            if (!isset($tabset['tabs'])) $tabset['tabs'] = [];
+            return renderTabsBlock($tabset, $fieldsets, $valores, $soloLectura);
+        }
+        // 3) Grupo de fieldsets/items (puede contener fieldsets y/o otros tabsets anidados)
+        if (isset($col['group']) && is_array($col['group'])) {
+            return renderFieldsetGroup($col['group'], $fieldsets, $valores, $soloLectura);
+        }
+        return '';
+    }
+}
+
+if (!function_exists('renderFieldsetGroup')) {
+    function renderFieldsetGroup(array $group, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
+        $title = (string)($group['title'] ?? 'Grupo');
+        $items = is_array($group['items'] ?? null) ? $group['items'] : [];
+        $html  = '<div class="fd-block mb-3 p-2 border rounded" data-block-type="fieldset-group">';
+        $html .= '<div class="small text-muted mb-2">'.fd_escape($title).'</div>';
+        foreach ($items as $it) {
+            if (!is_array($it)) continue;
+            $type = $it['type'] ?? '';
+            if ($type === 'fieldset') {
+                $name = (string)($it['name'] ?? '');
+                if ($name !== '') $html .= generarFieldsetContenido($name, $fieldsets, $valores, $soloLectura);
+            } elseif ($type === 'tabs') {
+                $html .= renderTabsBlock($it, $fieldsets, $valores, $soloLectura);
+            } elseif ($type === 'group') {
+                // soporte anidado opcional
+                $html .= renderFieldsetGroup($it, $fieldsets, $valores, $soloLectura);
+            }
+        }
+        $html .= '</div>';
+        return $html;
+    }
+}
+
 // Bloques
 if (!function_exists('renderGenericBlock')) {
     function renderGenericBlock(array $block, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
@@ -89,10 +136,7 @@ if (!function_exists('renderGenericBlock')) {
                 $w = (int)($col['width'] ?? 12);
                 $w = max(1, min(12, $w));
                 $html .= '<div class="col-md-'.$w.'" data-col-width="'.$w.'">';
-                if (!empty($col['fieldset'])) {
-                    $fsName = (string)$col['fieldset'];
-                    $html .= generarFieldsetContenido($fsName, $fieldsets, $valores, $soloLectura);
-                }
+                $html .= renderColumnContent($col, $fieldsets, $valores, $soloLectura);
                 $html .= '</div>';
             }
             $html .= '</div>';
@@ -104,6 +148,7 @@ if (!function_exists('renderGenericBlock')) {
 
 if (!function_exists('renderTabsBlock')) {
     function renderTabsBlock(array $main, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
+        // Espera estructura: ['type'=>'tabs','tabs'=>[ {title, rows:[{columns:[...] }]} ]]
         $tabs = $main['tabs'] ?? [];
         $html = '<div class="fd-block" data-block-type="tabs">';
         $html .= '<ul class="nav nav-tabs" role="tablist">';
@@ -113,7 +158,6 @@ if (!function_exists('renderTabsBlock')) {
             $active = $i === 0 ? 'active' : '';
             $sel    = $i === 0 ? 'true' : 'false';
             $html .= '<li class="nav-item">';
-            // Compatibilidad BS4 y BS5: data-toggle y data-bs-toggle
             $html .= '<a id="nav_'.$paneId.'" class="nav-link '.$active.'" href="#'.$paneId.'" role="tab" aria-controls="'.$paneId.'" aria-selected="'.$sel.'" data-toggle="tab" data-bs-toggle="tab">'.fd_escape($title).'</a>';
             $html .= '</li>';
         }
@@ -130,10 +174,7 @@ if (!function_exists('renderTabsBlock')) {
                 foreach (($row['columns'] ?? []) as $col) {
                     $w = (int)($col['width'] ?? 12); $w = max(1, min(12, $w));
                     $html .= '<div class="col-md-'.$w.'" data-col-width="'.$w.'">';
-                    if (!empty($col['fieldset'])) {
-                        $fsName = (string)$col['fieldset'];
-                        $html .= generarFieldsetContenido($fsName, $fieldsets, $valores, $soloLectura);
-                    }
+                    $html .= renderColumnContent($col, $fieldsets, $valores, $soloLectura);
                     $html .= '</div>';
                 }
                 $html .= '</div>';

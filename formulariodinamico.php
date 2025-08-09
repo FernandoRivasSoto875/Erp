@@ -62,21 +62,19 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 <body>
 <div id="fd-root" class="<?php echo $modoDiseno ? 'design-mode' : ''; ?>">
 
-    <?php if ($modoDiseno): ?>
+    <!-- SIEMPRE presente; visible solo en diseño por CSS -->
     <div id="elementos-fuera-container" class="container mt-3 p-3 border rounded bg-light" data-dropzone="outside">
         <h5 class="mb-2">Elementos fuera del formulario</h5>
         <?php echo generarContenedorFueraDelFormulario($elementos_fuera, $fieldsets, [], false); ?>
     </div>
-    <?php endif; ?>
 
     <div class="container mt-3 mb-5">
         <div class="card">
             <div class="card-header text-center">
                 <h2 id="form-title" class="mb-0">
                     <?php echo htmlspecialchars($params['titulo'] ?? $titulo_formulario); ?>
-                    <?php if ($modoDiseno): ?>
-                        <span class="edit-icon" data-edit="form-title" title="Editar título"><i class="fas fa-pencil-alt"></i></span>
-                    <?php endif; ?>
+                    <!-- SIEMPRE renderizar; se oculta en modo normal por CSS -->
+                    <span class="edit-icon" data-edit="form-title" title="Editar título"><i class="fas fa-pencil-alt"></i></span>
                 </h2>
                 <?php if (!empty($params['comentario'])): ?>
                     <p class="mb-0 text-muted"><?php echo htmlspecialchars($params['comentario']); ?></p>

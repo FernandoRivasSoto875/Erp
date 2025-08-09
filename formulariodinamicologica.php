@@ -65,6 +65,7 @@ function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura) {
         $active = $index === 0 ? 'active' : '';
         $html .= '<li class="nav-item" role="presentation">';
         $html .= '<a class="nav-link '.$active.'" data-toggle="pill" href="#'.$id.'" role="tab" aria-controls="'.$id.'" aria-selected="'.($index===0?'true':'false').'" data-tab-id="'.$id.'">'.htmlspecialchars($title, ENT_QUOTES, 'UTF-8').'</a>';
+        // SIEMPRE mostrar ícono (CSS lo oculta en modo normal)
         $html .= '<span class="edit-tab-icon edit-icon" title="Renombrar pestaña"><i class="fas fa-pencil-alt"></i></span>';
         $html .= '</li>';
     }
@@ -122,6 +123,7 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
     $html = "<div class='mb-3 p-2 border rounded draggable-fieldset' data-fieldset-name='".htmlspecialchars($fieldsetName, ENT_QUOTES, 'UTF-8')."'>";
     $html .= "<div class='d-flex align-items-center justify-content-between mb-2'>";
     $html .= "<legend class='w-auto h6 mb-0' data-fieldset-title>".htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8')."</legend>";
+    // SIEMPRE mostrar ícono (CSS lo oculta en modo normal)
     $html .= "<span class='edit-icon' data-edit='fieldset' data-fieldset='".htmlspecialchars($fieldsetName, ENT_QUOTES, 'UTF-8')."' title='Editar fieldset'><i class='fas fa-pencil-alt'></i></span>";
     $html .= "</div>";
 
@@ -155,6 +157,7 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
             $html .= "<div class='draggable-field' data-field-name='".htmlspecialchars($nombreCampo, ENT_QUOTES, 'UTF-8')."'>";
             $html .= "<div class='d-flex align-items-center justify-content-between'>";
             $html .= "<div class='w-100'>".generarCampo($campo, $valor, $soloLectura)."</div>";
+            // SIEMPRE mostrar ícono (CSS lo oculta en modo normal)
             $html .= "<span class='edit-icon' data-edit='field' data-fieldset='".htmlspecialchars($fieldsetName, ENT_QUOTES, 'UTF-8')."' data-field='".htmlspecialchars($nombreCampo, ENT_QUOTES, 'UTF-8')."' title='Editar campo'><i class='fas fa-pencil-alt'></i></span>";
             $html .= "</div></div>";
         }

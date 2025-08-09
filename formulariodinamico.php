@@ -254,9 +254,10 @@ $paletaComponentes = function_exists('generarPaletaComponentes') ? trim(generarP
 <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
-<script src="js/formulariodinamico.js"></script>
 <script>
 window.FORM_CONFIG = { archivo_json: '<?php echo addslashes($archivo_base); ?>' };
+window.formularioJsonOriginal = <?php echo json_encode($json_data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
+
 // Toggle modo diseño en front (redirige con query)
 $('#designModeToggle').on('change', function() {
     const url = new URL(window.location.href);
@@ -264,5 +265,7 @@ $('#designModeToggle').on('change', function() {
     window.location.href = url.toString();
 });
 </script>
+<script src="js/formulariodinamico.js"></script>
+<script src="js/dragdrop-formulariodinamico.js"></script>
 </body>
 </html>

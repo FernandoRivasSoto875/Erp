@@ -452,19 +452,37 @@ function actualizarJsonDesdeUI() {
 
 // KEEP: Guarda el JSON actualizado en el backend
 function guardarJson(json) {
-    fetch('guardar_json.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(json)
-    })
-    .then(resp => resp.json())
-    .then(data => {
-        if(data.success) {
-            alert('Cambios guardados');
-        } else {
-            alert('Error al guardar');
+    try {
+        const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) ? window.FORM_CONFIG.archivo_json : '';
+        if (!archivo) {
+            if (window.Swal) Swal.fire('Atención','No se detectó el archivo JSON a guardar.','warning'); else alert('No se detectó el archivo JSON a guardar.');
+            return;
         }
-    });
+        const payload = {
+            archivo,
+            layout: JSON.stringify(json.layout || {}),
+            elementos_fuera: JSON.stringify(json.elementos_fuera || [])
+        };
+        fetch('guardar_layout.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+            body: new URLSearchParams(payload).toString()
+        })
+        .then(r => r.json())
+        .then(resp => {
+            if (resp && resp.success) {
+                if (window.Swal) Swal.fire('OK','Diseño guardado.','success'); else alert('Diseño guardado');
+            } else {
+                if (window.Swal) Swal.fire('Error', (resp && resp.error) ? resp.error : 'No se pudo guardar.', 'error'); else alert('Error al guardar');
+            }
+        })
+        .catch(() => {
+            if (window.Swal) Swal.fire('Error','Error de red.','error'); else alert('Error de red');
+        });
+    } catch (e) {
+        console.error(e);
+        if (window.Swal) Swal.fire('Error','Excepción al guardar.','error'); else alert('Excepción al guardar');
+    }
 }
 
 // KEEP: Marca visualmente los cambios KEEP en la UI (opcional)
@@ -474,3 +492,35 @@ function marcarKeepUI() {
         el.title = 'KEEP: Modificado';
     });
 }
+
+// Guardado del layout desde el botón "Guardar Diseño" (fallback por HTML)
+$(function(){
+    const saveBtn = $('#saveLayoutBtn');
+    if (!saveBtn.length) return;
+
+    function getArchivoJson() {
+        return (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) ? window.FORM_CONFIG.archivo_json : '';
+    }
+
+    function serializeLayoutHtml() {
+        const cont = document.querySelector('.layout-container');
+        return cont ? cont.innerHTML : '';
+    }
+
+    saveBtn.on('click', function(){
+        const archivo = getArchivoJson();
+        if (!archivo) {
+            Swal.fire('Atención','No se detectó el archivo JSON a guardar.','warning');
+            return;
+        }
+        const layout_html = serializeLayoutHtml();
+        $.post('guardar_layout.php', { archivo, layout_html })
+            .done(function(resp){
+                if (resp && resp.success) Swal.fire('OK','Diseño guardado.','success');
+                else Swal.fire('Error', (resp && resp.error) ? resp.error : 'No se pudo guardar.', 'error');
+            })
+            .fail(function(xhr){
+                Swal.fire('Error', xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Error de red.', 'error');
+            });
+    });
+});

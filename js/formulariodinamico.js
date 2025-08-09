@@ -17,6 +17,7 @@ $(document).ready(function() {
     const formContainer = document.getElementById('formulariodinamico');
 
     function saveState() {
+        if (!formContainer) return;
         const currentState = formContainer.innerHTML;
         if (historyIndex > -1 && history[historyIndex] === currentState) return;
         if (historyIndex < history.length - 1) {
@@ -28,6 +29,7 @@ $(document).ready(function() {
     }
 
     function restoreState(index) {
+        if (!formContainer) return;
         if (index >= 0 && index < history.length) {
             formContainer.innerHTML = history[index];
             disableDesignMode(false);
@@ -95,13 +97,13 @@ $(document).ready(function() {
         });
 
         // 3. Contenedor para REORDENAR PESTAÑAS (tabs)
-        document.querySelectorAll('.sortable-tabs').forEach(tabsList => {
+        document.querySelectorAll('ul.nav[role="tablist"]').forEach(tabsList => {
             sortableInstances.push(Sortable.create(tabsList, {
                 group: 'tabs',
                 animation: 150,
                 draggable: '.nav-item:not(.add-tab-button)',
-                handle: '.nav-link', // Permite arrastrar usando toda la pestaña
-                filter: '.add-tab-button', // Solo el botón de agregar no es arrastrable
+                handle: '.nav-link',
+                filter: '.add-tab-button',
                 onEnd: () => saveState()
             }));
         });
@@ -218,22 +220,24 @@ $(document).ready(function() {
         }).then((result) => {
             if (result.isConfirmed && result.value) {
                 const newTitle = result.value;
-                const tabList = $(this).closest('.nav-tabs');
+                const tabList = $(this).closest('ul.nav[role="tablist"]');
                 const tabContent = tabList.next('.tab-content');
                 const newId = 'tab-' + Date.now();
 
-                // Crear el link de la pestaña
                 const newTabLink = `
-                    <li class=\"nav-item\" role=\"presentation\">\n                        <a class=\"nav-link\" id=\"${newId}-link\" data-toggle=\"tab\" href=\"#${newId}-pane\" role=\"tab\">${newTitle}</a>\n                        <span class=\"edit-tab-icon edit-icon\" style=\"display:inline-block;\"><i class=\"fas fa-pencil-alt\"></i></span>\n                    </li>`;
+                    <li class="nav-item" role="presentation">
+                        <a class="nav-link" id="${newId}-link" data-toggle="pill" href="#${newId}-pane" role="tab" aria-controls="${newId}-pane" aria-selected="false">${newTitle}</a>
+                        <span class="edit-tab-icon edit-icon" style="display:inline-block;"><i class="fas fa-pencil-alt"></i></span>
+                    </li>`;
                 
-                // Crear el panel de contenido de la pestaña
                 const newTabPane = `
-                    <div class=\"tab-pane fade\" id=\"${newId}-pane\" role=\"tabpanel\" data-tab-title=\"${newTitle}\">\n                        <!-- Área para soltar elementos -->\n                    </div>`;
+                    <div class="tab-pane fade" id="${newId}-pane" role="tabpanel" aria-labelledby="${newId}-link" data-tab-title="${newTitle}">
+                        <!-- Área para soltar elementos -->
+                    </div>`;
 
                 $(this).before(newTabLink);
                 tabContent.append(newTabPane);
 
-                // Reiniciar el modo diseño para que el nuevo contenedor sea funcional
                 disableDesignMode(false);
                 enableDesignMode(true);
             }
@@ -326,10 +330,14 @@ $(document).ready(function() {
     }
 
     // *** CAMBIO REALIZADO: Se llama a la lógica del formulario al cargar la página ***
-    // Esto asegura que el formulario sea funcional desde el principio.
     inicializarLogicaFormulario();
 
-    // --- Habilitar modo diseño automáticamente al cargar la página ---
-    designModeToggle.prop('checked', true);
-    enableDesignMode();
+    // --- Respetar modoDiseno del servidor al cargar ---
+    if ($('body').hasClass('design-mode')) {
+        designModeToggle.prop('checked', true);
+        enableDesignMode();
+    } else {
+        designModeToggle.prop('checked', false);
+        disableDesignMode();
+    }
 });

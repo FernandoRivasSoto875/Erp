@@ -37,32 +37,17 @@ function generarPaletaComponentes($fieldsets_disponibles, $fieldsets) {
 }
 
 // --- PALETA DE TIPOS DE CONTROL (para crear nuevos campos desde cero) ---
-function generarPaletaTiposControl() {
-    $tipos = [
-        'text' => 'Texto',
-        'textarea' => 'Área de texto',
-        'number' => 'Número',
-        'email' => 'Email',
-        'password' => 'Contraseña',
-        'select' => 'Select (Opciones)',
-        'selectdata' => 'Select (BD)',
-        'radio' => 'Radio',
-        'checkbox' => 'Checkbox',
-        'file' => 'Archivo',
-        'date' => 'Fecha',
-        'datatable' => 'Datatable',
-        'hidden' => 'Oculto'
-    ];
-    $html = "<div id='paleta-tipos-control' class='paleta-componentes bg-light p-3 mb-3 solo-modo-diseno'>";
-    $html .= "<h5 class='mb-3'><i class='fas fa-plus-square'></i> Crear Nuevo Campo</h5>";
-    $html .= "<div class='d-flex flex-wrap'>";
-    foreach ($tipos as $tipo => $label) {
-        $html .= "<div class='draggable-tipo card m-2 p-2 text-center' data-tipo='$tipo' style='min-width:120px;cursor:grab;'>";
-        $html .= "<div class='handle mb-2'><i class='fas fa-grip-vertical'></i></div>";
-        $html .= "<strong>$label</strong><br><span class='badge badge-info'>$tipo</span>";
-        $html .= "</div>";
+function generarPaletaTiposControl(): string {
+    $tipos = ['text','textarea','number','email','password','select','selectdata','radio','checkbox','file','date','datatable','hidden'];
+    $html = '<div class="p-3"><h5 class="mb-3">Tipos de control</h5><div class="row">';
+    foreach ($tipos as $t) {
+        $html .= '<div class="col-6 col-md-4 mb-2">';
+        $html .= '<div class="draggable-tipo border rounded p-2 bg-white">';
+        $html .= '<div class="d-flex align-items-center"><span class="handle mr-2"><i class="fas fa-grip-vertical"></i></span>';
+        $html .= '<span>'.htmlspecialchars($t, ENT_QUOTES, 'UTF-8').'</span></div>';
+        $html .= '</div></div>';
     }
-    $html .= "</div></div>";
+    $html .= '</div></div>';
     return $html;
 }
 
@@ -71,139 +56,73 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // --- Función principal para generar un campo ---
-function generarCampo($campo, $valor, $soloLectura) {
-    $tipo = $campo['tipo'] ?? 'text';
-    $nombre = $campo['nombre'] ?? 'campo_' . uniqid();
-    $etiqueta = $campo['etiqueta'] ?? '';
-    $placeholder = $campo['placeholder'] ?? '';
-    $clase = $campo['clase'] ?? 'form-control';
-    $atributos = $campo['atributos'] ?? [];
-    $opciones = $campo['opciones'] ?? [];
-    $valor_predeterminado = $campo['valor_predeterminado'] ?? '';
-    $columnas_datatable = $campo['columnas'] ?? [];
-
-    // Determinar el valor final a usar
-    $valor_final = $valor !== '' ? $valor : $valor_predeterminado;
-
-    $html_atributos = '';
-    if ($soloLectura) {
-        $atributos['readonly'] = true;
+function generarCampo($campo, $valor, $soloLectura): string {
+    $tipo   = $campo['tipo'] ?? 'text';
+    $nombre = $campo['nombre'] ?? 'sin_nombre';
+    $label  = $campo['etiqueta'] ?? $nombre;
+    $attrs  = $campo['atributos'] ?? [];
+    $disabled = $soloLectura ? ' disabled' : '';
+    $attrStr = '';
+    foreach ((array)$attrs as $k => $v) {
+        $attrStr .= ' '.htmlspecialchars($k, ENT_QUOTES, 'UTF-8').'="'.htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8').'"';
     }
-    foreach ($atributos as $attr => $val) {
-        if (is_bool($val)) {
-            if ($val) $html_atributos .= " $attr";
-        } else {
-            $html_atributos .= " $attr=\"" . htmlspecialchars($val) . "\"";
-        }
-    }
-
-    $html = "<div class='form-group'>";
-    if ($etiqueta && $tipo !== 'hidden') {
-        // Etiqueta editable solo en modo diseño (detectado por JS con la clase editable-label)
-        $html .= "<label for='" . htmlspecialchars($nombre) . "' class='editable-label' data-field-name='" . htmlspecialchars($nombre) . "' contenteditable='false'>" . htmlspecialchars($etiqueta) . "</label>";
-    }
+    $hLabel = '<label class="form-label">'.htmlspecialchars($label, ENT_QUOTES, 'UTF-8').'</label>';
+    $hName  = htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8');
 
     switch ($tipo) {
         case 'textarea':
-            $html .= "<textarea name='" . htmlspecialchars($nombre) . "' id='" . htmlspecialchars($nombre) . "' class='$clase' placeholder='$placeholder'$html_atributos>" . htmlspecialchars($valor_final) . "</textarea>";
-            break;
-        case 'select':
-            $html .= "<select name='" . htmlspecialchars($nombre) . "' id='" . htmlspecialchars($nombre) . "' class='$clase'$html_atributos>";
-            foreach ($opciones as $opt_val => $opt_label) {
-                $selected = ($opt_val == $valor_final) ? ' selected' : '';
-                $html .= "<option value='" . htmlspecialchars($opt_val) . "'$selected>" . htmlspecialchars($opt_label) . "</option>";
-            }
-            $html .= "</select>";
-            break;
-        case 'selectdata':
-            // --- ESTA ES LA SECCIÓN CRÍTICA CORREGIDA ---
-            $html .= "<select name='" . htmlspecialchars($nombre) . "' id='" . htmlspecialchars($nombre) . "' class='$clase'$html_atributos>";
-            $config_path = __DIR__ . '/config/conexion.json';
-            
-            if (file_exists($config_path)) {
-                $config = json_decode(file_get_contents($config_path), true);
-                $conn = new mysqli($config['host'], $config['user'], $config['password'], $config['database']);
-
-                // ¡CORRECCIÓN IMPORTANTE!
-                // Primero, verificar si no hay un error de conexión.
-                if ($conn && !$conn->connect_error) {
-                    $query = $campo['query'] ?? '';
-                    if ($query) {
-                        $stmt = $conn->prepare($query);
-                        if ($stmt) {
-                            $stmt->execute();
-                            $result = $stmt->get_result();
-                            while ($row = $result->fetch_assoc()) {
-                                $val = $row['valor'];
-                                $lab = $row['etiqueta'];
-                                $selected = ($val == $valor_final) ? ' selected' : '';
-                                $html .= "<option value='" . htmlspecialchars($val) . "'$selected>" . htmlspecialchars($lab) . "</option>";
-                            }
-                            $stmt->close();
-                        } else {
-                             $html .= "<option value=''>Error preparando la consulta</option>";
-                        }
-                    }
-                    $conn->close();
-                } else {
-                    // Si la conexión falla, mostrar un mensaje claro en el select.
-                    $error_msg = $conn->connect_error ? $conn->connect_error : 'Error desconocido';
-                    $html .= "<option value=''>Error de conexión a BD: " . htmlspecialchars($error_msg) . "</option>";
-                }
-            } else {
-                $html .= "<option value=''>Falta config/conexion.json</option>";
-            }
-            $html .= "</select>";
-            break;
-        case 'checkbox':
-            foreach ($opciones as $cb_val => $cb_label) {
-                // Para checkboxes, el valor puede ser un array
-                $checked = (is_array($valor_final) && in_array($cb_val, $valor_final)) || $cb_val == $valor_final ? ' checked' : '';
-                $html .= "<div class='form-check'>";
-                $html .= "<input type='checkbox' name='" . htmlspecialchars($nombre) . "[]' value='" . htmlspecialchars($cb_val) . "' class='form-check-input'$checked$html_atributos>";
-                $html .= "<label class='form-check-label'>" . htmlspecialchars($cb_label) . "</label>";
-                $html .= "</div>";
-            }
-            break;
-        case 'radio':
-            foreach ($opciones as $rb_val => $rb_label) {
-                $checked = ($rb_val == $valor_final) ? ' checked' : '';
-                $html .= "<div class='form-check'>";
-                $html .= "<input type='radio' name='" . htmlspecialchars($nombre) . "' value='" . htmlspecialchars($rb_val) . "' class='form-check-input'$checked$html_atributos>";
-                $html .= "<label class='form-check-label'>" . htmlspecialchars($rb_label) . "</label>";
-                $html .= "</div>";
-            }
-            break;
-        case 'datatable':
-            $html .= "<div id='dt-container-" . htmlspecialchars($nombre) . "'>";
-            $html .= "<table id='" . htmlspecialchars($nombre) . "' class='table table-striped table-bordered' style='width:100%'>";
-            $html .= "<thead><tr>";
-            foreach ($columnas_datatable as $col) {
-                $html .= "<th>" . htmlspecialchars($col['etiqueta']) . "</th>";
-            }
-            $html .= "<th>Acciones</th>";
-            $html .= "</tr></thead><tbody></tbody>";
-            $html .= "</table>";
-            $html .= "<button type='button' class='btn btn-primary btn-sm mt-2' onclick=\"abrirModalDatatable('" . htmlspecialchars($nombre) . "')\">Agregar Fila</button>";
-            $html .= "</div>";
-            // El input hidden almacenará los datos del datatable como JSON
-            $html .= "<input type='hidden' name='" . htmlspecialchars($nombre) . "' id='hidden-" . htmlspecialchars($nombre) . "' value='" . htmlspecialchars(is_array($valor_final) ? json_encode($valor_final) : '[]') . "'>";
-            break;
-        case 'file':
-             $html .= "<input type='file' name='" . htmlspecialchars($nombre) . "[]' id='" . htmlspecialchars($nombre) . "' class='$clase'$html_atributos multiple>";
-             break;
-        case 'hidden':
-            $html .= "<input type='hidden' name='" . htmlspecialchars($nombre) . "' id='" . htmlspecialchars($nombre) . "' value='" . htmlspecialchars($valor_final) . "'$html_atributos>";
-            break;
+            return "<div class='form-group mb-2'>{$hLabel}<textarea name='{$hName}' class='form-control'{$disabled}{$attrStr}>".htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8')."</textarea></div>";
+        case 'number':
+        case 'email':
         case 'password':
-            $html .= "<input type='password' name='" . htmlspecialchars($nombre) . "' id='" . htmlspecialchars($nombre) . "' class='$clase' placeholder='$placeholder' value='" . htmlspecialchars($valor_final) . "'$html_atributos>";
-            break;
-        default: // text, email, number, date, etc.
-            $html .= "<input type='" . htmlspecialchars($tipo) . "' name='" . htmlspecialchars($nombre) . "' id='" . htmlspecialchars($nombre) . "' class='$clase' placeholder='$placeholder' value='" . htmlspecialchars($valor_final) . "'$html_atributos>";
-            break;
+        case 'date':
+        case 'hidden': {
+            $inputType = $tipo === 'hidden' ? 'text' : $tipo;
+            $cls = $tipo === 'hidden' ? 'form-control d-none' : 'form-control';
+            return "<div class='form-group mb-2'>".($tipo==='hidden'?'':$hLabel)."<input type='{$inputType}' name='{$hName}' value='".htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8')."' class='{$cls}'{$disabled}{$attrStr}></div>";
+        }
+        case 'file':
+            return "<div class='form-group mb-2'>{$hLabel}<input type='file' name='{$hName}".(isset($attrs['multiple'])?'[]':'')."' class='form-control'{$disabled}{$attrStr}></div>";
+        case 'select':
+        case 'selectdata': {
+            $options = $campo['opciones'] ?? [];
+            $opts = '';
+            foreach ((array)$options as $key => $text) {
+                $sel = ((string)$valor === (string)$key) ? ' selected' : '';
+                $opts .= "<option value='".htmlspecialchars((string)$key, ENT_QUOTES, 'UTF-8')."'{$sel}>".htmlspecialchars((string)$text, ENT_QUOTES, 'UTF-8')."</option>";
+            }
+            return "<div class='form-group mb-2'>{$hLabel}<select name='{$hName}' class='form-control'{$disabled}{$attrStr}>{$opts}</select></div>";
+        }
+        case 'radio': {
+            $options = $campo['opciones'] ?? [];
+            $html = "<div class='form-group mb-2'>{$hLabel}<div>";
+            foreach ((array)$options as $key => $text) {
+                $id = $hName.'_'.preg_replace('/[^A-Za-z0-9_]/','', (string)$key);
+                $chk = ((string)$valor === (string)$key) ? ' checked' : '';
+                $html .= "<div class='form-check form-check-inline'><input class='form-check-input' type='radio' id='{$id}' name='{$hName}' value='".htmlspecialchars((string)$key, ENT_QUOTES, 'UTF-8')."'{$chk}{$disabled}{$attrStr}><label class='form-check-label' for='{$id}'>".htmlspecialchars((string)$text, ENT_QUOTES, 'UTF-8')."</label></div>";
+            }
+            return $html."</div></div>";
+        }
+        case 'checkbox': {
+            $checked = !empty($valor) ? ' checked' : '';
+            return "<div class='form-group form-check mb-2'><input class='form-check-input' type='checkbox' id='{$hName}' name='{$hName}' value='1'{$checked}{$disabled}{$attrStr}><label class='form-check-label' for='{$hName}'>".htmlspecialchars($label, ENT_QUOTES, 'UTF-8')."</label></div>";
+        }
+        case 'datatable': {
+            $cols = $campo['columnas'] ?? $campo['columns'] ?? [];
+            $head = '';
+            foreach ((array)$cols as $col) {
+                $head .= '<th>'.htmlspecialchars($col['etiqueta'] ?? $col['label'] ?? '', ENT_QUOTES, 'UTF-8').'</th>';
+            }
+            return "<div class='form-group mb-2'>{$hLabel}<div data-tipo='datatable' data-nombre='{$hName}' class='table-responsive'><table class='table table-sm table-bordered mb-0'><thead><tr>{$head}</tr></thead><tbody><!-- filas dinámicas --></tbody></table></div></div>";
+        }
+        default:
+            return "<div class='form-group mb-2'>{$hLabel}<input type='text' name='{$hName}' value='".htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8')."' class='form-control'{$disabled}{$attrStr}></div>";
     }
+}
 
-    $html .= "</div>";
-    return $html;
+// Info de campo para back (búsqueda segura)
+function getFieldInfo($name, array $all_fields) {
+    foreach ($all_fields as $f) if (($f['name'] ?? null) === $name) return $f;
+    return ['label' => ucfirst((string)$name), 'type' => 'text', 'columns' => []];
 }
 ?>

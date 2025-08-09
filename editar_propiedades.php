@@ -1,78 +1,72 @@
 <?php
 // editar_propiedades.php
-header('Content-Type: application/json');
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['estado' => 'error', 'mensaje' => 'Método no permitido.']);
-    exit;
-}
-
-$input = json_decode(file_get_contents('php://input'), true);
-
-$nombreArchivoJson = $input['archivo_json'] ?? null;
-$editType = $input['edit_type'] ?? null;
-$itemName = $input['item_name'] ?? null;
-$newProperties = $input['properties'] ?? null;
-
-if (!$nombreArchivoJson || !$editType || !$itemName || !$newProperties) {
-    http_response_code(400);
-    echo json_encode(['estado' => 'error', 'mensaje' => 'Faltan datos necesarios.']);
-    exit;
-}
-
-// --- Medida de seguridad: Evitar Path Traversal ---
-$baseDir = __DIR__ . '/json/';
-$rutaCompleta = realpath($baseDir . basename($nombreArchivoJson));
-
-if (!$rutaCompleta || strpos($rutaCompleta, $baseDir) !== 0 || !file_exists($rutaCompleta)) {
-    http_response_code(400);
-    echo json_encode(['estado' => 'error', 'mensaje' => 'Archivo JSON no válido o no encontrado.']);
-    exit;
-}
+if (session_status() === PHP_SESSION_NONE) session_start();
+header('Content-Type: application/json; charset=utf-8');
 
 try {
-    $contenidoJson = file_get_contents($rutaCompleta);
-    $datos = json_decode($contenidoJson, true);
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new RuntimeException('Método no permitido');
+    $archivo  = $_POST['archivo']  ?? '';
+    $tipo     = $_POST['tipo']     ?? ''; // 'fieldset' | 'field'
+    $fieldset = $_POST['fieldset'] ?? '';
+    $nombre   = $_POST['nombre']   ?? '';
 
-    if ($editType === 'fieldset') {
-        if (isset($datos['fieldsets'][$itemName])) {
-            // Actualizamos solo el título por ahora
-            $datos['fieldsets'][$itemName]['titulo'] = $newProperties['titulo'];
-        } else {
-            throw new Exception("Fieldset '{$itemName}' no encontrado.");
+    if (!$archivo || !$tipo) throw new InvalidArgumentException('Parámetros insuficientes');
+
+    $base = basename($archivo);
+    if (stripos($base, '.json') === false) $base .= '.json';
+    $path = __DIR__ . DIRECTORY_SEPARATOR . 'json' . DIRECTORY_SEPARATOR . $base;
+    if (!is_file($path)) throw new RuntimeException('JSON no encontrado');
+
+    $json = json_decode(file_get_contents($path), true);
+    if (!is_array($json)) $json = [];
+    $fieldsets = $json['fieldsets'] ?? [];
+
+    // Normalizar a mapa por name si viene lista
+    if (array_keys($fieldsets) === range(0, count($fieldsets)-1)) {
+        $map = [];
+        foreach ($fieldsets as $fs) {
+            if (!empty($fs['name'])) $map[$fs['name']] = $fs;
         }
-    } elseif ($editType === 'field') {
-        $encontrado = false;
-        foreach ($datos['fieldsets'] as &$fieldset) {
-            foreach ($fieldset['campos'] as &$campo) {
-                if ($campo['nombre'] === $itemName) {
-                    // Actualizamos las propiedades del campo
-                    $campo['etiqueta'] = $newProperties['etiqueta'];
-                    $campo['placeholder'] = $newProperties['placeholder'];
-                    // Aquí se podrían añadir más propiedades
-                    $encontrado = true;
-                    break 2;
+        if ($map) $fieldsets = $map;
+    }
+
+    if ($tipo === 'fieldset') {
+        if (!$fieldset || !isset($fieldsets[$fieldset])) throw new InvalidArgumentException('Fieldset no encontrado');
+        if (isset($_POST['titulo'])) $fieldsets[$fieldset]['titulo'] = (string)$_POST['titulo'];
+    } elseif ($tipo === 'field') {
+        if (!$fieldset || !isset($fieldsets[$fieldset])) throw new InvalidArgumentException('Fieldset no encontrado');
+        if (!$nombre) throw new InvalidArgumentException('Falta nombre del campo');
+        $campos = $fieldsets[$fieldset]['campos'] ?? [];
+        foreach ($campos as &$c) {
+            if (($c['nombre'] ?? null) === $nombre) {
+                foreach (['etiqueta','placeholder','valor_predeterminado','tipo','query','data-formula'] as $k) {
+                    if (isset($_POST[$k])) $c[$k] = (string)$_POST[$k];
                 }
+                if (isset($_POST['opciones'])) {
+                    $opts = json_decode((string)$_POST['opciones'], true);
+                    if (json_last_error() === JSON_ERROR_NONE) $c['opciones'] = $opts;
+                }
+                if (isset($_POST['atributos'])) {
+                    $attrs = json_decode((string)$_POST['atributos'], true);
+                    if (json_last_error() === JSON_ERROR_NONE) $c['atributos'] = $attrs;
+                }
+                break;
             }
         }
-        if (!$encontrado) {
-            throw new Exception("Campo '{$itemName}' no encontrado.");
-        }
+        $fieldsets[$fieldset]['campos'] = $campos;
     } else {
-        throw new Exception("Tipo de edición '{$editType}' no soportado.");
+        throw new InvalidArgumentException('Tipo no soportado');
     }
 
-    $resultado = file_put_contents($rutaCompleta, json_encode($datos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    $json['fieldsets'] = $fieldsets;
 
-    if ($resultado === false) {
-        throw new Exception('No se pudo escribir en el archivo JSON.');
-    }
+    $backup = $path.'.bak-'.date('Ymd_His');
+    @copy($path, $backup);
+    file_put_contents($path, json_encode($json, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));
 
-    echo json_encode(['estado' => 'exito', 'mensaje' => 'Propiedades actualizadas correctamente.']);
-
-} catch (Exception $e) {
-    http_response_code(500);
-    echo json_encode(['estado' => 'error', 'mensaje' => $e->getMessage()]);
+    echo json_encode(['success'=>true,'message'=>'Propiedades actualizadas','backup'=>basename($backup)]);
+} catch (Throwable $e) {
+    http_response_code(400);
+    echo json_encode(['success'=>false,'error'=>$e->getMessage()]);
 }
 ?>

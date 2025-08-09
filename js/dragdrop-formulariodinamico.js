@@ -457,40 +457,7 @@ $(function(){
     function inDesign(){ const r=root(); return !!(r && r.classList.contains('design-mode')); }
     function getArchivoJson(){ return (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || ''; }
 
-    // Cache JSON del diseño
-    const JSON_CACHE = { data: null };
-    function asFieldsetsMap(fieldsets) {
-        if (!fieldsets) return {};
-        if (Array.isArray(fieldsets)) {
-            const m={}; fieldsets.forEach(fs=>{ const k=(fs&& (fs.name||fs.nombre)); if(k) m[k]=fs; }); return m;
-        }
-        return fieldsets;
-    }
-    function fetchJson() {
-        const archivo = getArchivoJson();
-        return $.getJSON('json/' + archivo).then(d => {
-            JSON_CACHE.data = d || {};
-            return JSON_CACHE.data;
-        }).catch(() => {
-            JSON_CACHE.data = window.formularioJsonOriginal || {};
-            return JSON_CACHE.data;
-        });
-    }
-    function getFieldDef(json, fieldsetName, fieldName) {
-        const fsets = asFieldsetsMap(json.fieldsets || {});
-        const fs = fsets[fieldsetName]; if (!fs) return null;
-        const campos = Array.isArray(fs.campos) ? fs.campos : [];
-        const idx = campos.findIndex(c => (c && c.nombre) === fieldName);
-        if (idx < 0) return null;
-        return { fs, idx, campo: campos[idx] };
-    }
-    function updateLocalJsonField(json, fieldsetName, fieldName, newProps) {
-        const def = getFieldDef(json, fieldsetName, fieldName); if (!def) return;
-        const c = def.campo;
-        Object.keys(newProps).forEach(k => { if (newProps[k] !== undefined) c[k]=newProps[k]; });
-    }
-
-    // Guardado del diseño (layout + reorden de campos y elementos fuera)
+    // ---------- Guardado del diseño ----------
     function collectElementosFuera() {
         const out = document.getElementById('elementos-fuera-container');
         if (!out) return [];
@@ -503,28 +470,13 @@ $(function(){
         });
         return items;
     }
-    function reorderFieldsetsFromDOM(originalFieldsets) {
-        const copy = JSON.parse(JSON.stringify(originalFieldsets || {}));
-        document.querySelectorAll('.draggable-fieldset[data-fieldset-name]').forEach(fs => {
-            const name = fs.getAttribute('data-fieldset-name');
-            if (!name || !copy[name]) return;
-            const fields = Array.from(fs.querySelectorAll('.sortable-fields-container .draggable-field[data-field-name]')).map(n => n.getAttribute('data-field-name'));
-            if (!fields.length) return;
-            const current = Array.isArray(copy[name].campos) ? copy[name].campos : [];
-            const map = {}; current.forEach(c => { if (c && c.nombre) map[c.nombre]=c; });
-            const reordered = [];
-            fields.forEach(fname => { if (map[fname]) reordered.push(map[fname]); });
-            current.forEach(c => { if (c && c.nombre && !reordered.find(rc=>rc.nombre===c.nombre)) reordered.push(c); });
-            copy[name].campos = reordered;
-        });
-        return copy;
-    }
+
     function buildLayoutFromDOM() {
         const layout = [];
         const container = document.querySelector('#fd-root [data-layout-container]');
         if (!container) return layout;
 
-        // Tabs
+        // Bloques de tabs
         container.querySelectorAll('[data-block-type="tabs"]').forEach(block => {
             const tabs = [];
             const idToTitle = {};
@@ -535,15 +487,16 @@ $(function(){
                 const id = pane.id;
                 const title = idToTitle[id] || 'Pestaña';
                 const row = { columns: [] };
+                // Cada fieldset dentro del pane
                 const names = Array.from(pane.querySelectorAll('.draggable-fieldset[data-fieldset-name]')).map(fs => fs.getAttribute('data-fieldset-name'));
                 if (names.length) names.forEach(n => row.columns.push({ width: 12, fieldset: n }));
-                else row.columns.push({ width: 12 });
+                else row.columns.push({ width: 12 }); // vacío
                 tabs.push({ title, rows: [row] });
             });
             layout.push({ type: 'tabs', tabs });
         });
 
-        // Otros bloques
+        // Otros bloques genéricos si existieran
         container.querySelectorAll('[data-block-type="generic"],[data-block-type="header"],[data-block-type="footer"]').forEach(block => {
             const type = block.getAttribute('data-block-type') || 'generic';
             const rows = [];
@@ -562,11 +515,10 @@ $(function(){
 
         return layout;
     }
+
     function saveDesign() {
         const archivo = getArchivoJson();
         if (!archivo) return;
-        const original = (window.formularioJsonOriginal && window.formularioJsonOriginal.fieldsets) || {};
-        const fieldsets = reorderFieldsetsFromDOM(original);
         const layout = buildLayoutFromDOM();
         const elementos_fuera = collectElementosFuera();
         const layout_html = (document.querySelector('#fd-root [data-layout-container]') || {}).innerHTML || '';
@@ -575,80 +527,18 @@ $(function(){
             archivo,
             layout: JSON.stringify(layout),
             elementos_fuera: JSON.stringify(elementos_fuera),
-            fieldsets: JSON.stringify(fieldsets),
             layout_html
-        }).fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
-    }
-
-    // Sortables
-    let sortables = [];
-    function destroySortables(){ sortables.forEach(s=>{ try{s.destroy();}catch(e){} }); sortables=[]; }
-    function initSortable() {
-        if (!inDesign() || typeof Sortable === 'undefined') return;
-
-        document.querySelectorAll('#fd-root .sortable-fields-container').forEach(el => {
-            sortables.push(Sortable.create(el, {
-                group: { name: 'fields', pull: true, put: true },
-                draggable: '.draggable-field',
-                animation: 150,
-                ghostClass: 'sortable-ghost',
-                onEnd: () => saveDesign()
-            }));
-        });
-
-        document.querySelectorAll('#fd-root [data-col-width], #fd-root [data-dropzone="tab-pane"], #elementos-fuera-container').forEach(el => {
-            sortables.push(Sortable.create(el, {
-                group: { name: 'fieldsets', pull: true, put: true },
-                draggable: '.draggable-fieldset',
-                animation: 150,
-                ghostClass: 'sortable-ghost',
-                handle: 'legend,[data-fieldset-title]',
-                onEnd: () => saveDesign()
-            }));
-        });
-
-        // Reordenar tabs
-        document.querySelectorAll('#fd-root ul.nav[role="tablist"]').forEach(nav => {
-            sortables.push(Sortable.create(nav, {
-                group: 'tabs',
-                animation: 150,
-                draggable: '.nav-item',
-                handle: '.nav-link',
-                onEnd: () => {
-                    const block = nav.closest('[data-block-type="tabs"]');
-                    const content = block && block.querySelector('.tab-content'); if (!content) return;
-                    const ids = Array.from(nav.querySelectorAll('.nav-link'))
-                        .map(a => (a.getAttribute('href') || '').replace('#',''))
-                        .filter(Boolean);
-                    ids.forEach(id => {
-                        const pane = content.querySelector('#'+CSS.escape(id));
-                        if (pane) content.appendChild(pane);
-                    });
-                    saveDesign();
-                }
-            }));
+        }).fail(xhr => {
+            const msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red';
+            if (window.Swal) Swal.fire('Error', msg, 'error');
+            else alert(msg);
         });
     }
 
-    // Tabs: navegación fallback (si faltara Bootstrap, igual funciona)
-    $(document).on('click', '#fd-root ul.nav .nav-link[href^="#"]', function(e){
-        // Si Bootstrap está, lo deja actuar. Si no, hacemos el toggle manual.
-        if (typeof $().tab === 'function') return;
-        e.preventDefault();
-        const $a = $(this);
-        const href = $a.attr('href');
-        const $nav = $a.closest('ul');
-        const $block = $nav.closest('[data-block-type="tabs"]');
-        const $content = $block.find('.tab-content');
-        $nav.find('.nav-link').removeClass('active').attr('aria-selected','false');
-        $a.addClass('active').attr('aria-selected','true');
-        $content.find('.tab-pane').removeClass('show active');
-        $content.find(href).addClass('show active');
-    });
-
-    // Tabs: agregar/renombrar/eliminar y navegación
-    function ensureAddTabButtons() {
+    // ---------- CRUD de pestañas ----------
+    function ensureCrudUI() {
         document.querySelectorAll('#fd-root [data-block-type="tabs"]').forEach(block => {
+            // Botón + Pestaña (debajo del ul.nav)
             if (!block.querySelector('.add-tab-button')) {
                 const btn = document.createElement('button');
                 btn.type = 'button';
@@ -659,31 +549,26 @@ $(function(){
                 if (ul && ul.parentNode) ul.parentNode.insertBefore(btn, ul.nextSibling);
                 btn.addEventListener('click', () => addTab(block));
             }
-            ensureTabIcons(block);
-        });
-    }
-
-    function ensureTabIcons(block) {
-        const nav = block.querySelector('ul.nav');
-        if (!nav) return;
-        nav.querySelectorAll('.nav-item').forEach(li => {
-            // Edit icon
-            if (!li.querySelector('.edit-tab-icon')) {
-                const edit = document.createElement('span');
-                edit.className = 'edit-tab-icon edit-icon';
-                edit.title = 'Renombrar pestaña';
-                edit.innerHTML = '<i class="fas fa-pencil-alt"></i>';
-                li.appendChild(edit);
-            }
-            // Delete icon
-            if (!li.querySelector('.delete-tab-icon')) {
-                const del = document.createElement('span');
-                del.className = 'delete-tab-icon edit-icon';
-                del.title = 'Eliminar pestaña';
-                del.style.marginLeft = '6px';
-                del.innerHTML = '<i class="fas fa-trash"></i>';
-                li.appendChild(del);
-            }
+            // Íconos de editar/eliminar en cada li
+            const nav = block.querySelector('ul.nav');
+            if (!nav) return;
+            nav.querySelectorAll('.nav-item').forEach(li => {
+                if (!li.querySelector('.edit-tab-icon')) {
+                    const edit = document.createElement('span');
+                    edit.className = 'edit-tab-icon edit-icon';
+                    edit.title = 'Renombrar pestaña';
+                    edit.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+                    li.appendChild(edit);
+                }
+                if (!li.querySelector('.delete-tab-icon')) {
+                    const del = document.createElement('span');
+                    del.className = 'delete-tab-icon edit-icon';
+                    del.title = 'Eliminar pestaña';
+                    del.style.marginLeft = '6px';
+                    del.innerHTML = '<i class="fas fa-trash"></i>';
+                    li.appendChild(del);
+                }
+            });
         });
     }
 
@@ -694,7 +579,8 @@ $(function(){
         if (!nav || !content) return;
 
         const id = 'tab_' + Date.now();
-        // Insertar al final
+
+        // Crear nav-item al FINAL
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = `
@@ -704,14 +590,14 @@ $(function(){
         `;
         nav.appendChild(li);
 
+        // Crear pane VACÍO
         const pane = document.createElement('div');
         pane.className = 'tab-pane fade';
         pane.id = id;
         pane.setAttribute('role', 'tabpanel');
         pane.setAttribute('aria-labelledby', id + '-tab');
         pane.setAttribute('data-dropzone', 'tab-pane');
-        // Contenido EN BLANCO
-        pane.innerHTML = '';
+        pane.innerHTML = ''; // vacío
         content.appendChild(pane);
 
         // Activar la nueva pestaña
@@ -720,11 +606,62 @@ $(function(){
         $(li).find('.nav-link').addClass('active').attr('aria-selected','true');
         $(pane).addClass('show active');
 
-        initSortable(); // DnD en nuevo pane
+        initSortable(); // habilitar DnD en el nuevo pane
         saveDesign();
     }
 
-    // Navegación de tabs: Bootstrap o fallback
+    // Renombrar pestaña
+    $(document).on('click', '.edit-tab-icon', function(){
+        if (!inDesign()) return;
+        const $a = $(this).closest('.nav-item').find('.nav-link');
+        const current = $a.text().trim();
+        if (!window.Swal) return;
+        Swal.fire({ title: 'Título de pestaña', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' })
+        .then(res => { if (res.isConfirmed && res.value) { $a.text(res.value); saveDesign(); } });
+    });
+
+    // Eliminar pestaña
+    $(document).on('click', '.delete-tab-icon', function(){
+        if (!inDesign()) return;
+        const li = this.closest('.nav-item');
+        if (!li) return;
+        const a = li.querySelector('.nav-link');
+        const href = a && a.getAttribute('href');
+        const block = li.closest('[data-block-type="tabs"]');
+        const nav = li.parentElement;
+        const content = block && block.querySelector('.tab-content');
+
+        const doDelete = () => {
+            // Eliminar pane asociado
+            if (href && content) {
+                const pane = content.querySelector(href);
+                if (pane) pane.remove();
+            }
+            // Determinar tab a activar
+            let toActivate = li.previousElementSibling || li.nextElementSibling || null;
+            li.remove();
+            if (toActivate) {
+                const a2 = toActivate.querySelector('.nav-link');
+                if (a2) $(a2).trigger('click');
+            } else {
+                // Si no queda ninguna, nada que activar
+                if (content) {
+                    const firstPane = content.querySelector('.tab-pane');
+                    if (firstPane) firstPane.classList.add('show','active');
+                }
+            }
+            saveDesign();
+        };
+
+        if (window.Swal) {
+            Swal.fire({ title:'Eliminar pestaña', text:'Esta acción no se puede deshacer', icon:'warning', showCancelButton:true, confirmButtonText:'Eliminar' })
+                .then(res => { if (res.isConfirmed) doDelete(); });
+        } else {
+            if (confirm('Eliminar pestaña?')) doDelete();
+        }
+    });
+
+    // Navegación de tabs (Bootstrap o fallback)
     $(document).on('click', '#fd-root ul.nav .nav-link[href^="#"]', function(e){
         const $a = $(this);
         const href = $a.attr('href');
@@ -743,100 +680,75 @@ $(function(){
         $content.find(href).addClass('show active');
     });
 
-    // Renombrar pestaña
-    $(document).on('click', '.edit-tab-icon', function(){
-        if (!inDesign()) return;
-        const $a = $(this).closest('.nav-item').find('.nav-link');
-        const current = $a.text().trim();
-        Swal.fire({ title: 'Título de pestaña', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' })
-        .then(res => { if (res.isConfirmed && res.value) { $a.text(res.value); saveDesign(); } });
-    });
+    // ---------- Sortables ----------
+    let sortables = [];
+    function destroySortables(){ sortables.forEach(s=>{ try{s.destroy();}catch(e){} }); sortables=[]; }
 
-    // Eliminar pestaña
-    $(document).on('click', '.delete-tab-icon', function(){
-        if (!inDesign()) return;
-        const li = this.closest('.nav-item');
-        if (!li) return;
-        const a = li.querySelector('.nav-link');
-        const href = a && a.getAttribute('href');
-        Swal.fire({ title: 'Eliminar pestaña', text: 'Esta acción no se puede deshacer', icon: 'warning', showCancelButton: true, confirmButtonText: 'Eliminar' })
-        .then(res => {
-            if (!res.isConfirmed) return;
-            const block = li.closest('[data-block-type="tabs"]');
-            const nav = li.parentElement;
-            const content = block && block.querySelector('.tab-content');
-            // Eliminar pane
-            if (href && content) {
-                const pane = content.querySelector(href);
-                if (pane) pane.remove();
-            }
-            // Determinar a activar
-            let toActivate = li.previousElementSibling || li.nextElementSibling || null;
-            li.remove();
-            if (toActivate) {
-                const a2 = toActivate.querySelector('.nav-link');
-                if (a2) $(a2).trigger('click');
-            }
-            saveDesign();
+    function initSortable() {
+        if (!inDesign() || typeof Sortable === 'undefined') return;
+
+        // Reordenar fieldsets dentro de columnas/panes
+        document.querySelectorAll('#fd-root [data-col-width], #fd-root [data-dropzone="tab-pane"], #elementos-fuera-container').forEach(el => {
+            sortables.push(Sortable.create(el, {
+                group: { name: 'fieldsets', pull: true, put: true },
+                draggable: '.draggable-fieldset',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                handle: 'legend,[data-fieldset-title]',
+                onEnd: () => saveDesign()
+            }));
         });
-    });
 
-    // Forzar íconos de edición de campos si el backend no los generó
-    function ensureFieldEditIcons() {
-        document.querySelectorAll('#fd-root .draggable-field').forEach(field => {
-            if (!field.querySelector('.edit-icon[data-edit="field"]')) {
-                const fs = field.closest('.draggable-fieldset');
-                const fieldName = field.getAttribute('data-field-name') || field.dataset.fieldName || '';
-                const fsName = fs ? (fs.getAttribute('data-fieldset-name') || fs.dataset.fieldsetName || '') : '';
-                const btn = document.createElement('span');
-                btn.className = 'edit-icon';
-                btn.setAttribute('data-edit', 'field');
-                if (fsName) btn.setAttribute('data-fieldset', fsName);
-                if (fieldName) btn.setAttribute('data-field', fieldName);
-                btn.title = 'Editar campo';
-                btn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
-                // Ubicarlo en el extremo derecho del campo
-                const wrap = document.createElement('div');
-                wrap.style.display = 'flex';
-                wrap.style.alignItems = 'center';
-                wrap.style.justifyContent = 'space-between';
-                // Si ya tiene un contenedor interno, intente reutilizarlo
-                const inner = field.firstElementChild;
-                if (inner && inner.classList.contains('d-flex')) {
-                    inner.appendChild(btn);
-                } else {
-                    while (field.firstChild) wrap.appendChild(field.firstChild);
-                    const right = document.createElement('div');
-                    right.appendChild(btn);
-                    wrap.appendChild(right);
-                    field.appendChild(wrap);
+        // Reordenar pestañas (nav)
+        document.querySelectorAll('#fd-root ul.nav[role="tablist"]').forEach(nav => {
+            sortables.push(Sortable.create(nav, {
+                group: 'tabs',
+                animation: 150,
+                draggable: '.nav-item',
+                handle: '.nav-link',
+                onEnd: () => {
+                    // Reordenar panes a mismo orden que las tabs
+                    const block = nav.closest('[data-block-type="tabs"]');
+                    const content = block && block.querySelector('.tab-content');
+                    if (!content) return;
+                    const ids = Array.from(nav.querySelectorAll('.nav-link'))
+                        .map(a => (a.getAttribute('href') || '').replace('#',''))
+                        .filter(Boolean);
+                    ids.forEach(id => {
+                        const pane = content.querySelector('#'+CSS.escape(id));
+                        if (pane) content.appendChild(pane);
+                    });
+                    saveDesign();
                 }
-            }
+            }));
         });
     }
 
+    // ---------- Activación del modo diseño ----------
     function activateDesignMode() {
         if (!inDesign()) return;
+        ensureCrudUI();
         destroySortables();
-        ensureAddTabButtons();
-        ensureFieldEditIcons();
         initSortable();
-        document.getElementById('undoBtn') && (document.getElementById('undoBtn').style.display = '');
-        document.getElementById('redoBtn') && (document.getElementById('redoBtn').style.display = '');
-        document.getElementById('saveLayoutBtn') && (document.getElementById('saveLayoutBtn').style.display = '');
+        // Mostrar controles flotantes si existen
+        const u = document.getElementById('undoBtn'); if (u) u.style.display = '';
+        const r = document.getElementById('redoBtn'); if (r) r.style.display = '';
+        const s = document.getElementById('saveLayoutBtn'); if (s) s.style.display = '';
     }
 
     function deactivateDesignMode() {
         destroySortables();
-        document.getElementById('undoBtn') && (document.getElementById('undoBtn').style.display = 'none');
-        document.getElementById('redoBtn') && (document.getElementById('redoBtn').style.display = 'none');
-        document.getElementById('saveLayoutBtn') && (document.getElementById('saveLayoutBtn').style.display = 'none');
+        const u = document.getElementById('undoBtn'); if (u) u.style.display = 'none';
+        const r = document.getElementById('redoBtn'); if (r) r.style.display = 'none';
+        const s = document.getElementById('saveLayoutBtn'); if (s) s.style.display = 'none';
     }
 
+    // Exponer API al toggle externo
     window.DnDFormBuilder = Object.assign({}, window.DnDFormBuilder || {}, {
         saveDesign, activateDesignMode, deactivateDesignMode
     });
 
+    // Inicializar si ya viene en diseño
     document.addEventListener('DOMContentLoaded', function(){
         if (inDesign()) activateDesignMode();
     });

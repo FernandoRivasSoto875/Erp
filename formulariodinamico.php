@@ -43,16 +43,20 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 <style>
-/* Escopado al root del formulario */
+/* Escopar al root del formulario */
 #fd-root.design-mode .draggable-fieldset,
 #fd-root.design-mode .draggable-field { cursor: move; border: 2px dashed #0d6efd !important; background: rgba(13,110,253,.05); }
 #fd-root.design-mode [data-col-width] { min-height: 80px; background: #f8f9fa; border: 1px dashed #dee2e6; padding: .5rem; }
 .sortable-ghost { background: #e7f1ff; border: 2px dashed #0d6efd; opacity: .7; }
-/* Ocultar iconos de edición si NO es modo diseño */
+
+/* Íconos/controles visibles solo en diseño */
 #fd-root:not(.design-mode) .edit-icon,
-#fd-root:not(.design-mode) .edit-tab-icon { display:none !important; }
-/* Parking visible solo en diseño */
-#elementos-fuera-container { display: <?php echo $modoDiseno ? 'block' : 'none'; ?>; }
+#fd-root:not(.design-mode) .edit-tab-icon,
+#fd-root:not(.design-mode) .add-tab-button { display: none !important; }
+
+/* “Elementos fuera” visible solo en diseño */
+#fd-root:not(.design-mode) #elementos-fuera-container { display: none !important; }
+
 /* Switch flotante */
 .design-mode-switch { position: fixed; right: 16px; bottom: 16px; z-index: 1050; background: #fff; border-radius: 999px; padding: 8px 12px; box-shadow: 0 4px 12px rgba(0,0,0,.15); display: flex; align-items: center; gap: 8px; }
 .edit-icon { cursor: pointer; color: #6c757d; margin-left: 6px; }
@@ -108,6 +112,8 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 </div>
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<!-- IMPORTANTE: Bootstrap JS para navegación de tabs/pills -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
@@ -123,21 +129,18 @@ $(function(){
     function uiSetDesignMode(on) {
         $root.toggleClass('design-mode', !!on);
         $save.toggle(!!on);
-        $submit.prop('disabled', !!on); // deshabilita submit solo en diseño
+        $submit.prop('disabled', !!on); // deshabilitar submit solo en diseño
         if (window.DnDFormBuilder) {
             if (on) window.DnDFormBuilder.activateDesignMode();
             else window.DnDFormBuilder.deactivateDesignMode();
         }
-        // Mantener el query param en la URL sin recargar
+        // Mantener el query param sin recargar
         const url = new URL(location.href);
         url.searchParams.set('modoDiseno', on ? '1' : '0');
         history.replaceState(null, '', url.toString());
     }
 
-    // Toggle sin recargar
     $toggle.on('change', function(){ uiSetDesignMode(this.checked); });
-
-    // Inicializar según estado renderizado por PHP
     uiSetDesignMode($root.hasClass('design-mode'));
 });
 </script>

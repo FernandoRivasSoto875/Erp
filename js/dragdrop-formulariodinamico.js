@@ -457,104 +457,289 @@ $(function(){
     function inDesign(){ const r=root(); return !!(r && r.classList.contains('design-mode')); }
     function getArchivoJson(){ return (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || ''; }
 
-    // ===== NUEVO: helpers para leer/escribir el JSON de configuración =====
-    const JSON_CACHE = { data: null, loadedAt: 0 };
-
+    // Cache JSON del diseño
+    const JSON_CACHE = { data: null };
     function asFieldsetsMap(fieldsets) {
         if (!fieldsets) return {};
         if (Array.isArray(fieldsets)) {
-            const map = {};
-            fieldsets.forEach(fs => {
-                if (!fs) return;
-                const key = fs.name || fs.nombre || null;
-                if (key) map[key] = fs;
-            });
-            return map;
+            const m={}; fieldsets.forEach(fs=>{ const k=(fs&& (fs.name||fs.nombre)); if(k) m[k]=fs; }); return m;
         }
         return fieldsets;
     }
-
-    function ensureJsonFresh() {
-        return new Promise((resolve) => {
-            const archivo = getArchivoJson();
-            // Si ya tenemos el JSON del servidor (inyectado por PHP), úsalo
-            if (!archivo) {
-                JSON_CACHE.data = window.formularioJsonOriginal || {};
-                return resolve(JSON_CACHE.data);
-            }
-            // Forzar a traer el archivo desde /json/ para asegurar valores actuales
-            $.getJSON('json/' + archivo)
-             .done(data => { JSON_CACHE.data = data || {}; resolve(JSON_CACHE.data); })
-             .fail(() => { // fallback al inyectado
-                 JSON_CACHE.data = window.formularioJsonOriginal || {};
-                 resolve(JSON_CACHE.data);
-             });
+    function fetchJson() {
+        const archivo = getArchivoJson();
+        return $.getJSON('json/' + archivo).then(d => {
+            JSON_CACHE.data = d || {};
+            return JSON_CACHE.data;
+        }).catch(() => {
+            JSON_CACHE.data = window.formularioJsonOriginal || {};
+            return JSON_CACHE.data;
         });
     }
-
     function getFieldDef(json, fieldsetName, fieldName) {
         const fsets = asFieldsetsMap(json.fieldsets || {});
-        const fs = fsets[fieldsetName];
-        if (!fs) return null;
+        const fs = fsets[fieldsetName]; if (!fs) return null;
         const campos = Array.isArray(fs.campos) ? fs.campos : [];
         const idx = campos.findIndex(c => (c && c.nombre) === fieldName);
         if (idx < 0) return null;
-        return { fieldset: fs, idx, campo: campos[idx] };
+        return { fs, idx, campo: campos[idx] };
     }
-
     function updateLocalJsonField(json, fieldsetName, fieldName, newProps) {
-        const def = getFieldDef(json, fieldsetName, fieldName);
-        if (!def) return json;
+        const def = getFieldDef(json, fieldsetName, fieldName); if (!def) return;
         const c = def.campo;
-        // Actualizar solo las props provistas
-        if (newProps.hasOwnProperty('etiqueta')) c.etiqueta = newProps.etiqueta;
-        if (newProps.hasOwnProperty('placeholder')) c.placeholder = newProps.placeholder;
-        if (newProps.hasOwnProperty('tipo')) c.tipo = newProps.tipo;
-        if (newProps.hasOwnProperty('valor_predeterminado')) c.valor_predeterminado = newProps.valor_predeterminado;
-        if (newProps.hasOwnProperty('opciones')) c.opciones = newProps.opciones;
-        if (newProps.hasOwnProperty('atributos')) c.atributos = newProps.atributos;
-        return json;
+        Object.keys(newProps).forEach(k => { if (newProps[k] !== undefined) c[k]=newProps[k]; });
     }
 
-    // ===== Editores =====
-    // ...existing code for other editors...
+    // Guardado del diseño (layout + reorden de campos y elementos fuera)
+    function collectElementosFuera() {
+        const out = document.getElementById('elementos-fuera-container');
+        if (!out) return [];
+        const items = [];
+        out.querySelectorAll('.draggable-fieldset[data-fieldset-name]').forEach(fs => {
+            const name = fs.getAttribute('data-fieldset-name'); if (name) items.push({ type:'fieldset', name });
+        });
+        out.querySelectorAll('.draggable-field[data-field-name]').forEach(f => {
+            const name = f.getAttribute('data-field-name'); if (name) items.push({ type:'field', name });
+        });
+        return items;
+    }
+    function reorderFieldsetsFromDOM(originalFieldsets) {
+        const copy = JSON.parse(JSON.stringify(originalFieldsets || {}));
+        document.querySelectorAll('.draggable-fieldset[data-fieldset-name]').forEach(fs => {
+            const name = fs.getAttribute('data-fieldset-name');
+            if (!name || !copy[name]) return;
+            const fields = Array.from(fs.querySelectorAll('.sortable-fields-container .draggable-field[data-field-name]')).map(n => n.getAttribute('data-field-name'));
+            if (!fields.length) return;
+            const current = Array.isArray(copy[name].campos) ? copy[name].campos : [];
+            const map = {}; current.forEach(c => { if (c && c.nombre) map[c.nombre]=c; });
+            const reordered = [];
+            fields.forEach(fname => { if (map[fname]) reordered.push(map[fname]); });
+            current.forEach(c => { if (c && c.nombre && !reordered.find(rc=>rc.nombre===c.nombre)) reordered.push(c); });
+            copy[name].campos = reordered;
+        });
+        return copy;
+    }
+    function buildLayoutFromDOM() {
+        const layout = [];
+        const container = document.querySelector('#fd-root [data-layout-container]');
+        if (!container) return layout;
 
-    // REEMPLAZAR el handler de campo por este (carga valores desde el JSON y prellena el modal)
-    $(document).off('click.fd.fieldedit').on('click.fd.fieldedit', '.edit-icon[data-edit="field"]', async function(){
+        // Tabs
+        container.querySelectorAll('[data-block-type="tabs"]').forEach(block => {
+            const tabs = [];
+            const idToTitle = {};
+            block.querySelectorAll('ul.nav .nav-link[href^="#"]').forEach(a => {
+                const id = a.getAttribute('href')?.replace('#',''); if (id) idToTitle[id] = a.textContent.trim();
+            });
+            block.querySelectorAll('.tab-content .tab-pane').forEach(pane => {
+                const id = pane.id;
+                const title = idToTitle[id] || 'Pestaña';
+                const row = { columns: [] };
+                const names = Array.from(pane.querySelectorAll('.draggable-fieldset[data-fieldset-name]')).map(fs => fs.getAttribute('data-fieldset-name'));
+                if (names.length) names.forEach(n => row.columns.push({ width: 12, fieldset: n }));
+                else row.columns.push({ width: 12 });
+                tabs.push({ title, rows: [row] });
+            });
+            layout.push({ type: 'tabs', tabs });
+        });
+
+        // Otros bloques
+        container.querySelectorAll('[data-block-type="generic"],[data-block-type="header"],[data-block-type="footer"]').forEach(block => {
+            const type = block.getAttribute('data-block-type') || 'generic';
+            const rows = [];
+            block.querySelectorAll('[data-row]').forEach(r => {
+                const row = { columns: [] };
+                r.querySelectorAll('[data-col-width]').forEach(colEl => {
+                    const width = parseInt(colEl.getAttribute('data-col-width') || '12', 10);
+                    const fsets = Array.from(colEl.querySelectorAll('.draggable-fieldset[data-fieldset-name]'));
+                    if (fsets.length) fsets.forEach(fs => row.columns.push({ width, fieldset: fs.getAttribute('data-fieldset-name') || '' }));
+                    else row.columns.push({ width });
+                });
+                rows.push(row);
+            });
+            if (rows.length) layout.push({ type, rows });
+        });
+
+        return layout;
+    }
+    function saveDesign() {
+        const archivo = getArchivoJson();
+        if (!archivo) return;
+        const original = (window.formularioJsonOriginal && window.formularioJsonOriginal.fieldsets) || {};
+        const fieldsets = reorderFieldsetsFromDOM(original);
+        const layout = buildLayoutFromDOM();
+        const elementos_fuera = collectElementosFuera();
+        const layout_html = (document.querySelector('#fd-root [data-layout-container]') || {}).innerHTML || '';
+
+        $.post('guardar_layout.php', {
+            archivo,
+            layout: JSON.stringify(layout),
+            elementos_fuera: JSON.stringify(elementos_fuera),
+            fieldsets: JSON.stringify(fieldsets),
+            layout_html
+        }).fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
+    }
+
+    // Sortables
+    let sortables = [];
+    function destroySortables(){ sortables.forEach(s=>{ try{s.destroy();}catch(e){} }); sortables=[]; }
+    function initSortable() {
+        if (!inDesign() || typeof Sortable === 'undefined') return;
+
+        document.querySelectorAll('#fd-root .sortable-fields-container').forEach(el => {
+            sortables.push(Sortable.create(el, {
+                group: { name: 'fields', pull: true, put: true },
+                draggable: '.draggable-field',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onEnd: () => saveDesign()
+            }));
+        });
+
+        document.querySelectorAll('#fd-root [data-col-width], #fd-root [data-dropzone="tab-pane"], #elementos-fuera-container').forEach(el => {
+            sortables.push(Sortable.create(el, {
+                group: { name: 'fieldsets', pull: true, put: true },
+                draggable: '.draggable-fieldset',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                handle: 'legend,[data-fieldset-title]',
+                onEnd: () => saveDesign()
+            }));
+        });
+
+        // Reordenar tabs
+        document.querySelectorAll('#fd-root ul.nav[role="tablist"]').forEach(nav => {
+            sortables.push(Sortable.create(nav, {
+                group: 'tabs',
+                animation: 150,
+                draggable: '.nav-item',
+                handle: '.nav-link',
+                onEnd: () => {
+                    const block = nav.closest('[data-block-type="tabs"]');
+                    const content = block && block.querySelector('.tab-content'); if (!content) return;
+                    const ids = Array.from(nav.querySelectorAll('.nav-link'))
+                        .map(a => (a.getAttribute('href') || '').replace('#',''))
+                        .filter(Boolean);
+                    ids.forEach(id => {
+                        const pane = content.querySelector('#'+CSS.escape(id));
+                        if (pane) content.appendChild(pane);
+                    });
+                    saveDesign();
+                }
+            }));
+        });
+    }
+
+    // Tabs: navegación fallback (si faltara Bootstrap, igual funciona)
+    $(document).on('click', '#fd-root ul.nav .nav-link[href^="#"]', function(e){
+        // Si Bootstrap está, lo deja actuar. Si no, hacemos el toggle manual.
+        if (typeof $().tab === 'function') return;
+        e.preventDefault();
+        const $a = $(this);
+        const href = $a.attr('href');
+        const $nav = $a.closest('ul');
+        const $block = $nav.closest('[data-block-type="tabs"]');
+        const $content = $block.find('.tab-content');
+        $nav.find('.nav-link').removeClass('active').attr('aria-selected','false');
+        $a.addClass('active').attr('aria-selected','true');
+        $content.find('.tab-pane').removeClass('show active');
+        $content.find(href).addClass('show active');
+    });
+
+    // Tabs: agregar y renombrar
+    function ensureAddTabButtons() {
+        document.querySelectorAll('#fd-root [data-block-type="tabs"]').forEach(block => {
+            if (block.querySelector('.add-tab-button')) return;
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn btn-sm btn-outline-primary add-tab-button ml-2';
+            btn.title = 'Agregar pestaña';
+            btn.innerHTML = '<i class="fas fa-plus"></i> Pestaña';
+            const ul = block.querySelector('ul.nav');
+            if (ul && ul.parentNode) ul.parentNode.insertBefore(btn, ul.nextSibling);
+            btn.addEventListener('click', () => addTab(block));
+        });
+    }
+    function addTab(block, title) {
+        title = title || 'Nueva pestaña';
+        const nav = block.querySelector('ul.nav');
+        const content = block.querySelector('.tab-content');
+        if (!nav || !content) return;
+
+        const id = 'tab_' + Date.now();
+        const li = document.createElement('li');
+        li.className = 'nav-item';
+        li.innerHTML = `
+            <a class="nav-link" data-toggle="pill" href="#${id}" role="tab" aria-controls="${id}" aria-selected="false" data-tab-id="${id}">${title}</a>
+            <span class="edit-tab-icon edit-icon" title="Renombrar pestaña"><i class="fas fa-pencil-alt"></i></span>
+        `;
+        nav.appendChild(li);
+
+        const pane = document.createElement('div');
+        pane.className = 'tab-pane fade';
+        pane.id = id;
+        pane.setAttribute('role', 'tabpanel');
+        pane.setAttribute('aria-labelledby', id + '-tab');
+        pane.setAttribute('data-dropzone', 'tab-pane');
+        pane.innerHTML = `<div class="row"><div class="col-md-12" data-col-width="12"></div></div>`;
+        content.appendChild(pane);
+
+        // Activar la nueva pestaña
+        $(nav).find('.nav-link').removeClass('active').attr('aria-selected','false');
+        $(content).find('.tab-pane').removeClass('show active');
+        $(li).find('.nav-link').addClass('active').attr('aria-selected','true');
+        $(pane).addClass('show active');
+
+        initSortable(); // asegurar DnD en nuevo pane
+        saveDesign();
+    }
+    $(document).on('click', '.edit-tab-icon', function(){
         if (!inDesign()) return;
+        const $a = $(this).closest('.nav-item').find('.nav-link');
+        const current = $a.text().trim();
+        Swal.fire({ title: 'Título de pestaña', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' })
+        .then(res => { if (res.isConfirmed && res.value) { $a.text(res.value); saveDesign(); } });
+    });
 
-        const fieldWrapper = $(this).closest('.draggable-field');
-        const fieldName = fieldWrapper.data('fieldName') || fieldWrapper.attr('data-field-name') || '';
-        const fieldsetWrapper = fieldWrapper.closest('.draggable-fieldset');
-        const fieldsetName = fieldsetWrapper.data('fieldsetName') || fieldsetWrapper.attr('data-fieldset-name') || '';
+    // Editores
+    $(document).on('click', '[data-edit="form-title"]', function(){
+        if (!inDesign()) return;
+        const $title = $('#form-title');
+        const current = $title.clone().children().remove().end().text().trim();
+        Swal.fire({ title: 'Título del formulario', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' })
+        .then(res => {
+            if (!res.isConfirmed || !res.value) return;
+            $.post('editar_propiedades.php', { archivo: getArchivoJson(), tipo:'form', titulo: res.value })
+             .done(resp => { if (resp && resp.success) { const icon = $title.find('.edit-icon').detach(); $title.text(res.value).append(icon); } else Swal.fire('Error', (resp && resp.error) || 'No se pudo actualizar', 'error'); })
+             .fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
+        });
+    });
+
+    // Campo: propiedades con precarga desde JSON
+    $(document).on('click', '.edit-icon[data-edit="field"]', async function(){
+        if (!inDesign()) return;
+        const $field = $(this).closest('.draggable-field');
+        const fieldName = $field.data('fieldName') || $field.attr('data-field-name') || '';
+        const $fs = $field.closest('.draggable-fieldset');
+        const fieldsetName = $fs.data('fieldsetName') || $fs.attr('data-fieldset-name') || '';
         if (!fieldsetName || !fieldName) return;
 
-        const json = await ensureJsonFresh();
+        const json = await fetchJson();
         const def = getFieldDef(json, fieldsetName, fieldName);
-        if (!def) {
-            return Swal.fire('Error', 'No se encontró el campo en el JSON', 'error');
-        }
+        if (!def) return Swal.fire('Error', 'No se encontró el campo en el JSON', 'error');
         const campo = def.campo || {};
 
-        // Valores actuales desde el JSON
         const vEtiqueta = (campo.etiqueta || campo.nombre || '').toString();
         const vPlaceholder = (campo.placeholder || '').toString();
         const vTipo = (campo.tipo || 'text').toString();
         const vValor = (campo.valor_predeterminado ?? '').toString();
+        let vOpciones = ''; try { if (campo.opciones !== undefined) vOpciones = JSON.stringify(campo.opciones, null, 2); } catch(e){}
+        let vAtributos = ''; try { if (campo.atributos !== undefined) vAtributos = JSON.stringify(campo.atributos, null, 2); } catch(e){}
 
-        // Normalizar opciones/atributos a JSON string bonito
-        let vOpciones = '';
-        if (campo.opciones !== undefined) {
-            try { vOpciones = JSON.stringify(campo.opciones, null, 2); } catch(e){ vOpciones = ''; }
-        }
-        let vAtributos = '';
-        if (campo.atributos !== undefined) {
-            try { vAtributos = JSON.stringify(campo.atributos, null, 2); } catch(e){ vAtributos = ''; }
-        }
-
-        // Construir modal preseleccionando el tipo
         const tipos = ['text','textarea','number','email','password','select','selectdata','radio','checkbox','file','date','datatable','hidden'];
         const optionsHtml = tipos.map(t => `<option value="${t}" ${t===vTipo?'selected':''}>${t}</option>`).join('');
+
+        const esc = s => $('<div>').text(s).html();
 
         await Swal.fire({
             title: `Propiedades: ${fieldName}`,
@@ -562,11 +747,11 @@ $(function(){
                 <div class="text-left">
                     <div class="form-group mb-2">
                         <label>Etiqueta</label>
-                        <input id="sw-etiqueta" class="form-control" value="${$('<div>').text(vEtiqueta).html()}">
+                        <input id="sw-etiqueta" class="form-control" value="${esc(vEtiqueta)}">
                     </div>
                     <div class="form-group mb-2">
                         <label>Placeholder</label>
-                        <input id="sw-placeholder" class="form-control" value="${$('<div>').text(vPlaceholder).html()}">
+                        <input id="sw-placeholder" class="form-control" value="${esc(vPlaceholder)}">
                     </div>
                     <div class="form-group mb-2">
                         <label>Tipo</label>
@@ -574,7 +759,7 @@ $(function(){
                     </div>
                     <div class="form-group mb-2">
                         <label>Valor predeterminado</label>
-                        <input id="sw-valor" class="form-control" value="${$('<div>').text(vValor).html()}">
+                        <input id="sw-valor" class="form-control" value="${esc(vValor)}">
                     </div>
                     <div class="form-group mb-2">
                         <label>Opciones (JSON)</label>
@@ -597,20 +782,16 @@ $(function(){
                 let opcionesTxt = $('#sw-opciones').val();
                 let atributosTxt = $('#sw-atributos').val();
                 let opciones, atributos;
-
-                if (opcionesTxt && opcionesTxt.trim().length) {
-                    try { opciones = JSON.parse(opcionesTxt); }
-                    catch(e){ Swal.showValidationMessage('Opciones JSON inválido'); return false; }
+                if (opcionesTxt && opcionesTxt.trim()) {
+                    try { opciones = JSON.parse(opcionesTxt); } catch(e){ Swal.showValidationMessage('Opciones JSON inválido'); return false; }
                 }
-                if (atributosTxt && atributosTxt.trim().length) {
-                    try { atributos = JSON.parse(atributosTxt); }
-                    catch(e){ Swal.showValidationMessage('Atributos JSON inválido'); return false; }
+                if (atributosTxt && atributosTxt.trim()) {
+                    try { atributos = JSON.parse(atributosTxt); } catch(e){ Swal.showValidationMessage('Atributos JSON inválido'); return false; }
                 }
                 return { etiqueta, placeholder, tipo, valor_predeterminado, opciones, atributos };
             }
         }).then(res => {
             if (!res.isConfirmed) return;
-
             const payload = {
                 archivo: getArchivoJson(),
                 tipo: 'field',
@@ -626,10 +807,9 @@ $(function(){
 
             $.post('editar_propiedades.php', payload)
              .done(resp => {
-                if (!(resp && resp.success)) {
-                    return Swal.fire('Error', (resp && resp.error) || 'No se pudo actualizar', 'error');
-                }
-                // Actualizar cache local y UI
+                if (!(resp && resp.success)) return Swal.fire('Error', (resp && resp.error) || 'No se pudo actualizar', 'error');
+
+                // Actualizar cache y UI
                 const newProps = {
                     etiqueta: res.value.etiqueta,
                     placeholder: res.value.placeholder,
@@ -639,32 +819,43 @@ $(function(){
                 if (res.value.opciones !== undefined) newProps.opciones = res.value.opciones;
                 if (res.value.atributos !== undefined) newProps.atributos = res.value.atributos;
 
-                // Cache en memoria
                 updateLocalJsonField(JSON_CACHE.data || (window.formularioJsonOriginal || {}), fieldsetName, fieldName, newProps);
                 updateLocalJsonField((window.formularioJsonOriginal || {}), fieldsetName, fieldName, newProps);
 
-                // UI: etiqueta/placeholder/tipo si es input
-                const labelEl = fieldWrapper.find('label').get(0);
-                if (labelEl && res.value.etiqueta) $(labelEl).text(res.value.etiqueta);
-
-                const inputEl = fieldWrapper.find('input,select,textarea').get(0);
-                if (inputEl) {
-                    if (res.value.placeholder !== undefined) $(inputEl).attr('placeholder', res.value.placeholder || '');
-                    if (res.value.tipo && inputEl.tagName === 'INPUT') $(inputEl).attr('type', res.value.tipo);
-                    // Nota: cambiar a select/textarea requeriría re-render; se deja para una iteración siguiente.
+                const $label = $field.find('label').first();
+                if (newProps.etiqueta) $label.text(newProps.etiqueta);
+                const $input = $field.find('input,select,textarea').first();
+                if ($input.length) {
+                    if (newProps.placeholder !== undefined) $input.attr('placeholder', newProps.placeholder || '');
+                    if (newProps.tipo && $input.is('input')) $input.attr('type', newProps.tipo);
                 }
-
                 Swal.fire('OK', 'Campo actualizado', 'success');
              })
              .fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
         });
     });
 
-    // Mantener init de DnD/activar/desactivar como ya lo tienes
-    // ...existing code...
+    function activateDesignMode() {
+        if (!inDesign()) return;
+        destroySortables();
+        initSortable();
+        ensureAddTabButtons();
+        document.getElementById('undoBtn') && (document.getElementById('undoBtn').style.display = '');
+        document.getElementById('redoBtn') && (document.getElementById('redoBtn').style.display = '');
+        document.getElementById('saveLayoutBtn') && (document.getElementById('saveLayoutBtn').style.display = '');
+    }
+    function deactivateDesignMode() {
+        destroySortables();
+        document.getElementById('undoBtn') && (document.getElementById('undoBtn').style.display = 'none');
+        document.getElementById('redoBtn') && (document.getElementById('redoBtn').style.display = 'none');
+        document.getElementById('saveLayoutBtn') && (document.getElementById('saveLayoutBtn').style.display = 'none');
+    }
+
+    window.DnDFormBuilder = Object.assign({}, window.DnDFormBuilder || {}, {
+        saveDesign, activateDesignMode, deactivateDesignMode
+    });
+
     document.addEventListener('DOMContentLoaded', function(){
-        if (inDesign()) {
-            // ...existing init...
-        }
+        if (inDesign()) activateDesignMode();
     });
 })();

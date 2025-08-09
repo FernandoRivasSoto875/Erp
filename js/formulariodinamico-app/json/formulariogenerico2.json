@@ -1,0 +1,77 @@
+{
+  "titulo": "Formulario Dinámico",
+  "descripcion": "Este es un formulario dinámico que permite la creación y edición de campos de manera flexible.",
+  "fieldsets": [
+    {
+      "name": "Información Personal",
+      "fields": [
+        {
+          "type": "text",
+          "label": "Nombre",
+          "placeholder": "Ingrese su nombre",
+          "required": true
+        },
+        {
+          "type": "email",
+          "label": "Correo Electrónico",
+          "placeholder": "Ingrese su correo electrónico",
+          "required": true
+        },
+        {
+          "type": "tel",
+          "label": "Teléfono",
+          "placeholder": "Ingrese su número de teléfono",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "Detalles de la Cuenta",
+      "fields": [
+        {
+          "type": "password",
+          "label": "Contraseña",
+          "placeholder": "Ingrese su contraseña",
+          "required": true
+        },
+        {
+          "type": "password",
+          "label": "Confirmar Contraseña",
+          "placeholder": "Confirme su contraseña",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "type": "tabs",
+      "tabs": [
+        {
+          "name": "Tab 1",
+          "content": "Contenido del Tab 1"
+        },
+        {
+          "name": "Tab 2",
+          "content": "Contenido del Tab 2"
+        }
+      ]
+    }
+  ],
+  "elementos_fuera": [
+    {
+      "type": "button",
+      "label": "Enviar",
+      "action": "submit"
+    },
+    {
+      "type": "button",
+      "label": "Cancelar",
+      "action": "cancel"
+    }
+  ],
+  "parametros": {
+    "titulo": "Formulario de Registro",
+    "version": "1.0"
+  }
+}

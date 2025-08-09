@@ -1,0 +1,57 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f8f9fa;
+    margin: 0;
+    padding: 20px;
+}
+
+.json-tree {
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    background-color: #ffffff;
+    padding: 10px;
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.json-tree ul {
+    list-style-type: none;
+    padding-left: 20px;
+}
+
+.json-tree li {
+    margin: 5px 0;
+    cursor: pointer;
+}
+
+.json-tree .key {
+    font-weight: bold;
+}
+
+.json-tree .value {
+    color: #007bff;
+}
+
+.json-tree .editable {
+    display: inline-block;
+    border-bottom: 1px dashed #007bff;
+    cursor: text;
+}
+
+.json-tree .editable:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+.json-tree .collapsed > ul {
+    display: none;
+}
+
+.json-tree .toggle {
+    cursor: pointer;
+    margin-right: 5px;
+    color: #007bff;
+}
+
+.json-tree .toggle:hover {
+    text-decoration: underline;
+}

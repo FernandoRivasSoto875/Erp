@@ -1,0 +1,106 @@
+{
+  "titulo": "Formulario Complejo",
+  "descripcion": "Este es un formulario de ejemplo con una estructura más compleja.",
+  "fieldsets": [
+    {
+      "name": "informacion_personal",
+      "titulo": "Información Personal",
+      "campos": [
+        {
+          "tipo": "texto",
+          "nombre": "nombre",
+          "etiqueta": "Nombre",
+          "requerido": true
+        },
+        {
+          "tipo": "texto",
+          "nombre": "apellido",
+          "etiqueta": "Apellido",
+          "requerido": true
+        },
+        {
+          "tipo": "correo",
+          "nombre": "correo",
+          "etiqueta": "Correo Electrónico",
+          "requerido": true
+        }
+      ]
+    },
+    {
+      "name": "direccion",
+      "titulo": "Dirección",
+      "campos": [
+        {
+          "tipo": "texto",
+          "nombre": "calle",
+          "etiqueta": "Calle",
+          "requerido": true
+        },
+        {
+          "tipo": "numero",
+          "nombre": "numero",
+          "etiqueta": "Número",
+          "requerido": true
+        },
+        {
+          "tipo": "texto",
+          "nombre": "ciudad",
+          "etiqueta": "Ciudad",
+          "requerido": true
+        },
+        {
+          "tipo": "texto",
+          "nombre": "codigo_postal",
+          "etiqueta": "Código Postal",
+          "requerido": true
+        }
+      ]
+    },
+    {
+      "name": "preferencias",
+      "titulo": "Preferencias",
+      "campos": [
+        {
+          "tipo": "checkbox",
+          "nombre": "suscripcion",
+          "etiqueta": "Suscribirse a boletín",
+          "valor": "si"
+        },
+        {
+          "tipo": "select",
+          "nombre": "metodo_contacto",
+          "etiqueta": "Método de Contacto Preferido",
+          "opciones": [
+            {
+              "valor": "correo",
+              "etiqueta": "Correo Electrónico"
+            },
+            {
+              "valor": "telefono",
+              "etiqueta": "Teléfono"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "type": "fieldset",
+      "name": "informacion_personal"
+    },
+    {
+      "type": "fieldset",
+      "name": "direccion"
+    },
+    {
+      "type": "fieldset",
+      "name": "preferencias"
+    }
+  ],
+  "elementos_fuera": [],
+  "parametros": {
+    "titulo": "Formulario Complejo",
+    "version": "1.0"
+  }
+}

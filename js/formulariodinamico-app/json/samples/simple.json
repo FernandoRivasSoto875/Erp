@@ -1,0 +1,62 @@
+{
+  "titulo": "Formulario Simple",
+  "descripcion": "Este es un formulario de ejemplo con campos básicos.",
+  "fieldsets": [
+    {
+      "name": "informacion_personal",
+      "titulo": "Información Personal",
+      "campos": [
+        {
+          "nombre": "nombre",
+          "tipo": "texto",
+          "etiqueta": "Nombre",
+          "requerido": true
+        },
+        {
+          "nombre": "apellido",
+          "tipo": "texto",
+          "etiqueta": "Apellido",
+          "requerido": true
+        },
+        {
+          "nombre": "email",
+          "tipo": "email",
+          "etiqueta": "Correo Electrónico",
+          "requerido": true
+        }
+      ]
+    },
+    {
+      "name": "informacion_adicional",
+      "titulo": "Información Adicional",
+      "campos": [
+        {
+          "nombre": "telefono",
+          "tipo": "telefono",
+          "etiqueta": "Teléfono",
+          "requerido": false
+        },
+        {
+          "nombre": "direccion",
+          "tipo": "texto",
+          "etiqueta": "Dirección",
+          "requerido": false
+        }
+      ]
+    }
+  ],
+  "layout": [
+    {
+      "type": "fieldset",
+      "name": "informacion_personal"
+    },
+    {
+      "type": "fieldset",
+      "name": "informacion_adicional"
+    }
+  ],
+  "elementos_fuera": [],
+  "parametros": {
+    "titulo": "Formulario de Ejemplo"
+  }
+}

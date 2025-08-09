@@ -453,429 +453,367 @@ $(function(){
 
 // Modo Diseño: solo activa en #fd-root.design-mode. Incluye editor de propiedades de campos.
 (function(){
-    function root(){ return document.getElementById('fd-root'); }
-    function inDesign(){ const r=root(); return !!(r && r.classList.contains('design-mode')); }
+  function root(){ return document.getElementById('fd-root'); }
+  function inDesign(){ const r=root(); return !!(r && r.classList.contains('design-mode')); }
+  function getArchivoJson(){ return (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || ''; }
 
-    // ------- JSON helpers -------
-    const JSON_CACHE = { data: null };
-    function asFieldsetsMap(fieldsets) {
-        if (!fieldsets) return {};
-        if (Array.isArray(fieldsets)) {
-            const m={}; fieldsets.forEach(fs=>{ const k=(fs&& (fs.name||fs.nombre)); if(k) m[k]=fs; }); return m;
+  // Deep merge "keep": no elimina, solo agrega/actualiza
+  function deepMergeKeep(base, incoming){
+    if (Array.isArray(base) || Array.isArray(incoming)) return incoming ?? base;
+    if (typeof base !== 'object' || base === null) return (incoming === undefined) ? base : incoming;
+    const out = {...base};
+    if (incoming && typeof incoming === 'object'){
+      Object.keys(incoming).forEach(k=>{
+        out[k] = deepMergeKeep(base[k], incoming[k]);
+      });
+    }
+    return out;
+  }
+
+  // Serialización de bloques genéricos (header/footer/generic)
+  function serializeGenericBlock(blockEl){
+    const rows = [];
+    blockEl.querySelectorAll('[data-row]').forEach(r => {
+      const row = { columns: [] };
+      r.querySelectorAll('[data-col-width]').forEach(colEl => {
+        const width = parseInt(colEl.getAttribute('data-col-width') || '12', 10);
+        const fsets = Array.from(colEl.querySelectorAll('.draggable-fieldset[data-fieldset-name]'));
+        if (fsets.length) fsets.forEach(fs => row.columns.push({ width, fieldset: fs.getAttribute('data-fieldset-name') || '' }));
+        else row.columns.push({ width });
+      });
+      rows.push(row);
+    });
+    return { rows };
+  }
+
+  // Serialización de tabs
+  function serializeTabsBlock(blockEl){
+    const tabs = [];
+    const idToTitle = {};
+    blockEl.querySelectorAll('ul.nav .nav-link[href^="#"]').forEach(a => {
+      const id = a.getAttribute('href')?.replace('#',''); if (id) idToTitle[id] = a.textContent.trim();
+    });
+    blockEl.querySelectorAll('.tab-content .tab-pane').forEach(pane => {
+      const id = pane.id;
+      const title = idToTitle[id] || 'Pestaña';
+      const row = { columns: [] };
+      const names = Array.from(pane.querySelectorAll('.draggable-fieldset[data-fieldset-name]')).map(fs => fs.getAttribute('data-fieldset-name'));
+      if (names.length) names.forEach(n => row.columns.push({ width: 12, fieldset: n }));
+      else row.columns.push({ width: 12 }); // vacío
+      tabs.push({ title, rows: [row] });
+    });
+    return { type: 'tabs', tabs };
+  }
+
+  // Reconstruir layout como objeto {header, main, footer} desde el DOM (solo lo presente)
+  function buildLayoutFromDOMObject(){
+    const result = {};
+    const container = document.querySelector('#fd-root [data-layout-container]');
+    if (!container) return result;
+
+    const headerEl = container.querySelector('[data-block-type="header"]');
+    if (headerEl) result.header = Object.assign({ type: 'header' }, serializeGenericBlock(headerEl));
+
+    const tabsEl = container.querySelector('[data-block-type="tabs"]');
+    if (tabsEl) result.main = serializeTabsBlock(tabsEl);
+
+    const footerEl = container.querySelector('[data-block-type="footer"]');
+    if (footerEl) result.footer = Object.assign({ type: 'footer' }, serializeGenericBlock(footerEl));
+
+    return result;
+  }
+
+  // Reordenar campos dentro de cada fieldset a partir del DOM sin borrar nada
+  function reorderFieldsetsFromDOM(originalFieldsets) {
+    const copy = JSON.parse(JSON.stringify(originalFieldsets || {}));
+    document.querySelectorAll('#fd-root .draggable-fieldset[data-fieldset-name]').forEach(fs => {
+      const name = fs.getAttribute('data-fieldset-name');
+      if (!name || !copy[name]) return;
+      const fields = Array.from(fs.querySelectorAll('.sortable-fields-container .draggable-field[data-field-name]')).map(n => n.getAttribute('data-field-name'));
+      if (!fields.length) return;
+      const current = Array.isArray(copy[name].campos) ? copy[name].campos : [];
+      const map = {}; current.forEach(c => { if (c && c.nombre) map[c.nombre]=c; });
+      const reordered = [];
+      fields.forEach(fname => { if (map[fname]) reordered.push(map[fname]); });
+      // Mantener los que no están en DOM al final (keep)
+      current.forEach(c => { if (c && c.nombre && !reordered.find(rc=>rc.nombre===c.nombre)) reordered.push(c); });
+      copy[name].campos = reordered;
+    });
+    return copy;
+  }
+
+  function collectElementosFuera() {
+    const out = document.getElementById('elementos-fuera-container');
+    if (!out) return [];
+    const items = [];
+    out.querySelectorAll('.draggable-fieldset[data-fieldset-name]').forEach(fs => {
+      const name = fs.getAttribute('data-fieldset-name'); if (name) items.push({ type:'fieldset', name });
+    });
+    out.querySelectorAll('.draggable-field[data-field-name]').forEach(f => {
+      const name = f.getAttribute('data-field-name'); if (name) items.push({ type:'field', name });
+    });
+    return items;
+  }
+
+  function saveDesign() {
+    const archivo = getArchivoJson();
+    if (!archivo) return;
+
+    const existing = (window.formularioJsonOriginal && window.formularioJsonOriginal.layout) || {};
+    const incoming = buildLayoutFromDOMObject();
+    const mergedLayout = deepMergeKeep(existing, incoming); // KEEP: no borra claves
+
+    const originalFieldsets = (window.formularioJsonOriginal && window.formularioJsonOriginal.fieldsets) || {};
+    const fieldsets = reorderFieldsetsFromDOM(originalFieldsets); // KEEP: solo reordena
+
+    const elementos_fuera = collectElementosFuera();
+    const layout_html = (document.querySelector('#fd-root [data-layout-container]') || {}).innerHTML || '';
+
+    $.post('guardar_layout.php', {
+      archivo,
+      layout: JSON.stringify(mergedLayout),
+      elementos_fuera: JSON.stringify(elementos_fuera),
+      fieldsets: JSON.stringify(fieldsets),
+      layout_html
+    }).fail(xhr => {
+      const msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red';
+      if (window.Swal) Swal.fire('Error', msg, 'error'); else alert(msg);
+    });
+  }
+
+  // -------- CRUD de pestañas --------
+  function ensureCrudUI() {
+    document.querySelectorAll('#fd-root [data-block-type="tabs"]').forEach(block => {
+      // Botón + Pestaña
+      if (!block.querySelector('.add-tab-button')) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-sm btn-outline-primary add-tab-button ml-2';
+        btn.title = 'Agregar pestaña';
+        btn.innerHTML = '<i class="fas fa-plus"></i> Pestaña';
+        const ul = block.querySelector('ul.nav');
+        if (ul && ul.parentNode) ul.parentNode.insertBefore(btn, ul.nextSibling);
+        btn.addEventListener('click', () => addTab(block));
+      }
+
+      const nav = block.querySelector('ul.nav');
+      if (!nav) return;
+
+      // Soporte para <li.nav-item><a.nav-link> o <a.nav-link> directos
+      const nodes = nav.querySelectorAll('.nav-item, .nav-link');
+      nodes.forEach(n => {
+        if (n.classList.contains('nav-item')) {
+          if (!n.querySelector('.edit-tab-icon')) {
+            const edit = document.createElement('span');
+            edit.className = 'edit-tab-icon edit-icon';
+            edit.title = 'Renombrar pestaña';
+            edit.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+            n.appendChild(edit);
+          }
+          if (!n.querySelector('.delete-tab-icon')) {
+            const del = document.createElement('span');
+            del.className = 'delete-tab-icon edit-icon';
+            del.title = 'Eliminar pestaña';
+            del.innerHTML = '<i class="fas fa-trash"></i>';
+            n.appendChild(del);
+          }
+        } else if (n.classList.contains('nav-link')) {
+          const link = n;
+          if (!link.nextElementSibling || !link.nextElementSibling.classList || !link.nextElementSibling.classList.contains('edit-tab-icon')) {
+            const edit = document.createElement('span');
+            edit.className = 'edit-tab-icon edit-icon';
+            edit.title = 'Renombrar pestaña';
+            edit.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+            link.parentNode.insertBefore(edit, link.nextSibling);
+          }
+          const next2 = link.nextElementSibling ? link.nextElementSibling.nextElementSibling : null;
+          if (!next2 || !next2.classList || !next2.classList.contains('delete-tab-icon')) {
+            const del = document.createElement('span');
+            del.className = 'delete-tab-icon edit-icon';
+            del.title = 'Eliminar pestaña';
+            del.innerHTML = '<i class="fas fa-trash"></i>';
+            if (link.nextSibling) link.parentNode.insertBefore(del, link.nextSibling.nextSibling);
+            else link.parentNode.appendChild(del);
+          }
         }
-        return fieldsets;
-    }
-    function fetchJson() {
-        const archivo = getArchivoJson();
-        return $.getJSON('json/' + archivo).then(d => {
-            JSON_CACHE.data = d || {};
-            return JSON_CACHE.data;
-        }).catch(() => {
-            JSON_CACHE.data = window.formularioJsonOriginal || {};
-            return JSON_CACHE.data;
-        });
-    }
-    function getFieldDef(json, fieldsetName, fieldName) {
-        const fsets = asFieldsetsMap(json.fieldsets || {});
-        const fs = fsets[fieldsetName]; if (!fs) return null;
-        const campos = Array.isArray(fs.campos) ? fs.campos : [];
-        const idx = campos.findIndex(c => (c && c.nombre) === fieldName);
-        if (idx < 0) return null;
-        return { fs, idx, campo: campos[idx] };
-    }
-    function updateLocalJsonField(json, fieldsetName, fieldName, newProps) {
-        const def = getFieldDef(json, fieldsetName, fieldName); if (!def) return;
-        const c = def.campo;
-        Object.keys(newProps).forEach(k => { if (newProps[k] !== undefined) c[k]=newProps[k]; });
-    }
+      });
+    });
+  }
 
-    // ------- Guardado del layout -------
-    function collectElementosFuera() {
-        const out = document.getElementById('elementos-fuera-container');
-        if (!out) return [];
-        const items = [];
-        out.querySelectorAll('.draggable-fieldset[data-fieldset-name]').forEach(fs => {
-            const name = fs.getAttribute('data-fieldset-name'); if (name) items.push({ type:'fieldset', name });
-        });
-        out.querySelectorAll('.draggable-field[data-field-name]').forEach(f => {
-            const name = f.getAttribute('data-field-name'); if (name) items.push({ type:'field', name });
-        });
-        return items;
-    }
-    function reorderFieldsetsFromDOM(originalFieldsets) {
-        const copy = JSON.parse(JSON.stringify(originalFieldsets || {}));
-        document.querySelectorAll('.draggable-fieldset[data-fieldset-name]').forEach(fs => {
-            const name = fs.getAttribute('data-fieldset-name');
-            if (!name || !copy[name]) return;
-            const fields = Array.from(fs.querySelectorAll('.sortable-fields-container .draggable-field[data-field-name]')).map(n => n.getAttribute('data-field-name'));
-            if (!fields.length) return;
-            const current = Array.isArray(copy[name].campos) ? copy[name].campos : [];
-            const map = {}; current.forEach(c => { if (c && c.nombre) map[c.nombre]=c; });
-            const reordered = [];
-            fields.forEach(fname => { if (map[fname]) reordered.push(map[fname]); });
-            current.forEach(c => { if (c && c.nombre && !reordered.find(rc=>rc.nombre===c.nombre)) reordered.push(c); });
-            copy[name].campos = reordered;
-        });
-        return copy;
-    }
-    function buildLayoutFromDOM() {
-        const layout = [];
-        const container = document.querySelector('#fd-root [data-layout-container]');
-        if (!container) return layout;
+  function addTab(block, title) {
+    title = title || 'Nueva pestaña';
+    const nav = block.querySelector('ul.nav');
+    const content = block.querySelector('.tab-content');
+    if (!nav || !content) return;
 
-        // Tabs
-        container.querySelectorAll('[data-block-type="tabs"]').forEach(block => {
-            const tabs = [];
-            const idToTitle = {};
-            block.querySelectorAll('ul.nav .nav-link[href^="#"]').forEach(a => {
-                const id = a.getAttribute('href')?.replace('#',''); if (id) idToTitle[id] = a.textContent.trim();
-            });
-            block.querySelectorAll('.tab-content .tab-pane').forEach(pane => {
-                const id = pane.id;
-                const title = idToTitle[id] || 'Pestaña';
-                const row = { columns: [] };
-                const names = Array.from(pane.querySelectorAll('.draggable-fieldset[data-fieldset-name]')).map(fs => fs.getAttribute('data-fieldset-name'));
-                if (names.length) names.forEach(n => row.columns.push({ width: 12, fieldset: n }));
-                else row.columns.push({ width: 12 }); // vacío
-                tabs.push({ title, rows: [row] });
-            });
-            layout.push({ type: 'tabs', tabs });
-        });
+    const id = 'tab_' + Date.now();
 
-        // Header/Footer/Generic
-        container.querySelectorAll('[data-block-type="generic"],[data-block-type="header"],[data-block-type="footer"]').forEach(block => {
-            const type = block.getAttribute('data-block-type') || 'generic';
-            const rows = [];
-            block.querySelectorAll('[data-row]').forEach(r => {
-                const row = { columns: [] };
-                r.querySelectorAll('[data-col-width]').forEach(colEl => {
-                    const width = parseInt(colEl.getAttribute('data-col-width') || '12', 10);
-                    const fsets = Array.from(colEl.querySelectorAll('.draggable-fieldset[data-fieldset-name]'));
-                    if (fsets.length) fsets.forEach(fs => row.columns.push({ width, fieldset: fs.getAttribute('data-fieldset-name') || '' }));
-                    else row.columns.push({ width });
-                });
-                rows.push(row);
-            });
-            if (rows.length) layout.push({ type, rows });
-        });
-
-        return layout;
-    }
-    function saveDesign() {
-        const archivo = getArchivoJson();
-        if (!archivo) return;
-        const original = (window.formularioJsonOriginal && window.formularioJsonOriginal.fieldsets) || {};
-        const fieldsets = reorderFieldsetsFromDOM(original);
-        const layout = buildLayoutFromDOM();
-        const elementos_fuera = collectElementosFuera();
-        const layout_html = (document.querySelector('#fd-root [data-layout-container]') || {}).innerHTML || '';
-
-        $.post('guardar_layout.php', {
-            archivo,
-            layout: JSON.stringify(layout),
-            elementos_fuera: JSON.stringify(elementos_fuera),
-            fieldsets: JSON.stringify(fieldsets),
-            layout_html
-        }).fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
+    // Preferir estructura con li.nav-item
+    if (nav.querySelector('.nav-item') || nav.children.length === 0) {
+      const li = document.createElement('li');
+      li.className = 'nav-item';
+      li.innerHTML = `<a class="nav-link" data-toggle="pill" href="#${id}" role="tab" aria-controls="${id}" aria-selected="false">${title}</a>`;
+      nav.appendChild(li);
+    } else {
+      const a = document.createElement('a');
+      a.className = 'nav-link';
+      a.setAttribute('data-toggle','pill');
+      a.setAttribute('href', `#${id}`);
+      a.setAttribute('role', 'tab');
+      a.setAttribute('aria-controls', id);
+      a.setAttribute('aria-selected', 'false');
+      a.textContent = title;
+      nav.appendChild(a);
     }
 
-    // ------- CRUD de pestañas -------
-    function ensureCrudUI() {
-        document.querySelectorAll('#fd-root [data-block-type="tabs"]').forEach(block => {
-            // Botón + Pestaña
-            if (!block.querySelector('.add-tab-button')) {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.className = 'btn btn-sm btn-outline-primary add-tab-button ml-2';
-                btn.title = 'Agregar pestaña';
-                btn.innerHTML = '<i class="fas fa-plus"></i> Pestaña';
-                const ul = block.querySelector('ul.nav');
-                if (ul && ul.parentNode) ul.parentNode.insertBefore(btn, ul.nextSibling);
-                btn.addEventListener('click', () => addTab(block));
-            }
+    // Pane vacío
+    const pane = document.createElement('div');
+    pane.className = 'tab-pane fade';
+    pane.id = id;
+    pane.setAttribute('role', 'tabpanel');
+    pane.setAttribute('aria-labelledby', id + '-tab');
+    pane.setAttribute('data-dropzone', 'tab-pane');
+    pane.innerHTML = '';
+    content.appendChild(pane);
 
-            const nav = block.querySelector('ul.nav');
-            if (!nav) return;
+    // Reinyectar íconos y activar
+    ensureCrudUI();
+    const lastLink = nav.querySelector('.nav-link:last-of-type');
+    $(nav).find('.nav-link').removeClass('active').attr('aria-selected','false');
+    $(content).find('.tab-pane').removeClass('show active');
+    if (lastLink) $(lastLink).addClass('active').attr('aria-selected','true');
+    $(pane).addClass('show active');
 
-            const items = nav.querySelectorAll('.nav-item, .nav-link'); // soporta ambas estructuras
-            items.forEach(node => {
-                // Si el nodo es .nav-item
-                if (node.classList.contains('nav-item')) {
-                    if (!node.querySelector('.edit-tab-icon')) {
-                        const edit = document.createElement('span');
-                        edit.className = 'edit-tab-icon edit-icon';
-                        edit.title = 'Renombrar pestaña';
-                        edit.innerHTML = '<i class="fas fa-pencil-alt"></i>';
-                        node.appendChild(edit);
-                    }
-                    if (!node.querySelector('.delete-tab-icon')) {
-                        const del = document.createElement('span');
-                        del.className = 'delete-tab-icon edit-icon';
-                        del.title = 'Eliminar pestaña';
-                        del.innerHTML = '<i class="fas fa-trash"></i>';
-                        node.appendChild(del);
-                    }
-                }
-                // Si el nodo es <a.nav-link> directamente dentro del ul (sin li)
-                if (node.classList.contains('nav-link')) {
-                    const link = node;
-                    // Evitar duplicados: busca hermanos inmediatos
-                    if (!link.nextElementSibling || !link.nextElementSibling.classList || !link.nextElementSibling.classList.contains('edit-tab-icon')) {
-                        const edit = document.createElement('span');
-                        edit.className = 'edit-tab-icon edit-icon';
-                        edit.title = 'Renombrar pestaña';
-                        edit.innerHTML = '<i class="fas fa-pencil-alt"></i>';
-                        link.parentNode.insertBefore(edit, link.nextSibling);
-                    }
-                    if (!link.nextElementSibling || !link.nextElementSibling.nextElementSibling || !link.nextElementSibling.nextElementSibling.classList || !link.nextElementSibling.nextElementSibling.classList.contains('delete-tab-icon')) {
-                        const del = document.createElement('span');
-                        del.className = 'delete-tab-icon edit-icon';
-                        del.title = 'Eliminar pestaña';
-                        del.innerHTML = '<i class="fas fa-trash"></i>';
-                        // Insertar tras el edit
-                        const after = link.nextElementSibling ? link.nextElementSibling.nextSibling : link.nextSibling;
-                        if (after) link.parentNode.insertBefore(del, after);
-                        else link.parentNode.appendChild(del);
-                    }
-                }
-            });
-        });
-    }
+    initSortable();
+    saveDesign();
+  }
 
-    function addTab(block, title) {
-        title = title || 'Nueva pestaña';
-        const nav = block.querySelector('ul.nav');
-        const content = block.querySelector('.tab-content');
-        if (!nav || !content) return;
+  // Renombrar pestaña
+  $(document).on('click', '.edit-tab-icon', function(){
+    if (!inDesign()) return;
+    const $a = $(this).closest('.nav-item').find('.nav-link').addBack().filter('.nav-link').first();
+    const current = $a.text().trim();
+    Swal.fire({ title: 'Título de pestaña', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' })
+      .then(res => { if (res.isConfirmed && res.value) { $a.text(res.value); saveDesign(); } });
+  });
 
-        const id = 'tab_' + Date.now();
+  // Eliminar pestaña
+  $(document).on('click', '.delete-tab-icon', function(){
+    if (!inDesign()) return;
+    const li = this.closest('.nav-item');
+    const link = li ? li.querySelector('.nav-link') : this.previousElementSibling && this.previousElementSibling.classList.contains('edit-tab-icon')
+      ? this.previousElementSibling.previousElementSibling
+      : this.previousElementSibling;
+    if (!link || !link.classList.contains('nav-link')) return;
+    const href = link.getAttribute('href');
+    const block = link.closest('[data-block-type="tabs"]');
+    const nav = link.closest('ul.nav');
+    const content = block && block.querySelector('.tab-content');
 
-        // Estructura preferente con li.nav-item; si no existe, usa solo <a>
-        if (nav.querySelector('.nav-item') || nav.children.length === 0) {
-            const li = document.createElement('li');
-            li.className = 'nav-item';
-            li.innerHTML = `<a class="nav-link" data-toggle="pill" href="#${id}" role="tab" aria-controls="${id}" aria-selected="false">${title}</a>`;
-            nav.appendChild(li);
-        } else {
-            // UL con anchors directos
-            const a = document.createElement('a');
-            a.className = 'nav-link';
-            a.setAttribute('data-toggle', 'pill');
-            a.setAttribute('href', `#${id}`);
-            a.setAttribute('role', 'tab');
-            a.setAttribute('aria-controls', id);
-            a.setAttribute('aria-selected', 'false');
-            a.textContent = title;
-            nav.appendChild(a);
+    Swal.fire({ title:'Eliminar pestaña', text:'Esta acción no se puede deshacer', icon:'warning', showCancelButton:true, confirmButtonText:'Eliminar' })
+      .then(res => {
+        if (!res.isConfirmed) return;
+        if (href && content) {
+          const pane = content.querySelector(href);
+          if (pane) pane.remove();
         }
+        // Determinar tab a activar
+        let toActivate = (li && (li.previousElementSibling || li.nextElementSibling)) || null;
+        if (li) li.remove();
+        else link.remove();
 
-        // Pane vacío
-        const pane = document.createElement('div');
-        pane.className = 'tab-pane fade';
-        pane.id = id;
-        pane.setAttribute('role', 'tabpanel');
-        pane.setAttribute('aria-labelledby', id + '-tab');
-        pane.setAttribute('data-dropzone', 'tab-pane');
-        pane.innerHTML = '';
-        content.appendChild(pane);
-
-        // Reinyectar iconos (editar/eliminar) y activar
-        ensureCrudUI();
-        const lastLink = nav.querySelector('.nav-link:last-of-type');
-        const $nav = $(nav), $content = $(content);
-        $nav.find('.nav-link').removeClass('active').attr('aria-selected','false');
-        $content.find('.tab-pane').removeClass('show active');
-        if (lastLink) $(lastLink).addClass('active').attr('aria-selected','true');
-        $(pane).addClass('show active');
-
-        initSortable();
+        if (!toActivate) {
+          // Buscar nuevo candidato
+          toActivate = nav.querySelector('.nav-item') || nav.querySelector('.nav-link');
+        }
+        if (toActivate) {
+          const a2 = toActivate.classList.contains('nav-item') ? toActivate.querySelector('.nav-link') : toActivate;
+          if (a2) $(a2).trigger('click');
+        }
         saveDesign();
-    }
+      });
+  });
 
-    // El resto permanece igual: handlers de rename/delete, navegación y Sortable...
-    // Nav sortable: soportar cualquier ul.nav dentro del bloque tabs
-    function initSortable() {
-        if (!inDesign() || typeof Sortable === 'undefined') return;
+  // Navegación tabs (Bootstrap o fallback)
+  $(document).on('click', '#fd-root ul.nav .nav-link[href^="#"]', function(e){
+    const $a = $(this);
+    if (typeof $().tab === 'function') { e.preventDefault(); $a.tab('show'); return; }
+    e.preventDefault();
+    const href = $a.attr('href');
+    const $nav = $a.closest('ul');
+    const $block = $nav.closest('[data-block-type="tabs"]');
+    const $content = $block.find('.tab-content');
+    $nav.find('.nav-link').removeClass('active').attr('aria-selected','false');
+    $a.addClass('active').attr('aria-selected','true');
+    $content.find('.tab-pane').removeClass('show active');
+    $content.find(href).addClass('show active');
+  });
 
-        // Campos dentro de fieldset
-        document.querySelectorAll('#fd-root .sortable-fields-container').forEach(el => {
-            sortables.push(Sortable.create(el, {
-                group: { name: 'fields', pull: true, put: true },
-                draggable: '.draggable-field',
-                animation: 150,
-                ghostClass: 'sortable-ghost',
-                onEnd: () => saveDesign()
-            }));
-        });
+  // -------- Sortables --------
+  let sortables = [];
+  function destroySortables(){ sortables.forEach(s=>{ try{s.destroy();}catch(e){} }); sortables=[]; }
 
-        // Fieldsets en columnas/panes y “fuera”
-        document.querySelectorAll('#fd-root [data-col-width], #fd-root [data-dropzone="tab-pane"], #elementos-fuera-container').forEach(el => {
-            sortables.push(Sortable.create(el, {
-                group: { name: 'fieldsets', pull: true, put: true },
-                draggable: '.draggable-fieldset',
-                animation: 150,
-                ghostClass: 'sortable-ghost',
-                handle: 'legend,[data-fieldset-title]',
-                onEnd: () => saveDesign()
-            }));
-        });
+  function initSortable() {
+    if (!inDesign() || typeof Sortable === 'undefined') return;
 
-        // Reordenar pestañas para cualquier ul.nav dentro del bloque de tabs
-        document.querySelectorAll('#fd-root [data-block-type="tabs"] ul.nav').forEach(nav => {
-            sortables.push(Sortable.create(nav, {
-                group: 'tabs',
-                animation: 150,
-                draggable: '.nav-item, .nav-link',
-                handle: '.nav-link',
-                onEnd: () => {
-                    const block = nav.closest('[data-block-type="tabs"]');
-                    const content = block && block.querySelector('.tab-content');
-                    if (!content) return;
-                    const ids = Array.from(nav.querySelectorAll('.nav-link'))
-                        .map(a => (a.getAttribute('href') || '').replace('#',''))
-                        .filter(Boolean);
-                    ids.forEach(id => {
-                        const pane = content.querySelector('#'+CSS.escape(id));
-                        if (pane) content.appendChild(pane);
-                    });
-                    saveDesign();
-                }
-            }));
-        });
-    }
-
-    // ------- Editores -------
-    $(document).on('click', '[data-edit="form-title"]', function(){
-        if (!inDesign()) return;
-        const $title = $('#form-title');
-        const current = $title.clone().children().remove().end().text().trim();
-        Swal.fire({ title: 'Título del formulario', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' })
-        .then(res => {
-            if (!res.isConfirmed || !res.value) return;
-            $.post('editar_propiedades.php', { archivo: getArchivoJson(), tipo:'form', titulo: res.value })
-             .done(resp => { if (resp && resp.success) { const icon = $title.find('.edit-icon').detach(); $title.text(res.value).append(icon); } else Swal.fire('Error', (resp && resp.error) || 'No se pudo actualizar', 'error'); })
-             .fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
-        });
+    // Reordenar fieldsets dentro de columnas/panes
+    document.querySelectorAll('#fd-root [data-col-width], #fd-root [data-dropzone="tab-pane"], #elementos-fuera-container').forEach(el => {
+      sortables.push(Sortable.create(el, {
+        group: { name: 'fieldsets', pull: true, put: true },
+        draggable: '.draggable-fieldset',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        handle: 'legend,[data-fieldset-title]',
+        onEnd: () => saveDesign()
+      }));
     });
 
-    // Campo: propiedades con precarga desde JSON
-    $(document).on('click', '.edit-icon[data-edit="field"]', async function(){
-        if (!inDesign()) return;
-        const $field = $(this).closest('.draggable-field');
-        const fieldName = $field.data('fieldName') || $field.attr('data-field-name') || '';
-        const $fs = $field.closest('.draggable-fieldset');
-        const fieldsetName = $fs.data('fieldsetName') || $fs.attr('data-fieldset-name') || $(this).attr('data-fieldset') || '';
-        if (!fieldsetName || !fieldName) return;
-
-        const json = await fetchJson();
-        const def = getFieldDef(json, fieldsetName, fieldName);
-        if (!def) return Swal.fire('Error', 'No se encontró el campo en el JSON', 'error');
-        const campo = def.campo || {};
-
-        const vEtiqueta = (campo.etiqueta || campo.nombre || '').toString();
-        const vPlaceholder = (campo.placeholder || '').toString();
-        const vTipo = (campo.tipo || 'text').toString();
-        const vValor = (campo.valor_predeterminado ?? '').toString();
-        let vOpciones = ''; try { if (campo.opciones !== undefined) vOpciones = JSON.stringify(campo.opciones, null, 2); } catch(e){}
-        let vAtributos = ''; try { if (campo.atributos !== undefined) vAtributos = JSON.stringify(campo.atributos, null, 2); } catch(e){}
-
-        const tipos = ['text','textarea','number','email','password','select','selectdata','radio','checkbox','file','date','datatable','hidden'];
-        const optionsHtml = tipos.map(t => `<option value="${t}" ${t===vTipo?'selected':''}>${t}</option>`).join('');
-        const esc = s => $('<div>').text(s ?? '').html();
-
-        await Swal.fire({
-            title: `Propiedades: ${fieldName}`,
-            html: `
-                <div class="text-left">
-                    <div class="form-group mb-2"><label>Etiqueta</label><input id="sw-etiqueta" class="form-control" value="${esc(vEtiqueta)}"></div>
-                    <div class="form-group mb-2"><label>Placeholder</label><input id="sw-placeholder" class="form-control" value="${esc(vPlaceholder)}"></div>
-                    <div class="form-group mb-2"><label>Tipo</label><select id="sw-tipo" class="form-control">${optionsHtml}</select></div>
-                    <div class="form-group mb-2"><label>Valor predeterminado</label><input id="sw-valor" class="form-control" value="${esc(vValor)}"></div>
-                    <div class="form-group mb-2"><label>Opciones (JSON)</label><textarea id="sw-opciones" class="form-control" rows="3" placeholder='{"1":"Opción 1"}'>${vOpciones}</textarea></div>
-                    <div class="form-group mb-0"><label>Atributos (JSON)</label><textarea id="sw-atributos" class="form-control" rows="3" placeholder='{"required":true}'>${vAtributos}</textarea></div>
-                </div>
-            `,
-            focusConfirm: false,
-            showCancelButton: true,
-            confirmButtonText: 'Guardar',
-            preConfirm: () => {
-                const etiqueta = $('#sw-etiqueta').val();
-                const placeholder = $('#sw-placeholder').val();
-                const tipo = $('#sw-tipo').val();
-                const valor_predeterminado = $('#sw-valor').val();
-                let opcionesTxt = $('#sw-opciones').val();
-                let atributosTxt = $('#sw-atributos').val();
-                let opciones, atributos;
-                if (opcionesTxt && opcionesTxt.trim()) { try { opciones = JSON.parse(opcionesTxt); } catch(e){ Swal.showValidationMessage('Opciones JSON inválido'); return false; } }
-                if (atributosTxt && atributosTxt.trim()) { try { atributos = JSON.parse(atributosTxt); } catch(e){ Swal.showValidationMessage('Atributos JSON inválido'); return false; } }
-                return { etiqueta, placeholder, tipo, valor_predeterminado, opciones, atributos };
-            }
-        }).then(res => {
-            if (!res.isConfirmed) return;
-            const payload = {
-                archivo: getArchivoJson(),
-                tipo: 'field',
-                fieldset: fieldsetName,
-                nombre: fieldName,
-                etiqueta: res.value.etiqueta ?? '',
-                placeholder: res.value.placeholder ?? '',
-                tipo: res.value.tipo ?? '',
-                'valor_predeterminado': res.value.valor_predeterminado ?? ''
-            };
-            if (res.value.opciones !== undefined) payload.opciones = JSON.stringify(res.value.opciones);
-            if (res.value.atributos !== undefined) payload.atributos = JSON.stringify(res.value.atributos);
-
-            $.post('editar_propiedades.php', payload)
-             .done(resp => {
-                if (!(resp && resp.success)) return Swal.fire('Error', (resp && resp.error) || 'No se pudo actualizar', 'error');
-                // Cache y UI
-                const newProps = {
-                    etiqueta: res.value.etiqueta,
-                    placeholder: res.value.placeholder,
-                    tipo: res.value.tipo,
-                    valor_predeterminado: res.value.valor_predeterminado
-                };
-                if (res.value.opciones !== undefined) newProps.opciones = res.value.opciones;
-                if (res.value.atributos !== undefined) newProps.atributos = res.value.atributos;
-
-                updateLocalJsonField(JSON_CACHE.data || (window.formularioJsonOriginal || {}), fieldsetName, fieldName, newProps);
-                updateLocalJsonField((window.formularioJsonOriginal || {}), fieldsetName, fieldName, newProps);
-
-                const $label = $field.find('label').first();
-                if (newProps.etiqueta) $label.text(newProps.etiqueta);
-                const $input = $field.find('input,select,textarea').first();
-                if ($input.length) {
-                    if (newProps.placeholder !== undefined) $input.attr('placeholder', newProps.placeholder || '');
-                    if (newProps.tipo && $input.is('input')) $input.attr('type', newProps.tipo);
-                }
-                Swal.fire('OK', 'Campo actualizado', 'success');
-             })
-             .fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
-        });
+    // Reordenar pestañas (soporta li.nav-item o a.nav-link directos)
+    document.querySelectorAll('#fd-root [data-block-type="tabs"] ul.nav').forEach(nav => {
+      sortables.push(Sortable.create(nav, {
+        group: 'tabs',
+        animation: 150,
+        draggable: '.nav-item, .nav-link',
+        handle: '.nav-link',
+        onEnd: () => {
+          const block = nav.closest('[data-block-type="tabs"]');
+          const content = block && block.querySelector('.tab-content');
+          if (!content) return;
+          const ids = Array.from(nav.querySelectorAll('.nav-link'))
+            .map(a => (a.getAttribute('href') || '').replace('#',''))
+            .filter(Boolean);
+          ids.forEach(id => {
+            const pane = content.querySelector('#'+CSS.escape(id));
+            if (pane) content.appendChild(pane);
+          });
+          saveDesign();
+        }
+      }));
     });
+  }
 
-    // ------- Activación diseño -------
-    function activateDesignMode() {
-        if (!inDesign()) return;
-        destroySortables();
-        ensureCrudUI();
-        initSortable();
-        const u = document.getElementById('undoBtn'); if (u) u.style.display = '';
-        const r = document.getElementById('redoBtn'); if (r) r.style.display = '';
-        const s = document.getElementById('saveLayoutBtn'); if (s) s.style.display = '';
-    }
-    function deactivateDesignMode() {
-        destroySortables();
-        const u = document.getElementById('undoBtn'); if (u) u.style.display = 'none';
-        const r = document.getElementById('redoBtn'); if (r) r.style.display = 'none';
-        const s = document.getElementById('saveLayoutBtn'); if (s) s.style.display = 'none';
-    }
+  // -------- Activación diseño --------
+  function activateDesignMode() {
+    if (!inDesign()) return;
+    destroySortables();
+    ensureCrudUI();
+    initSortable();
+    const u = document.getElementById('undoBtn'); if (u) u.style.display = '';
+    const r = document.getElementById('redoBtn'); if (r) r.style.display = '';
+    const s = document.getElementById('saveLayoutBtn'); if (s) s.style.display = '';
+  }
+  function deactivateDesignMode() {
+    destroySortables();
+    const u = document.getElementById('undoBtn'); if (u) u.style.display = 'none';
+    const r = document.getElementById('redoBtn'); if (r) r.style.display = 'none';
+    const s = document.getElementById('saveLayoutBtn'); if (s) s.style.display = 'none';
+  }
 
-    window.DnDFormBuilder = Object.assign({}, window.DnDFormBuilder || {}, {
-        saveDesign, activateDesignMode, deactivateDesignMode
-    });
+  window.DnDFormBuilder = Object.assign({}, window.DnDFormBuilder || {}, {
+    saveDesign, activateDesignMode, deactivateDesignMode
+  });
 
-    document.addEventListener('DOMContentLoaded', function(){
-        if (inDesign()) activateDesignMode();
-    });
+  document.addEventListener('DOMContentLoaded', function(){
+    if (inDesign()) activateDesignMode();
+  });
 })();

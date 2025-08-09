@@ -1,127 +1,34 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) session_start();
-
-// Funciones de render con data-atributos para DnD. No sobreescribe si ya existen.
+// ========== Helpers base (UNA sola vez) ==========
 if (!function_exists('fd_escape')) {
     function fd_escape($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 }
-
 if (!function_exists('generarCampo')) {
     function generarCampo(array $c, $v = null, $ro = false) {
         $n  = htmlspecialchars($c['nombre'] ?? 'sin_nombre', ENT_QUOTES, 'UTF-8');
         $l  = htmlspecialchars($c['etiqueta'] ?? $n, ENT_QUOTES, 'UTF-8');
         $ph = htmlspecialchars($c['placeholder'] ?? '', ENT_QUOTES, 'UTF-8');
         $t  = htmlspecialchars($c['tipo'] ?? 'text', ENT_QUOTES, 'UTF-8');
-
-        // Inputs SIEMPRE editables (sin disabled)
         return "<div class='form-group mb-2'>
                     <label class='form-label'>{$l}</label>
-                    <input type='{$t}' name='{$n}' value='".htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8')."' placeholder='{$ph}' class='form-control'>
+                    <input type='{$t}' name='{$n}' value='".htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8')."' placeholder='{$ph}' class='form-control' ".($ro?'readonly':'').">
                 </div>";
     }
 }
-
-function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
-    $rows = is_array($rows) ? $rows : [];
-    $html = '';
-    foreach ($rows as $row) {
-        $columns = $row['columns'] ?? [];
-        $html .= '<div class="row" data-row>';
-        foreach ($columns as $column) {
-            $width = (int)($column['width'] ?? 12);
-            if ($width < 1 || $width > 12) $width = 12;
-            $html .= "<div class='col-md-{$width}' data-col-width='{$width}' data-dropzone='column'>";
-            $fieldset = $column['fieldset'] ?? null;
-            if ($fieldset) {
-                if (is_string($fieldset)) {
-                    $html .= generarFieldsetContenido($fieldset, $fieldsetsConfig, $valores, $soloLectura);
-                } elseif (is_array($fieldset) && isset($fieldset['rows'])) {
-                    $html .= "<fieldset class='mb-3 p-2 border rounded'>";
-                    foreach (($fieldset['rows'] ?? []) as $fsRow) {
-                        $html .= "<div class='row'>";
-                        foreach (($fsRow['columns'] ?? []) as $fsCol) {
-                            $html .= "<div class='col' data-col-width='12' data-dropzone='column'>";
-                            if (isset($fsCol['fieldset']) && is_string($fsCol['fieldset'])) {
-                                $html .= generarFieldsetContenido($fsCol['fieldset'], $fieldsetsConfig, $valores, $soloLectura);
-                            }
-                            $html .= "</div>";
-                        }
-                        $html .= "</div>";
-                    }
-                    $html .= "</fieldset>";
-                }
-            }
-            $html .= '</div>';
+if (!function_exists('getFieldInfo')) {
+    function getFieldInfo(string $name, array $allFields): array {
+        foreach ($allFields as $f) {
+            if (($f['name'] ?? '') === $name) return $f;
         }
-        $html .= '</div>';
+        return ['name'=>$name, 'label'=>ucfirst($name), 'type'=>'text'];
     }
-    return $html;
 }
 
-function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura) {
-    $tabsId = 'tabs_'.uniqid();
-    $html = "<div class='form-block tabs-block' data-block-type='tabs' data-tabs-id='{$tabsId}'>";
-    $html .= '<ul class="nav nav-pills mb-3" role="tablist">';
-    $tabDetails = [];
-    foreach (($block['tabs'] ?? []) as $index => $tab) {
-        $title = $tab['title'] ?? ('Pestaña '.($index+1));
-        $id = 'tab_'.preg_replace('/[^a-zA-Z0-9_]/', '', str_replace(' ', '_', $title)).'_'.uniqid();
-        $tabDetails[] = ['id'=>$id, 'title'=>$title, 'rows'=>$tab['rows'] ?? []];
-        $active = $index === 0 ? 'active' : '';
-        $html .= '<li class="nav-item" role="presentation">';
-        $html .= '<a class="nav-link '.$active.'" data-toggle="pill" href="#'.$id.'" role="tab" aria-controls="'.$id.'" aria-selected="'.($index===0?'true':'false').'" data-tab-id="'.$id.'">'.htmlspecialchars($title, ENT_QUOTES, 'UTF-8').'</a>';
-        // SIEMPRE mostrar ícono (CSS lo oculta en modo normal)
-        $html .= '<span class="edit-tab-icon edit-icon" title="Renombrar pestaña"><i class="fas fa-pencil-alt"></i></span>';
-        $html .= '</li>';
-    }
-    $html .= '</ul>';
-    $html .= '<div class="tab-content">';
-    foreach ($tabDetails as $i => $details) {
-        $activeClass = $i === 0 ? 'show active' : '';
-        $html .= '<div class="tab-pane fade '.$activeClass.'" id="'.$details['id'].'" role="tabpanel" aria-labelledby="'.$details['id'].'-tab" data-dropzone="tab-pane">';
-        $html .= renderRows($details['rows'], $fieldsetsConfig, $valores, $soloLectura);
-        $html .= '</div>';
-    }
-    $html .= '</div></div>';
-    return $html;
-}
-
-function renderBlock($block, $fieldsetsConfig, $valores, $soloLectura) {
-    $type = $block['type'] ?? 'generic';
-    $html = '';
-    switch ($type) {
-        case 'header':
-            $html .= "<div class='form-block form-header-block mb-3' data-block-type='header'>";
-            $html .= renderRows($block['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
-            $html .= '</div>';
-            break;
-        case 'footer':
-            $html .= "<div class='form-block form-footer-block mt-3' data-block-type='footer'>";
-            $html .= renderRows($block['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
-            $html .= '</div>';
-            break;
-        case 'fieldset':
-            $fieldsetName = $block['name'] ?? '';
-            $html .= "<div class='form-block fieldset-block' data-block-type='fieldset'>";
-            $html .= generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $soloLectura);
-            $html .= '</div>';
-            break;
-        case 'tabs':
-            $html .= renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura);
-            break;
-        default:
-            $html .= "<div class='form-block form-generic-block' data-block-type='generic'>";
-            $html .= renderRows($block['rows'] ?? [], $fieldsetsConfig, $valores, $soloLectura);
-            $html .= '</div>';
-            break;
-    }
-    return $html;
-}
-
+// ========== Render de fieldset/campos ==========
 if (!function_exists('generarFieldsetContenido')) {
     function generarFieldsetContenido(string $fsName, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
         $fs = $fieldsets[$fsName] ?? null;
-        if (!$fs) return '';
+        if (!$fs) return '<div class="alert alert-warning mb-2">Fieldset no encontrado: '.fd_escape($fsName).'</div>';
         $titulo = $fs['titulo'] ?? $fsName;
         $campos = is_array($fs['campos'] ?? null) ? $fs['campos'] : [];
         $html  = '<fieldset class="draggable-fieldset mb-3" data-fieldset-name="'.fd_escape($fsName).'" data-fieldset-title="'.fd_escape($titulo).'">';
@@ -132,13 +39,11 @@ if (!function_exists('generarFieldsetContenido')) {
             if ($nombre === '') continue;
             $valor = $valores[$nombre] ?? ($c['valor_predeterminado'] ?? '');
             $html .= '<div class="draggable-field mb-2" data-field-name="'.fd_escape($nombre).'">';
-            // Aquí asumimos que existe generarCampo($campo,$valor,$soloLectura). Si no, render simple:
-            if (function_exists('generarCampo')) {
-                $html .= generarCampo($c, $valor, $soloLectura);
-            } else {
+            if (function_exists('generarCampo')) $html .= generarCampo($c, $valor, $soloLectura);
+            else {
                 $etq = $c['etiqueta'] ?? $nombre;
                 $html .= '<label class="d-block">'.fd_escape($etq).'</label>';
-                $html .= '<input class="form-control" value="'.fd_escape($valor).'"/>';
+                $html .= '<input class="form-control" value="'.fd_escape($valor).'" '.($soloLectura?'readonly':'').'/>';
             }
             $html .= ' <span class="edit-icon" data-edit="field" title="Editar campo"><i class="fas fa-pencil-alt"></i></span>';
             $html .= '</div>';
@@ -148,39 +53,101 @@ if (!function_exists('generarFieldsetContenido')) {
     }
 }
 
-// Genera el layout completo incluyendo header y footer
-if (!function_exists('generarLayout')) {
-function generarLayout(array $layout, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
-    $html = '<div data-layout-container>';
-
-    if (!empty($layout['header']) && (($layout['header']['type'] ?? '') === 'header')) {
-        $html .= renderGenericBlock($layout['header'], $fieldsets, $valores, $soloLectura);
-    }
-
-    if (!empty($layout['main'])) {
-        $main = $layout['main'];
-        if (($main['type'] ?? '') === 'tabs') {
-            $html .= renderTabsBlock($main, $fieldsets, $valores, $soloLectura);
-        } else {
-            $html .= renderGenericBlock($main, $fieldsets, $valores, $soloLectura);
+// ========== Render de bloques genéricos y tabs ==========
+if (!function_exists('renderGenericBlock')) {
+    function renderGenericBlock(array $block, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
+        $type = $block['type'] ?? 'generic';
+        $html = '<div class="fd-block" data-block-type="'.fd_escape($type).'">';
+        foreach (($block['rows'] ?? []) as $row) {
+            $html .= '<div class="row" data-row>';
+            foreach (($row['columns'] ?? []) as $col) {
+                $w = (int)($col['width'] ?? 12);
+                $w = max(1, min(12, $w));
+                $html .= '<div class="col-md-'.$w.'" data-col-width="'.$w.'">';
+                if (!empty($col['fieldset'])) {
+                    $fsName = (string)$col['fieldset'];
+                    $html .= generarFieldsetContenido($fsName, $fieldsets, $valores, $soloLectura);
+                }
+                $html .= '</div>';
+            }
+            $html .= '</div>';
         }
+        $html .= '</div>';
+        return $html;
     }
+}
 
-    if (!empty($layout['footer']) && (($layout['footer']['type'] ?? '') === 'footer')) {
-        $html .= renderGenericBlock($layout['footer'], $fieldsets, $valores, $soloLectura);
+if (!function_exists('renderTabsBlock')) {
+    function renderTabsBlock(array $main, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
+        $tabs = $main['tabs'] ?? [];
+        $html = '<div class="fd-block" data-block-type="tabs">';
+        $html .= '<ul class="nav nav-tabs" role="tablist">';
+        $idx = 0;
+        $paneIds = [];
+        foreach ($tabs as $t) {
+            $title = (string)($t['title'] ?? 'Pestaña');
+            $paneId = 'tab_'.md5($title.$idx);
+            $paneIds[] = $paneId;
+            $active = $idx === 0 ? 'active' : '';
+            $sel = $idx === 0 ? 'true' : 'false';
+            $html .= '<li class="nav-item">';
+            $html .= '<a class="nav-link '.$active.'" data-toggle="pill" href="#'.$paneId.'" role="tab" aria-controls="'.$paneId.'" aria-selected="'.$sel.'">'.fd_escape($title).'</a>';
+            $html .= '</li>';
+            $idx++;
+        }
+        $html .= '</ul>';
+
+        $html .= '<div class="tab-content">';
+        foreach ($tabs as $i => $t) {
+            $paneId = $paneIds[$i] ?? ('tab_'.($i+1));
+            $show = $i === 0 ? 'show active' : '';
+            $html .= '<div class="tab-pane fade '.$show.'" id="'.fd_escape($paneId).'" role="tabpanel" data-dropzone="tab-pane">';
+            foreach (($t['rows'] ?? []) as $row) {
+                $html .= '<div class="row" data-row>';
+                foreach (($row['columns'] ?? []) as $col) {
+                    $w = (int)($col['width'] ?? 12); $w = max(1, min(12, $w));
+                    $html .= '<div class="col-md-'.$w.'" data-col-width="'.$w.'">';
+                    if (!empty($col['fieldset'])) {
+                        $fsName = (string)$col['fieldset'];
+                        $html .= generarFieldsetContenido($fsName, $fieldsets, $valores, $soloLectura);
+                    }
+                    $html .= '</div>';
+                }
+                $html .= '</div>';
+            }
+            $html .= '</div>';
+        }
+        $html .= '</div></div>';
+        return $html;
     }
+}
 
-    $html .= '</div>';
-    return $html;
-}}
+// ========== Layout completo (wrapper con data-layout-container) ==========
+if (!function_exists('generarLayout')) {
+    function generarLayout(array $layout, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
+        $html = '<div data-layout-container>';
+        if (!empty($layout['header']) && (($layout['header']['type'] ?? '') === 'header')) {
+            $html .= renderGenericBlock($layout['header'], $fieldsets, $valores, $soloLectura);
+        }
+        if (!empty($layout['main'])) {
+            $main = $layout['main'];
+            if (($main['type'] ?? '') === 'tabs') $html .= renderTabsBlock($main, $fieldsets, $valores, $soloLectura);
+            else $html .= renderGenericBlock($main, $fieldsets, $valores, $soloLectura);
+        }
+        if (!empty($layout['footer']) && (($layout['footer']['type'] ?? '') === 'footer')) {
+            $html .= renderGenericBlock($layout['footer'], $fieldsets, $valores, $soloLectura);
+        }
+        $html .= '</div>';
+        return $html;
+    }
+}
 
+// ========== Contenedor “Elementos fuera del formulario” ==========
 if (!function_exists('generarContenedorFueraDelFormulario')) {
-    function generarContenedorFueraDelFormulario(array $elementosFuera, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
+    function generarContenedorFueraDelFormulario(array $elementosFuera = null, array $fieldsets = [], array $valores = [], bool $soloLectura = false): string {
         $html = '<div class="fd-out-items">';
-        // Si no viene lista, calcular fieldsets no usados
         if (!$elementosFuera) {
-            $keys = array_keys($fieldsets);
-            foreach ($keys as $fs) {
+            foreach (array_keys($fieldsets) as $fs) {
                 $html .= '<div class="draggable-fieldset mb-2 p-2 border rounded bg-white" data-fieldset-name="'.fd_escape($fs).'" data-fieldset-title="'.fd_escape($fs).'">['.fd_escape($fs).']</div>';
             }
         } else {

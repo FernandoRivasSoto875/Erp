@@ -108,23 +108,23 @@ if (!function_exists('renderTabsBlock')) {
         $html = '<div class="fd-block" data-block-type="tabs">';
         $html .= '<ul class="nav nav-tabs" role="tablist">';
         foreach ($tabs as $i => $t) {
-            $title = (string)($t['title'] ?? ('Pestaña '.($i+1)));
+            $title  = (string)($t['title'] ?? ('Pestaña '.($i+1)));
             $paneId = 'tab_'.md5($title.$i);
             $active = $i === 0 ? 'active' : '';
-            $sel = $i === 0 ? 'true' : 'false';
+            $sel    = $i === 0 ? 'true' : 'false';
             $html .= '<li class="nav-item">';
-            // CAMBIO: data-toggle="tab"
-            $html .= '<a class="nav-link '.$active.'" data-toggle="tab" href="#'.$paneId.'" role="tab" aria-controls="'.$paneId.'" aria-selected="'.$sel.'">'.fd_escape($title).'</a>';
+            // Compatibilidad BS4 y BS5: data-toggle y data-bs-toggle
+            $html .= '<a id="nav_'.$paneId.'" class="nav-link '.$active.'" href="#'.$paneId.'" role="tab" aria-controls="'.$paneId.'" aria-selected="'.$sel.'" data-toggle="tab" data-bs-toggle="tab">'.fd_escape($title).'</a>';
             $html .= '</li>';
         }
         $html .= '</ul>';
 
         $html .= '<div class="tab-content">';
         foreach ($tabs as $i => $t) {
-            $title = (string)($t['title'] ?? ('Pestaña '.($i+1)));
+            $title  = (string)($t['title'] ?? ('Pestaña '.($i+1)));
             $paneId = 'tab_'.md5($title.$i);
-            $show = $i === 0 ? 'show active' : '';
-            $html .= '<div class="tab-pane fade '.$show.'" id="'.fd_escape($paneId).'" role="tabpanel" data-dropzone="tab-pane">';
+            $show   = $i === 0 ? 'show active' : '';
+            $html .= '<div class="tab-pane fade '.$show.'" id="'.fd_escape($paneId).'" role="tabpanel" aria-labelledby="nav_'.$paneId.'" data-dropzone="tab-pane">';
             foreach (($t['rows'] ?? []) as $row) {
                 $html .= '<div class="row" data-row>';
                 foreach (($row['columns'] ?? []) as $col) {

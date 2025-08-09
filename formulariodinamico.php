@@ -15,6 +15,7 @@ if (!is_file($json_path)) {
 
 $json_data_raw = file_get_contents($json_path);
 $json_data = json_decode($json_data_raw, true) ?: [];
+$json_error = (json_last_error() !== JSON_ERROR_NONE) ? json_last_error_msg() : '';
 
 $titulo_formulario      = $json_data['titulo'] ?? 'Formulario Dinámico';
 $descripcion_formulario = $json_data['descripcion'] ?? '';
@@ -80,22 +81,51 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 </style>
 </head>
 <body>
-<div id="fd-root" class="design-mode">
-  <h1 id="form-title">Formulario</h1>
-  <!-- ...tu formulario renderizado... -->
+<div id="fd-root" class="<?php echo $modoDiseno ? 'design-mode' : ''; ?>">
+  <div class="container py-3">
+    <h1 id="form-title"><?php echo htmlspecialchars($params['titulo'] ?? $titulo_formulario); ?></h1>
+
+    <?php if ($json_error): ?>
+      <div class="alert alert-danger">JSON inválido: <?php echo htmlspecialchars($json_error); ?>. Corrige el archivo <?php echo htmlspecialchars($archivo_base); ?> (posibles comas finales).</div>
+    <?php endif; ?>
+
+    <?php if (!empty($descripcion_formulario)): ?>
+      <p class="text-muted"><?php echo htmlspecialchars($descripcion_formulario); ?></p>
+    <?php endif; ?>
+
+    <div id="form-container">
+      <?php
+      if (function_exists('generarLayout')) {
+          echo generarLayout($layout, $fieldsets, $json_data['valores'] ?? [], false);
+      } else {
+          echo '<div class="alert alert-warning">Falta la función generarLayout(). Incluye formulariodinamicologica.php con las funciones de render.</div>';
+      }
+      ?>
+    </div>
+
+    <?php if ($modoDiseno): ?>
+      <div id="elementos-fuera-container" class="mt-3">
+        <?php
+        if (function_exists('generarContenedorFueraDelFormulario')) { // <- comilla y paréntesis corregidos
+            echo generarContenedorFueraDelFormulario($elementos_fuera, $fieldsets, [], false);
+        }
+        ?>
+      </div>
+    <?php endif; ?>
+  </div>
 </div>
 
 <script>
-  // Apunta al archivo que quieres editar
-  window.FORM_CONFIG = { archivo_json: 'formulariogenerico.json' };
+  // Archivo JSON activo y datos embebidos (el árbol los usa)
+  window.FORM_CONFIG = { archivo_json: <?php echo json_encode($archivo_base); ?> };
+  window.formularioJsonOriginal = <?php echo json_encode($json_data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
 
-  // Cuando cambies el modo, notifica (el panel escucha este evento)
+  // Toggle de modo diseño (si tienes un switch llámalo desde ahí)
   function uiSetDesignMode(on){
     const root = document.getElementById('fd-root');
     if (root) root.classList.toggle('design-mode', !!on);
     window.dispatchEvent(new CustomEvent('design-mode-changed', { detail: { on: !!on } }));
   }
-  // si ya tienes un toggle, llama uiSetDesignMode(true/false) allí.
 </script>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>

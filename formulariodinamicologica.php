@@ -1,51 +1,76 @@
 <?php
-// ========== Helpers base (UNA sola vez) ==========
+// Helpers
 if (!function_exists('fd_escape')) {
     function fd_escape($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 }
 if (!function_exists('generarCampo')) {
-    function generarCampo(array $c, $v = null, $ro = false) {
-        $n  = htmlspecialchars($c['nombre'] ?? 'sin_nombre', ENT_QUOTES, 'UTF-8');
-        $l  = htmlspecialchars($c['etiqueta'] ?? $n, ENT_QUOTES, 'UTF-8');
-        $ph = htmlspecialchars($c['placeholder'] ?? '', ENT_QUOTES, 'UTF-8');
-        $t  = htmlspecialchars($c['tipo'] ?? 'text', ENT_QUOTES, 'UTF-8');
-        return "<div class='form-group mb-2'>
-                    <label class='form-label'>{$l}</label>
-                    <input type='{$t}' name='{$n}' value='".htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8')."' placeholder='{$ph}' class='form-control' ".($ro?'readonly':'').">
-                </div>";
-    }
-}
-if (!function_exists('getFieldInfo')) {
-    function getFieldInfo(string $name, array $allFields): array {
-        foreach ($allFields as $f) {
-            if (($f['name'] ?? '') === $name) return $f;
+    function generarCampo(array $c, $v = null, bool $ro = false): string {
+        $nombre = (string)($c['nombre'] ?? $c['name'] ?? '');
+        $etq    = (string)($c['etiqueta'] ?? $c['label'] ?? $nombre);
+        $tipo   = strtolower((string)($c['tipo'] ?? $c['type'] ?? 'text'));
+        $attrs  = (string)($c['attrs'] ?? '');
+        $dis    = $ro ? 'readonly disabled' : '';
+        $val    = (string)($v ?? $c['valor_predeterminado'] ?? $c['default'] ?? '');
+
+        $html = '<div class="form-group mb-2" data-field="'.$nombre.'">';
+        $html .= '<label class="form-label">'.fd_escape($etq).'</label>';
+
+        switch ($tipo) {
+            case 'textarea':
+                $html .= '<textarea name="'.fd_escape($nombre).'" class="form-control" '.$dis.' '.$attrs.'>'.fd_escape($val).'</textarea>';
+                break;
+            case 'select':
+                $ops = $c['opciones'] ?? $c['options'] ?? [];
+                $html .= '<select name="'.fd_escape($nombre).'" class="form-control" '.$dis.' '.$attrs.'>';
+                foreach ($ops as $k => $txt) {
+                    $sel = ((string)$k === (string)$val) ? 'selected' : '';
+                    $html .= '<option value="'.fd_escape($k).'" '.$sel.'>'.fd_escape(is_array($txt)?($txt['texto']??$txt['label']??$k):$txt).'</option>';
+                }
+                $html .= '</select>';
+                break;
+            case 'checkbox':
+                $chk = (!empty($c['checked']) || $val==='1' || $val===1 || $val===true) ? 'checked' : '';
+                $html .= '<div class="form-check"><input type="checkbox" class="form-check-input" name="'.fd_escape($nombre).'" value="1" '.$chk.' '.$dis.' '.$attrs.'>';
+                $html .= '<label class="form-check-label">'.fd_escape($etq).'</label></div>';
+                break;
+            case 'date':
+            case 'number':
+            case 'email':
+            case 'tel':
+            case 'text':
+            default:
+                $ph = (string)($c['placeholder'] ?? '');
+                $html .= '<input type="'.fd_escape($tipo).'" name="'.fd_escape($nombre).'" value="'.fd_escape($val).'" placeholder="'.fd_escape($ph).'" class="form-control" '.$dis.' '.$attrs.' />';
         }
-        return ['name'=>$name, 'label'=>ucfirst($name), 'type'=>'text'];
+
+        $html .= '</div>';
+        return $html;
     }
 }
 
-// ========== Render de fieldset/campos ==========
+// Fieldset
 if (!function_exists('generarFieldsetContenido')) {
     function generarFieldsetContenido(string $fsName, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
         $fs = $fieldsets[$fsName] ?? null;
         if (!$fs) return '<div class="alert alert-warning mb-2">Fieldset no encontrado: '.fd_escape($fsName).'</div>';
+
         $titulo = $fs['titulo'] ?? $fsName;
         $campos = is_array($fs['campos'] ?? null) ? $fs['campos'] : [];
-        $html  = '<fieldset class="draggable-fieldset mb-3" data-fieldset-name="'.fd_escape($fsName).'" data-fieldset-title="'.fd_escape($titulo).'">';
-        $html .= '<legend class="small text-muted">'.fd_escape($titulo).'</legend>';
+
+        $html  = '<fieldset class="draggable-fieldset mb-3 p-2" data-fieldset-name="'.fd_escape($fsName).'" data-fieldset-title="'.fd_escape($titulo).'">';
+        $html .= '<legend class="small text-muted d-flex align-items-center">'.fd_escape($titulo);
+        $html .= ' <span class="edit-icon" data-edit="fieldset" data-fs="'.fd_escape($fsName).'" title="Editar fieldset"><i class="fas fa-pencil-alt"></i></span>';
+        $html .= '</legend>';
+
         $html .= '<div class="sortable-fields-container">';
         foreach ($campos as $c) {
-            $nombre = (string)($c['nombre'] ?? '');
+            if (!is_array($c)) continue;
+            $nombre = (string)($c['nombre'] ?? $c['name'] ?? '');
             if ($nombre === '') continue;
-            $valor = $valores[$nombre] ?? ($c['valor_predeterminado'] ?? '');
+            $valor = $valores[$nombre] ?? ($c['valor_predeterminado'] ?? $c['default'] ?? '');
             $html .= '<div class="draggable-field mb-2" data-field-name="'.fd_escape($nombre).'">';
-            if (function_exists('generarCampo')) $html .= generarCampo($c, $valor, $soloLectura);
-            else {
-                $etq = $c['etiqueta'] ?? $nombre;
-                $html .= '<label class="d-block">'.fd_escape($etq).'</label>';
-                $html .= '<input class="form-control" value="'.fd_escape($valor).'" '.($soloLectura?'readonly':'').'/>';
-            }
-            $html .= ' <span class="edit-icon" data-edit="field" title="Editar campo"><i class="fas fa-pencil-alt"></i></span>';
+            $html .= generarCampo($c, $valor, $soloLectura);
+            $html .= ' <span class="edit-icon" data-edit="field" data-fs="'.fd_escape($fsName).'" data-field="'.fd_escape($nombre).'" title="Editar campo"><i class="fas fa-pencil-alt"></i></span>';
             $html .= '</div>';
         }
         $html .= '</div></fieldset>';
@@ -53,7 +78,7 @@ if (!function_exists('generarFieldsetContenido')) {
     }
 }
 
-// ========== Render de bloques genéricos y tabs ==========
+// Bloques
 if (!function_exists('renderGenericBlock')) {
     function renderGenericBlock(array $block, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
         $type = $block['type'] ?? 'generic';
@@ -82,24 +107,21 @@ if (!function_exists('renderTabsBlock')) {
         $tabs = $main['tabs'] ?? [];
         $html = '<div class="fd-block" data-block-type="tabs">';
         $html .= '<ul class="nav nav-tabs" role="tablist">';
-        $idx = 0;
-        $paneIds = [];
-        foreach ($tabs as $t) {
-            $title = (string)($t['title'] ?? 'Pestaña');
-            $paneId = 'tab_'.md5($title.$idx);
-            $paneIds[] = $paneId;
-            $active = $idx === 0 ? 'active' : '';
-            $sel = $idx === 0 ? 'true' : 'false';
+        foreach ($tabs as $i => $t) {
+            $title = (string)($t['title'] ?? ('Pestaña '.($i+1)));
+            $paneId = 'tab_'.md5($title.$i);
+            $active = $i === 0 ? 'active' : '';
+            $sel = $i === 0 ? 'true' : 'false';
             $html .= '<li class="nav-item">';
             $html .= '<a class="nav-link '.$active.'" data-toggle="pill" href="#'.$paneId.'" role="tab" aria-controls="'.$paneId.'" aria-selected="'.$sel.'">'.fd_escape($title).'</a>';
             $html .= '</li>';
-            $idx++;
         }
         $html .= '</ul>';
 
         $html .= '<div class="tab-content">';
         foreach ($tabs as $i => $t) {
-            $paneId = $paneIds[$i] ?? ('tab_'.($i+1));
+            $title = (string)($t['title'] ?? ('Pestaña '.($i+1)));
+            $paneId = 'tab_'.md5($title.$i);
             $show = $i === 0 ? 'show active' : '';
             $html .= '<div class="tab-pane fade '.$show.'" id="'.fd_escape($paneId).'" role="tabpanel" data-dropzone="tab-pane">';
             foreach (($t['rows'] ?? []) as $row) {
@@ -122,7 +144,7 @@ if (!function_exists('renderTabsBlock')) {
     }
 }
 
-// ========== Layout completo (wrapper con data-layout-container) ==========
+// Layout
 if (!function_exists('generarLayout')) {
     function generarLayout(array $layout, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
         $html = '<div data-layout-container>';
@@ -142,7 +164,7 @@ if (!function_exists('generarLayout')) {
     }
 }
 
-// ========== Contenedor “Elementos fuera del formulario” ==========
+// Elementos fuera del formulario (para modo diseño)
 if (!function_exists('generarContenedorFueraDelFormulario')) {
     function generarContenedorFueraDelFormulario(array $elementosFuera = null, array $fieldsets = [], array $valores = [], bool $soloLectura = false): string {
         $html = '<div class="fd-out-items">';

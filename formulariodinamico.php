@@ -63,7 +63,11 @@ require_once __DIR__ . '/formulariodinamicologica.php';
     <?php endif; ?>
 
     <form id="formulariodinamico" method="POST" action="formulariodinamico.php?archivo=<?php echo urlencode($archivo_base); ?>" enctype="multipart/form-data">
-        <?php echo generarLayout($layout, $fieldsets, [], !$modoDiseno); ?>
+        <?php
+        // Antes: echo generarLayout($layout, $fieldsets, [], !$modoDiseno);
+        // Ahora: siempre false para que los inputs NO se deshabiliten nunca
+        echo generarLayout($layout, $fieldsets, [], false);
+        ?>
         <button type="submit" class="btn btn-primary" <?php echo $modoDiseno ? 'disabled' : ''; ?>>Guardar</button>
     </form>
 

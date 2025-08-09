@@ -1,6 +1,7 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 if (!function_exists('generarCampo')) { function generarCampo(array $c,$v=null,$ro=false){$n=htmlspecialchars($c['nombre']??'sin_nombre',ENT_QUOTES,'UTF-8');$l=htmlspecialchars($c['etiqueta']??$n,ENT_QUOTES,'UTF-8');$d=$ro?'disabled':'';return "<div class='form-group mb-2'><label class='form-label'>{$l}</label><input type='text' name='{$n}' value='".htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8')."' class='form-control' {$d}></div>";}}
+}
 
 function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
     $rows = is_array($rows) ? $rows : [];
@@ -17,7 +18,6 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
                 if (is_string($fieldset)) {
                     $html .= generarFieldsetContenido($fieldset, $fieldsetsConfig, $valores, $soloLectura);
                 } elseif (is_array($fieldset) && isset($fieldset['rows'])) {
-                    // nested
                     $html .= "<fieldset class='mb-3 p-2 border rounded'>";
                     foreach (($fieldset['rows'] ?? []) as $fsRow) {
                         $html .= "<div class='row'>";
@@ -52,7 +52,9 @@ function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura) {
         $active = $index === 0 ? 'active' : '';
         $html .= '<li class="nav-item" role="presentation">';
         $html .= '<a class="nav-link '.$active.'" data-toggle="pill" href="#'.$id.'" role="tab" aria-controls="'.$id.'" aria-selected="'.($index===0?'true':'false').'" data-tab-id="'.$id.'">'.htmlspecialchars($title, ENT_QUOTES, 'UTF-8').'</a>';
-        $html .= '<span class="edit-tab-icon edit-icon" title="Renombrar pestaña"><i class="fas fa-pencil-alt"></i></span>';
+        if (!$soloLectura) {
+            $html .= '<span class="edit-tab-icon edit-icon" title="Renombrar pestaña"><i class="fas fa-pencil-alt"></i></span>';
+        }
         $html .= '</li>';
     }
     $html .= '</ul>';
@@ -106,10 +108,13 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
     $fieldset = $fieldsetsConfig[$fieldsetName];
     $titulo = $fieldset['titulo'] ?? ucfirst(str_replace('_', ' ', $fieldsetName));
 
-    $html = "<div class='draggable-fieldset mb-3 p-2 border rounded' data-fieldset-name='".htmlspecialchars($fieldsetName, ENT_QUOTES, 'UTF-8')."'>";
+    $fsClasses = 'mb-3 p-2 border rounded' . (!$soloLectura ? ' draggable-fieldset' : '');
+    $html = "<div class='{$fsClasses}' data-fieldset-name='".htmlspecialchars($fieldsetName, ENT_QUOTES, 'UTF-8')."'>";
     $html .= "<div class='d-flex align-items-center justify-content-between mb-2'>";
     $html .= "<legend class='w-auto h6 mb-0' data-fieldset-title>".htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8')."</legend>";
-    $html .= "<span class='edit-icon' data-edit='fieldset' data-fieldset='".htmlspecialchars($fieldsetName, ENT_QUOTES, 'UTF-8')."' title='Editar fieldset'><i class='fas fa-pencil-alt'></i></span>";
+    if (!$soloLectura) {
+        $html .= "<span class='edit-icon' data-edit='fieldset' data-fieldset='".htmlspecialchars($fieldsetName, ENT_QUOTES, 'UTF-8')."' title='Editar fieldset'><i class='fas fa-pencil-alt'></i></span>";
+    }
     $html .= "</div>";
 
     if (!empty($fieldset['rows']) && is_array($fieldset['rows'])) {
@@ -125,7 +130,8 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
                     }
                     if ($campo) {
                         $valor = $valores[$campo['nombre']] ?? ($campo['valor_predeterminado'] ?? '');
-                        $html .= "<div class='draggable-field' data-field-name='".htmlspecialchars($campo['nombre'], ENT_QUOTES, 'UTF-8')."'>";
+                        $wrapClass = !$soloLectura ? 'draggable-field' : '';
+                        $html .= "<div class='{$wrapClass}' data-field-name='".htmlspecialchars($campo['nombre'], ENT_QUOTES, 'UTF-8')."'>";
                         $html .= generarCampo($campo, $valor, $soloLectura);
                         $html .= "</div>";
                     }
@@ -135,15 +141,17 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
             $html .= "</div>";
         }
     } else {
-        // clásico: lista vertical de campos (sortable)
         $html .= "<div class='sortable-fields-container' data-dropzone='fields'>";
         foreach (($fieldset['campos'] ?? []) as $campo) {
             $nombreCampo = $campo['nombre'] ?? 'sin_nombre';
             $valor = $valores[$nombreCampo] ?? ($campo['valor_predeterminado'] ?? '');
-            $html .= "<div class='draggable-field' data-field-name='".htmlspecialchars($nombreCampo, ENT_QUOTES, 'UTF-8')."'>";
+            $wrapClass = !$soloLectura ? 'draggable-field' : '';
+            $html .= "<div class='{$wrapClass}' data-field-name='".htmlspecialchars($nombreCampo, ENT_QUOTES, 'UTF-8')."'>";
             $html .= "<div class='d-flex align-items-center justify-content-between'>";
             $html .= "<div class='w-100'>".generarCampo($campo, $valor, $soloLectura)."</div>";
-            $html .= "<span class='edit-icon' data-edit='field' data-fieldset='".htmlspecialchars($fieldsetName, ENT_QUOTES, 'UTF-8')."' data-field='".htmlspecialchars($nombreCampo, ENT_QUOTES, 'UTF-8')."' title='Editar campo'><i class='fas fa-pencil-alt'></i></span>";
+            if (!$soloLectura) {
+                $html .= "<span class='edit-icon' data-edit='field' data-fieldset='".htmlspecialchars($fieldsetName, ENT_QUOTES, 'UTF-8')."' data-field='".htmlspecialchars($nombreCampo, ENT_QUOTES, 'UTF-8')."' title='Editar campo'><i class='fas fa-pencil-alt'></i></span>";
+            }
             $html .= "</div></div>";
         }
         $html .= "</div>";
@@ -163,7 +171,8 @@ function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valo
             foreach ($fieldsetsConfig as $fsName => $fs) {
                 foreach (($fs['campos'] ?? []) as $campo) {
                     if (($campo['nombre'] ?? '') === $item['name']) {
-                        $html .= "<div class='draggable-field' data-field-name='".htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8')."'>";
+                        $wrapClass = !$soloLectura ? 'draggable-field' : '';
+                        $html .= "<div class='{$wrapClass}' data-field-name='".htmlspecialchars($item['name'], ENT_QUOTES, 'UTF-8')."'>";
                         $html .= generarCampo($campo, null, $soloLectura);
                         $html .= "</div>";
                         break 2;
@@ -178,7 +187,6 @@ function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valo
 function generarLayout($layoutConfig, $fieldsetsConfig, $valores, $soloLectura) {
     $html = '<div class="layout-container" data-layout-container>';
     if (!is_array($layoutConfig) || !$layoutConfig) {
-        // fallback: mostrar todos los fieldsets
         foreach (array_keys($fieldsetsConfig ?? []) as $fsName) {
             $html .= "<div class='row'><div class='col-md-12' data-col-width='12' data-dropzone='column'>";
             $html .= generarFieldsetContenido($fsName, $fieldsetsConfig, $valores, $soloLectura);

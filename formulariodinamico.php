@@ -1,7 +1,8 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-$modoDiseno  = (int)($_GET['modoDiseno'] ?? 0);
+// Asegurar: solo diseño si ?modoDiseno=1 exacto
+$modoDiseno  = (isset($_GET['modoDiseno']) && $_GET['modoDiseno'] === '1') ? 1 : 0;
 $archivo_json = $_GET['archivo'] ?? 'formulariogenerico2.json';
 
 $archivo_base = basename($archivo_json);
@@ -43,17 +44,21 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 <style>
-body.design-mode .draggable-fieldset,
-body.design-mode .draggable-field { cursor: move; border: 2px dashed #0d6efd !important; background: rgba(13,110,253,.05); }
+/* IMPORTANTE: Escopar al root del formulario, no al <body> */
+#fd-root.design-mode .draggable-fieldset,
+#fd-root.design-mode .draggable-field { cursor: move; border: 2px dashed #0d6efd !important; background: rgba(13,110,253,.05); }
 .sortable-ghost { background: #e7f1ff; border: 2px dashed #0d6efd; opacity: .7; }
-body.design-mode [data-col-width] { min-height: 80px; background: #f8f9fa; border: 1px dashed #dee2e6; padding: .5rem; }
+#fd-root.design-mode [data-col-width] { min-height: 80px; background: #f8f9fa; border: 1px dashed #dee2e6; padding: .5rem; }
 #elementos-fuera-container { display: <?php echo $modoDiseno ? 'block' : 'none'; ?>; }
 .design-mode-switch { position: fixed; right: 16px; bottom: 16px; z-index: 1050; background: #fff; border-radius: 999px; padding: 8px 12px; box-shadow: 0 4px 12px rgba(0,0,0,.15); display: flex; align-items: center; gap: 8px; }
 .edit-icon { cursor: pointer; color: #6c757d; margin-left: 6px; }
 .edit-icon:hover { color: #0d6efd; }
 </style>
 </head>
-<body class="<?php echo $modoDiseno ? 'design-mode' : ''; ?>">
+<body>
+
+<!-- Root aislado para este formulario -->
+<div id="fd-root" class="<?php echo $modoDiseno ? 'design-mode' : ''; ?>">
 
 <div class="container mt-4 mb-5">
     <?php if ($modoDiseno): ?>
@@ -86,6 +91,7 @@ body.design-mode [data-col-width] { min-height: 80px; background: #f8f9fa; borde
     </div>
 </div>
 
+<!-- Switch de modo diseño dentro del root -->
 <div class="design-mode-switch">
     <button id="undoBtn" class="btn btn-outline-secondary btn-sm" style="display:none" title="Deshacer"><i class="fas fa-undo"></i></button>
     <button id="redoBtn" class="btn btn-outline-secondary btn-sm" style="display:none" title="Rehacer"><i class="fas fa-redo"></i></button>
@@ -95,6 +101,8 @@ body.design-mode [data-col-width] { min-height: 80px; background: #f8f9fa; borde
     </div>
     <button id="saveLayoutBtn" class="btn btn-success btn-sm" style="<?php echo $modoDiseno ? '' : 'display:none'; ?>">Guardar diseño</button>
 </div>
+
+</div><!-- /#fd-root -->
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>

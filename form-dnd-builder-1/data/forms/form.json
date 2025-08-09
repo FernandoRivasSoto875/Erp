@@ -1,0 +1,36 @@
+{
+  "layout": {
+    "main": {
+      "tabs": [
+        {
+          "title": "Tab 1",
+          "rows": [
+            {
+              "columns": [
+                {
+                  "field": "field_1"
+                },
+                {
+                  "field": "field_2"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Tab 2",
+          "rows": [
+            {
+              "columns": [
+                {
+                  "field": "field_3"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "elementos_fuera": []
+}

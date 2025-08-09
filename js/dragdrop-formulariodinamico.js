@@ -524,3 +524,246 @@ $(function(){
             });
     });
 });
+
+// Inicialización DnD, edición y guardado en modo diseño
+(function(){
+    function inDesign() { return document.body.classList.contains('design-mode'); }
+    function getArchivoJson() { return (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || ''; }
+
+    function initSortable() {
+        if (!inDesign() || typeof Sortable === 'undefined') return;
+
+        // Campos dentro de cada fieldset
+        document.querySelectorAll('.sortable-fields-container').forEach(el => {
+            Sortable.create(el, {
+                group: { name: 'fields', pull: true, put: true },
+                draggable: '.draggable-field',
+                animation: 150,
+                onEnd: () => window.__designHistory && window.__designHistory.saveState()
+            });
+        });
+
+        // Fieldsets entre columnas y pestañas
+        document.querySelectorAll('[data-dropzone="column"], [data-dropzone="tab-pane"]').forEach(el => {
+            Sortable.create(el, {
+                group: { name: 'fieldsets', pull: true, put: true },
+                draggable: '.draggable-fieldset',
+                animation: 150,
+                handle: 'legend,[data-fieldset-title]',
+                onEnd: () => window.__designHistory && window.__designHistory.saveState()
+            });
+        });
+
+        // Parking: elementos fuera del formulario
+        const outside = document.querySelector('#elementos-fuera-container');
+        if (outside) {
+            Sortable.create(outside, {
+                group: { name: 'fieldsets', pull: true, put: true },
+                draggable: '.draggable-fieldset,.draggable-field',
+                animation: 150,
+                onEnd: () => window.__designHistory && window.__designHistory.saveState()
+            });
+        }
+
+        // Reordenar tabs (nav)
+        document.querySelectorAll('ul.nav[role="tablist"]').forEach(nav => {
+            Sortable.create(nav, {
+                group: 'tabs',
+                animation: 150,
+                draggable: '.nav-item',
+                handle: '.nav-link',
+                onEnd: () => {
+                    // Reordenar panes siguiendo nav
+                    const block = nav.closest('[data-block-type="tabs"]');
+                    if (!block) return;
+                    const content = block.querySelector('.tab-content');
+                    const ids = Array.from(nav.querySelectorAll('.nav-link')).map(a => a.getAttribute('href')?.replace('#','')).filter(Boolean);
+                    ids.forEach(id => {
+                        const pane = content.querySelector('#'+CSS.escape(id));
+                        if (pane) content.appendChild(pane);
+                    });
+                    window.__designHistory && window.__designHistory.saveState();
+                }
+            });
+        });
+    }
+
+    // Edición de propiedades
+    function initPropertyEditors() {
+        if (!inDesign()) return;
+
+        // Renombrar pestaña
+        document.addEventListener('click', async (e) => {
+            const icon = e.target.closest('.edit-tab-icon');
+            if (!icon) return;
+            const li = icon.closest('.nav-item');
+            const a = li && li.querySelector('.nav-link');
+            if (!a) return;
+            const { value: title } = await Swal.fire({ title: 'Título de pestaña', input: 'text', inputValue: a.textContent.trim(), showCancelButton: true });
+            if (title) a.textContent = title;
+            window.__designHistory && window.__designHistory.saveState();
+        });
+
+        // Editar fieldset (título)
+        document.addEventListener('click', async (e) => {
+            const icon = e.target.closest('.edit-icon[data-edit="fieldset"]');
+            if (!icon) return;
+            const fieldsetName = icon.getAttribute('data-fieldset') || '';
+            const wrapper = icon.closest('.draggable-fieldset');
+            const legend = wrapper && wrapper.querySelector('[data-fieldset-title]');
+            const current = legend ? legend.textContent.trim() : '';
+            const { value: titulo } = await Swal.fire({ title: 'Título del grupo', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' });
+            if (!titulo || !fieldsetName) return;
+            // Persistir
+            const archivo = getArchivoJson();
+            $.post('editar_propiedades.php', { archivo, tipo:'fieldset', fieldset: fieldsetName, titulo })
+             .done(resp => {
+                if (resp && resp.success) { if (legend) legend.textContent = titulo; Swal.fire('OK','Actualizado','success'); }
+                else Swal.fire('Error', (resp && resp.error) || 'No se pudo actualizar', 'error');
+             })
+             .fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
+        });
+
+        // Editar campo (etiqueta básica)
+        document.addEventListener('click', async (e) => {
+            const icon = e.target.closest('.edit-icon[data-edit="field"]');
+            if (!icon) return;
+            const fieldset = icon.getAttribute('data-fieldset') || '';
+            const nombre   = icon.getAttribute('data-field') || '';
+            const wrapper  = icon.closest('.draggable-field');
+            const labelEl  = wrapper && wrapper.querySelector('label');
+            const current  = labelEl ? labelEl.textContent.trim() : '';
+            const { value: etiqueta } = await Swal.fire({ title: 'Etiqueta del campo', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' });
+            if (!etiqueta || !fieldset || !nombre) return;
+            const archivo = getArchivoJson();
+            $.post('editar_propiedades.php', { archivo, tipo:'field', fieldset, nombre, etiqueta })
+             .done(resp => {
+                if (resp && resp.success) { if (labelEl) labelEl.textContent = etiqueta; Swal.fire('OK','Actualizado','success'); }
+                else Swal.fire('Error', (resp && resp.error) || 'No se pudo actualizar', 'error');
+             })
+             .fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
+        });
+    }
+
+    // Serialización del diseño a JSON
+    function collectElementosFuera() {
+        const out = document.querySelector('#elementos-fuera-container');
+        if (!out) return [];
+        const items = [];
+        out.querySelectorAll('.draggable-fieldset').forEach(fs => {
+            const name = fs.getAttribute('data-fieldset-name');
+            if (name) items.push({ type:'fieldset', name });
+        });
+        out.querySelectorAll('.draggable-field').forEach(f => {
+            const name = f.getAttribute('data-field-name');
+            if (name) items.push({ type:'field', name });
+        });
+        return items;
+    }
+
+    function reorderFieldsetsFromDOM(originalFieldsets) {
+        // Clonar mapa
+        const fsOut = JSON.parse(JSON.stringify(originalFieldsets || {}));
+        // Para cada fieldset presente en DOM, reordenar 'campos' según .draggable-field
+        document.querySelectorAll('.draggable-fieldset[data-fieldset-name]').forEach(fs => {
+            const name = fs.getAttribute('data-fieldset-name');
+            if (!name || !fsOut[name]) return;
+            const fields = Array.from(fs.querySelectorAll('.sortable-fields-container .draggable-field[data-field-name]')).map(n => n.getAttribute('data-field-name'));
+            if (!fields.length) return;
+            const current = Array.isArray(fsOut[name].campos) ? fsOut[name].campos : [];
+            const map = {};
+            current.forEach(c => { map[c.nombre] = c; });
+            const reordered = [];
+            fields.forEach(fname => { if (map[fname]) reordered.push(map[fname]); });
+            // añadir los no visibles (si existen)
+            current.forEach(c => { if (!reordered.find(rc => rc.nombre === c.nombre)) reordered.push(c); });
+            fsOut[name].campos = reordered;
+        });
+        return fsOut;
+    }
+
+    function buildLayoutFromDOM() {
+        const layout = [];
+        const container = document.querySelector('[data-layout-container]');
+        if (!container) return layout;
+
+        // Tabs blocks
+        container.querySelectorAll('[data-block-type="tabs"]').forEach(block => {
+            const tabs = [];
+            const navLinks = block.querySelectorAll('ul.nav [data-tab-id], ul.nav .nav-link[href^="#"]');
+            const panes = block.querySelectorAll('.tab-content .tab-pane');
+            const idToTitle = {};
+            navLinks.forEach(a => {
+                const id = a.getAttribute('href')?.replace('#','') || a.getAttribute('data-tab-id');
+                if (id) idToTitle[id] = a.textContent.trim();
+            });
+            panes.forEach(pane => {
+                const id = pane.getAttribute('id');
+                const title = idToTitle[id] || 'Pestaña';
+                // Recoger fieldsets por columna (simple: col-12)
+                const cols = [];
+                const col = { width: 12, fieldsets: [] };
+                pane.querySelectorAll('.draggable-fieldset[data-fieldset-name]').forEach(fs => {
+                    const name = fs.getAttribute('data-fieldset-name'); if (name) col.fieldsets.push(name);
+                });
+                cols.push(col);
+                tabs.push({ title, rows: [ { columns: cols.map(c => ({ width: c.width, fieldset: c.fieldsets[0] || null })) } ] });
+            });
+            layout.push({ type: 'tabs', tabs });
+        });
+
+        // Generic/header/footer blocks (si existen col containers directos)
+        container.querySelectorAll('[data-block-type="generic"],[data-block-type="header"],[data-block-type="footer"]').forEach(block => {
+            const rows = [];
+            block.querySelectorAll('[data-row]').forEach(r => {
+                const row = { columns: [] };
+                r.querySelectorAll('[data-col-width]').forEach(colEl => {
+                    const width = parseInt(colEl.getAttribute('data-col-width') || '12', 10);
+                    // tomar el primer fieldset en la columna (simple)
+                    const firstFs = colEl.querySelector('.draggable-fieldset[data-fieldset-name]');
+                    if (firstFs) row.columns.push({ width, fieldset: firstFs.getAttribute('data-fieldset-name') });
+                });
+                if (row.columns.length) rows.push(row);
+            });
+            if (rows.length) layout.push({ type: block.getAttribute('data-block-type') || 'generic', rows });
+        });
+
+        return layout;
+    }
+
+    function saveDesign() {
+        const archivo = getArchivoJson();
+        if (!archivo) { Swal.fire('Atención','No se detectó el archivo JSON.','warning'); return; }
+
+        const original = (window.formularioJsonOriginal && window.formularioJsonOriginal.fieldsets) || {};
+        const fieldsets = reorderFieldsetsFromDOM(original);
+        const layout = buildLayoutFromDOM();
+        const elementos_fuera = collectElementosFuera();
+        const layout_html = (document.querySelector('[data-layout-container]') || {}).innerHTML || '';
+
+        const payload = {
+            archivo,
+            layout: JSON.stringify(layout),
+            elementos_fuera: JSON.stringify(elementos_fuera),
+            fieldsets: JSON.stringify(fieldsets),
+            layout_html
+        };
+
+        $.post('guardar_layout.php', payload)
+         .done(resp => {
+            if (resp && resp.success) Swal.fire('OK','Diseño guardado.','success');
+            else Swal.fire('Error', (resp && resp.error) || 'No se pudo guardar', 'error');
+         })
+         .fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+        if (!inDesign()) return;
+        initSortable();
+        initPropertyEditors();
+
+        const saveBtn = document.getElementById('saveLayoutBtn');
+        if (saveBtn) saveBtn.style.display = '';
+        if (saveBtn) saveBtn.addEventListener('click', saveDesign);
+    });
+})();

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Form Drag and Drop Builder</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/design.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Form Builder</h1>
+            <button id="toggle-design-mode">Toggle Design Mode</button>
+        </header>
+        <div class="tabs-container">
+            <!-- Dynamic tabs will be generated here -->
+        </div>
+        <div id="elementos-fuera-container">
+            <h2>Available Elements</h2>
+            <!-- Elements to drag will be listed here -->
+        </div>
+        <div class="layout-container">
+            <!-- The form layout will be rendered here -->
+        </div>
+    </div>
+    <script src="js/libs/sortable.min.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/design-mode.js"></script>
+    <script src="js/json-sync.js"></script>
+    <script src="js/dragdrop-formulariodinamico.js"></script>
+</body>
+</html>

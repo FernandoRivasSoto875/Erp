@@ -1,0 +1,133 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+}
+
+.container {
+    width: 90%;
+    margin: 20px auto;
+    padding: 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+h1, h2, h3 {
+    color: #333;
+}
+
+.tab-container {
+    display: flex;
+    border-bottom: 2px solid #ccc;
+}
+
+.tab {
+    padding: 10px 20px;
+    cursor: pointer;
+    background: #e8e8e8;
+    margin-right: 5px;
+    border-radius: 4px 4px 0 0;
+}
+
+.tab.active {
+    background: #fff;
+    border-bottom: 2px solid #fff;
+}
+
+.rows {
+    display: flex;
+    flex-direction: column;
+    margin-top: 10px;
+}
+
+.row {
+    display: flex;
+    margin-bottom: 10px;
+}
+
+.column {
+    flex: 1;
+    padding: 10px;
+    border: 1px dashed #ccc;
+    background: #f9f9f9;
+    border-radius: 4px;
+    margin-right: 10px;
+}
+
+.column:last-child {
+    margin-right: 0;
+}
+
+.draggable-campo {
+    padding: 10px;
+    background: #d1e7dd;
+    border: 1px solid #0f5132;
+    border-radius: 4px;
+    cursor: move;
+}
+
+.draggable-fieldset {
+    padding: 10px;
+    background: #cfe2ff;
+    border: 1px solid #1e7e34;
+    border-radius: 4px;
+    cursor: move;
+}
+
+.editable-title {
+    cursor: text;
+    border: 1px dashed transparent;
+}
+
+.editable-title:focus {
+    border: 1px dashed #007bff;
+}
+
+.sidebar {
+    position: fixed;
+    right: -400px;
+    top: 0;
+    width: 400px;
+    height: 100%;
+    background: #fff;
+    box-shadow: -2px 0 12px rgba(0, 0, 0, 0.15);
+    transition: right 0.3s;
+    z-index: 9999;
+}
+
+.sidebar.active {
+    right: 0;
+}
+
+.sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sidebar-body {
+    padding: 16px;
+    overflow-y: auto;
+    height: calc(100% - 56px);
+}
+
+button {
+    padding: 8px 16px;
+    background: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #0056b3;
+}
+
+.hidden {
+    display: none;
+}

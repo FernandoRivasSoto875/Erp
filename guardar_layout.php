@@ -1,70 +1,47 @@
 <?php
 // guardar_layout.php
-header('Content-Type: application/json');
+if (session_status() === PHP_SESSION_NONE) session_start();
+header('Content-Type: application/json; charset=utf-8');
 
-// --- Validación de Seguridad Básica ---
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405); // Method Not Allowed
-    echo json_encode(['estado' => 'error', 'mensaje' => 'Método no permitido.']);
-    exit;
-}
-
-$input = json_decode(file_get_contents('php://input'), true);
-
-$nombreArchivoJson = $input['archivo_json'] ?? null;
-$nuevoLayout = $input['layout'] ?? null;
-// Aceptamos un nuevo array para los elementos que están fuera del formulario principal
-$elementosFuera = $input['elementos_fuera'] ?? []; 
-
-if (!$nombreArchivoJson || !$nuevoLayout) {
-    http_response_code(400); // Bad Request
-    echo json_encode(['estado' => 'error', 'mensaje' => 'Faltan datos necesarios (archivo_json o layout).']);
-    exit;
-}
-
-// --- Medida de seguridad: Evitar Path Traversal ---
-// Asegurarse de que el archivo esté dentro del directorio 'json/'
-$baseDir = __DIR__ . '/json/';
-$rutaCompleta = realpath($baseDir . basename($nombreArchivoJson));
-
-if (!$rutaCompleta || strpos($rutaCompleta, $baseDir) !== 0 || !file_exists($rutaCompleta)) {
-    http_response_code(400);
-    echo json_encode(['estado' => 'error', 'mensaje' => 'Archivo JSON no válido o no encontrado.']);
-    exit;
-}
-
-// --- Lógica para Actualizar el JSON ---
 try {
-    // Leer el contenido actual del archivo
-    $contenidoJson = file_get_contents($rutaCompleta);
-    if ($contenidoJson === false) {
-        throw new Exception('No se pudo leer el archivo JSON.');
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new RuntimeException('Método no permitido');
+    $archivo = $_POST['archivo'] ?? '';
+    if (!$archivo) throw new InvalidArgumentException('Falta archivo');
+
+    $base = basename($archivo);
+    if (stripos($base, '.json') === false) $base .= '.json';
+    $path = __DIR__ . DIRECTORY_SEPARATOR . 'json' . DIRECTORY_SEPARATOR . $base;
+    if (!is_file($path)) throw new RuntimeException('JSON no encontrado');
+
+    $json = json_decode(file_get_contents($path), true);
+    if (!is_array($json)) $json = [];
+
+    if (isset($_POST['layout'])) {
+        $layout = json_decode((string)$_POST['layout'], true);
+        if (json_last_error() !== JSON_ERROR_NONE) throw new InvalidArgumentException('layout inválido');
+        $json['layout'] = $layout;
+    }
+    if (isset($_POST['elementos_fuera'])) {
+        $out = json_decode((string)$_POST['elementos_fuera'], true);
+        if (json_last_error() !== JSON_ERROR_NONE) throw new InvalidArgumentException('elementos_fuera inválido');
+        $json['elementos_fuera'] = $out;
+    }
+    if (isset($_POST['fieldsets'])) {
+        $fs = json_decode((string)$_POST['fieldsets'], true);
+        if (json_last_error() !== JSON_ERROR_NONE) throw new InvalidArgumentException('fieldsets inválido');
+        $json['fieldsets'] = $fs;
+    }
+    if (isset($_POST['layout_html'])) {
+        $json['layout_html'] = (string)$_POST['layout_html'];
     }
 
-    $datos = json_decode($contenidoJson, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        throw new Exception('Error al decodificar el JSON: ' . json_last_error_msg());
-    }
+    $backup = $path.'.bak-'.date('Ymd_His');
+    @copy($path, $backup);
+    file_put_contents($path, json_encode($json, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));
 
-    // Reemplazar la sección de layout
-    $datos['layout'] = $nuevoLayout;
-    
-    // Añadir o actualizar la sección de elementos fuera
-    $datos['elementos_fuera'] = $elementosFuera;
-
-    // Guardar el archivo con el nuevo layout
-    // JSON_PRETTY_PRINT para que sea legible
-    // JSON_UNESCAPED_UNICODE para no convertir caracteres como 'ñ' o 'á' a \uXXXX
-    $resultado = file_put_contents($rutaCompleta, json_encode($datos, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-
-    if ($resultado === false) {
-        throw new Exception('No se pudo escribir en el archivo JSON. Verifique los permisos.');
-    }
-
-    echo json_encode(['estado' => 'exito', 'mensaje' => 'El diseño ha sido guardado correctamente.']);
-
-} catch (Exception $e) {
-    http_response_code(500); // Internal Server Error
-    echo json_encode(['estado' => 'error', 'mensaje' => $e->getMessage()]);
+    echo json_encode(['success'=>true, 'message'=>'Layout guardado', 'backup'=>basename($backup)]);
+} catch (Throwable $e) {
+    http_response_code(400);
+    echo json_encode(['success'=>false, 'error'=>$e->getMessage()]);
 }
 

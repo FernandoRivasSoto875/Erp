@@ -341,3 +341,35 @@ $(document).ready(function() {
         disableDesignMode();
     }
 });
+
+(function(){
+    let history = [], idx = -1;
+    function updateUndoRedoButtons() {
+        const u = document.getElementById('undoBtn'), r = document.getElementById('redoBtn');
+        if (!u || !r) return;
+        u.style.display = idx > 0 ? '' : 'none';
+        r.style.display = idx < history.length - 1 ? '' : 'none';
+    }
+    function saveState() {
+        const cont = document.querySelector('[data-layout-container]');
+        if (!cont) return;
+        const html = cont.innerHTML;
+        if (idx >= 0 && history[idx] === html) return;
+        if (idx < history.length - 1) history = history.slice(0, idx + 1);
+        history.push(html); idx++; updateUndoRedoButtons();
+    }
+    function restore(i) {
+        const cont = document.querySelector('[data-layout-container]');
+        if (!cont) return;
+        if (i >= 0 && i < history.length) { cont.innerHTML = history[i]; idx = i; updateUndoRedoButtons(); }
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+        const body = document.body;
+        if (body.classList.contains('design-mode')) saveState();
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        if (undoBtn) undoBtn.addEventListener('click', () => restore(idx - 1));
+        if (redoBtn) redoBtn.addEventListener('click', () => restore(idx + 1));
+    });
+    window.__designHistory = { saveState };
+})();

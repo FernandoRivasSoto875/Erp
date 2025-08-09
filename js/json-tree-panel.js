@@ -74,14 +74,18 @@
     if (!body) return;
     body.innerHTML = '';
 
-    // Cabecera: Form/Parametros
+    // NUEVO: bloque completo de parametros (recursivo)
+    const parametrosRoot = (data.parametros || {});
+    body.appendChild(renderObjectTree('parametros', parametrosRoot, ['parametros']));
+
+    // Cabecera: Form/Parametros resumido (mantengo)
     const params = data.parametros || {};
     body.appendChild(createGroup('Formulario', [
-      createLeaf('titulo', params.titulo ?? (data.titulo ?? '')), // fallback
+      createLeaf('titulo', params.titulo ?? (data.titulo ?? '')),
       createLeaf('descripcion', data.descripcion ?? ''),
     ], { type: 'form' }));
 
-    // Layout
+    // Layout (igual que antes)
     const layout = data.layout || {};
     const layoutDetails = document.createElement('details');
     layoutDetails.open = true;
@@ -142,7 +146,7 @@
     layoutDetails.appendChild(layoutWrap);
     body.appendChild(layoutDetails);
 
-    // Fieldsets
+    // Fieldsets (igual que antes)
     const fsMap = data.fieldsets || {};
     const fsD = document.createElement('details'); fsD.open = true;
     fsD.innerHTML = `<summary><span class="json-tree-node"><span class="json-node-key">fieldsets</span></span></summary>`;
@@ -177,6 +181,14 @@
     });
     fsD.appendChild(fsWrap);
     body.appendChild(fsD);
+
+    // NUEVO: otros nodos del JSON no cubiertos (elementos_fuera, etc.)
+    const handled = new Set(['parametros','layout','fieldsets']);
+    Object.keys(data).forEach(k=>{
+      if (!handled.has(k)) {
+        body.appendChild(renderAnyNode(k, data[k], [k]));
+      }
+    });
 
     bindEditActions(body);
   }
@@ -250,6 +262,104 @@
     });
   }
 
+  // NUEVO: utilidades de render recursivo y edición de parametros
+  function renderObjectTree(title, obj, path){
+    const d = document.createElement('details'); d.open = true;
+    d.innerHTML = `<summary><span class="json-tree-node">
+      <span class="json-node-key">${esc(title)}</span>
+      <span class="json-node-meta">object</span>
+    </span></summary>`;
+    const wrap = document.createElement('div');
+    Object.keys(obj || {}).forEach(key=>{
+      wrap.appendChild(renderAnyNode(key, obj[key], path.concat(key)));
+    });
+    d.appendChild(wrap);
+    return d;
+  }
+
+  function renderAnyNode(key, val, path){
+    const t = typeOf(val);
+    if (t === 'object') {
+      const det = document.createElement('details'); det.open = false;
+      det.innerHTML = `<summary><span class="json-tree-node">
+        <i class="far fa-folder"></i>
+        <span class="json-node-key">${esc(key)}</span>
+        <span class="json-node-meta">object</span>
+      </span></summary>`;
+      const wrap = document.createElement('div'); wrap.style.paddingLeft='12px';
+      Object.keys(val || {}).forEach(k=>{
+        wrap.appendChild(renderAnyNode(k, val[k], path.concat(k)));
+      });
+      det.appendChild(wrap);
+      return det;
+    }
+    if (t === 'array') {
+      const det = document.createElement('details'); det.open = false;
+      det.innerHTML = `<summary><span class="json-tree-node">
+        <i class="far fa-folder-open"></i>
+        <span class="json-node-key">${esc(key)}</span>
+        <span class="json-node-meta">array(${val.length})</span>
+      </span></summary>`;
+      const wrap = document.createElement('div'); wrap.style.paddingLeft='12px';
+      val.forEach((item, idx)=>{
+        wrap.appendChild(renderAnyNode(`[${idx}]`, item, path.concat(idx)));
+      });
+      det.appendChild(wrap);
+      return det;
+    }
+    // leaf
+    const div = document.createElement('div');
+    div.className = 'json-tree-node';
+    div.dataset.path = JSON.stringify(path);
+    div.innerHTML = `
+      <i class="far fa-dot-circle"></i>
+      <span class="json-node-key">${esc(key)}</span>
+      <span class="json-node-meta">${renderValueInline(val)}</span>
+      ${nodeActionsHtml('param')}
+    `;
+    return div;
+  }
+
+  function typeOf(v){
+    if (Array.isArray(v)) return 'array';
+    if (v === null) return 'null';
+    return typeof v === 'object' ? 'object' : typeof v;
+  }
+
+  function renderValueInline(v){
+    const t = typeOf(v);
+    if (t === 'object') return '{...}';
+    if (t === 'array') return '[...]';
+    if (t === 'string') return `"${esc(v)}"`;
+    if (t === 'boolean') return v ? 'true' : 'false';
+    if (t === 'null') return 'null';
+    return String(v);
+  }
+
+  function getAtPath(obj, path){
+    return path.reduce((acc, k)=> (acc==null?acc:acc[k]), obj);
+  }
+  function setAtPath(obj, path, value){
+    let curr = obj;
+    for (let i=0; i<path.length-1; i++){
+      const k = path[i];
+      if (curr[k] == null || typeof curr[k] !== 'object') curr[k] = (typeof path[i+1] === 'number' ? [] : {});
+      curr = curr[k];
+    }
+    curr[path[path.length-1]] = value;
+  }
+
+  // Guardado de parametros completos
+  function postGuardarParametros(nuevosParametros){
+    const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || '';
+    const form = new FormData();
+    form.append('archivo', archivo);
+    form.append('parametros', JSON.stringify(nuevosParametros));
+    return fetch('guardar_layout.php', { method:'POST', body: form })
+      .then(r => r.ok ? r.json() : r.json().then(e=>Promise.reject(new Error(e.error||'Error HTTP'))))
+      .then(j => { if (j.success===false) throw new Error(j.error||'Error'); return j; });
+  }
+
   function bindEditActions(root){
     root.addEventListener('click', function(e){
       const btn = e.target.closest('.act-edit');
@@ -271,6 +381,15 @@
       if (type === 'tab'){
         const titleMeta = node.querySelector('.json-node-meta')?.textContent?.trim();
         editTab(titleMeta);
+      }
+      // NUEVO: edición de hojas de parametros (y otros leaves)
+      if (type === 'param'){
+        const pathStr = node.dataset.path || '';
+        if (!pathStr) return;
+        try {
+          const path = JSON.parse(pathStr);
+          editParametroLeaf(path, node);
+        } catch(_){}
       }
     });
   }

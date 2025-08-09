@@ -457,6 +457,34 @@ $(function(){
   function inDesign(){ const r=root(); return !!(r && r.classList.contains('design-mode')); }
   function getArchivoJson(){ return (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || ''; }
 
+  // NUEVO: Normaliza el DOM si el backend no añadió data-atributos
+  function setupDomHints() {
+    // Asegura contenedor de layout
+    const form = document.getElementById('formulariodinamico');
+    if (form && !form.hasAttribute('data-layout-container')) form.setAttribute('data-layout-container','');
+
+    // Anotar bloque de tabs (si no trae data-block-type)
+    document.querySelectorAll('#fd-root ul.nav[role="tablist"]').forEach(nav => {
+      let block = nav.closest('[data-block-type="tabs"]');
+      if (!block) {
+        const parent = nav.parentElement;
+        if (parent && parent.querySelector('.tab-content')) block = parent;
+        else if (parent && parent.parentElement && parent.parentElement.querySelector('.tab-content')) block = parent.parentElement;
+        if (block && !block.getAttribute('data-block-type')) block.setAttribute('data-block-type','tabs');
+      }
+      const content = block ? block.querySelector('.tab-content') : null;
+      if (content) {
+        content.querySelectorAll('.tab-pane').forEach(p => {
+          if (!p.hasAttribute('data-dropzone')) p.setAttribute('data-dropzone','tab-pane');
+        });
+      }
+    });
+
+    // Marcar fieldsets/campos existentes
+    document.querySelectorAll('#fd-root [data-fieldset-name]').forEach(el => el.classList.add('draggable-fieldset'));
+    document.querySelectorAll('#fd-root [data-field-name]').forEach(el => el.classList.add('draggable-field'));
+  }
+
   // Serializa bloques genéricos
   function serializeGenericBlock(blockEl){
     const rows = [];
@@ -492,16 +520,28 @@ $(function(){
   // Construye layout parcial desde DOM
   function buildLayoutFromDOMObject(){
     const result = {};
-    const container = document.querySelector('#fd-root [data-layout-container]');
+    const container = document.querySelector('#fd-root [data-layout-container]') || document.getElementById('formulariodinamico') || document.getElementById('fd-root');
     if (!container) return result;
+
     const headerEl = container.querySelector('[data-block-type="header"]');
     if (headerEl) result.header = Object.assign({ type: 'header' }, serializeGenericBlock(headerEl));
-    const tabsEl = container.querySelector('[data-block-type="tabs"]');
+
+    // Fallback: detectar tabs por ul.nav[role="tablist"] si no hay data-block-type
+    const tabsEl = container.querySelector('[data-block-type="tabs"]') ||
+                   (function(){
+                      const nav = container.querySelector('ul.nav[role="tablist"]');
+                      return nav ? (nav.closest('[data-block-type="tabs"]') || nav.parentElement) : null;
+                   })();
     if (tabsEl) result.main = serializeTabsBlock(tabsEl);
+
     const footerEl = container.querySelector('[data-block-type="footer"]');
     if (footerEl) result.footer = Object.assign({ type: 'footer' }, serializeGenericBlock(footerEl));
     return result;
   }
+
+  // EXPORT: para que actualizarJsonDesdeUI pueda usarlo
+  window.buildLayoutFromDOMObject = buildLayoutFromDOMObject;
+
   // Reordena campos en fieldsets según DOM sin eliminar
   function reorderFieldsetsFromDOM(originalFieldsets) {
     const copy = JSON.parse(JSON.stringify(originalFieldsets || {}));
@@ -582,11 +622,14 @@ $(function(){
 
   // ---------- CRUD de pestañas ----------
   function ensureCrudUI() {
+    const processed = new WeakSet();
+
+    // Caso 1: bloques con data-block-type="tabs"
     document.querySelectorAll('#fd-root [data-block-type="tabs"]').forEach(block => {
       const nav = block.querySelector('ul.nav');
-      if (!nav) return;
+      if (!nav || processed.has(nav)) return;
+      processed.add(nav);
 
-      // Botón + Pestaña
       if (!block.querySelector('.add-tab-button')) {
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -597,149 +640,68 @@ $(function(){
         btn.addEventListener('click', () => addTab(block));
       }
 
-      // Íconos junto a cada tab (soporta li.nav-item y <a.nav-link> directos)
       const nodes = nav.querySelectorAll('.nav-item, .nav-link');
-      nodes.forEach(n => {
-        if (n.classList.contains('nav-item')) {
-          const li = n;
-          if (!li.querySelector('.edit-tab-icon')) {
-            const edit = document.createElement('span');
-            edit.className = 'edit-tab-icon edit-icon';
-            edit.title = 'Renombrar pestaña';
-            edit.innerHTML = '<i class="fas fa-pencil-alt"></i>';
-            li.appendChild(edit);
-          }
-          if (!li.querySelector('.delete-tab-icon')) {
-            const del = document.createElement('span');
-            del.className = 'delete-tab-icon edit-icon';
-            del.title = 'Eliminar pestaña';
-            del.innerHTML = '<i class="fas fa-trash"></i>';
-            li.appendChild(del);
-          }
-        } else if (n.classList.contains('nav-link')) {
-          const link = n;
-          if (!link.nextElementSibling || !link.nextElementSibling.classList.contains('edit-tab-icon')) {
-            const edit = document.createElement('span');
-            edit.className = 'edit-tab-icon edit-icon';
-            edit.title = 'Renombrar pestaña';
-            edit.innerHTML = '<i class="fas fa-pencil-alt"></i>';
-            link.parentNode.insertBefore(edit, link.nextSibling);
-          }
-          const next2 = link.nextElementSibling ? link.nextElementSibling.nextElementSibling : null;
-          if (!next2 || !next2.classList || !next2.classList.contains('delete-tab-icon')) {
-            const del = document.createElement('span');
-            del.className = 'delete-tab-icon edit-icon';
-            del.title = 'Eliminar pestaña';
-            del.innerHTML = '<i class="fas fa-trash"></i>';
-            if (link.nextSibling) link.parentNode.insertBefore(del, link.nextSibling.nextSibling);
-            else link.parentNode.appendChild(del);
-          }
-        }
-      });
+      nodes.forEach(n => injectTabIcons(n));
+    });
+
+    // Caso 2: navs sin data-block-type (fallback)
+    document.querySelectorAll('#fd-root ul.nav[role="tablist"]').forEach(nav => {
+      if (processed.has(nav)) return;
+      processed.add(nav);
+
+      const block = nav.closest('[data-block-type="tabs"]') || nav.parentElement;
+
+      if (!block.querySelector('.add-tab-button')) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn-sm btn-outline-primary add-tab-button ml-2';
+        btn.title = 'Agregar pestaña';
+        btn.innerHTML = '<i class="fas fa-plus"></i> Pestaña';
+        nav.parentNode.insertBefore(btn, nav.nextSibling);
+        btn.addEventListener('click', () => addTab(block));
+      }
+
+      const nodes = nav.querySelectorAll('.nav-item, .nav-link');
+      nodes.forEach(n => injectTabIcons(n));
     });
   }
 
-  function addTab(block, title) {
-    title = title || 'Nueva pestaña';
-    const nav = block.querySelector('ul.nav');
-    const content = block.querySelector('.tab-content');
-    if (!nav || !content) return;
-
-    const id = 'tab_' + Date.now();
-
-    // Preferir li.nav-item
-    if (nav.querySelector('.nav-item') || nav.children.length === 0) {
-      const li = document.createElement('li');
-      li.className = 'nav-item';
-      li.innerHTML = `<a class="nav-link" data-toggle="pill" href="#${id}" role="tab" aria-controls="${id}" aria-selected="false">${title}</a>`;
-      nav.appendChild(li);
-    } else {
-      const a = document.createElement('a');
-      a.className = 'nav-link';
-      a.setAttribute('data-toggle','pill');
-      a.setAttribute('href', `#${id}`);
-      a.setAttribute('role', 'tab');
-      a.setAttribute('aria-controls', id);
-      a.setAttribute('aria-selected', 'false');
-      a.textContent = title;
-      nav.appendChild(a);
+  // Factoriza la inyección de íconos
+  function injectTabIcons(node){
+    if (node.classList.contains('nav-item')) {
+      if (!node.querySelector('.edit-tab-icon')) {
+        const edit = document.createElement('span');
+        edit.className = 'edit-tab-icon edit-icon'; edit.title = 'Renombrar pestaña';
+        edit.innerHTML = '<i class="fas fa-pencil-alt"></i>'; node.appendChild(edit);
+      }
+      if (!node.querySelector('.delete-tab-icon')) {
+        const del = document.createElement('span');
+        del.className = 'delete-tab-icon edit-icon'; del.title = 'Eliminar pestaña';
+        del.innerHTML = '<i class="fas fa-trash"></i>'; node.appendChild(del);
+      }
+    } else if (node.classList.contains('nav-link')) {
+      const link = node;
+      if (!link.nextElementSibling || !link.nextElementSibling.classList.contains('edit-tab-icon')) {
+        const edit = document.createElement('span');
+        edit.className = 'edit-tab-icon edit-icon'; edit.title = 'Renombrar pestaña';
+        edit.innerHTML = '<i class="fas fa-pencil-alt"></i>'; link.parentNode.insertBefore(edit, link.nextSibling);
+      }
+      const after = link.nextElementSibling ? link.nextElementSibling.nextSibling : null;
+      if (!after || !after.classList || !after.classList.contains('delete-tab-icon')) {
+        const del = document.createElement('span');
+        del.className = 'delete-tab-icon edit-icon'; del.title = 'Eliminar pestaña';
+        del.innerHTML = '<i class="fas fa-trash"></i>';
+        if (link.nextSibling) link.parentNode.insertBefore(del, link.nextSibling.nextSibling);
+        else link.parentNode.appendChild(del);
+      }
     }
-
-    const pane = document.createElement('div');
-    pane.className = 'tab-pane fade';
-    pane.id = id;
-    pane.setAttribute('role', 'tabpanel');
-    pane.setAttribute('aria-labelledby', id + '-tab');
-    pane.setAttribute('data-dropzone', 'tab-pane');
-    pane.innerHTML = '';
-    content.appendChild(pane);
-
-    ensureCrudUI();
-    const lastLink = nav.querySelector('.nav-link:last-of-type');
-    $(nav).find('.nav-link').removeClass('active').attr('aria-selected','false');
-    $(content).find('.tab-pane').removeClass('show active');
-    if (lastLink) $(lastLink).addClass('active').attr('aria-selected','true');
-    $(pane).addClass('show active');
-
-    initSortable();
-    saveDesign();
   }
 
-  $(document).on('click', '.edit-tab-icon', function(){
-    if (!inDesign()) return;
-    const $a = $(this).closest('.nav-item').find('.nav-link').addBack().filter('.nav-link').first();
-    const current = $a.text().trim();
-    Swal.fire({ title: 'Título de pestaña', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' })
-      .then(res => { if (res.isConfirmed && res.value) { $a.text(res.value); saveDesign(); } });
-  });
-
-  $(document).on('click', '.delete-tab-icon', function(){
-    if (!inDesign()) return;
-    const li = this.closest('.nav-item');
-    const link = li ? li.querySelector('.nav-link')
-      : (this.previousElementSibling && this.previousElementSibling.classList.contains('edit-tab-icon')
-          ? this.previousElementSibling.previousElementSibling
-          : this.previousElementSibling);
-    if (!link || !link.classList.contains('nav-link')) return;
-    const href = link.getAttribute('href');
-    const block = link.closest('[data-block-type="tabs"]');
-    const nav = link.closest('ul.nav');
-    const content = block && block.querySelector('.tab-content');
-
-    Swal.fire({ title:'Eliminar pestaña', text:'Esta acción no se puede deshacer', icon:'warning', showCancelButton:true, confirmButtonText:'Eliminar' })
-      .then(res => {
-        if (!res.isConfirmed) return;
-        if (href && content) {
-          const pane = content.querySelector(href);
-          if (pane) pane.remove();
-        }
-        if (li) li.remove(); else link.remove();
-        const next = nav.querySelector('.nav-link');
-        if (next) $(next).trigger('click');
-        saveDesign();
-      });
-  });
-
-  // Navegación con Bootstrap o fallback
-  $(document).on('click', '#fd-root ul.nav .nav-link[href^="#"]', function(e){
-    const $a = $(this);
-    if (typeof $().tab === 'function') { e.preventDefault(); $a.tab('show'); return; }
-    e.preventDefault();
-    const href = $a.attr('href');
-    const $nav = $a.closest('ul');
-    const $block = $nav.closest('[data-block-type="tabs"]');
-    const $content = $block.find('.tab-content');
-    $nav.find('.nav-link').removeClass('active').attr('aria-selected','false');
-    $a.addClass('active').attr('aria-selected','true');
-    $content.find('.tab-pane').removeClass('show active');
-    $content.find(href).addClass('show active');
-  });
-
-  // Sortables
-  let sortables = [];
-  function destroySortables(){ sortables.forEach(s=>{ try{s.destroy();}catch(e){} }); sortables=[]; }
+  // Inicializa drag & drop en todas las zonas droppables del formulario
   function initSortable() {
     if (!inDesign() || typeof Sortable === 'undefined') return;
+    // Asegura pistas de DOM
+    setupDomHints();
 
     document.querySelectorAll('#fd-root [data-col-width], #fd-root [data-dropzone="tab-pane"], #elementos-fuera-container').forEach(el => {
       sortables.push(Sortable.create(el, {
@@ -752,18 +714,19 @@ $(function(){
       }));
     });
 
-    document.querySelectorAll('#fd-root [data-block-type="tabs"] ul.nav').forEach(nav => {
+    // Fallback: soporta también ul.nav[role="tablist"]
+    document.querySelectorAll('#fd-root [data-block-type="tabs"] ul.nav, #fd-root ul.nav[role="tablist"]').forEach(nav => {
       sortables.push(Sortable.create(nav, {
         group: 'tabs',
         animation: 150,
         draggable: '.nav-item, .nav-link',
         handle: '.nav-link',
         onEnd: () => {
-          const block = nav.closest('[data-block-type="tabs"]');
+          const block = nav.closest('[data-block-type="tabs"]') || nav.parentElement;
           const content = block && block.querySelector('.tab-content');
           if (!content) return;
           const ids = Array.from(nav.querySelectorAll('.nav-link'))
-            .map(a => (a.getAttribute('href') || '').slice(1))
+            .map(a => (a.getAttribute('href') || '').replace('#',''))
             .filter(Boolean);
           ids.forEach(id => {
             const pane = content.querySelector('#'+CSS.escape(id));
@@ -777,6 +740,8 @@ $(function(){
 
   function activateDesignMode() {
     if (!inDesign()) return;
+    // Normaliza DOM antes de activar
+    setupDomHints();
     destroySortables();
     ensureCrudUI();
     initSortable();
@@ -796,6 +761,8 @@ $(function(){
   });
 
   document.addEventListener('DOMContentLoaded', function(){
+    // Normaliza al cargar
+    setupDomHints();
     if (inDesign()) activateDesignMode();
   });
 })();

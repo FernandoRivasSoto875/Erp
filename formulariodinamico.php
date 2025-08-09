@@ -56,54 +56,28 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 </style>
 </head>
 <body>
-
-<!-- Root aislado para este formulario -->
 <div id="fd-root" class="<?php echo $modoDiseno ? 'design-mode' : ''; ?>">
-
-<div class="container mt-4 mb-5">
+    <!-- elementos_fuera solo en modo diseño -->
     <?php if ($modoDiseno): ?>
-    <div id="elementos-fuera-container" class="p-3 border rounded mb-3 bg-light" data-dropzone="outside">
-        <!-- se renderiza solo en modo diseño -->
-    </div>
+    <div id="elementos-fuera-container" class="p-3 border rounded mb-3 bg-light" data-dropzone="outside"></div>
     <?php endif; ?>
 
-    <div class="card">
-        <div class="card-header text-center">
-            <h2 id="form-title">
-                <?php echo htmlspecialchars($params['titulo'] ?? $titulo_formulario); ?>
-                <?php if ($modoDiseno): ?>
-                <span class="edit-icon" data-edit="form-title" title="Editar título"><i class="fas fa-pencil-alt"></i></span>
-                <?php endif; ?>
-            </h2>
-            <?php if (!empty($params['comentario'])): ?>
-                <p class="mb-0 text-muted"><?php echo htmlspecialchars($params['comentario']); ?></p>
-            <?php endif; ?>
-        </div>
-        <div class="card-body">
-            <form id="formulariodinamico" method="POST" action="formulariodinamico.php?archivo=<?php echo urlencode($archivo_base); ?>" enctype="multipart/form-data">
-                <?php echo generarLayout($layout, $fieldsets, [], (bool)$modoDiseno); ?>
-                <div class="mt-3">
-                    <button type="submit" class="btn btn-primary" <?php echo $modoDiseno ? 'disabled' : ''; ?>>Guardar</button>
-                    <button type="button" class="btn btn-secondary" onclick="history.back()">Cancelar</button>
-                </div>
-            </form>
-        </div>
-    </div>
+    <form id="formulariodinamico" method="POST" action="formulariodinamico.php?archivo=<?php echo urlencode($archivo_base); ?>" enctype="multipart/form-data">
+        <?php
+        // IMPORTANTE: soloLectura = !$modoDiseno
+        echo generarLayout($layout, $fieldsets, [], !$modoDiseno);
+        ?>
+        <button type="submit" class="btn btn-primary" <?php echo $modoDiseno ? 'disabled' : ''; ?>>Guardar</button>
+    </form>
 </div>
-
-<!-- Switch de modo diseño dentro del root -->
-<div class="design-mode-switch">
-    <button id="undoBtn" class="btn btn-outline-secondary btn-sm" style="display:none" title="Deshacer"><i class="fas fa-undo"></i></button>
-    <button id="redoBtn" class="btn btn-outline-secondary btn-sm" style="display:none" title="Rehacer"><i class="fas fa-redo"></i></button>
-    <div class="custom-control custom-switch">
-        <input type="checkbox" class="custom-control-input" id="designModeToggle" <?php echo $modoDiseno ? 'checked' : ''; ?>>
-        <label class="custom-control-label" for="designModeToggle">Modo diseño</label>
-    </div>
-    <button id="saveLayoutBtn" class="btn btn-success btn-sm" style="<?php echo $modoDiseno ? '' : 'display:none'; ?>">Guardar diseño</button>
-</div>
-
-</div><!-- /#fd-root -->
-
+<!-- toggle que recarga con ?modoDiseno=1|0 -->
+<script>
+document.getElementById('designModeToggle')?.addEventListener('change', function(){
+    const u = new URL(location.href);
+    u.searchParams.set('modoDiseno', this.checked ? '1':'0');
+    location.href = u.toString();
+});
+</script>
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

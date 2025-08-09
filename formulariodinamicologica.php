@@ -1,6 +1,19 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
-if (!function_exists('generarCampo')) { function generarCampo(array $c,$v=null,$ro=false){$n=htmlspecialchars($c['nombre']??'sin_nombre',ENT_QUOTES,'UTF-8');$l=htmlspecialchars($c['etiqueta']??$n,ENT_QUOTES,'UTF-8');$d=$ro?'disabled':'';return "<div class='form-group mb-2'><label class='form-label'>{$l}</label><input type='text' name='{$n}' value='".htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8')."' class='form-control' {$d}></div>";}}
+
+// FIX: quitar llave sobrante y mejorar generarCampo (tipo/placeholder)
+if (!function_exists('generarCampo')) {
+    function generarCampo(array $c, $v = null, $ro = false) {
+        $n  = htmlspecialchars($c['nombre'] ?? 'sin_nombre', ENT_QUOTES, 'UTF-8');
+        $l  = htmlspecialchars($c['etiqueta'] ?? $n, ENT_QUOTES, 'UTF-8');
+        $ph = htmlspecialchars($c['placeholder'] ?? '', ENT_QUOTES, 'UTF-8');
+        $t  = htmlspecialchars($c['tipo'] ?? 'text', ENT_QUOTES, 'UTF-8');
+        $d  = $ro ? 'disabled' : '';
+        return "<div class='form-group mb-2'>
+                    <label class='form-label'>{$l}</label>
+                    <input type='{$t}' name='{$n}' value='".htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8')."' placeholder='{$ph}' class='form-control' {$d}>
+                </div>";
+    }
 }
 
 function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {

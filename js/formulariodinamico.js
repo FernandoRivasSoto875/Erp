@@ -394,23 +394,28 @@ $(document).ready(function() {
             designModeToggle.prop('checked', true);
             enableDesignMode();
         } else {
-            body.removeClass('design-mode'); // por si el servidor lo dejó seteado
+            body.removeClass('design-mode');
             designModeToggle.prop('checked', false);
-            disableDesignMode(false); // no re-inicializar doble
+            disableDesignMode(false);
         }
     })();
 
-    // Forzar MODO NORMAL apenas carga el script (salvo ?modoDiseno=1)
-    (function enforceNormalModeEarly(){
+    // Forzar MODO NORMAL lo antes posible (salvo ?modoDiseno=1)
+    (function enforceNormalModeEarly() {
         try {
-            const isDesign = new URLSearchParams(window.location.search).get('modoDiseno') === '1';
+            var isDesign = new URLSearchParams(window.location.search).get('modoDiseno') === '1';
             if (!isDesign) {
-                // Quitar clase de servidor y ocultar parking si vino visible
-                if (document.body) document.body.classList.remove('design-mode');
-                const fuera = document.getElementById('elementos-fuera-container');
+                if (document.body) {
+                    document.body.classList.remove('design-mode');
+                } else {
+                    document.addEventListener('DOMContentLoaded', function () {
+                        document.body && document.body.classList.remove('design-mode');
+                    }, { once: true });
+                }
+                var fuera = document.getElementById('elementos-fuera-container');
                 if (fuera) fuera.style.display = 'none';
             }
-        } catch(e) { /* noop */ }
+        } catch (e) {}
     })();
 });
 

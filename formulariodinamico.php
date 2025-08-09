@@ -78,6 +78,11 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 }
 #fd-root.design-mode [data-block-type="tabs"] .nav .edit-tab-icon:hover,
 #fd-root.design-mode [data-block-type="tabs"] .nav .delete-tab-icon:hover { color: #0d6efd; }
+
+#fd-root .nav-tabs { flex-direction: row !important; }
+#fd-root .nav-tabs .nav-item { margin-bottom: -1px; }
+#fd-root .tab-content .tab-pane { display: none; }
+#fd-root .tab-content .tab-pane.show.active { display: block; }
 </style>
 </head>
 <body>

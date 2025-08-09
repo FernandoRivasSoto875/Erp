@@ -95,7 +95,8 @@ if (!function_exists('renderFieldsetGroup')) {
         $title = (string)($group['title'] ?? 'Grupo');
         $items = is_array($group['items'] ?? null) ? $group['items'] : [];
         $html  = '<div class="fd-block mb-3 p-2 border rounded" data-block-type="fieldset-group"';
-                 ($groupPath ? ' data-group-items-path="'.fd_escape($groupPath).'.items"' : '').'>';
+        $html .= ($groupPath ? ' data-group-items-path="'.fd_escape($groupPath).'.items"' : '');
+        $html .= '>';
         $html .= '<div class="small text-muted mb-2">'.fd_escape($title).'</div>';
         $html .= '<div class="fd-group-items">';
         foreach ($items as $idx => $it) {
@@ -145,11 +146,10 @@ if (!function_exists('renderGenericBlock')) {
 if (!function_exists('renderTabsBlock')) {
     function renderTabsBlock(array $tabset, array $fieldsets, array $valores = [], bool $soloLectura = false, string $tabsetPath = ''): string {
         $tabs = $tabset['tabs'] ?? [];
-        // Path al array de tabs (para persistir DnD)
         $tabsPathAttr = $tabsetPath ? $tabsetPath.'.tabs' : '';
         $html = '<div class="fd-block" data-block-type="tabs" data-tabset="1"';
-                ($tabsPathAttr ? ' data-json-tabs-path="'.fd_escape($tabsPathAttr).'"' : '').
-                '>';
+        $html .= ($tabsPathAttr ? ' data-json-tabs-path="'.fd_escape($tabsPathAttr).'"' : '');
+        $html .= '>';
         // Nav
         $html .= '<ul class="nav nav-tabs" role="tablist">';
         foreach (array_values($tabs) as $i => $t) {

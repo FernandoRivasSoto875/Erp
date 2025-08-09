@@ -4,53 +4,52 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 header('Content-Type: application/json; charset=utf-8');
 
 try {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        throw new RuntimeException('Método no permitido');
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new RuntimeException('Método no permitido');
+
+    $archivo = isset($_POST['archivo']) ? trim((string)$_POST['archivo']) : '';
+    if ($archivo === '') throw new RuntimeException('Falta parámetro "archivo".');
+
+    $baseDir = __DIR__ . DIRECTORY_SEPARATOR . 'json';
+    if (!is_dir($baseDir)) throw new RuntimeException('Carpeta json no existe.');
+    $file = $baseDir . DIRECTORY_SEPARATOR . basename($archivo);
+
+    // Carga actual
+    $current = [];
+    if (is_file($file)) {
+        $txt = file_get_contents($file);
+        $current = json_decode($txt, true, 512, JSON_THROW_ON_ERROR);
+        if (!is_array($current)) $current = [];
     }
 
-    $archivo = isset($_POST['archivo']) ? basename((string)$_POST['archivo']) : '';
-    if ($archivo === '') throw new RuntimeException('Falta "archivo"');
-
-    $ruta = __DIR__ . '/json/' . $archivo;
-    if (!is_file($ruta)) {
-        // si no existe, parte de un JSON vacío
-        $json = [];
-    } else {
-        $raw = file_get_contents($ruta);
-        $json = json_decode($raw, true);
-        if (!is_array($json)) $json = [];
-    }
-
-    // Decodificar bloques entrantes (si vienen)
+    // Decodifica solo lo que llega
+    $keys = ['parametros','layout','fieldsets','elementos_fuera'];
     $updates = [];
-    foreach (['parametros','layout','fieldsets','elementos_fuera'] as $k) {
-        if (isset($_POST[$k])) {
-            $val = json_decode((string)$_POST[$k], true);
-            if ($val === null && $_POST[$k] !== 'null') {
-                throw new RuntimeException('JSON inválido en "' . $k . '"');
-            }
-            $updates[$k] = $val;
+    foreach ($keys as $k) {
+        if (array_key_exists($k, $_POST)) {
+            $val = $_POST[$k];
+            if ($val === '' || $val === null) continue;
+            $updates[$k] = json_decode($val, true, 512, JSON_THROW_ON_ERROR);
         }
     }
+    if (!$updates) throw new RuntimeException('Sin cambios para guardar.');
 
-    if (!$updates) throw new RuntimeException('Nada para guardar');
-
-    // Reemplazo directo por bloque
-    foreach ($updates as $k => $val) {
-        $json[$k] = $val;
+    // Merge no destructivo
+    $merged = $current;
+    foreach ($updates as $k => $v) {
+        $merged[$k] = $v;
     }
 
-    // Guardar con pretty print
-    $jsonStr = json_encode($json, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    if ($jsonStr === false) throw new RuntimeException('No se pudo codificar JSON');
-
-    // Backup simple
-    if (is_file($ruta)) {
-        @copy($ruta, $ruta . '.bak');
+    // Backup
+    if (is_file($file)) {
+        $bak = $file . '.' . date('Ymd_His') . '.bak';
+        @copy($file, $bak);
     }
 
-    $ok = file_put_contents($ruta, $jsonStr, LOCK_EX);
-    if ($ok === false) throw new RuntimeException('No se pudo escribir el archivo');
+    // Escribe con lock
+    $json = json_encode($merged, JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT);
+    if ($json === false) throw new RuntimeException('Error al codificar JSON.');
+    $ok = file_put_contents($file, $json, LOCK_EX);
+    if ($ok === false) throw new RuntimeException('No se pudo escribir el archivo.');
 
     echo json_encode(['success' => true]);
 } catch (Throwable $e) {

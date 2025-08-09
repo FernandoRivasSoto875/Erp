@@ -41,19 +41,36 @@ if (is_array($fieldsets) && array_keys($fieldsets) === range(0, count($fieldsets
     if (!empty($byName)) $fieldsets = $byName;
 }
 
-// 5) all_fields para backend (name/type mínimos)
+// 5) all_fields para backend (incluye mapeo de columnas de datatable)
 $all_fields = [];
 foreach ($fieldsets as $fs) {
     foreach (($fs['campos'] ?? []) as $c) {
-        $name = $c['nombre'] ?? null; 
+        $name = $c['nombre'] ?? null;
         $type = $c['tipo'] ?? null;
         if (!$name || !$type) continue;
-        $all_fields[] = [
+
+        $entry = [
             'name'    => $name,
             'type'    => $type,
             'label'   => $c['etiqueta'] ?? $name,
-            'columns' => $c['columns'] ?? [],
+            'columns' => [],
         ];
+
+        // Si es datatable, mapear columnas JSON (clave 'columnas') -> columns[name,label]
+        if ($type === 'datatable') {
+            $cols = $c['columnas'] ?? [];
+            if (is_array($cols)) {
+                foreach ($cols as $col) {
+                    $entry['columns'][] = [
+                        'name'  => $col['nombre']  ?? '',
+                        'label' => $col['etiqueta'] ?? ($col['nombre'] ?? ''),
+                        'type'  => $col['tipo']    ?? 'text'
+                    ];
+                }
+            }
+        }
+
+        $all_fields[] = $entry;
     }
 }
 
@@ -67,6 +84,13 @@ if (!empty($modoDiseno)) {
 // 7) Incluir lógica/funciones antes de cualquier salida
 require_once __DIR__ . '/formulariodinamicofunciones.php';
 require_once __DIR__ . '/formulariodinamicologica.php';
+
+// Mensaje flash (resultado del POST)
+$mensaje_envio = '';
+if (!empty($_SESSION['mensaje_flash'])) {
+    $mensaje_envio = $_SESSION['mensaje_flash'];
+    unset($_SESSION['mensaje_flash']);
+}
 
 // A partir de aquí, salida HTML
 ?><!DOCTYPE html>
@@ -85,7 +109,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 if (!empty($params['CssDefault'])) {
     echo '<link rel="stylesheet" href="css/' . htmlspecialchars($params['CssDefault']) . '">';
 } else {
-    echo '<link rel="stylesheet" href="css/formularariodinamico.css">';
+    echo '<link rel="stylesheet" href="css/formulariodinamico.css">';
 }
 ?>
 <style>
@@ -133,21 +157,22 @@ body.design-mode #elementos-fuera-container {
 $todos_los_fieldsets = array_keys(is_array($fieldsets) ? $fieldsets : []);
 $fieldsets_usados = [];
 
-// ERROR: array_walk_recursive((is_array($layout)?$layout:[]), ...) -> requiere variable por referencia
+// Evitar "Only variables can be passed by reference"
 $layout_for_scan = is_array($layout) ? $layout : [];
 array_walk_recursive($layout_for_scan, function ($item, $key) use (&$fieldsets_usados) {
     if (is_string($item) && $key !== 'type' && $key !== 'width' && !in_array($item, $fieldsets_usados, true)) {
         $fieldsets_usados[] = $item;
     }
 });
-
 $fieldsets_disponibles = array_diff($todos_los_fieldsets, $fieldsets_usados);
+
+// Paletas (si existen helpers)
+$paletaTipos = function_exists('generarPaletaTiposControl') ? trim(generarPaletaTiposControl()) : '';
+$paletaComponentes = function_exists('generarPaletaComponentes') ? trim(generarPaletaComponentes($fieldsets_disponibles, $fieldsets)) : '';
 ?>
 
 <div id="paletas-modo-diseno" style="<?php echo !empty($modoDiseno) ? '' : 'display:none;'; ?> border: 2px solid #ffc107; background: #fffbe6; padding: 10px; margin-bottom: 20px;">
     <?php
-        $paletaTipos = trim(generarPaletaTiposControl());
-        $paletaComponentes = trim(generarPaletaComponentes($fieldsets_disponibles, $fieldsets));
         if (!empty($paletaTipos)) {
             echo '<div id="paleta-tipos-control" class="mb-3">' . $paletaTipos . '</div>';
         }
@@ -191,8 +216,22 @@ $fieldsets_disponibles = array_diff($todos_los_fieldsets, $fieldsets_usados);
                     <?php if (!empty($params['pie'])): ?>
                         <div class="mb-2 text-muted"><?php echo htmlspecialchars($params['pie']); ?></div>
                     <?php endif; ?>
-                    <button type="submit" class="btn btn-primary" <?php echo !empty($modoDiseno) ? 'disabled' : ''; ?>>Guardar</button>
-                    <button type="button" class="btn btn-secondary" onclick="window.history.back();">Cancelar</button>
+
+                    <?php if (!empty($params['botones']) && is_array($params['botones'])): ?>
+                        <?php foreach ($params['botones'] as $btn): 
+                            $texto = htmlspecialchars($btn['texto'] ?? 'Botón', ENT_QUOTES, 'UTF-8');
+                            $accion = strtolower($btn['accion'] ?? 'button');
+                            $clase = htmlspecialchars($btn['clase'] ?? 'btn-secondary', ENT_QUOTES, 'UTF-8');
+                            $type = ($accion === 'submit' || $accion === 'reset') ? $accion : 'button';
+                        ?>
+                            <button type="<?php echo $type; ?>" class="btn <?php echo $clase; ?>" <?php echo !empty($modoDiseno) && $type==='submit' ? 'disabled' : ''; ?>>
+                                <?php echo $texto; ?>
+                            </button>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <button type="submit" class="btn btn-primary" <?php echo !empty($modoDiseno) ? 'disabled' : ''; ?>>Guardar</button>
+                        <button type="button" class="btn btn-secondary" onclick="window.history.back();">Cancelar</button>
+                    <?php endif; ?>
                 </div>
             </form>
         </div>

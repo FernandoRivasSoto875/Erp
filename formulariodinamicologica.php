@@ -1,18 +1,32 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-// Integraciones opcionales
 if (file_exists(__DIR__ . '/vendor/autoload.php')) require __DIR__ . '/vendor/autoload.php';
 if (file_exists(__DIR__ . '/fpdf/fpdf.php')) require_once __DIR__ . '/fpdf/fpdf.php';
 
-// Dependencias de funciones (idempotentes)
 if (file_exists(__DIR__ . '/formulariodinamicofunciones.php')) require_once __DIR__ . '/formulariodinamicofunciones.php';
 if (file_exists(__DIR__ . '/funcionessql.php')) require_once __DIR__ . '/funcionessql.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-// -------------------- Render del Layout --------------------
+// Fallbacks por si faltan helpers
+if (!function_exists('generarCampo')) {
+    function generarCampo(array $campo, $valor, $soloLectura = false) {
+        $name = htmlspecialchars($campo['nombre'] ?? 'sin_nombre', ENT_QUOTES, 'UTF-8');
+        $label = htmlspecialchars($campo['etiqueta'] ?? $name, ENT_QUOTES, 'UTF-8');
+        $disabled = $soloLectura ? 'disabled' : '';
+        return "<div class='form-group mb-2'><label class='form-label'>{$label}</label><input type='text' name='{$name}' value='".htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8')."' class='form-control' {$disabled}></div>";
+    }
+}
+if (!function_exists('getFieldInfo')) {
+    function getFieldInfo($name, array $all_fields) {
+        foreach ($all_fields as $f) if (($f['name'] ?? null) === $name) return $f;
+        return ['label' => ucfirst((string)$name), 'type' => 'text', 'columns' => []];
+    }
+}
+
+// -------------------- Render helpers (GET) --------------------
 function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
     if (!is_array($rows)) $rows = [];
     $html = '';
@@ -27,18 +41,14 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
 
             if ($fieldset) {
                 if (is_array($fieldset) && isset($fieldset['rows'])) {
-                    // Fieldset embebido con grilla interna
                     $nombre = $fieldset['name'] ?? '';
                     $html .= "<fieldset class='mb-4 p-3 border rounded fieldset-grid-avanzada'>";
-                    if (!empty($nombre)) {
-                        $html .= "<legend class='w-auto px-2 h6'>".htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8')."</legend>";
-                    }
+                    if (!empty($nombre)) $html .= "<legend class='w-auto px-2 h6'>".htmlspecialchars($nombre, ENT_QUOTES, 'UTF-8')."</legend>";
                     foreach (($fieldset['rows'] ?? []) as $fsRow) {
                         $html .= "<div class='row fieldset-grid-row'>";
                         foreach (($fsRow['columns'] ?? []) as $fsCol) {
                             $html .= "<div class='col fieldset-grid-col' style='min-height:48px;'>";
                             if (isset($fsCol['field'])) {
-                                // Buscar campo por nombre en todos los fieldsets
                                 $campo = null;
                                 foreach ($fieldsetsConfig as $fs) {
                                     foreach (($fs['campos'] ?? []) as $c) {
@@ -76,7 +86,7 @@ function renderRows($rows, $fieldsetsConfig, $valores, $soloLectura) {
 function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockAttrs = '') {
     $tabsId = 'tabs_'.uniqid();
     $html = "<div {$blockAttrs}>";
-    $html .= '<ul class="nav nav-pills mb-3" id="'.$tabsId.'" role="tablist">';
+    $html .= '<ul class="nav nav-pills mb-3" role="tablist">';
     $tabDetails = [];
     foreach (($block['tabs'] ?? []) as $index => $tab) {
         $title = $tab['title'] ?? ('Pestaña '.($index+1));
@@ -101,8 +111,10 @@ function renderTabsBlock($block, $fieldsetsConfig, $valores, $soloLectura, $bloc
 
 function renderBlock($block, $fieldsetsConfig, $valores, $soloLectura, $blockName = 'generic') {
     $type = $block['type'] ?? 'generic';
+    $attrs = [];
+    foreach (($block['attrs'] ?? []) as $k => $v) $attrs[] = $k.'="'.htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8').'"';
+    $blockAttrs = implode(' ', $attrs);
     $html = '';
-    $blockAttrs = "data-block-type='".htmlspecialchars($type, ENT_QUOTES, 'UTF-8')."' data-block-name='".htmlspecialchars($blockName, ENT_QUOTES, 'UTF-8')."'";
 
     switch ($type) {
         case 'header':
@@ -140,16 +152,13 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
     $fieldset = $fieldsetsConfig[$fieldsetName];
     $titulo = $fieldset['titulo'] ?? ucfirst(str_replace('_', ' ', $fieldsetName));
     $html = "<div class='draggable-fieldset' data-fieldset-name='".htmlspecialchars($fieldsetName, ENT_QUOTES, 'UTF-8')."'>";
-
     $renderizado = false;
 
     // Grilla interna (exclusiva)
     if (!empty($fieldset['rows']) && is_array($fieldset['rows'])) {
         $renderizado = true;
         $html .= "<fieldset class='mb-4 p-3 border rounded fieldset-grid-avanzada'>";
-        if (!empty($titulo)) {
-            $html .= "<legend class='w-auto px-2 h6'>".htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8')."</legend>";
-        }
+        if (!empty($titulo)) $html .= "<legend class='w-auto px-2 h6'>".htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8')."</legend>";
         foreach ($fieldset['rows'] as $fsRow) {
             $html .= "<div class='row fieldset-grid-row'>";
             foreach (($fsRow['columns'] ?? []) as $fsCol) {
@@ -182,9 +191,7 @@ function generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $so
     // Modo clásico (si no hubo grilla)
     if (!$renderizado && !empty($fieldset['campos']) && is_array($fieldset['campos'])) {
         $html .= "<fieldset class='mb-4 p-3 border rounded sortable-fields-container'>";
-        if (!empty($titulo)) {
-            $html .= "<legend class='w-auto px-2 h6'>".htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8')."</legend>";
-        }
+        if (!empty($titulo)) $html .= "<legend class='w-auto px-2 h6'>".htmlspecialchars($titulo, ENT_QUOTES, 'UTF-8')."</legend>";
         foreach ($fieldset['campos'] as $campo) {
             $nombreCampo = $campo['nombre'] ?? 'sin_nombre';
             $valor = $valores[$nombreCampo] ?? ($campo['valor_predeterminado'] ?? '');
@@ -216,7 +223,6 @@ function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valo
             if (($item['type'] ?? '') === 'fieldset' && !empty($item['name'])) {
                 $html .= generarFieldsetContenido($item['name'], $fieldsetsConfig, $valores, $soloLectura);
             } elseif (($item['type'] ?? '') === 'field' && !empty($item['name'])) {
-                // Buscar field config
                 $fieldConfig = null;
                 foreach ($fieldsetsConfig as $fs) {
                     foreach (($fs['campos'] ?? []) as $campo) {
@@ -237,21 +243,28 @@ function generarContenedorFueraDelFormulario($elementos, $fieldsetsConfig, $valo
     return $html;
 }
 
-// Debug helpers (opcionales)
-if (!function_exists('renderDebugButton')) {
-    function renderDebugButton($id, $label = 'Debug') {
-        return "<button type='button' class='solo-modo-diseno btn btn-warning btn-sm' style='margin:5px 0;' onclick=\"var d=document.getElementById('$id');d.style.display=d.style.display==='none'?'block':'none';\">$label</button>";
+function generarLayout($layoutConfig, $fieldsetsConfig, $valores, $soloLectura) {
+    $html = '';
+    if (empty($layoutConfig) || !is_array($layoutConfig)) {
+        // Fallback: renderizar todos los fieldsets
+        $html .= '<div class="layout-container fallback-layout>';
+        foreach (array_keys($fieldsetsConfig ?? []) as $fieldsetName) {
+            $html .= generarFieldsetContenido($fieldsetName, $fieldsetsConfig, $valores, $soloLectura);
+        }
+        $html .= '</div>';
+        return $html;
     }
-}
-if (!function_exists('renderDebugPanel')) {
-    function renderDebugPanel($id, $content) {
-        return "<div id='$id' class='solo-modo-diseno' style='display:none;'>$content</div>";
+    $html .= '<div class="layout-container" data-layout-container>';
+    foreach ($layoutConfig as $blockName => $blockData) {
+        $html .= renderBlock($blockData, $fieldsetsConfig, $valores, $soloLectura, $blockName);
     }
+    $html .= '</div>';
+    return $html;
 }
 
 // -------------------- Backend: POST y AJAX --------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Variables de contexto del host
+    // Contexto del host (inyectado desde formulariodinamico.php)
     $json         = $json         ?? [];
     $all_fields   = (isset($all_fields) && is_array($all_fields)) ? $all_fields : [];
     $archivo_json = $archivo_json ?? ($_GET['archivo'] ?? 'form');
@@ -282,7 +295,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Adjuntos config
+    // Config de adjuntos
     $param_adjuntos = $params['adjuntos'] ?? [];
     $allowedMimeTypes = $param_adjuntos['tipos_permitidos'] ?? [
         'image/jpeg','image/png','image/gif','application/pdf',
@@ -293,7 +306,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     ];
     $maxFileSize = (int)(($param_adjuntos['tamano_maximo_mb'] ?? 5) * 1024 * 1024);
 
-    // Construcción de datos según $all_fields; fallback para archivos si faltan
+    // Construcción de datos desde $all_fields
     $fileFieldNames = array_keys($_FILES ?? []);
     foreach ($all_fields as $field) {
         $fieldName = $field['name'] ?? null;
@@ -309,23 +322,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (is_array($files['name'])) {
                     foreach ($files['name'] as $idx => $fileName) {
                         if ($files['error'][$idx] === UPLOAD_ERR_OK) {
-                            $tmpName = $files['tmp_name'][$idx];
+                            $tmpName  = $files['tmp_name'][$idx];
                             $fileType = @mime_content_type($tmpName) ?: ($files['type'][$idx] ?? '');
                             $fileSize = (int)$files['size'][$idx];
                             if (!in_array($fileType, $allowedMimeTypes, true)) { $adjuntosWarnings[] = "Tipo no permitido: $fileName ($fileType)"; continue; }
                             if ($fileSize > $maxFileSize) { $adjuntosWarnings[] = "Archivo grande: $fileName"; continue; }
                             $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', basename($fileName));
                             $destPath = $uploadsDir . uniqid('adj_', true) . '_' . $safeName;
-                            if (move_uploaded_file($tmpName, $destPath)) $formData[$fieldName][] = $destPath;
+                            if (is_uploaded_file($tmpName) && move_uploaded_file($tmpName, $destPath)) $formData[$fieldName][] = $destPath;
                             else $adjuntosWarnings[] = "Error guardando: $fileName";
                         } elseif ($files['error'][$idx] !== UPLOAD_ERR_NO_FILE) {
                             $adjuntosWarnings[] = "Error subiendo: $fileName (code ".$files['error'][$idx].")";
                         }
                     }
                 } else {
-                    // Single
                     if ($files['error'] === UPLOAD_ERR_OK) {
-                        $tmpName = $files['tmp_name'];
+                        $tmpName  = $files['tmp_name'];
                         $fileName = $files['name'];
                         $fileType = @mime_content_type($tmpName) ?: ($files['type'] ?? '');
                         $fileSize = (int)$files['size'];
@@ -334,7 +346,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         else {
                             $safeName = preg_replace('/[^a-zA-Z0-9._-]/', '_', basename($fileName));
                             $destPath = $uploadsDir . uniqid('adj_', true) . '_' . $safeName;
-                            if (move_uploaded_file($tmpName, $destPath)) $formData[$fieldName][] = $destPath;
+                            if (is_uploaded_file($tmpName) && move_uploaded_file($tmpName, $destPath)) $formData[$fieldName][] = $destPath;
                             else $adjuntosWarnings[] = "Error guardando: $fileName";
                         }
                     } elseif ($files['error'] !== UPLOAD_ERR_NO_FILE) {
@@ -346,28 +358,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $formData[$fieldName] = $postData[$fieldName] ?? null;
         }
     }
-    // Fallback: si hay archivos no declarados en $all_fields
+    // Fallback: archivos no mapeados en $all_fields
     foreach ($fileFieldNames as $fname) {
         if (!array_key_exists($fname, $formData)) {
-            $formData[$fname] = []; // evita perder adjuntos no mapeados
+            $formData[$fname] = [];
             $files = $_FILES[$fname];
             if (is_array($files['name'])) {
                 foreach ($files['name'] as $i => $fn) {
                     if ($files['error'][$i] === UPLOAD_ERR_OK) {
-                        $tmp = $files['tmp_name'][$i];
-                        $ft  = @mime_content_type($tmp) ?: ($files['type'][$i] ?? '');
-                        $fsz = (int)$files['size'][$i];
+                        $tmp  = $files['tmp_name'][$i];
+                        $ft   = @mime_content_type($tmp) ?: ($files['type'][$i] ?? '');
+                        $fsz  = (int)$files['size'][$i];
                         if (!in_array($ft, $allowedMimeTypes, true) || $fsz > $maxFileSize) continue;
                         $safe = preg_replace('/[^a-zA-Z0-9._-]/', '_', basename($fn));
                         $dest = $uploadsDir . uniqid('adj_', true) . '_' . $safe;
-                        if (move_uploaded_file($tmp, $dest)) $formData[$fname][] = $dest;
+                        if (is_uploaded_file($tmp) && move_uploaded_file($tmp, $dest)) $formData[$fname][] = $dest;
                     }
                 }
             }
         }
     }
 
-    // Persistencia mínima para AJAX load (opcional)
+    // Persistencia mínima para AJAX load
     $firstField = reset($all_fields);
     if ($firstField && isset($firstField['name']) && array_key_exists($firstField['name'], $formData)) {
         $id_registro = $formData[$firstField['name']];
@@ -375,7 +387,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION[$sessionKey] = $formData;
     }
 
-    // Generación de archivos y correo
+    // Preparar datos para archivos y correo
     $formatosAgenerar = array_filter(array_map('trim', explode(',', $params['tipoformatoenvio'] ?? '')));
     $archivosAdjuntar = [];
     $archivosTemporales = [];
@@ -383,10 +395,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $cuerpoHtml = "<h1>" . htmlspecialchars($params['subject'] ?? 'Datos del Formulario', ENT_QUOTES, 'UTF-8') . "</h1>";
     $datosParaArchivos = [];
 
-    // getFieldInfo proviene de formulariodinamicofunciones.php
     foreach ($formData as $key => $value) {
-        $fieldInfo = function_exists('getFieldInfo') ? getFieldInfo($key, $all_fields) : ['label'=>ucfirst($key), 'type'=>'text'];
-        if (!$fieldInfo) $fieldInfo = ['label'=>ucfirst($key), 'type'=>'text'];
+        $fieldInfo = getFieldInfo($key, $all_fields);
         $label = $fieldInfo['label'] ?? ucfirst($key);
         $displayValue = '';
         $valorParaArchivo = '';
@@ -407,9 +417,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif (($fieldInfo['type'] ?? '') === 'file' && is_array($value)) {
             $displayValue = implode('<br>', array_map('htmlspecialchars', $value));
             $valorParaArchivo = implode(', ', $value);
-            foreach ($value as $filePath) {
-                if (file_exists($filePath)) $archivosAdjuntar[] = $filePath;
-            }
+            foreach ($value as $filePath) if (file_exists($filePath)) $archivosAdjuntar[] = $filePath;
         } else {
             $displayValue = is_array($value) ? implode(', ', array_map('htmlspecialchars', $value)) : nl2br(htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'));
             $valorParaArchivo = is_array($value) ? implode(', ', $value) : (string)$value;
@@ -424,39 +432,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $cuerpoHtml .= "<h3>" . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . "</h3><div>{$displayValue}</div><hr>";
     }
 
-    // HTML
+    // Generación de archivos
     if (in_array('html', $formatosAgenerar, true)) {
         $path = $baseFilename . '.html';
         file_put_contents($path, $cuerpoHtml);
         $archivosAdjuntar[] = $path; $archivosTemporales[] = $path;
     }
-    // JSON
     if (in_array('json', $formatosAgenerar, true)) {
         $path = $baseFilename . '.json';
         file_put_contents($path, json_encode($formData, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));
         $archivosAdjuntar[] = $path; $archivosTemporales[] = $path;
     }
-    // CSV
     if (in_array('csv', $formatosAgenerar, true) || in_array('cvs', $formatosAgenerar, true)) {
         $path = $baseFilename . '.csv';
         $fp = fopen($path, 'w'); fputcsv($fp, ['Campo','Valor']);
         foreach ($datosParaArchivos as $d) { fputcsv($fp, [$d['label'], $d['value']]); }
         fclose($fp); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path;
     }
-    // XML
     if (in_array('xml', $formatosAgenerar, true)) {
         $path = $baseFilename . '.xml';
         $xml = new SimpleXMLElement('<formulario/>');
         foreach ($datosParaArchivos as $d) { $xml->addChild(preg_replace('/[^A-Za-z0-9_]/', '', $d['label']), htmlspecialchars($d['value'])); }
         $xml->asXML($path); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path;
     }
-    // DOC (HTML plano)
     if (in_array('doc', $formatosAgenerar, true)) {
         $path = $baseFilename . '.doc';
         file_put_contents($path, $cuerpoHtml);
         $archivosAdjuntar[] = $path; $archivosTemporales[] = $path;
     }
-    // XLS simple (HTML)
     if (in_array('xls', $formatosAgenerar, true) || in_array('xlsx', $formatosAgenerar, true)) {
         $path = $baseFilename . '.xls';
         $xls = "<html xmlns:x='urn:schemas-microsoft-com:office:excel'><head><meta charset='UTF-8'></head><body>";
@@ -475,7 +478,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $xls .= "</body></html>";
         file_put_contents($path, $xls); $archivosAdjuntar[] = $path; $archivosTemporales[] = $path;
     }
-    // PDF (FPDF)
     if (in_array('pdf', $formatosAgenerar, true) && class_exists('FPDF')) {
         try {
             $path = $baseFilename . '.pdf';
@@ -507,11 +509,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (\Throwable $e) { /* silencioso */ }
     }
 
-    // Envío de correo (si se pide htmlc)
-    if (in_array('htmlc', $formatosAgenerar, true) && !empty($params['destinatario']) && class_exists(PHPMailer::class)) {
+    // Envío de correo (respeta notificaciones.enviar_correo y claves alternativas)
+    $enviarCorreo = (bool)($params['notificaciones']['enviar_correo'] ?? true);
+    $destinatario = $params['destinatario'] ?? ($params['mailPara'] ?? null);
+    if ($enviarCorreo && $destinatario && class_exists(PHPMailer::class)) {
         try {
             $mail = new PHPMailer(true);
-            // Transporte básico
             if (!empty($params['smtp_host'])) {
                 $mail->isSMTP();
                 $mail->Host = $params['smtp_host'];
@@ -524,10 +527,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $mail->isSendmail();
             }
             $mail->CharSet = 'UTF-8';
-            $mail->setFrom($params['mailDe'] ?? 'noreply@example.com', $params['from_name'] ?? 'Formulario Web');
-            $mail->addAddress($params['destinatario']);
-            if (!empty($params['mailCc'])) $mail->addCC($params['mailCc']);
+            $fromEmail = $params['mailDe'] ?? ($params['remitente'] ?? 'noreply@example.com');
+            $fromName  = $params['from_name'] ?? ($params['titulo'] ?? 'Formulario Web');
+            $mail->setFrom($fromEmail, $fromName);
+            $mail->addAddress($destinatario);
+            if (!empty($params['mailCc']))  $mail->addCC($params['mailCc']);
             if (!empty($params['mailBcc'])) $mail->addBCC($params['mailBcc']);
+            if (!empty($params['mailCco'])) $mail->addBCC($params['mailCco']); // alias en tu JSON
             $mail->isHTML(true);
             $mail->Subject = $params['subject'] ?? 'Nuevo Envío de Formulario';
             $mail->Body    = $cuerpoHtml;
@@ -553,11 +559,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Limpieza de temporales generados (no borra uploads del usuario)
     foreach (($archivosTemporales ?? []) as $tmp) if (file_exists($tmp)) @unlink($tmp);
 
-    header("Location: formulariodinamico.php?archivo=" . urlencode($archivo_json) . "&status=saved");
+    $redirect = trim($params['post_envio']['redireccion'] ?? '');
+    if ($redirect !== '') {
+        header("Location: " . $redirect);
+    } else {
+        header("Location: formulariodinamico.php?archivo=" . urlencode($archivo_json) . "&status=saved");
+    }
     exit;
 }
 // AJAX: load_data
-else if (isset($_GET['action']) && $_GET['action'] === 'load_data') {
+elseif (isset($_GET['action']) && $_GET['action'] === 'load_data') {
     header('Content-Type: application/json; charset=utf-8');
     $formName = $_GET['archivo'] ?? '';
     $key = $_GET['key'] ?? '';
@@ -567,5 +578,3 @@ else if (isset($_GET['action']) && $_GET['action'] === 'load_data') {
     else echo json_encode(['success'=>false]);
     exit;
 }
-
-// GET: no render aquí (lo hace formulariodinamico.php). No cerrar PHP.

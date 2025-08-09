@@ -58,8 +58,7 @@ body.design-mode [data-col-width] { min-height: 80px; background: #f8f9fa; borde
 <div class="container mt-4 mb-5">
     <?php if ($modoDiseno): ?>
     <div id="elementos-fuera-container" class="p-3 border rounded mb-3 bg-light" data-dropzone="outside">
-        <h5 class="mb-2">Elementos fuera del formulario</h5>
-        <?php echo generarContenedorFueraDelFormulario($elementos_fuera, $fieldsets, [], true); ?>
+        <!-- se renderiza solo en modo diseño -->
     </div>
     <?php endif; ?>
 

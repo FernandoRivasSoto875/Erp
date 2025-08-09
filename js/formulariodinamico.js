@@ -1,3 +1,18 @@
+// FIX: Forzar MODO NORMAL lo antes posible (salvo ?modoDiseno=1)
+(function normalModeGuardEarly() {
+    try {
+        var isDesign = new URLSearchParams(window.location.search).get('modoDiseno') === '1';
+        if (!isDesign) {
+            // Quitar cualquier rastro de diseño puesto por el servidor u otros scripts
+            if (document.body) document.body.classList.remove('design-mode');
+            var fuera = document.getElementById('elementos-fuera-container');
+            if (fuera) fuera.style.display = 'none';
+            var toggle = document.getElementById('designModeToggle');
+            if (toggle) toggle.checked = false;
+        }
+    } catch (e) {}
+})();
+
 // js/formulariodinamico.js
 // KEEP: Revisado y listo para commit. Lógica de modo diseño, drag & drop, undo/redo y editor visual del formulario dinámico.
 // Lógica de modo diseño, drag & drop, undo/redo, y utilidades para el formulario dinámico

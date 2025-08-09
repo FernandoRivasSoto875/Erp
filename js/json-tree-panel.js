@@ -1,11 +1,33 @@
 (function(){
-  const CONFIG = { side: 'right', width: 360, showOnlyInDesignMode: true, editScope: 'all' }; // 'all' | 'safe'
+  const CONFIG = { side: 'right', width: 360, showOnlyInDesignMode: true };
 
+  // Utils
   function $(sel, root){ return (root||document).querySelector(sel); }
   function $all(sel, root){ return Array.from((root||document).querySelectorAll(sel)); }
   function esc(s){ return String(s==null?'':s); }
   function typeOf(v){ if (Array.isArray(v)) return 'array'; if (v===null) return 'null'; return typeof v==='object'?'object':typeof v; }
+  function renderValueInline(v){
+    const t = typeOf(v);
+    if (t === 'object') return '{...}';
+    if (t === 'array') return '[...]';
+    if (t === 'string') return `"${esc(v)}"`;
+    if (t === 'boolean') return v ? 'true' : 'false';
+    if (t === 'null') return 'null';
+    return String(v);
+  }
+  function getAtPath(obj, path){ return path.reduce((acc, k)=> (acc==null?acc:acc[k]), obj); }
+  function setAtPath(obj, path, value){
+    let curr = obj;
+    for (let i=0; i<path.length-1; i++){
+      const k = path[i];
+      if (curr[k] == null || typeof curr[k] !== 'object') curr[k] = (typeof path[i+1] === 'number' ? [] : {});
+      curr = curr[k];
+    }
+    curr[path[path.length-1]] = value;
+  }
+  function deepClone(v){ return JSON.parse(JSON.stringify(v)); }
 
+  // Styles
   function injectStyles(){
     if ($('#json-tree-panel-styles')) return;
     const css = `
@@ -29,20 +51,17 @@
     .json-node-actions .btn-icon:hover{ color:#0d6efd; }
     .json-highlight{ outline:3px solid #0d6efd !important; animation: jsonFlash .9s ease-in-out 1; }
     @keyframes jsonFlash { 0%{outline-color:transparent;} 50%{outline-color:#0d6efd;} 100%{outline-color:transparent;} }
-
-    /* Botón flotante junto al título del formulario */
-    .fd-tree-toggle-btn{
-      display:inline-flex; align-items:center; justify-content:center;
-      width:28px; height:28px; margin-left:8px;
-      border-radius:50%; border:1px solid #dee2e6; background:#fff; color:#6c757d;
-      box-shadow:0 2px 6px rgba(0,0,0,.08); cursor:pointer;
-    }
+    .fd-tree-toggle-btn{ display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; margin-left:8px;
+      border-radius:50%; border:1px solid #dee2e6; background:#fff; color:#6c757d; box-shadow:0 2px 6px rgba(0,0,0,.08); cursor:pointer; }
     .fd-tree-toggle-btn:hover{ color:#0d6efd; border-color:#0d6efd; }
-    `;
+    .swal2-popup.json-wide { width: clamp(480px, 70vw, 1200px) !important; }
+    .swal2-popup .swal2-textarea{ width:100%; min-width:420px; min-height:320px; resize: both; box-sizing: border-box; font-family: monospace; }
+    .swal2-popup .swal2-input{ width:100%; box-sizing: border-box; }`;
     const st = document.createElement('style'); st.id='json-tree-panel-styles'; st.textContent = css;
     document.head.appendChild(st);
   }
 
+  // Panel
   function ensurePanel(){
     let panel = $('#json-tree-panel');
     if (!panel){
@@ -70,13 +89,40 @@
     return panel;
   }
 
+  function ensureToggleButton(){
+    const titleEl = document.getElementById('form-title') || document.querySelector('#fd-root h1, #fd-root h2, #fd-root .form-title');
+    if (!titleEl) return null;
+    let btn = document.getElementById('fd-tree-toggle-btn');
+    if (!btn){
+      btn = document.createElement('button');
+      btn.id = 'fd-tree-toggle-btn';
+      btn.type = 'button';
+      btn.className = 'fd-tree-toggle-btn';
+      btn.title = 'Mostrar/ocultar árbol JSON';
+      btn.innerHTML = '<i class="fas fa-sitemap" aria-hidden="true"></i>';
+      titleEl.insertAdjacentElement('afterend', btn);
+      btn.addEventListener('click', ()=>{
+        const panel = document.getElementById('json-tree-panel'); if (!panel) return;
+        if (!shouldShow()){
+          if (window.Swal) Swal.fire('Modo diseño', 'Activa el modo diseño para usar el árbol.', 'info');
+          return;
+        }
+        const visible = getComputedStyle(panel).display !== 'none';
+        panel.style.display = visible ? 'none' : 'block';
+        if (!visible) buildTree();
+      });
+    }
+    btn.style.display = shouldShow() ? 'inline-flex' : 'none';
+    return btn;
+  }
+
   function shouldShow(){
     if (!CONFIG.showOnlyInDesignMode) return true;
     const root = document.getElementById('fd-root');
     return !!(root && root.classList.contains('design-mode'));
   }
 
-  // Carga JSON si no está en memoria
+  // Data
   async function ensureJsonLoaded(){
     if (window.formularioJsonOriginal) return window.formularioJsonOriginal;
     const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || 'formulariogenerico2.json';
@@ -88,16 +134,16 @@
     return data;
   }
 
-  function nodeActionsHtml(){ return `<span class="json-node-actions"><button class="btn-icon act-edit" title="Editar"><i class="fas fa-pencil-alt"></i></button></span>`; }
-
-// NUEVO: acciones según tipo y si es elemento de array
+  // Render
+  function isEditablePath(path){
+    const root = path && path[0];
+    return root === 'parametros' || root === 'layout' || root === 'fieldsets' || root === 'elementos_fuera';
+  }
   function actionsForNode(path, type){
-    const isRootEditable = isEditablePath(path);
     const isArrayItem = typeof path[path.length-1] === 'number';
-    const canAddChild = isRootEditable && (type === 'object' || type === 'array');
     const parts = [];
-    if (isRootEditable) parts.push(`<button class="btn-icon act-edit" title="Editar"><i class="fas fa-pencil-alt"></i></button>`);
-    if (canAddChild) parts.push(`<button class="btn-icon act-add" title="Agregar hijo"><i class="fas fa-plus"></i></button>`);
+    if (isEditablePath(path)) parts.push(`<button class="btn-icon act-edit" title="Editar"><i class="fas fa-pencil-alt"></i></button>`);
+    if (isEditablePath(path) && (type==='object' || type==='array')) parts.push(`<button class="btn-icon act-add" title="Agregar hijo"><i class="fas fa-plus"></i></button>`);
     if (isArrayItem) {
       parts.push(`<button class="btn-icon act-up" title="Subir"><i class="fas fa-arrow-up"></i></button>`);
       parts.push(`<button class="btn-icon act-down" title="Bajar"><i class="fas fa-arrow-down"></i></button>`);
@@ -105,31 +151,6 @@
     return parts.length ? `<span class="json-node-actions">${parts.join('')}</span>` : '';
   }
 
-  function isEditablePath(path){
-    const root = path && path[0];
-    if (CONFIG.editScope === 'all') return true;
-    // Modo seguro: permite editar solo estos bloques en el árbol
-    return root === 'parametros' || root === 'fieldsets';
-  }
-
-  // Render recursivo de TODO el JSON
-  function buildTree(){
-    const data = window.formularioJsonOriginal || {};
-    const body = $('#jsonTreeBody'); if (!body) return;
-    body.innerHTML = '';
-    body.appendChild(renderAnyNode('parametros', data.parametros ?? {}, ['parametros'], true));
-    body.appendChild(renderAnyNode('layout', data.layout ?? {}, ['layout'], true));
-    body.appendChild(renderAnyNode('fieldsets', data.fieldsets ?? {}, ['fieldsets'], true));
-    if (data.elementos_fuera !== undefined) body.appendChild(renderAnyNode('elementos_fuera', data.elementos_fuera, ['elementos_fuera'], true));
-
-    // Otros nodos top-level no cubiertos
-    const handled = new Set(['parametros','layout','fieldsets','elementos_fuera']);
-    Object.keys(data).forEach(k=>{ if (!handled.has(k)) body.appendChild(renderAnyNode(k, data[k], [k], true)); });
-
-    bindEditActions(body);
-  }
-
-  // Asegura que los nodos de objeto/array lleven data-path en el summary
   function renderAnyNode(key, val, path, open=false){
     const t = typeOf(val);
     if (t === 'object') {
@@ -139,7 +160,7 @@
           <i class="far fa-folder"></i>
           <span class="json-node-key">${esc(key)}</span>
           <span class="json-node-meta">object</span>
-          ${actionsForNode ? actionsForNode(path, 'object') : nodeActionsHtml()}
+          ${actionsForNode(path, 'object')}
         </span>
       </summary>`;
       const wrap = document.createElement('div'); wrap.style.paddingLeft='12px';
@@ -154,7 +175,7 @@
           <i class="far fa-folder-open"></i>
           <span class="json-node-key">${esc(key)}</span>
           <span class="json-node-meta">array(${val.length})</span>
-          ${actionsForNode ? actionsForNode(path, 'array') : nodeActionsHtml()}
+          ${actionsForNode(path, 'array')}
         </span>
       </summary>`;
       const wrap = document.createElement('div'); wrap.style.paddingLeft='12px';
@@ -162,7 +183,6 @@
       det.appendChild(wrap);
       return det;
     }
-    // hoja
     const div = document.createElement('div');
     div.className = 'json-tree-node';
     div.setAttribute('data-path', JSON.stringify(path));
@@ -170,29 +190,25 @@
       <i class="far fa-dot-circle"></i>
       <span class="json-node-key">${esc(key)}</span>
       <span class="json-node-meta">${renderValueInline(val)}</span>
-      ${actionsForNode ? actionsForNode(path, 'leaf') : nodeActionsHtml()}
+      ${actionsForNode(path, 'leaf')}
     `;
     return div;
   }
 
-  function renderValueInline(v){
-    const t = typeOf(v);
-    if (t === 'object') return '{...}';
-    if (t === 'array') return '[...]';
-    if (t === 'string') return `"${esc(v)}"`;
-    if (t === 'boolean') return v ? 'true' : 'false';
-    if (t === 'null') return 'null';
-    return String(v);
+  function buildTree(){
+    const data = window.formularioJsonOriginal || {};
+    const body = $('#jsonTreeBody'); if (!body) return;
+    body.innerHTML = '';
+    if ('parametros' in data) body.appendChild(renderAnyNode('parametros', data.parametros ?? {}, ['parametros'], true));
+    if ('layout' in data) body.appendChild(renderAnyNode('layout', data.layout ?? {}, ['layout'], true));
+    if ('fieldsets' in data) body.appendChild(renderAnyNode('fieldsets', data.fieldsets ?? {}, ['fieldsets'], true));
+    if ('elementos_fuera' in data) body.appendChild(renderAnyNode('elementos_fuera', data.elementos_fuera, ['elementos_fuera'], true));
+    const handled = new Set(['parametros','layout','fieldsets','elementos_fuera']);
+    Object.keys(data).forEach(k=>{ if (!handled.has(k)) body.appendChild(renderAnyNode(k, data[k], [k], true)); });
+    bindEditActions(body);
   }
 
-  function highlightFieldset(name){
-    const el = document.querySelector(`[data-fieldset-name="${CSS.escape(name)}"]`);
-    if (!el) return;
-    el.scrollIntoView({ behavior:'smooth', block:'center' });
-    el.classList.add('json-highlight');
-    setTimeout(()=> el.classList.remove('json-highlight'), 900);
-  }
-
+  // Interacción
   function toggleAll(){
     const body = $('#jsonTreeBody'); const details = $all('details', body);
     const anyClosed = details.some(d=>!d.open); details.forEach(d => d.open = anyClosed);
@@ -205,86 +221,85 @@
       n.style.display = txt.includes(q) ? '' : 'none';
     });
   }
-
-  function getAtPath(obj, path){ return path.reduce((acc, k)=> (acc==null?acc:acc[k]), obj); }
-  function setAtPath(obj, path, value){
-    let curr = obj;
-    for (let i=0; i<path.length-1; i++){
-      const k = path[i];
-      if (curr[k] == null || typeof curr[k] !== 'object') curr[k] = (typeof path[i+1] === 'number' ? [] : {});
-      curr = curr[k];
-    }
-    curr[path[path.length-1]] = value;
-  }
-
-  // Helper robusto para obtener el path desde el click
   function getClickedNodeAndPath(target){
-    // 1) si se clickeó dentro de un nodo ya renderizado
     let nodeEl = target.closest('.json-tree-node');
-    // 2) si fue dentro de <summary>, busca el json-tree-node del summary
     if (!nodeEl) {
       const summary = target.closest('summary');
       if (summary) nodeEl = summary.querySelector('.json-tree-node');
     }
     if (!nodeEl) return { nodeEl:null, path:null };
-
     const pathStr = nodeEl.getAttribute('data-path') || nodeEl.dataset.path;
     if (!pathStr) return { nodeEl, path:null };
-
-    try {
-      const path = JSON.parse(pathStr);
-      return { nodeEl, path };
-    } catch {
-      return { nodeEl, path:null };
-    }
+    try { return { nodeEl, path: JSON.parse(pathStr) }; } catch { return { nodeEl, path:null }; }
   }
 
   function bindEditActions(root){
-    // Evitar que <summary> se abra/cierre cuando se pulsan botones (pencil, +, flechas)
+    // Evitar que <summary> se abra/cierre al pulsar botones
     root.addEventListener('mousedown', function(e){
       const btn = e.target.closest('.json-node-actions button');
       if (!btn) return;
-      if (btn.closest('summary')) {
-        e.preventDefault(); // evita toggle del <details>
-        e.stopPropagation();
-      }
+      if (btn.closest('summary')) { e.preventDefault(); e.stopPropagation(); }
     }, true);
 
     root.addEventListener('click', async function(e){
-      const actionsBtn = e.target.closest('.json-node-actions button');
-      if (!actionsBtn) return;
+      const btn = e.target.closest('.json-node-actions button');
+      if (!btn) return;
+      const { nodeEl, path } = getClickedNodeAndPath(btn);
+      if (!nodeEl || !Array.isArray(path)) { if (window.Swal) Swal.fire('Error', 'No se pudo determinar la ruta del nodo.', 'error'); return; }
 
-      const { nodeEl, path } = getClickedNodeAndPath(actionsBtn);
-      if (!nodeEl || !Array.isArray(path)) {
-        if (window.Swal) Swal.fire('Error', 'No se pudo determinar la ruta del nodo.', 'error');
-        return;
-      }
-
-      // Enlazar acciones
-      if (actionsBtn.classList.contains('act-edit')) {
-        try { await editNodeByPath(path, nodeEl); }
-        catch(err){ if (window.Swal) Swal.fire('Error al editar', String(err.message||err), 'error'); }
-        return;
-      }
-      if (actionsBtn.classList.contains('act-add')) {
-        try { await addChildAtPath(path); }
-        catch(err){ if (window.Swal) Swal.fire('Error al agregar', String(err.message||err), 'error'); }
-        return;
-      }
-      if (actionsBtn.classList.contains('act-up')) {
-        try { await moveArrayItem(path, -1); }
-        catch(err){ if (window.Swal) Swal.fire('Error al mover', String(err.message||err), 'error'); }
-        return;
-      }
-      if (actionsBtn.classList.contains('act-down')) {
-        try { await moveArrayItem(path, +1); }
-        catch(err){ if (window.Swal) Swal.fire('Error al mover', String(err.message||err), 'error'); }
-        return;
+      try {
+        if (btn.classList.contains('act-edit')) return await editNodeByPath(path, nodeEl);
+        if (btn.classList.contains('act-add')) return await addChildAtPath(path);
+        if (btn.classList.contains('act-up')) return await moveArrayItem(path, -1);
+        if (btn.classList.contains('act-down')) return await moveArrayItem(path, +1);
+      } catch(err){
+        if (window.Swal) Swal.fire('Error', String(err.message||err), 'error');
       }
     });
   }
 
-// NUEVO: agregar hijo en objeto/array
+  // Editar
+  async function editNodeByPath(path, nodeEl){
+    const rootKey = path[0];
+    const data = window.formularioJsonOriginal || {};
+    const currentRoot = data[rootKey];
+    const subPath = path.slice(1);
+    const current = subPath.length ? getAtPath(currentRoot, subPath) : currentRoot;
+    const t = typeOf(current);
+
+    let nuevoVal;
+    if (t === 'object' || t === 'array' || t === 'null') {
+      const { value: jsonObj } = await swalJsonEditor(path.join('.'), (t==='null')?'null':JSON.stringify(current, null, 2));
+      if (jsonObj == null) return;
+      nuevoVal = jsonObj;
+    } else if (t === 'boolean') {
+      const { value: choice } = await Swal.fire({ title:`Editar ${path.join('.')}`, input:'select',
+        inputOptions:{ 'true':'true','false':'false' }, inputValue: current ? 'true':'false',
+        width: '50vw', showCancelButton:true, confirmButtonText:'Guardar' });
+      if (choice == null) return; nuevoVal = (choice === 'true');
+    } else if (t === 'number') {
+      const { value: num } = await Swal.fire({ title:`Editar ${path.join('.')}`, input:'number',
+        inputValue: current, width: '50vw', inputAttributes:{ style:'width:100%;' },
+        showCancelButton:true, confirmButtonText:'Guardar' });
+      if (num == null) return; nuevoVal = Number(num);
+    } else {
+      const { value: txt } = await Swal.fire({ title:`Editar ${path.join('.')}`, input:'text',
+        inputValue: String(current ?? ''), width: '50vw', inputAttributes:{ style:'width:100%;' },
+        showCancelButton:true, confirmButtonText:'Guardar' });
+      if (txt == null) return; nuevoVal = txt;
+    }
+
+    const newRoot = deepClone(currentRoot ?? {});
+    if (subPath.length) setAtPath(newRoot, subPath, nuevoVal); else Object.assign(newRoot, nuevoVal);
+
+    await persistRoot(rootKey, newRoot, path);
+    // refrescar UI
+    const meta = nodeEl.querySelector('.json-node-meta');
+    if (meta) meta.textContent = renderValueInline(nuevoVal);
+    if (typeOf(nuevoVal) === 'object' || typeOf(nuevoVal) === 'array' || subPath.length===0) buildTree();
+  }
+
+  // Agregar hijo
   async function addChildAtPath(path){
     const rootKey = path[0];
     const data = window.formularioJsonOriginal || {};
@@ -293,7 +308,6 @@
     const parent = subPath.length ? getAtPath(currentRoot, subPath) : currentRoot;
 
     if (Array.isArray(parent)) {
-      // Clona estructura del último o primero; si vacío, básico
       const sample = parent.length ? parent[parent.length-1] : null;
       const newItem = sample ? clearPrimitivesDeep(sample) : defaultValueForFamily(null);
       const newArray = parent.slice(); newArray.push(newItem);
@@ -305,19 +319,14 @@
     }
 
     if (parent && typeof parent === 'object') {
-      // Necesita nombre de propiedad. Usa tipo del primer hijo como plantilla.
       const keys = Object.keys(parent);
       const sampleVal = keys.length ? parent[keys[0]] : '';
       const { value: keyName } = await Swal.fire({
-        title: 'Nueva propiedad',
-        input: 'text',
-        inputLabel: 'Nombre de la propiedad',
-        inputPlaceholder: 'ej: nuevo_campo',
-        showCancelButton: true,
-        confirmButtonText: 'Agregar',
+        title: 'Nueva propiedad', input: 'text', inputLabel: 'Nombre de la propiedad',
+        inputPlaceholder: 'ej: nuevo_campo', showCancelButton: true, confirmButtonText: 'Agregar',
         preConfirm: (k)=> {
           if (!k) { Swal.showValidationMessage('Indica un nombre'); return false; }
-          if (parent.hasOwnProperty(k)) { Swal.showValidationMessage('Ya existe esa propiedad'); return false; }
+          if (Object.prototype.hasOwnProperty.call(parent, k)) { Swal.showValidationMessage('Ya existe esa propiedad'); return false; }
           return k;
         }
       });
@@ -331,9 +340,8 @@
     }
   }
 
-// NUEVO: mover elemento de array (subir/bajar)
+  // Reordenar array
   async function moveArrayItem(path, dir){
-    // path apunta al elemento. El padre es un array.
     if (typeof path[path.length-1] !== 'number') return;
     const idx = path[path.length-1];
     const parentPath = path.slice(0, -1);
@@ -342,8 +350,7 @@
     const currentRoot = data[rootKey] ?? {};
     const parent = getAtPath(currentRoot, parentPath.slice(1));
     if (!Array.isArray(parent)) return;
-    const newIdx = idx + dir;
-    if (newIdx < 0 || newIdx >= parent.length) return;
+    const newIdx = idx + dir; if (newIdx < 0 || newIdx >= parent.length) return;
 
     const arr = parent.slice();
     const tmp = arr[idx]; arr[idx] = arr[newIdx]; arr[newIdx] = tmp;
@@ -354,8 +361,7 @@
     buildTree();
   }
 
-// Helpers de clonación/normalización
-  function deepClone(v){ return JSON.parse(JSON.stringify(v)); }
+  // Clonado/limpieza
   function defaultValueForFamily(sample){
     const t = typeOf(sample);
     if (t === 'object') return {};
@@ -366,22 +372,27 @@
   }
   function clearPrimitivesDeep(v){
     const t = typeOf(v);
-    if (t === 'object') {
-      const out = {};
-      Object.keys(v||{}).forEach(k => out[k] = clearPrimitivesDeep(v[k]));
-      return out;
-    }
-    if (t === 'array') {
-      if (!v || !v.length) return [];
-      return [ clearPrimitivesDeep(v[0]) ]; // misma “familia”
-    }
+    if (t === 'object') { const out = {}; Object.keys(v||{}).forEach(k => out[k] = clearPrimitivesDeep(v[k])); return out; }
+    if (t === 'array') { if (!v || !v.length) return []; return [ clearPrimitivesDeep(v[0]) ]; }
     if (t === 'number') return 0;
     if (t === 'boolean') return false;
     if (t === 'null') return null;
-    return ''; // strings u otros primitivos
+    return '';
   }
 
-// Persistencia por root
+  // Persistencia
+  function postGuardar(blocks){
+    const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || '';
+    const form = new FormData();
+    form.append('archivo', archivo);
+    if (blocks.parametros !== undefined) form.append('parametros', JSON.stringify(blocks.parametros));
+    if (blocks.layout !== undefined) form.append('layout', JSON.stringify(blocks.layout));
+    if (blocks.fieldsets !== undefined) form.append('fieldsets', JSON.stringify(blocks.fieldsets));
+    if (blocks.elementos_fuera !== undefined) form.append('elementos_fuera', JSON.stringify(blocks.elementos_fuera));
+    return fetch('guardar_layout.php', { method:'POST', body: form })
+      .then(r => r.ok ? r.json() : r.json().then(e=>Promise.reject(new Error(e.error||'Error HTTP'))))
+      .then(j => { if (j.success===false) throw new Error(j.error||'Error'); return j; });
+  }
   async function persistRoot(rootKey, newRoot, path){
     if (rootKey === 'parametros') {
       await postGuardar({ parametros: newRoot });
@@ -392,10 +403,12 @@
     } else if (rootKey === 'fieldsets') {
       await postGuardar({ fieldsets: newRoot });
       window.formularioJsonOriginal.fieldsets = newRoot;
-      // si cambia título de un fieldset, refresca leyenda
       if (path.length >= 2 && typeof path[1] === 'string') {
         const fs = newRoot[path[1]];
-        if (fs && fs.titulo) syncLegend(path[1], fs.titulo);
+        if (fs && fs.titulo) {
+          const el = document.querySelector(`[data-fieldset-name="${CSS.escape(path[1])}"] legend`);
+          if (el) el.textContent = fs.titulo || path[1];
+        }
       }
     } else if (rootKey === 'elementos_fuera') {
       await postGuardar({ elementos_fuera: newRoot });
@@ -407,58 +420,34 @@
     }
   }
 
-  function onDesignModeChanged(e){
-    const panel = $('#json-tree-panel'); if (!panel) return;
-    panel.style.display = e.detail && e.detail.on ? '' : 'none';
-    if (e.detail && e.detail.on) buildTree();
-    // Mostrar/ocultar botón flotante
-    const btn = document.getElementById('fd-tree-toggle-btn');
-    if (btn) btn.style.display = e.detail && e.detail.on ? 'inline-flex' : 'none';
+  // Editor JSON
+  function swalJsonEditor(title, initial){
+    if (!window.Swal) {
+      const txt = window.prompt('JSON para '+title, initial); if (txt==null) return Promise.resolve({ value:null });
+      try { return Promise.resolve({ value: JSON.parse(txt) }); } catch(e){ alert('JSON inválido'); return Promise.resolve({ value:null }); }
+    }
+    return Swal.fire({
+      title, input: 'textarea', inputValue: initial, customClass: { popup: 'json-wide' }, width: '70vw',
+      inputAttributes:{ spellcheck:'false', style:'min-height:320px; font-family:monospace; resize: both;' },
+      showCancelButton:true, confirmButtonText:'Guardar',
+      preConfirm: (txt)=> { try { return JSON.parse(txt); } catch(e){ Swal.showValidationMessage('JSON inválido'); return false; } }
+    });
   }
 
-  function ensureToggleButton(){
-    // Busca un título. Ideal: <h1 id="form-title">...</h1>
-    const titleEl = document.getElementById('form-title') || document.querySelector('#fd-root h1, #fd-root h2, #fd-root .form-title');
-    if (!titleEl) return null;
-
-    let btn = document.getElementById('fd-tree-toggle-btn');
-    if (!btn){
-      btn = document.createElement('button');
-      btn.id = 'fd-tree-toggle-btn';
-      btn.type = 'button';
-      btn.className = 'fd-tree-toggle-btn';
-      btn.title = 'Mostrar/ocultar árbol JSON';
-      btn.innerHTML = '<i class="fas fa-sitemap" aria-hidden="true"></i>';
-      // Insertar justo después del título
-      titleEl.insertAdjacentElement('afterend', btn);
-
-      btn.addEventListener('click', ()=>{
-        const panel = document.getElementById('json-tree-panel');
-        if (!panel) return;
-        if (!shouldShow()){
-          if (window.Swal) Swal.fire('Modo diseño', 'Activa el modo diseño para usar el árbol.', 'info');
-          return;
-        }
-        const visible = getComputedStyle(panel).display !== 'none';
-        panel.style.display = visible ? 'none' : 'block';
-        if (!visible) buildTree();
-      });
-    }
-    // Mostrar solo en modo diseño
-    btn.style.display = shouldShow() ? 'inline-flex' : 'none';
-    return btn;
+  // Modo diseño
+  function onDesignModeChanged(e){
+    const panel = $('#json-tree-panel'); if (panel) panel.style.display = e.detail && e.detail.on ? '' : 'none';
+    const btn = document.getElementById('fd-tree-toggle-btn'); if (btn) btn.style.display = e.detail && e.detail.on ? 'inline-flex' : 'none';
+    if (e.detail && e.detail.on) buildTree();
   }
 
   async function init(){
     injectStyles();
     await ensureJsonLoaded();
     const panel = ensurePanel();
+    ensureToggleButton();
     panel.style.display = shouldShow() ? '' : 'none';
     if (shouldShow()) buildTree();
-
-    // Crear botón flotante junto al título
-    ensureToggleButton();
-
     window.addEventListener('design-mode-changed', onDesignModeChanged);
   }
 

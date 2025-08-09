@@ -16,6 +16,11 @@ try {
     $json = json_decode(file_get_contents($path), true);
     if (!is_array($json)) $json = [];
 
+    $incomingParams = isset($_POST['parametros']) ? json_decode((string)$_POST['parametros'], true) : null;
+    if (is_array($incomingParams)) {
+        $json['parametros'] = $incomingParams; // reemplaza todo el bloque
+    }
+
     if (isset($_POST['layout'])) {
         $layout = json_decode((string)$_POST['layout'], true);
         if (json_last_error() !== JSON_ERROR_NONE) throw new InvalidArgumentException('layout inválido');

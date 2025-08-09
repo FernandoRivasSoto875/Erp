@@ -68,206 +68,14 @@
     return `<span class="json-node-actions" data-node-type="${type}">${editBtn}</span>`;
   }
 
-  function buildTree(){
-    const data = window.formularioJsonOriginal || {};
-    const body = $('#jsonTreeBody');
-    if (!body) return;
-    body.innerHTML = '';
-
-    // NUEVO: bloque completo de parametros (recursivo)
-    const parametrosRoot = (data.parametros || {});
-    body.appendChild(renderObjectTree('parametros', parametrosRoot, ['parametros']));
-
-    // Cabecera: Form/Parametros resumido (mantengo)
-    const params = data.parametros || {};
-    body.appendChild(createGroup('Formulario', [
-      createLeaf('titulo', params.titulo ?? (data.titulo ?? '')),
-      createLeaf('descripcion', data.descripcion ?? ''),
-    ], { type: 'form' }));
-
-    // Layout (igual que antes)
-    const layout = data.layout || {};
-    const layoutDetails = document.createElement('details');
-    layoutDetails.open = true;
-    layoutDetails.innerHTML = `<summary><span class="json-tree-node"><span class="json-node-key">layout</span></span></summary>`;
-    const layoutWrap = document.createElement('div');
-
-    // header
-    if (layout.header){
-      layoutWrap.appendChild(createRowsGroup('header', layout.header));
-    }
-    // main
-    if (layout.main){
-      const main = layout.main;
-      if (main.type === 'tabs'){
-        const d = document.createElement('details'); d.open = true;
-        d.innerHTML = `<summary><span class="json-tree-node"><span class="json-node-key">main</span><span class="json-node-meta">tabs</span></span></summary>`;
-        const tabsWrap = document.createElement('div');
-        (main.tabs||[]).forEach((t,i)=>{
-          const tabD = document.createElement('details'); tabD.open = false;
-          const title = esc(t.title || `Pestaña ${i+1}`);
-          tabD.innerHTML = `<summary><span class="json-tree-node"><i class="far fa-folder"></i><span class="json-node-key">tab[${i}]</span><span class="json-node-meta">${title}</span>${nodeActionsHtml('tab')}</span></summary>`;
-          // rows
-          (t.rows||[]).forEach((row, rIdx)=>{
-            const rowD = document.createElement('details'); rowD.open = false;
-            rowD.innerHTML = `<summary><span class="json-tree-node"><i class="far fa-list-alt"></i><span class="json-node-key">row[${rIdx}]</span></span></summary>`;
-            const colsWrap = document.createElement('div');
-            (row.columns||[]).forEach((col, cIdx)=>{
-              const fs = col.fieldset ? `fieldset: ${col.fieldset}` : 'col';
-              const colEl = document.createElement('div');
-              colEl.innerHTML = `<div class="json-tree-node" data-fieldset="${esc(col.fieldset||'')}">
-                <i class="far fa-square"></i><span class="json-node-key">col[${cIdx}]</span>
-                <span class="json-node-meta">width: ${esc(col.width ?? 12)}${col.fieldset? ', '+fs:''}</span>
-              </div>`;
-              // click para resaltar fieldset
-              const node = colEl.firstElementChild;
-              if (col.fieldset){
-                node.style.cursor='pointer';
-                node.addEventListener('click', ()=> highlightFieldset(col.fieldset));
-              }
-              colsWrap.appendChild(colEl);
-            });
-            rowD.appendChild(colsWrap);
-            tabD.appendChild(rowD);
-          });
-          tabsWrap.appendChild(tabD);
-        });
-        d.appendChild(tabsWrap);
-        layoutWrap.appendChild(d);
-      } else {
-        layoutWrap.appendChild(createRowsGroup('main', main));
-      }
-    }
-    // footer
-    if (layout.footer){
-      layoutWrap.appendChild(createRowsGroup('footer', layout.footer));
-    }
-
-    layoutDetails.appendChild(layoutWrap);
-    body.appendChild(layoutDetails);
-
-    // Fieldsets (igual que antes)
-    const fsMap = data.fieldsets || {};
-    const fsD = document.createElement('details'); fsD.open = true;
-    fsD.innerHTML = `<summary><span class="json-tree-node"><span class="json-node-key">fieldsets</span></span></summary>`;
-    const fsWrap = document.createElement('div');
-    Object.keys(fsMap).forEach((name)=>{
-      const def = fsMap[name] || {};
-      const titulo = esc(def.titulo || name);
-      const d = document.createElement('details'); d.open = false;
-      d.innerHTML = `<summary><span class="json-tree-node"><i class="far fa-folder"></i><span class="json-node-key">${esc(name)}</span><span class="json-node-meta">${titulo}</span>${nodeActionsHtml('fieldset')}</span></summary>`;
-      const campos = Array.isArray(def.campos) ? def.campos : [];
-      const ul = document.createElement('ul'); ul.style.paddingLeft='18px';
-      campos.forEach((c, idx)=>{
-        const li = document.createElement('li');
-        const etiqueta = esc(c.etiqueta || c.nombre || ('campo_'+idx));
-        li.innerHTML = `<div class="json-tree-node" data-fs="${esc(name)}" data-field="${esc(c.nombre||'')}">
-          <i class="far fa-file"></i>
-          <span class="json-node-key">${esc(c.nombre || ('indice_'+idx))}</span>
-          <span class="json-node-meta">${etiqueta} (${esc(c.tipo || 'text')})</span>
-          ${nodeActionsHtml('field')}
-        </div>`;
-        // click para resaltar campo dentro del fieldset
-        li.firstElementChild.style.cursor='pointer';
-        li.firstElementChild.addEventListener('click', (e)=>{
-          // evitar si clic en botón
-          if (e.target.closest('.json-node-actions')) return;
-          highlightFieldset(name);
-        });
-        ul.appendChild(li);
-      });
-      d.appendChild(ul);
-      fsWrap.appendChild(d);
-    });
-    fsD.appendChild(fsWrap);
-    body.appendChild(fsD);
-
-    // NUEVO: otros nodos del JSON no cubiertos (elementos_fuera, etc.)
-    const handled = new Set(['parametros','layout','fieldsets']);
-    Object.keys(data).forEach(k=>{
-      if (!handled.has(k)) {
-        body.appendChild(renderAnyNode(k, data[k], [k]));
-      }
-    });
-
-    bindEditActions(body);
-  }
-
-  function createGroup(title, leaves, meta){
-    const d = document.createElement('details'); d.open = true;
-    d.innerHTML = `<summary><span class="json-tree-node"><span class="json-node-key">${esc(title)}</span>${meta&&meta.type==='form'?nodeActionsHtml('form'):''}</span></summary>`;
-    const wrap = document.createElement('div'); wrap.style.paddingLeft='12px';
-    leaves.forEach(n => wrap.appendChild(n));
-    d.appendChild(wrap);
-    return d;
-  }
-
-  function createLeaf(key, value){
-    const div = document.createElement('div');
-    div.className = 'json-tree-node';
-    div.innerHTML = `<i class="far fa-dot-circle"></i><span class="json-node-key">${esc(key)}</span><span class="json-node-meta">${esc(value)}</span>`;
-    return div;
-  }
-
-  function createRowsGroup(name, block){
-    const d = document.createElement('details'); d.open = true;
-    d.innerHTML = `<summary><span class="json-tree-node"><span class="json-node-key">${esc(name)}</span><span class="json-node-meta">${esc(block.type||'generic')}</span></span></summary>`;
-    const wrap = document.createElement('div');
-    (block.rows||[]).forEach((row, rIdx)=>{
-      const rd = document.createElement('details'); rd.open = false;
-      rd.innerHTML = `<summary><span class="json-tree-node"><i class="far fa-list-alt"></i><span class="json-node-key">row[${rIdx}]</span></span></summary>`;
-      const colsWrap = document.createElement('div');
-      (row.columns||[]).forEach((col, cIdx)=>{
-        const fs = col.fieldset ? `fieldset: ${col.fieldset}` : 'col';
-        const colEl = document.createElement('div');
-        colEl.innerHTML = `<div class="json-tree-node" data-fieldset="${esc(col.fieldset||'')}">
-          <i class="far fa-square"></i><span class="json-node-key">col[${cIdx}]</span>
-          <span class="json-node-meta">width: ${esc(col.width ?? 12)}${col.fieldset? ', '+fs:''}</span>
-        </div>`;
-        const node = colEl.firstElementChild;
-        if (col.fieldset){
-          node.style.cursor='pointer';
-          node.addEventListener('click', ()=> highlightFieldset(col.fieldset));
-        }
-        colsWrap.appendChild(colEl);
-      });
-      rd.appendChild(colsWrap);
-      wrap.appendChild(rd);
-    });
-    d.appendChild(wrap);
-    return d;
-  }
-
-  function highlightFieldset(name){
-    const el = document.querySelector(`[data-fieldset-name="${CSS.escape(name)}"]`);
-    if (!el) return;
-    el.scrollIntoView({ behavior:'smooth', block:'center' });
-    el.classList.add('json-highlight');
-    setTimeout(()=> el.classList.remove('json-highlight'), 900);
-  }
-
-  function toggleAll(){
-    const body = $('#jsonTreeBody');
-    const details = $all('details', body);
-    const hasAnyClosed = details.some(d=>!d.open);
-    details.forEach(d => d.open = hasAnyClosed);
-  }
-
-  function filterTree(e){
-    const q = (e.target.value || '').toLowerCase();
-    const body = $('#jsonTreeBody');
-    $all('.json-tree-node', body).forEach(n=>{
-      const txt = n.textContent.toLowerCase();
-      n.style.display = txt.includes(q) ? '' : 'none';
-    });
-  }
-
-  // NUEVO: utilidades de render recursivo y edición de parametros
+  // Render recursivo: marca TODOS los nodos bajo "parametros" como editables
   function renderObjectTree(title, obj, path){
     const d = document.createElement('details'); d.open = true;
+    const isParametrosRoot = (Array.isArray(path) && path[0] === 'parametros');
     d.innerHTML = `<summary><span class="json-tree-node">
       <span class="json-node-key">${esc(title)}</span>
       <span class="json-node-meta">object</span>
+      ${isParametrosRoot ? nodeActionsHtml('param') : ''}
     </span></summary>`;
     const wrap = document.createElement('div');
     Object.keys(obj || {}).forEach(key=>{
@@ -279,12 +87,14 @@
 
   function renderAnyNode(key, val, path){
     const t = typeOf(val);
+    const isParam = Array.isArray(path) && path[0] === 'parametros';
     if (t === 'object') {
       const det = document.createElement('details'); det.open = false;
-      det.innerHTML = `<summary><span class="json-tree-node">
+      det.innerHTML = `<summary><span class="json-tree-node" data-path='${JSON.stringify(path)}'>
         <i class="far fa-folder"></i>
         <span class="json-node-key">${esc(key)}</span>
         <span class="json-node-meta">object</span>
+        ${isParam ? nodeActionsHtml('param') : ''}
       </span></summary>`;
       const wrap = document.createElement('div'); wrap.style.paddingLeft='12px';
       Object.keys(val || {}).forEach(k=>{
@@ -295,10 +105,11 @@
     }
     if (t === 'array') {
       const det = document.createElement('details'); det.open = false;
-      det.innerHTML = `<summary><span class="json-tree-node">
+      det.innerHTML = `<summary><span class="json-tree-node" data-path='${JSON.stringify(path)}'>
         <i class="far fa-folder-open"></i>
         <span class="json-node-key">${esc(key)}</span>
         <span class="json-node-meta">array(${val.length})</span>
+        ${isParam ? nodeActionsHtml('param') : ''}
       </span></summary>`;
       const wrap = document.createElement('div'); wrap.style.paddingLeft='12px';
       val.forEach((item, idx)=>{
@@ -307,7 +118,7 @@
       det.appendChild(wrap);
       return det;
     }
-    // leaf
+    // hoja
     const div = document.createElement('div');
     div.className = 'json-tree-node';
     div.dataset.path = JSON.stringify(path);
@@ -315,7 +126,7 @@
       <i class="far fa-dot-circle"></i>
       <span class="json-node-key">${esc(key)}</span>
       <span class="json-node-meta">${renderValueInline(val)}</span>
-      ${nodeActionsHtml('param')}
+      ${isParam ? nodeActionsHtml('param') : ''}
     `;
     return div;
   }
@@ -325,7 +136,6 @@
     if (v === null) return 'null';
     return typeof v === 'object' ? 'object' : typeof v;
   }
-
   function renderValueInline(v){
     const t = typeOf(v);
     if (t === 'object') return '{...}';
@@ -335,7 +145,6 @@
     if (t === 'null') return 'null';
     return String(v);
   }
-
   function getAtPath(obj, path){
     return path.reduce((acc, k)=> (acc==null?acc:acc[k]), obj);
   }
@@ -349,7 +158,7 @@
     curr[path[path.length-1]] = value;
   }
 
-  // Guardado de parametros completos
+  // Guardar todo el objeto "parametros" (reemplazo)
   function postGuardarParametros(nuevosParametros){
     const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || '';
     const form = new FormData();
@@ -360,6 +169,78 @@
       .then(j => { if (j.success===false) throw new Error(j.error||'Error'); return j; });
   }
 
+  // Edición de cualquier nodo bajo "parametros": primitivos, objetos y arrays
+  async function editParametroNode(path, nodeEl){
+    const data = window.formularioJsonOriginal || {};
+    const params = data.parametros || {};
+    // path es completo (p.ej. ['parametros','mensajes','exito'] o ['parametros','botones',0,'texto'])
+    const subPath = path.slice(1); // quita 'parametros'
+    const current = getAtPath({ parametros: params }, ['parametros', ...subPath]);
+    const t = typeOf(current);
+
+    // Editor según tipo
+    let nuevoVal;
+    if (t === 'object' || t === 'array' || t === 'null') {
+      const { value: jsonStr } = await Swal.fire({
+        title: `Editar ${path.join('.')}`,
+        input: 'textarea',
+        inputValue: (t === 'null') ? 'null' : JSON.stringify(current, null, 2),
+        inputAttributes: { spellcheck: 'false', style: 'min-height:220px;font-family:monospace;' },
+        showCancelButton: true,
+        confirmButtonText: 'Guardar',
+        preConfirm: (txt)=> {
+          try { return JSON.parse(txt); } catch(e){ Swal.showValidationMessage('JSON inválido'); return false; }
+        }
+      });
+      if (jsonStr == null) return;
+      nuevoVal = jsonStr; // ya parseado en preConfirm
+    } else if (t === 'boolean') {
+      const { value: choice } = await Swal.fire({
+        title: `Editar ${path.join('.')}`,
+        input: 'select',
+        inputOptions: { 'true': 'true', 'false': 'false' },
+        inputValue: current ? 'true' : 'false',
+        showCancelButton: true,
+        confirmButtonText: 'Guardar'
+      });
+      if (choice == null) return;
+      nuevoVal = (choice === 'true');
+    } else if (t === 'number') {
+      const { value: num } = await Swal.fire({
+        title: `Editar ${path.join('.')}`,
+        input: 'number',
+        inputValue: current,
+        showCancelButton: true,
+        confirmButtonText: 'Guardar'
+      });
+      if (num == null) return;
+      nuevoVal = Number(num);
+    } else {
+      const { value: txt } = await Swal.fire({
+        title: `Editar ${path.join('.')}`,
+        input: 'text',
+        inputValue: String(current ?? ''),
+        showCancelButton: true,
+        confirmButtonText: 'Guardar'
+      });
+      if (txt == null) return;
+      nuevoVal = txt;
+    }
+
+    // Aplica, guarda y refresca
+    const nuevosParametros = JSON.parse(JSON.stringify(params));
+    setAtPath(nuevosParametros, subPath, nuevoVal);
+    try {
+      await postGuardarParametros(nuevosParametros);
+      data.parametros = nuevosParametros; // actualiza en memoria
+      // refresca nodo visual
+      const meta = nodeEl.querySelector('.json-node-meta');
+      if (meta) meta.textContent = renderValueInline(nuevoVal);
+      // si era objeto/array, reconstruir para ver cambios internos
+      if (typeOf(nuevoVal) === 'object' || typeOf(nuevoVal) === 'array') buildTree();
+    } catch(err) { showAjaxError(err); }
+  }
+
   function bindEditActions(root){
     root.addEventListener('click', function(e){
       const btn = e.target.closest('.act-edit');
@@ -368,29 +249,39 @@
       const type = actions?.getAttribute('data-node-type');
       const node = actions.closest('.json-tree-node');
       if (!type || !node) return;
-      if (type === 'form') return editForm();
-      if (type === 'fieldset'){
-        const name = node.querySelector('.json-node-key')?.textContent?.trim();
-        if (name) editFieldset(name);
-      }
-      if (type === 'field'){
-        const fs = node.getAttribute('data-fs');
-        const field = node.getAttribute('data-field');
-        if (fs && field) editField(fs, field);
-      }
-      if (type === 'tab'){
-        const titleMeta = node.querySelector('.json-node-meta')?.textContent?.trim();
-        editTab(titleMeta);
-      }
-      // NUEVO: edición de hojas de parametros (y otros leaves)
-      if (type === 'param'){
-        const pathStr = node.dataset.path || '';
+
+      if (type === 'param') {
+        // toma path desde el propio nodo o desde el summary contenedor
+        let pathStr = node.dataset.path;
+        if (!pathStr) {
+          const detailsSummaryNode = actions.closest('summary')?.querySelector('.json-tree-node');
+          pathStr = detailsSummaryNode && detailsSummaryNode.getAttribute('data-path');
+        }
         if (!pathStr) return;
-        try {
-          const path = JSON.parse(pathStr);
-          editParametroLeaf(path, node);
-        } catch(_){}
+        let path; try { path = JSON.parse(pathStr); } catch(_){ return; }
+        if (Array.isArray(path) && path[0] === 'parametros') editParametroNode(path, node);
+        return;
       }
+
+      const actionsMap = {
+        form: editForm,
+        fieldset: () => {
+          const name = node.querySelector('.json-node-key')?.textContent?.trim();
+          if (name) editFieldset(name);
+        },
+        field: () => {
+          const fs = node.getAttribute('data-fs');
+          const field = node.getAttribute('data-field');
+          if (fs && field) editField(fs, field);
+        },
+        tab: () => {
+          const titleMeta = node.querySelector('.json-node-meta')?.textContent?.trim();
+          editTab(titleMeta);
+        }
+      };
+
+      const action = actionsMap[type];
+      if (action) action();
     });
   }
 

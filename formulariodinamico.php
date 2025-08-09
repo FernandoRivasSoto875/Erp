@@ -147,6 +147,44 @@ require_once __DIR__ . '/formulariodinamicologica.php';
       history.replaceState(null, '', url.toString());
     });
   });
+
+  function fdActivateTab(container, href){
+    if (!container || !href || !href.startsWith('#')) return;
+    // activa link
+    container.querySelectorAll('.nav-link').forEach(a => a.classList.remove('active'));
+    const link = container.querySelector(`.nav-link[href="${href}"]`);
+    if (link) link.classList.add('active');
+    // muestra pane
+    container.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('show','active'));
+    const pane = container.querySelector(href);
+    if (pane) pane.classList.add('show','active');
+  }
+
+  // Click en pestañas (funciona con o sin Bootstrap)
+  document.addEventListener('click', function(e){
+    const link = e.target.closest('#fd-root [data-block-type="tabs"] .nav-link');
+    if (!link) return;
+
+    // Si está Bootstrap, dejar que lo maneje
+    const hasBS4 = window.jQuery && jQuery.fn && jQuery.fn.tab;
+    const hasBS5 = window.bootstrap && bootstrap.Tab;
+    if (hasBS4 || hasBS5) return;
+
+    e.preventDefault();
+    const container = link.closest('[data-block-type="tabs"]');
+    const href = link.getAttribute('href');
+    fdActivateTab(container, href);
+  });
+
+  // Asegurar que haya una pestaña activa al cargar
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('#fd-root [data-block-type="tabs"]').forEach(container => {
+      const active = container.querySelector('.nav-link.active');
+      const first  = container.querySelector('.nav-link');
+      const target = (active || first);
+      if (target) fdActivateTab(container, target.getAttribute('href'));
+    });
+  });
 </script>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>

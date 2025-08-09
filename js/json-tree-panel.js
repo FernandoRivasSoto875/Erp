@@ -119,98 +119,114 @@
     return btn;
   }
 
+  // Mostrar solo en modo diseño
+  function shouldShow(){
+    if (!CONFIG.showOnlyInDesignMode) return true;
+    const root = document.getElementById('fd-root');
+    return !!(root && root.classList.contains('design-mode'));
+  }
+  function onDesignModeChanged(e){
+    const on = !!(e && e.detail && e.detail.on);
+    const panel = document.getElementById('json-tree-panel');
+    if (panel) panel.style.display = on ? '' : 'none';
+    const btn = document.getElementById('fd-tree-toggle-btn');
+    if (btn) btn.style.display = on ? 'inline-flex' : 'none';
+    if (on) { ensureJsonLoaded().then(buildTree).catch(console.error); }
+  }
+  function watchDesignMode(){
+    const root = document.getElementById('fd-root'); if (!root) return;
+    new MutationObserver(()=>{
+      const on = root.classList.contains('design-mode');
+      window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on } }));
+    }).observe(root, { attributes:true, attributeFilter:['class'] });
+  }
+
   function parseLenientJson(text){
     try { return JSON.parse(text); } catch(_){
       const noComments = text.replace(/\/\/.*$/mg,'').replace(/\/\*[\s\S]*?\*\//g,'');
-      const re = /([{,])\s*([a-zA-Z0-9_]+)\s*:/g;
-      const fixed = noComments.replace(re, '$1"$2":');
-      return JSON.parse(fixed);
+      const noTrailing = noComments.replace(/,\s*([}\]])/g, '$1');
+      return JSON.parse(noTrailing);
     }
+  }
+
+  // Carga JSON real desde /json/<archivo>
+  async function ensureJsonLoaded(){
+    if (window.formularioJsonOriginal) return window.formularioJsonOriginal;
+    const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || 'formulariogenerico2.json';
+    const url = 'json/' + archivo;
+    const r = await fetch(url, { cache:'no-store' });
+    if (!r.ok) throw new Error('No se pudo cargar '+url+' ('+r.status+')');
+    const txt = await r.text();
+    const data = parseLenientJson(txt) || {};
+    window.formularioJsonOriginal = data;
+    return data;
   }
 
   // Tree
   const tree = { data:{}, el:null, filter:'' };
   function buildTree(){
-    const panel = ensurePanel();
-    const body = $('#jsonTreeBody');
-    body.innerHTML = '<div style="padding:12px; text-align:center;"><i class="fas fa-spinner fa-spin"></i></div>';
+    const body = $('#jsonTreeBody'); if (!body) return;
     const json = getJsonData();
     tree.data = json;
-    const html = renderNode(json, null, 0);
-    body.innerHTML = html;
+
+    // Renderiza todos los nodos de primer nivel
+    const keys = Object.keys(json);
+    const html = keys.map(k => renderNode(k, json[k], [k], 0)).join('');
+    body.innerHTML = html || '<div class="text-muted" style="padding:8px;">JSON vacío</div>';
     tree.el = body;
-    if (html) body.firstChild.click();
     updatePanelTitle();
-    // setTimeout(()=>{ panel.scrollTop = 0; },50);
   }
 
-  function renderNode(data, path, level){
-    if (data == null) return '';
-    if (typeof data !== 'object') return `<div class="json-tree-node" data-path="${esc(JSON.stringify(path))}" style="margin-left:${level*16}px;">
-        <span class="json-node-key">${esc(String(path[path.length-1]))}</span>: <span class="json-node-value">${renderValueInline(data)}</span>
-      </div>`;
-    const keys = Object.keys(data);
-    const hasChildren = keys.length > 0;
-    const collapsed = tree.filter ? ' collapsed' : '';
-    const children = hasChildren ? `<div class="json-tree-children" style="display:${collapsed?'none':'block'};">
-        ${keys.map(k=>renderNode(data[k], path.concat(k), level+1)).join('')}
-      </div>` : '';
-    return `<div class="json-tree-node" data-path="${esc(JSON.stringify(path))}" style="margin-left:${level*16}px;">
-        <span class="json-node-key">${esc(String(path[path.length-1]))}</span>: <span class="json-node-value">${renderValueInline(data)}</span>
-        <div class="json-node-actions">
-          <button class="btn-icon" title="Eliminar" onclick="event.stopPropagation(); deleteNode(${esc(JSON.stringify(path))});"><i class="fas fa-trash"></i></button>
-          <button class="btn-icon" title="Duplicar" onclick="event.stopPropagation(); duplicateNode(${esc(JSON.stringify(path))});"><i class="fas fa-clone"></i></button>
-          <button class="btn-icon" title="Editar" onclick="event.stopPropagation(); editNode(${esc(JSON.stringify(path))});"><i class="fas fa-pencil-alt"></i></button>
-        </div>
-      </div>`;
+  function renderNode(key, value, path, level){
+    const pad = level * 14;
+    const t = typeOf(value);
+    const meta = (t==='object') ? 'object' : (t==='array') ? `array(${(value||[]).length})` : renderValueInline(value);
+
+    let html = `<div class="json-tree-node" data-path='${esc(JSON.stringify(path))}' style="margin-left:${pad}px;">
+      <span class="json-node-key">${esc(String(key))}</span>
+      <span class="json-node-meta">${esc(meta)}</span>
+      <span class="json-node-actions">
+        <button class="btn-icon" title="Editar" onclick="event.stopPropagation(); editNode(${esc(JSON.stringify(path))});"><i class="fas fa-pencil-alt"></i></button>
+        <button class="btn-icon" title="Duplicar" onclick="event.stopPropagation(); duplicateNode(${esc(JSON.stringify(path))});"><i class="fas fa-clone"></i></button>
+        <button class="btn-icon" title="Eliminar" onclick="event.stopPropagation(); deleteNode(${esc(JSON.stringify(path))});"><i class="fas fa-trash"></i></button>
+      </span>
+    </div>`;
+
+    if (t === 'object') {
+      Object.keys(value||{}).forEach(k=>{
+        html += renderNode(k, value[k], path.concat(k), level+1);
+      });
+    } else if (t === 'array') {
+      (value||[]).forEach((item, idx)=>{
+        html += renderNode(`[${idx}]`, item, path.concat(idx), level+1);
+      });
+    }
+    return html;
   }
 
   function filterTree(){
-    const panel = ensurePanel();
-    const body = $('#jsonTreeBody');
-    const txt = $('#jsonTreeFilter').value.trim().toLowerCase();
-    if (txt === tree.filter) return;
-    tree.filter = txt;
-    const json = getJsonData();
-    let html = '';
-    if (txt){
-      const keys = Object.keys(json);
-      for (const k of keys){
-        if (String(k).toLowerCase().includes(txt)){
-          html += renderNode(json[k], [k], 0);
-        } else {
-          const v = json[k];
-          if (v && typeof v === 'object'){
-            const childKeys = Object.keys(v);
-            for (const ck of childKeys){
-              if (String(ck).toLowerCase().includes(txt)){
-                html += renderNode(v[ck], [k, ck], 1);
-              }
-            }
-          }
-        }
-      }
-    } else {
-      html = renderNode(json, null, 0);
-    }
-    body.innerHTML = html;
-    tree.el = body;
-    if (html) body.firstChild.click();
+    const q = ($('#jsonTreeFilter')?.value || '').trim().toLowerCase();
+    tree.filter = q;
+    if (!q) { buildTree(); return; }
+    const body = $('#jsonTreeBody'); if (!body) return;
+    // Asegura que esté renderizado
+    if (!body.firstChild) buildTree();
+    $all('.json-tree-node', body).forEach(n=>{
+      const txt = n.textContent.toLowerCase();
+      n.style.display = txt.includes(q) ? '' : 'none';
+    });
     updatePanelTitle();
   }
 
   function updatePanelTitle(){
-    const panel = $('#json-tree-panel');
-    const body = $('#jsonTreeBody');
-    const count = body.querySelectorAll('.json-tree-node').length;
-    const title = `Árbol del JSON (${count})`;
-    $('.json-tree-title', panel).textContent = title;
+    const panel = $('#json-tree-panel'); if (!panel) return;
+    const count = $('#jsonTreeBody')?.querySelectorAll('.json-tree-node')?.length || 0;
+    $('.json-tree-title', panel).textContent = `Árbol del JSON (${count})`;
   }
 
   // Data
   function getJsonData(){
-    const txt = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || '';
-    return parseLenientJson(txt);
+    return window.formularioJsonOriginal || {};
   }
 
   function setJsonData(data){
@@ -228,48 +244,80 @@
     return Promise.resolve();
   }
 
+  // Persistencia por bloque raíz según path[0]
+  async function persistRootByPath(path, updatedRoot){
+    const rootKey = path[0];
+    await postGuardar({ [rootKey]: updatedRoot });
+    if (!window.formularioJsonOriginal) window.formularioJsonOriginal = {};
+    window.formularioJsonOriginal[rootKey] = updatedRoot;
+  }
+
   // CRUD
-  function deleteNode(path){
+  async function deleteNode(path){
     const json = getJsonData();
-    let parent = json;
-    for (let i=0; i<path.length-1; i++){
-      parent = parent[path[i]];
-    }
-    delete parent[path[path.length-1]];
+    const rootKey = path[0];
+    const subPath = path.slice(1);
+    let root = deepClone(json[rootKey]);
+
+    // Navega al padre
+    let parent = root;
+    for (let i=0;i<subPath.length-1;i++) parent = parent[subPath[i]];
+
+    const last = subPath[subPath.length-1];
+    if (Array.isArray(parent) && typeof last === 'number') parent.splice(last,1);
+    else delete parent[last];
+
+    await persistRootByPath(path, root);
     buildTree();
-    setJsonData(json);
   }
 
-  function duplicateNode(path){
+  async function duplicateNode(path){
     const json = getJsonData();
-    let src = json;
-    for (let i=0; i<path.length; i++){
-      src = src[path[i]];
-    }
+    const rootKey = path[0];
+    const subPath = path.slice(1);
+    let root = deepClone(json[rootKey]);
+
+    // Obtener valor origen
+    let src = root; subPath.forEach(k=> src = src[k]);
     const copy = deepClone(src);
-    const parentPath = path.slice(0, path.length-1);
-    let dest = json;
-    for (let i=0; i<parentPath.length; i++){
-      dest = dest[parentPath[i]];
+
+    // Insertar al lado
+    const parentPath = subPath.slice(0, -1);
+    let dest = root; parentPath.forEach(k=> dest = dest[k]);
+    const last = subPath[subPath.length-1];
+
+    if (Array.isArray(dest) && typeof last==='number') {
+      dest.splice(last+1, 0, copy);
+    } else if (dest && typeof dest==='object') {
+      let base = String(last) + '_copia', i=2, newKey = base;
+      while (Object.prototype.hasOwnProperty.call(dest, newKey)) newKey = base + i++;
+      dest[newKey] = copy;
     }
-    const newKey = `__copy_${path[path.length-1]}`;
-    dest[newKey] = copy;
+
+    await persistRootByPath(path, root);
     buildTree();
-    setJsonData(json);
   }
 
-  function editNode(path){
+  async function editNode(path){
     const json = getJsonData();
-    let value = json;
-    for (let i=0; i<path.length; i++){
-      value = value[path[i]];
-    }
-    const newValue = prompt('Editar valor', renderValueInline(value));
-    if (newValue == null) return;
-    const parsedValue = parseLenientJson(`{ "value": ${newValue} }`);
-    setAtPath(json, path, parsedValue.value);
+    const rootKey = path[0];
+    const subPath = path.slice(1);
+    let root = deepClone(json[rootKey]);
+
+    // Valor actual
+    let value = root; subPath.forEach(k=> value = value[k]);
+
+    // Prompt simple (puedes reemplazar por Swal)
+    const input = window.prompt('Editar valor (JSON o texto)', (typeOf(value)==='string') ? JSON.stringify(value) : JSON.stringify(value));
+    if (input == null) return;
+
+    let newVal;
+    try { newVal = JSON.parse(input); }
+    catch { newVal = input; }
+
+    setAtPath(root, subPath, newVal);
+    await persistRootByPath(path, root);
     buildTree();
-    setJsonData(json);
   }
 
   // Form
@@ -324,28 +372,47 @@
 
   // Base Structure
   function ensureBaseStructureInteractive(){
-    const json = getJsonData();
-    const base = {
-      parametros: json.parametros || {},
-      layout: json.layout || [],
-      fieldsets: json.fieldsets || {},
-      elementos_fuera: json.elementos_fuera || {}
-    };
-    setJsonData(base).then(()=>{
+    ensureJsonLoaded().then(async ()=>{
+      const data = getJsonData();
+      const payload = {};
+      if (!data.parametros || typeof data.parametros!=='object') payload.parametros = {};
+      if (!data.layout || typeof data.layout!=='object') {
+        payload.layout = {
+          header: { type:'header', rows: [] },
+          main:   { type:'generic', rows: [ { columns: [ { width: 12 } ] } ] },
+          footer: { type:'footer', rows: [] }
+        };
+      }
+      if (!data.fieldsets || typeof data.fieldsets!=='object') payload.fieldsets = {};
+      if (!Array.isArray(data.elementos_fuera)) payload.elementos_fuera = [];
+
+      if (Object.keys(payload).length === 0) {
+        if (window.Swal) Swal.fire('Listo', 'La estructura base ya existe.', 'success');
+        return;
+      }
+
+      await postGuardar(payload);
+      window.formularioJsonOriginal = { ...data, ...payload };
       buildTree();
-      Swal.fire('Estructura inicializada', 'La estructura base del JSON ha sido inicializada.', 'success');
+      if (window.Swal) Swal.fire('Hecho', 'Estructura creada.', 'success');
     }).catch(e=>{
-      Swal.fire('Error', e.message, 'error');
+      if (window.Swal) Swal.fire('Error', String(e.message||e), 'error');
     });
   }
 
   // Events
-  window.addEventListener('load', ()=>{
+  window.addEventListener('load', async ()=>{
     injectStyles();
     ensurePanel();
     ensureToggleButton();
-    buildTree();
-    setTimeout(initForm, 100);
+    watchDesignMode();
+    window.addEventListener('design-mode-changed', onDesignModeChanged);
+
+    if (shouldShow()) {
+      try { await ensureJsonLoaded(); buildTree(); } catch(e){ console.error(e); }
+    } else {
+      const panel = $('#json-tree-panel'); if (panel) panel.style.display = 'none';
+    }
   });
   window.addEventListener('resize', ()=>{
     const panel = $('#json-tree-panel');

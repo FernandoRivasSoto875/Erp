@@ -363,91 +363,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // KEEP: Reconstruye el JSON de layout y elementos_fuera desde el DOM visual
 function actualizarJsonDesdeUI() {
-    let nuevoJson = JSON.parse(JSON.stringify(window.formularioJsonOriginal));
-
-
-    // --- Reconstruir layout.main.tabs con soporte para filas, columnas, grillas, fieldsets con grilla interna y campos sueltos ---
-    let tabs = [];
-    document.querySelectorAll('.tabs-container > .tab').forEach(tabEl => {
-        let tabObj = {
-            title: tabEl.querySelector('.tab-title')?.innerText || 'Pestaña',
-            rows: []
-        };
-        tabEl.querySelectorAll('.rows').forEach(rowEl => {
-            let rowObj = { columns: [] };
-            rowEl.querySelectorAll('.columns').forEach(colEl => {
-                let colObj = {};
-                // Fieldset con grilla interna
-                let fieldset = colEl.querySelector('.draggable-fieldset');
-                if (fieldset) {
-                    let fsRows = parseInt(fieldset.getAttribute('data-rows')) || 1;
-                    let fsCols = parseInt(fieldset.getAttribute('data-cols')) || 1;
-                    let fsObj = {
-                        name: fieldset.getAttribute('data-name'),
-                        rows: []
-                    };
-                    let grid = fieldset.querySelector('.fieldset-grid');
-                    if (grid) {
-                        grid.querySelectorAll('.fieldset-row').forEach(fsRowEl => {
-                            let fsRowObj = { columns: [] };
-                            fsRowEl.querySelectorAll('.fieldset-col').forEach(fsColEl => {
-                                let fsColObj = {};
-                                let camp = fsColEl.querySelector('.draggable-campo');
-                                if (camp) fsColObj.field = camp.getAttribute('data-name');
-                                let fset = fsColEl.querySelector('.draggable-fieldset');
-                                if (fset) fsColObj.fieldset = fset.getAttribute('data-name');
-                                let gridInt = fsColEl.querySelector('.draggable-grilla');
-                                if (gridInt) fsColObj.grid = { name: gridInt.getAttribute('data-name') };
-                                fsRowObj.columns.push(fsColObj);
-                            });
-                            fsObj.rows.push(fsRowObj);
-                        });
-                    }
-                    colObj.fieldset = fsObj;
-                }
-                // Campo suelto
-                let campo = colEl.querySelector('.draggable-campo');
-                if (campo && !fieldset) {
-                    colObj.field = campo.getAttribute('data-name');
-                }
-                // Grilla
-                let grilla = colEl.querySelector('.draggable-grilla');
-                if (grilla) {
-                    colObj.grid = { rows: [], name: grilla.getAttribute('data-name') || '' };
-                    grilla.querySelectorAll('.grilla-row').forEach(grillaRow => {
-                        let grillaRowObj = { columns: [] };
-                        grillaRow.querySelectorAll('.grilla-col').forEach(grillaCol => {
-                            let grillaColObj = {};
-                            let fset = grillaCol.querySelector('.draggable-fieldset');
-                            if (fset) grillaColObj.fieldset = fset.getAttribute('data-name');
-                            let camp = grillaCol.querySelector('.draggable-campo');
-                            if (camp && !fset) grillaColObj.field = camp.getAttribute('data-name');
-                            grillaRowObj.columns.push(grillaColObj);
-                        });
-                        colObj.grid.rows.push(grillaRowObj);
-                    });
-                }
-                rowObj.columns.push(colObj);
-            });
-            tabObj.rows.push(rowObj);
-        });
-        tabs.push(tabObj);
-    });
-    if (nuevoJson.layout && nuevoJson.layout.main && nuevoJson.layout.main.tabs) {
-        nuevoJson.layout.main.tabs = tabs;
+    try {
+        const layout = (typeof buildLayoutFromDOM === 'function') ? buildLayoutFromDOM() : null;
+        const elementos_fuera = (typeof collectElementosFuera === 'function') ? collectElementosFuera() : [];
+        let nuevoJson = JSON.parse(JSON.stringify(window.formularioJsonOriginal || {}));
+        if (layout) nuevoJson.layout = layout;
+        nuevoJson.elementos_fuera = elementos_fuera;
+        guardarJson(nuevoJson);
+    } catch (e) {
+        console.error('actualizarJsonDesdeUI()', e);
+        if (window.Swal) Swal.fire('Error','No se pudo serializar el diseño','error');
     }
-
-    // --- Reconstruir elementos_fuera ---
-    let elementosFuera = [];
-    document.querySelectorAll('#elementos-fuera-container .draggable-fieldset, #elementos-fuera-container .draggable-campo').forEach(el => {
-        let tipo = el.classList.contains('draggable-fieldset') ? 'fieldset' : 'field';
-        elementosFuera.push({ type: tipo, name: el.getAttribute('data-name') });
-    });
-    nuevoJson.elementos_fuera = elementosFuera;
-
-    // Puedes agregar aquí reconstrucción de filas, columnas, grillas, campos sueltos, etc.
-
-    guardarJson(nuevoJson);
 }
 
 // KEEP: Guarda el JSON actualizado en el backend

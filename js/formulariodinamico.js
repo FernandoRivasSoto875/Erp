@@ -83,9 +83,15 @@ $(document).ready(function() {
                 animation: 150,
                 ghostClass: 'sortable-ghost',
                 draggable: '.draggable-fieldset',
-                // usar el título del fieldset como "handle" si existe
                 handle: 'legend, [data-fieldset-title], .draggable-fieldset',
-                onEnd: () => saveState()
+                onEnd: () => {
+                    saveState();
+                    if (window.DnDFormBuilder && window.DnDFormBuilder.saveDesign) {
+                        window.DnDFormBuilder.saveDesign();
+                    } else if (typeof actualizarJsonDesdeUI === 'function') {
+                        actualizarJsonDesdeUI();
+                    }
+                }
             }));
         });
 
@@ -96,7 +102,14 @@ $(document).ready(function() {
                 animation: 150,
                 ghostClass: 'sortable-ghost',
                 draggable: '.draggable-field',
-                onEnd: () => saveState()
+                onEnd: () => {
+                    saveState();
+                    if (window.DnDFormBuilder && window.DnDFormBuilder.saveDesign) {
+                        window.DnDFormBuilder.saveDesign();
+                    } else if (typeof actualizarJsonDesdeUI === 'function') {
+                        actualizarJsonDesdeUI();
+                    }
+                }
             }));
         });
 
@@ -121,6 +134,11 @@ $(document).ready(function() {
                         if (pane) content.appendChild(pane);
                     });
                     saveState();
+                    if (window.DnDFormBuilder && window.DnDFormBuilder.saveDesign) {
+                        window.DnDFormBuilder.saveDesign();
+                    } else if (typeof actualizarJsonDesdeUI === 'function') {
+                        actualizarJsonDesdeUI();
+                    }
                 }
             }));
         });
@@ -200,6 +218,11 @@ $(document).ready(function() {
                 const paneId = navLink.attr('href');
                 $(paneId).attr('data-tab-title', newTitle);
                 saveState();
+                if (window.DnDFormBuilder && window.DnDFormBuilder.saveDesign) {
+                    window.DnDFormBuilder.saveDesign();
+                } else if (typeof actualizarJsonDesdeUI === 'function') {
+                    actualizarJsonDesdeUI();
+                }
             }
         });
     });

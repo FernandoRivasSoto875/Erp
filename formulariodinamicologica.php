@@ -11,9 +11,10 @@ if (!function_exists('generarCampo')) {
         $attrs  = (string)($c['attrs'] ?? '');
         $dis    = $ro ? 'readonly disabled' : '';
         $val    = (string)($v ?? $c['valor_predeterminado'] ?? $c['default'] ?? '');
+        $ph     = (string)($c['placeholder'] ?? '');
 
         $html = '<div class="form-group mb-2" data-field="'.$nombre.'">';
-        $html .= '<label class="form-label">'.fd_escape($etq).'</label>';
+        if ($tipo !== 'checkbox') $html .= '<label class="form-label">'.fd_escape($etq).'</label>';
 
         switch ($tipo) {
             case 'textarea':
@@ -33,13 +34,7 @@ if (!function_exists('generarCampo')) {
                 $html .= '<div class="form-check"><input type="checkbox" class="form-check-input" name="'.fd_escape($nombre).'" value="1" '.$chk.' '.$dis.' '.$attrs.'>';
                 $html .= '<label class="form-check-label">'.fd_escape($etq).'</label></div>';
                 break;
-            case 'date':
-            case 'number':
-            case 'email':
-            case 'tel':
-            case 'text':
             default:
-                $ph = (string)($c['placeholder'] ?? '');
                 $html .= '<input type="'.fd_escape($tipo).'" name="'.fd_escape($nombre).'" value="'.fd_escape($val).'" placeholder="'.fd_escape($ph).'" class="form-control" '.$dis.' '.$attrs.' />';
         }
 
@@ -78,65 +73,66 @@ if (!function_exists('generarFieldsetContenido')) {
     }
 }
 
+// Column rendering (fieldset, tabset, group)
 if (!function_exists('renderColumnContent')) {
-    function renderColumnContent(array $col, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
-        // 1) Un solo fieldset
+    function renderColumnContent(array $col, array $fieldsets, array $valores = [], bool $soloLectura = false, string $colPath = ''): string {
         if (!empty($col['fieldset'])) {
             $fsName = (string)$col['fieldset'];
             return $fsName !== '' ? generarFieldsetContenido($fsName, $fieldsets, $valores, $soloLectura) : '';
         }
-        // 2) Bloque de tabs embebido en la columna
         if (isset($col['tabset']) && is_array($col['tabset'])) {
-            $tabset = $col['tabset'];
-            // Asegura estructura mínima
-            if (!isset($tabset['type'])) $tabset['type'] = 'tabs';
-            if (!isset($tabset['tabs'])) $tabset['tabs'] = [];
-            return renderTabsBlock($tabset, $fieldsets, $valores, $soloLectura);
+            return renderTabsBlock($col['tabset'], $fieldsets, $valores, $soloLectura, $colPath === '' ? '' : $colPath.'.tabset');
         }
-        // 3) Grupo de fieldsets/items (puede contener fieldsets y/o otros tabsets anidados)
         if (isset($col['group']) && is_array($col['group'])) {
-            return renderFieldsetGroup($col['group'], $fieldsets, $valores, $soloLectura);
+            return renderFieldsetGroup($col['group'], $fieldsets, $valores, $soloLectura, $colPath === '' ? '' : $colPath.'.group');
         }
         return '';
     }
 }
 
 if (!function_exists('renderFieldsetGroup')) {
-    function renderFieldsetGroup(array $group, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
+    function renderFieldsetGroup(array $group, array $fieldsets, array $valores = [], bool $soloLectura = false, string $groupPath = ''): string {
         $title = (string)($group['title'] ?? 'Grupo');
         $items = is_array($group['items'] ?? null) ? $group['items'] : [];
-        $html  = '<div class="fd-block mb-3 p-2 border rounded" data-block-type="fieldset-group">';
+        $html  = '<div class="fd-block mb-3 p-2 border rounded" data-block-type="fieldset-group"';
+                 ($groupPath ? ' data-group-items-path="'.fd_escape($groupPath).'.items"' : '').'>';
         $html .= '<div class="small text-muted mb-2">'.fd_escape($title).'</div>';
-        foreach ($items as $it) {
+        $html .= '<div class="fd-group-items">';
+        foreach ($items as $idx => $it) {
             if (!is_array($it)) continue;
             $type = $it['type'] ?? '';
+            $html .= '<div class="fd-group-item" data-group-item-index="'.$idx.'">';
             if ($type === 'fieldset') {
                 $name = (string)($it['name'] ?? '');
                 if ($name !== '') $html .= generarFieldsetContenido($name, $fieldsets, $valores, $soloLectura);
             } elseif ($type === 'tabs') {
-                $html .= renderTabsBlock($it, $fieldsets, $valores, $soloLectura);
+                $html .= renderTabsBlock($it, $fieldsets, $valores, $soloLectura, $groupPath === '' ? '' : $groupPath.'.items.'.$idx);
             } elseif ($type === 'group') {
-                // soporte anidado opcional
-                $html .= renderFieldsetGroup($it, $fieldsets, $valores, $soloLectura);
+                $html .= renderFieldsetGroup($it, $fieldsets, $valores, $soloLectura, $groupPath === '' ? '' : $groupPath.'.items.'.$idx);
             }
+            $html .= '</div>';
         }
-        $html .= '</div>';
+        $html .= '</div></div>';
         return $html;
     }
 }
 
-// Bloques
+// Blocks
 if (!function_exists('renderGenericBlock')) {
-    function renderGenericBlock(array $block, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
+    function renderGenericBlock(array $block, array $fieldsets, array $valores = [], bool $soloLectura = false, string $basePath = ''): string {
         $type = $block['type'] ?? 'generic';
         $html = '<div class="fd-block" data-block-type="'.fd_escape($type).'">';
-        foreach (($block['rows'] ?? []) as $row) {
+        $rows = $block['rows'] ?? [];
+        foreach (array_values($rows) as $ri => $row) {
+            $rowPath = $basePath !== '' ? $basePath.'.rows.'.$ri : '';
             $html .= '<div class="row" data-row>';
-            foreach (($row['columns'] ?? []) as $col) {
+            $cols = $row['columns'] ?? [];
+            foreach (array_values($cols) as $ci => $col) {
                 $w = (int)($col['width'] ?? 12);
                 $w = max(1, min(12, $w));
+                $colPath = $rowPath !== '' ? $rowPath.'.columns.'.$ci : '';
                 $html .= '<div class="col-md-'.$w.'" data-col-width="'.$w.'">';
-                $html .= renderColumnContent($col, $fieldsets, $valores, $soloLectura);
+                $html .= renderColumnContent($col, $fieldsets, $valores, $soloLectura, $colPath);
                 $html .= '</div>';
             }
             $html .= '</div>';
@@ -147,34 +143,39 @@ if (!function_exists('renderGenericBlock')) {
 }
 
 if (!function_exists('renderTabsBlock')) {
-    function renderTabsBlock(array $main, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
-        // Espera estructura: ['type'=>'tabs','tabs'=>[ {title, rows:[{columns:[...] }]} ]]
-        $tabs = $main['tabs'] ?? [];
-        $html = '<div class="fd-block" data-block-type="tabs">';
+    function renderTabsBlock(array $tabset, array $fieldsets, array $valores = [], bool $soloLectura = false, string $tabsetPath = ''): string {
+        $tabs = $tabset['tabs'] ?? [];
+        // Path al array de tabs (para persistir DnD)
+        $tabsPathAttr = $tabsetPath ? $tabsetPath.'.tabs' : '';
+        $html = '<div class="fd-block" data-block-type="tabs" data-tabset="1"';
+                ($tabsPathAttr ? ' data-json-tabs-path="'.fd_escape($tabsPathAttr).'"' : '').
+                '>';
+        // Nav
         $html .= '<ul class="nav nav-tabs" role="tablist">';
-        foreach ($tabs as $i => $t) {
+        foreach (array_values($tabs) as $i => $t) {
             $title  = (string)($t['title'] ?? ('Pestaña '.($i+1)));
-            $paneId = 'tab_'.md5($title.$i);
+            $paneId = 'tab_'.md5(($tabsetPath?:'root').'_'.($title).'_'.$i);
             $active = $i === 0 ? 'active' : '';
             $sel    = $i === 0 ? 'true' : 'false';
-            $html .= '<li class="nav-item">';
+            $html .= '<li class="nav-item" data-tab-index="'.$i.'">';
             $html .= '<a id="nav_'.$paneId.'" class="nav-link '.$active.'" href="#'.$paneId.'" role="tab" aria-controls="'.$paneId.'" aria-selected="'.$sel.'" data-toggle="tab" data-bs-toggle="tab">'.fd_escape($title).'</a>';
             $html .= '</li>';
         }
         $html .= '</ul>';
-
+        // Panes
         $html .= '<div class="tab-content">';
-        foreach ($tabs as $i => $t) {
+        foreach (array_values($tabs) as $i => $t) {
             $title  = (string)($t['title'] ?? ('Pestaña '.($i+1)));
-            $paneId = 'tab_'.md5($title.$i);
+            $paneId = 'tab_'.md5(($tabsetPath?:'root').'_'.($title).'_'.$i);
             $show   = $i === 0 ? 'show active' : '';
-            $html .= '<div class="tab-pane fade '.$show.'" id="'.fd_escape($paneId).'" role="tabpanel" aria-labelledby="nav_'.$paneId.'" data-dropzone="tab-pane">';
-            foreach (($t['rows'] ?? []) as $row) {
+            $html .= '<div class="tab-pane fade '.$show.'" id="'.fd_escape($paneId).'" role="tabpanel" aria-labelledby="nav_'.$paneId.'" data-dropzone="tab-pane" data-tab-index="'.$i.'">';
+            foreach (($t['rows'] ?? []) as $ri => $row) {
                 $html .= '<div class="row" data-row>';
-                foreach (($row['columns'] ?? []) as $col) {
+                foreach (($row['columns'] ?? []) as $ci => $col) {
                     $w = (int)($col['width'] ?? 12); $w = max(1, min(12, $w));
+                    $colPath = ($tabsetPath ? $tabsetPath.'.tabs.'.$i.'.rows.'.$ri.'.columns.'.$ci : '');
                     $html .= '<div class="col-md-'.$w.'" data-col-width="'.$w.'">';
-                    $html .= renderColumnContent($col, $fieldsets, $valores, $soloLectura);
+                    $html .= renderColumnContent($col, $fieldsets, $valores, $soloLectura, $colPath);
                     $html .= '</div>';
                 }
                 $html .= '</div>';
@@ -191,22 +192,22 @@ if (!function_exists('generarLayout')) {
     function generarLayout(array $layout, array $fieldsets, array $valores = [], bool $soloLectura = false): string {
         $html = '<div data-layout-container>';
         if (!empty($layout['header']) && (($layout['header']['type'] ?? '') === 'header')) {
-            $html .= renderGenericBlock($layout['header'], $fieldsets, $valores, $soloLectura);
+            $html .= renderGenericBlock($layout['header'], $fieldsets, $valores, $soloLectura, 'layout.header');
         }
         if (!empty($layout['main'])) {
             $main = $layout['main'];
-            if (($main['type'] ?? '') === 'tabs') $html .= renderTabsBlock($main, $fieldsets, $valores, $soloLectura);
-            else $html .= renderGenericBlock($main, $fieldsets, $valores, $soloLectura);
+            if (($main['type'] ?? '') === 'tabs') $html .= renderTabsBlock($main, $fieldsets, $valores, $soloLectura, 'layout.main');
+            else $html .= renderGenericBlock($main, $fieldsets, $valores, $soloLectura, 'layout.main');
         }
         if (!empty($layout['footer']) && (($layout['footer']['type'] ?? '') === 'footer')) {
-            $html .= renderGenericBlock($layout['footer'], $fieldsets, $valores, $soloLectura);
+            $html .= renderGenericBlock($layout['footer'], $fieldsets, $valores, $soloLectura, 'layout.footer');
         }
         $html .= '</div>';
         return $html;
     }
 }
 
-// Elementos fuera del formulario (para modo diseño)
+// Elementos fuera del formulario (modo diseño)
 if (!function_exists('generarContenedorFueraDelFormulario')) {
     function generarContenedorFueraDelFormulario(array $elementosFuera = null, array $fieldsets = [], array $valores = [], bool $soloLectura = false): string {
         $html = '<div class="fd-out-items">';

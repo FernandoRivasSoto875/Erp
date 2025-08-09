@@ -457,6 +457,39 @@ $(function(){
   function inDesign(){ const r=root(); return !!(r && r.classList.contains('design-mode')); }
   function getArchivoJson(){ return (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || ''; }
 
+  // NUEVO: Anota el DOM generado por PHP para que el builder reconozca tabs/fieldsets/campos
+  function setupDomHints() {
+    // Asegura el contenedor de layout para la serialización
+    const form = document.getElementById('formulariodinamico');
+    if (form && !form.hasAttribute('data-layout-container')) {
+      form.setAttribute('data-layout-container','');
+    }
+
+    // Asegura bloque de tabs y dropzones en panes
+    document.querySelectorAll('#fd-root ul.nav[role="tablist"]').forEach(nav => {
+      // Encuentra el bloque que contiene nav y .tab-content
+      let block = nav.closest('[data-block-type="tabs"]');
+      if (!block) {
+        const parent = nav.parentElement;
+        if (parent && parent.querySelector('.tab-content')) block = parent;
+        else if (parent && parent.parentElement && parent.parentElement.querySelector('.tab-content')) block = parent.parentElement;
+      }
+      if (block && !block.getAttribute('data-block-type')) {
+        block.setAttribute('data-block-type', 'tabs');
+      }
+      const content = block ? block.querySelector('.tab-content') : null;
+      if (content) {
+        content.querySelectorAll('.tab-pane').forEach(p => {
+          if (!p.hasAttribute('data-dropzone')) p.setAttribute('data-dropzone','tab-pane');
+        });
+      }
+    });
+
+    // Asegura clases para drag de fieldsets y fields ya presentes
+    document.querySelectorAll('#fd-root [data-fieldset-name]').forEach(el => el.classList.add('draggable-fieldset'));
+    document.querySelectorAll('#fd-root [data-field-name]').forEach(el => el.classList.add('draggable-field'));
+  }
+
   // Serializa bloques genéricos
   function serializeGenericBlock(blockEl){
     const rows = [];
@@ -675,4 +708,133 @@ $(function(){
     content.appendChild(pane);
 
     ensureCrudUI();
-    const lastLink = nav.querySelector('.nav-link:last-of
+    const lastLink = nav.querySelector('.nav-link:last-of-type');
+    $(nav).find('.nav-link').removeClass('active').attr('aria-selected','false');
+    $(content).find('.tab-pane').removeClass('show active');
+    if (lastLink) $(lastLink).addClass('active').attr('aria-selected','true');
+    $(pane).addClass('show active');
+
+    initSortable();
+    saveDesign();
+  }
+
+  $(document).on('click', '.edit-tab-icon', function(){
+    if (!inDesign()) return;
+    const $a = $(this).closest('.nav-item').find('.nav-link').addBack().filter('.nav-link').first();
+    const current = $a.text().trim();
+    Swal.fire({ title: 'Título de pestaña', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' })
+      .then(res => { if (res.isConfirmed && res.value) { $a.text(res.value); saveDesign(); } });
+  });
+
+  $(document).on('click', '.delete-tab-icon', function(){
+    if (!inDesign()) return;
+    const li = this.closest('.nav-item');
+    const link = li ? li.querySelector('.nav-link')
+      : (this.previousElementSibling && this.previousElementSibling.classList.contains('edit-tab-icon')
+          ? this.previousElementSibling.previousElementSibling
+          : this.previousElementSibling);
+    if (!link || !link.classList.contains('nav-link')) return;
+    const href = link.getAttribute('href');
+    const block = link.closest('[data-block-type="tabs"]');
+    const nav = link.closest('ul.nav');
+    const content = block && block.querySelector('.tab-content');
+
+    Swal.fire({ title:'Eliminar pestaña', text:'Esta acción no se puede deshacer', icon:'warning', showCancelButton:true, confirmButtonText:'Eliminar' })
+      .then(res => {
+        if (!res.isConfirmed) return;
+        if (href && content) {
+          const pane = content.querySelector(href);
+          if (pane) pane.remove();
+        }
+        if (li) li.remove(); else link.remove();
+        const next = nav.querySelector('.nav-link');
+        if (next) $(next).trigger('click');
+        saveDesign();
+      });
+  });
+
+  // Navegación con Bootstrap o fallback
+  $(document).on('click', '#fd-root ul.nav .nav-link[href^="#"]', function(e){
+    const $a = $(this);
+    if (typeof $().tab === 'function') { e.preventDefault(); $a.tab('show'); return; }
+    e.preventDefault();
+    const href = $a.attr('href');
+    const $nav = $a.closest('ul');
+    const $block = $nav.closest('[data-block-type="tabs"]');
+    const $content = $block.find('.tab-content');
+    $nav.find('.nav-link').removeClass('active').attr('aria-selected','false');
+    $a.addClass('active').attr('aria-selected','true');
+    $content.find('.tab-pane').removeClass('show active');
+    $content.find(href).addClass('show active');
+  });
+
+  // Sortables
+  let sortables = [];
+  function destroySortables(){ sortables.forEach(s=>{ try{s.destroy();}catch(e){} }); sortables=[]; }
+  function initSortable() {
+    if (!inDesign() || typeof Sortable === 'undefined') return;
+    // Asegurar pistas de DOM antes de inicializar sortables
+    setupDomHints();
+
+    document.querySelectorAll('#fd-root [data-col-width], #fd-root [data-dropzone="tab-pane"], #elementos-fuera-container').forEach(el => {
+      sortables.push(Sortable.create(el, {
+        group: { name: 'fieldsets', pull: true, put: true },
+        draggable: '.draggable-fieldset',
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        handle: 'legend,[data-fieldset-title]',
+        onEnd: () => saveDesign()
+      }));
+    });
+
+    document.querySelectorAll('#fd-root [data-block-type="tabs"] ul.nav').forEach(nav => {
+      sortables.push(Sortable.create(nav, {
+        group: 'tabs',
+        animation: 150,
+        draggable: '.nav-item, .nav-link',
+        handle: '.nav-link',
+        onEnd: () => {
+          const block = nav.closest('[data-block-type="tabs"]');
+          const content = block && block.querySelector('.tab-content');
+          if (!content) return;
+          const ids = Array.from(nav.querySelectorAll('.nav-link'))
+            .map(a => (a.getAttribute('href') || '').slice(1))
+            .filter(Boolean);
+          ids.forEach(id => {
+            const pane = content.querySelector('#'+CSS.escape(id));
+            if (pane) content.appendChild(pane);
+          });
+          saveDesign();
+        }
+      }));
+    });
+  }
+
+  function activateDesignMode() {
+    if (!inDesign()) return;
+    // Asegurar pistas de DOM también al activar diseño
+    setupDomHints();
+    destroySortables();
+    ensureCrudUI();
+    initSortable();
+    const u = document.getElementById('undoBtn'); if (u) u.style.display = '';
+    const r = document.getElementById('redoBtn'); if (r) r.style.display = '';
+    const s = document.getElementById('saveLayoutBtn'); if (s) s.style.display = '';
+  }
+  function deactivateDesignMode() {
+    destroySortables();
+    const u = document.getElementById('undoBtn'); if (u) u.style.display = 'none';
+    const r = document.getElementById('redoBtn'); if (r) r.style.display = 'none';
+    const s = document.getElementById('saveLayoutBtn'); if (s) s.style.display = 'none';
+  }
+
+  window.DnDFormBuilder = Object.assign({}, window.DnDFormBuilder || {}, {
+    saveDesign, activateDesignMode, deactivateDesignMode
+  });
+
+  document.addEventListener('DOMContentLoaded', function(){
+    // Asegurar pistas de DOM al cargar
+    setupDomHints();
+    if (inDesign()) activateDesignMode();
+  });
+})();

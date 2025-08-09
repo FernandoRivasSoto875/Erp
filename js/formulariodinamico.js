@@ -440,7 +440,7 @@ $(document).ready(function() {
         r.style.display = idx < history.length - 1 ? '' : 'none';
     }
     function saveState() {
-        const cont = document.querySelector('[data-layout-container]');
+        const cont = document.querySelector('#fd-root [data-layout-container]');
         if (!cont) return;
         const html = cont.innerHTML;
         if (idx >= 0 && history[idx] === html) return;
@@ -448,17 +448,14 @@ $(document).ready(function() {
         history.push(html); idx++; updateUndoRedoButtons();
     }
     function restore(i) {
-        const cont = document.querySelector('[data-layout-container]');
+        const cont = document.querySelector('#fd-root [data-layout-container]');
         if (!cont) return;
         if (i >= 0 && i < history.length) { cont.innerHTML = history[i]; idx = i; updateUndoRedoButtons(); }
     }
     document.addEventListener('DOMContentLoaded', () => {
-        const body = document.body;
-        if (body.classList.contains('design-mode')) saveState();
-        const undoBtn = document.getElementById('undoBtn');
-        const redoBtn = document.getElementById('redoBtn');
-        if (undoBtn) undoBtn.addEventListener('click', () => restore(idx - 1));
-        if (redoBtn) redoBtn.addEventListener('click', () => restore(idx + 1));
+        if (document.getElementById('fd-root')?.classList.contains('design-mode')) saveState();
+        document.getElementById('undoBtn')?.addEventListener('click', () => restore(idx - 1));
+        document.getElementById('redoBtn')?.addEventListener('click', () => restore(idx + 1));
     });
     window.__designHistory = { saveState };
 })();

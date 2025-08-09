@@ -457,8 +457,6 @@ $(function(){
     function inDesign() { const r = root(); return !!(r && r.classList.contains('design-mode')); }
     function getArchivoJson() { return (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || ''; }
 
-    let sortables = [];
-
     function collectElementosFuera() {
         const out = document.getElementById('elementos-fuera-container');
         if (!out) return [];
@@ -504,8 +502,11 @@ $(function(){
                 const title = idToTitle[id] || 'Pestaña';
                 const row = { columns: [] };
                 const names = Array.from(pane.querySelectorAll('.draggable-fieldset[data-fieldset-name]')).map(fs => fs.getAttribute('data-fieldset-name'));
-                if (names.length) names.forEach(n => row.columns.push({ width: 12, fieldset: n }));
-                else row.columns.push({ width: 12 });
+                if (names.length) {
+                    names.forEach(n => row.columns.push({ width: 12, fieldset: n }));
+                } else {
+                    row.columns.push({ width: 12 });
+                }
                 tabs.push({ title, rows: [row] });
             });
             layout.push({ type: 'tabs', tabs });
@@ -520,8 +521,11 @@ $(function(){
                 r.querySelectorAll('[data-col-width]').forEach(colEl => {
                     const width = parseInt(colEl.getAttribute('data-col-width') || '12', 10);
                     const fsets = Array.from(colEl.querySelectorAll('.draggable-fieldset[data-fieldset-name]'));
-                    if (fsets.length) fsets.forEach(fs => row.columns.push({ width, fieldset: fs.getAttribute('data-fieldset-name') || '' }));
-                    else row.columns.push({ width });
+                    if (fsets.length) {
+                        fsets.forEach(fs => row.columns.push({ width, fieldset: fs.getAttribute('data-fieldset-name') || '' }));
+                    } else {
+                        row.columns.push({ width });
+                    }
                 });
                 rows.push(row);
             });
@@ -548,36 +552,32 @@ $(function(){
         }).fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
     }
 
-    function destroySortables() {
-        sortables.forEach(s => { try { s.destroy(); } catch(e){} });
-        sortables = [];
-    }
     function initSortable() {
         if (!inDesign() || typeof Sortable === 'undefined') return;
 
         document.querySelectorAll('#fd-root .sortable-fields-container').forEach(el => {
-            sortables.push(Sortable.create(el, {
+            Sortable.create(el, {
                 group: { name: 'fields', pull: true, put: true },
                 draggable: '.draggable-field',
                 animation: 150,
                 ghostClass: 'sortable-ghost',
                 onEnd: () => { window.__designHistory?.saveState(); saveDesign(); }
-            }));
+            });
         });
 
         document.querySelectorAll('#fd-root [data-col-width], #fd-root [data-dropzone="tab-pane"], #elementos-fuera-container').forEach(el => {
-            sortables.push(Sortable.create(el, {
+            Sortable.create(el, {
                 group: { name: 'fieldsets', pull: true, put: true },
                 draggable: '.draggable-fieldset',
                 animation: 150,
                 ghostClass: 'sortable-ghost',
                 handle: 'legend,[data-fieldset-title]',
                 onEnd: () => { window.__designHistory?.saveState(); saveDesign(); }
-            }));
+            });
         });
 
         document.querySelectorAll('#fd-root ul.nav[role="tablist"]').forEach(nav => {
-            sortables.push(Sortable.create(nav, {
+            Sortable.create(nav, {
                 group: 'tabs',
                 animation: 150,
                 draggable: '.nav-item',
@@ -596,14 +596,14 @@ $(function(){
                     window.__designHistory?.saveState();
                     saveDesign();
                 }
-            }));
+            });
         });
     }
 
     function initPropertyEditors() {
-        // Editar título del form
-        $(document).off('click.fd.formtitle').on('click.fd.formtitle', '[data-edit="form-title"]', function(){
-            if (!inDesign()) return;
+        if (!inDesign()) return;
+
+        $(document).on('click', '[data-edit="form-title"]', function(){
             const titleEl = $('#form-title');
             const current = titleEl.clone().children().remove().end().text().trim();
             Swal.fire({ title: 'Título del formulario', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' })
@@ -615,18 +615,14 @@ $(function(){
             });
         });
 
-        // Renombrar tab
-        $(document).off('click.fd.tabedit').on('click.fd.tabedit', '.edit-tab-icon', function(){
-            if (!inDesign()) return;
+        $(document).on('click', '.edit-tab-icon', function(){
             const a = $(this).closest('.nav-item').find('.nav-link');
             const current = a.text().trim();
             Swal.fire({ title: 'Título de pestaña', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' })
             .then(res => { if (res.isConfirmed && res.value) { a.text(res.value); saveDesign(); } });
         });
 
-        // Fieldset título
-        $(document).off('click.fd.fsedit').on('click.fd.fsedit', '.edit-icon[data-edit="fieldset"]', function(){
-            if (!inDesign()) return;
+        $(document).on('click', '.edit-icon[data-edit="fieldset"]', function(){
             const fs = $(this).closest('.draggable-fieldset');
             const name = fs.data('fieldsetName') || fs.attr('data-fieldset-name') || '';
             const legend = fs.find('[data-fieldset-title]');
@@ -641,9 +637,7 @@ $(function(){
             });
         });
 
-        // Campo propiedades
-        $(document).off('click.fd.fieldedit').on('click.fd.fieldedit', '.edit-icon[data-edit="field"]', function(){
-            if (!inDesign()) return;
+        $(document).on('click', '.edit-icon[data-edit="field"]', function(){
             const fieldWrapper = $(this).closest('.draggable-field');
             const fieldName = fieldWrapper.data('fieldName') || fieldWrapper.attr('data-field-name') || '';
             const fieldsetWrapper = fieldWrapper.closest('.draggable-fieldset');

@@ -399,6 +399,19 @@ $(document).ready(function() {
             disableDesignMode(false); // no re-inicializar doble
         }
     })();
+
+    // Forzar MODO NORMAL apenas carga el script (salvo ?modoDiseno=1)
+    (function enforceNormalModeEarly(){
+        try {
+            const isDesign = new URLSearchParams(window.location.search).get('modoDiseno') === '1';
+            if (!isDesign) {
+                // Quitar clase de servidor y ocultar parking si vino visible
+                if (document.body) document.body.classList.remove('design-mode');
+                const fuera = document.getElementById('elementos-fuera-container');
+                if (fuera) fuera.style.display = 'none';
+            }
+        } catch(e) { /* noop */ }
+    })();
 });
 
 (function(){

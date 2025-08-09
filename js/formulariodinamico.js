@@ -64,6 +64,7 @@ $(document).ready(function() {
     function enableDesignMode(doSaveState = true) {
         body.addClass('design-mode');
         $('#paletas-modo-diseno').show();
+        $('#elementos-fuera-container').show(); // asegurar visible solo en diseño
         saveLayoutBtn.show();
         undoBtn.show();
         redoBtn.show();
@@ -176,6 +177,7 @@ $(document).ready(function() {
     function disableDesignMode(reinitNormal = true) {
         body.removeClass('design-mode');
         $('#paletas-modo-diseno').hide();
+        $('#elementos-fuera-container').hide(); // ocultar en modo normal
         saveLayoutBtn.hide();
         undoBtn.hide();
         redoBtn.hide();
@@ -384,14 +386,19 @@ $(document).ready(function() {
     // *** CAMBIO REALIZADO: Se llama a la lógica del formulario al cargar la página ***
     inicializarLogicaFormulario();
 
-    // --- Respetar modoDiseno del servidor al cargar ---
-    if ($('body').hasClass('design-mode')) {
-        designModeToggle.prop('checked', true);
-        enableDesignMode();
-    } else {
-        designModeToggle.prop('checked', false);
-        disableDesignMode();
-    }
+    // --- Forzar modo normal por defecto; solo diseño si ?modoDiseno=1 ---
+    (function initModeFromQuery(){
+        const isDesign = new URLSearchParams(window.location.search).get('modoDiseno') === '1';
+        if (isDesign) {
+            body.addClass('design-mode');
+            designModeToggle.prop('checked', true);
+            enableDesignMode();
+        } else {
+            body.removeClass('design-mode'); // por si el servidor lo dejó seteado
+            designModeToggle.prop('checked', false);
+            disableDesignMode(false); // no re-inicializar doble
+        }
+    })();
 });
 
 (function(){

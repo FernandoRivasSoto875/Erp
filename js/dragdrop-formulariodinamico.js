@@ -646,20 +646,47 @@ $(function(){
         $content.find(href).addClass('show active');
     });
 
-    // Tabs: agregar y renombrar
+    // Tabs: agregar/renombrar/eliminar y navegación
     function ensureAddTabButtons() {
         document.querySelectorAll('#fd-root [data-block-type="tabs"]').forEach(block => {
-            if (block.querySelector('.add-tab-button')) return;
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'btn btn-sm btn-outline-primary add-tab-button ml-2';
-            btn.title = 'Agregar pestaña';
-            btn.innerHTML = '<i class="fas fa-plus"></i> Pestaña';
-            const ul = block.querySelector('ul.nav');
-            if (ul && ul.parentNode) ul.parentNode.insertBefore(btn, ul.nextSibling);
-            btn.addEventListener('click', () => addTab(block));
+            if (!block.querySelector('.add-tab-button')) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'btn btn-sm btn-outline-primary add-tab-button ml-2';
+                btn.title = 'Agregar pestaña';
+                btn.innerHTML = '<i class="fas fa-plus"></i> Pestaña';
+                const ul = block.querySelector('ul.nav');
+                if (ul && ul.parentNode) ul.parentNode.insertBefore(btn, ul.nextSibling);
+                btn.addEventListener('click', () => addTab(block));
+            }
+            ensureTabIcons(block);
         });
     }
+
+    function ensureTabIcons(block) {
+        const nav = block.querySelector('ul.nav');
+        if (!nav) return;
+        nav.querySelectorAll('.nav-item').forEach(li => {
+            // Edit icon
+            if (!li.querySelector('.edit-tab-icon')) {
+                const edit = document.createElement('span');
+                edit.className = 'edit-tab-icon edit-icon';
+                edit.title = 'Renombrar pestaña';
+                edit.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+                li.appendChild(edit);
+            }
+            // Delete icon
+            if (!li.querySelector('.delete-tab-icon')) {
+                const del = document.createElement('span');
+                del.className = 'delete-tab-icon edit-icon';
+                del.title = 'Eliminar pestaña';
+                del.style.marginLeft = '6px';
+                del.innerHTML = '<i class="fas fa-trash"></i>';
+                li.appendChild(del);
+            }
+        });
+    }
+
     function addTab(block, title) {
         title = title || 'Nueva pestaña';
         const nav = block.querySelector('ul.nav');
@@ -667,11 +694,13 @@ $(function(){
         if (!nav || !content) return;
 
         const id = 'tab_' + Date.now();
+        // Insertar al final
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = `
             <a class="nav-link" data-toggle="pill" href="#${id}" role="tab" aria-controls="${id}" aria-selected="false" data-tab-id="${id}">${title}</a>
             <span class="edit-tab-icon edit-icon" title="Renombrar pestaña"><i class="fas fa-pencil-alt"></i></span>
+            <span class="delete-tab-icon edit-icon" title="Eliminar pestaña"><i class="fas fa-trash"></i></span>
         `;
         nav.appendChild(li);
 
@@ -681,7 +710,8 @@ $(function(){
         pane.setAttribute('role', 'tabpanel');
         pane.setAttribute('aria-labelledby', id + '-tab');
         pane.setAttribute('data-dropzone', 'tab-pane');
-        pane.innerHTML = `<div class="row"><div class="col-md-12" data-col-width="12"></div></div>`;
+        // Contenido EN BLANCO
+        pane.innerHTML = '';
         content.appendChild(pane);
 
         // Activar la nueva pestaña
@@ -690,9 +720,30 @@ $(function(){
         $(li).find('.nav-link').addClass('active').attr('aria-selected','true');
         $(pane).addClass('show active');
 
-        initSortable(); // asegurar DnD en nuevo pane
+        initSortable(); // DnD en nuevo pane
         saveDesign();
     }
+
+    // Navegación de tabs: Bootstrap o fallback
+    $(document).on('click', '#fd-root ul.nav .nav-link[href^="#"]', function(e){
+        const $a = $(this);
+        const href = $a.attr('href');
+        if (typeof $().tab === 'function') {
+            e.preventDefault();
+            $a.tab('show');
+            return;
+        }
+        e.preventDefault();
+        const $nav = $a.closest('ul');
+        const $block = $nav.closest('[data-block-type="tabs"]');
+        const $content = $block.find('.tab-content');
+        $nav.find('.nav-link').removeClass('active').attr('aria-selected','false');
+        $a.addClass('active').attr('aria-selected','true');
+        $content.find('.tab-pane').removeClass('show active');
+        $content.find(href).addClass('show active');
+    });
+
+    // Renombrar pestaña
     $(document).on('click', '.edit-tab-icon', function(){
         if (!inDesign()) return;
         const $a = $(this).closest('.nav-item').find('.nav-link');
@@ -701,149 +752,80 @@ $(function(){
         .then(res => { if (res.isConfirmed && res.value) { $a.text(res.value); saveDesign(); } });
     });
 
-    // Editores
-    $(document).on('click', '[data-edit="form-title"]', function(){
+    // Eliminar pestaña
+    $(document).on('click', '.delete-tab-icon', function(){
         if (!inDesign()) return;
-        const $title = $('#form-title');
-        const current = $title.clone().children().remove().end().text().trim();
-        Swal.fire({ title: 'Título del formulario', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' })
+        const li = this.closest('.nav-item');
+        if (!li) return;
+        const a = li.querySelector('.nav-link');
+        const href = a && a.getAttribute('href');
+        Swal.fire({ title: 'Eliminar pestaña', text: 'Esta acción no se puede deshacer', icon: 'warning', showCancelButton: true, confirmButtonText: 'Eliminar' })
         .then(res => {
-            if (!res.isConfirmed || !res.value) return;
-            $.post('editar_propiedades.php', { archivo: getArchivoJson(), tipo:'form', titulo: res.value })
-             .done(resp => { if (resp && resp.success) { const icon = $title.find('.edit-icon').detach(); $title.text(res.value).append(icon); } else Swal.fire('Error', (resp && resp.error) || 'No se pudo actualizar', 'error'); })
-             .fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
-        });
-    });
-
-    // Campo: propiedades con precarga desde JSON
-    $(document).on('click', '.edit-icon[data-edit="field"]', async function(){
-        if (!inDesign()) return;
-        const $field = $(this).closest('.draggable-field');
-        const fieldName = $field.data('fieldName') || $field.attr('data-field-name') || '';
-        const $fs = $field.closest('.draggable-fieldset');
-        const fieldsetName = $fs.data('fieldsetName') || $fs.attr('data-fieldset-name') || '';
-        if (!fieldsetName || !fieldName) return;
-
-        const json = await fetchJson();
-        const def = getFieldDef(json, fieldsetName, fieldName);
-        if (!def) return Swal.fire('Error', 'No se encontró el campo en el JSON', 'error');
-        const campo = def.campo || {};
-
-        const vEtiqueta = (campo.etiqueta || campo.nombre || '').toString();
-        const vPlaceholder = (campo.placeholder || '').toString();
-        const vTipo = (campo.tipo || 'text').toString();
-        const vValor = (campo.valor_predeterminado ?? '').toString();
-        let vOpciones = ''; try { if (campo.opciones !== undefined) vOpciones = JSON.stringify(campo.opciones, null, 2); } catch(e){}
-        let vAtributos = ''; try { if (campo.atributos !== undefined) vAtributos = JSON.stringify(campo.atributos, null, 2); } catch(e){}
-
-        const tipos = ['text','textarea','number','email','password','select','selectdata','radio','checkbox','file','date','datatable','hidden'];
-        const optionsHtml = tipos.map(t => `<option value="${t}" ${t===vTipo?'selected':''}>${t}</option>`).join('');
-
-        const esc = s => $('<div>').text(s).html();
-
-        await Swal.fire({
-            title: `Propiedades: ${fieldName}`,
-            html: `
-                <div class="text-left">
-                    <div class="form-group mb-2">
-                        <label>Etiqueta</label>
-                        <input id="sw-etiqueta" class="form-control" value="${esc(vEtiqueta)}">
-                    </div>
-                    <div class="form-group mb-2">
-                        <label>Placeholder</label>
-                        <input id="sw-placeholder" class="form-control" value="${esc(vPlaceholder)}">
-                    </div>
-                    <div class="form-group mb-2">
-                        <label>Tipo</label>
-                        <select id="sw-tipo" class="form-control">${optionsHtml}</select>
-                    </div>
-                    <div class="form-group mb-2">
-                        <label>Valor predeterminado</label>
-                        <input id="sw-valor" class="form-control" value="${esc(vValor)}">
-                    </div>
-                    <div class="form-group mb-2">
-                        <label>Opciones (JSON)</label>
-                        <textarea id="sw-opciones" class="form-control" rows="3" placeholder='{"1":"Opción 1"}'>${vOpciones}</textarea>
-                    </div>
-                    <div class="form-group mb-0">
-                        <label>Atributos (JSON)</label>
-                        <textarea id="sw-atributos" class="form-control" rows="3" placeholder='{"required":true}'>${vAtributos}</textarea>
-                    </div>
-                </div>
-            `,
-            focusConfirm: false,
-            showCancelButton: true,
-            confirmButtonText: 'Guardar',
-            preConfirm: () => {
-                const etiqueta = $('#sw-etiqueta').val();
-                const placeholder = $('#sw-placeholder').val();
-                const tipo = $('#sw-tipo').val();
-                const valor_predeterminado = $('#sw-valor').val();
-                let opcionesTxt = $('#sw-opciones').val();
-                let atributosTxt = $('#sw-atributos').val();
-                let opciones, atributos;
-                if (opcionesTxt && opcionesTxt.trim()) {
-                    try { opciones = JSON.parse(opcionesTxt); } catch(e){ Swal.showValidationMessage('Opciones JSON inválido'); return false; }
-                }
-                if (atributosTxt && atributosTxt.trim()) {
-                    try { atributos = JSON.parse(atributosTxt); } catch(e){ Swal.showValidationMessage('Atributos JSON inválido'); return false; }
-                }
-                return { etiqueta, placeholder, tipo, valor_predeterminado, opciones, atributos };
-            }
-        }).then(res => {
             if (!res.isConfirmed) return;
-            const payload = {
-                archivo: getArchivoJson(),
-                tipo: 'field',
-                fieldset: fieldsetName,
-                nombre: fieldName,
-                etiqueta: res.value.etiqueta ?? '',
-                placeholder: res.value.placeholder ?? '',
-                tipo: res.value.tipo ?? '',
-                'valor_predeterminado': res.value.valor_predeterminado ?? ''
-            };
-            if (res.value.opciones !== undefined) payload.opciones = JSON.stringify(res.value.opciones);
-            if (res.value.atributos !== undefined) payload.atributos = JSON.stringify(res.value.atributos);
-
-            $.post('editar_propiedades.php', payload)
-             .done(resp => {
-                if (!(resp && resp.success)) return Swal.fire('Error', (resp && resp.error) || 'No se pudo actualizar', 'error');
-
-                // Actualizar cache y UI
-                const newProps = {
-                    etiqueta: res.value.etiqueta,
-                    placeholder: res.value.placeholder,
-                    tipo: res.value.tipo,
-                    valor_predeterminado: res.value.valor_predeterminado
-                };
-                if (res.value.opciones !== undefined) newProps.opciones = res.value.opciones;
-                if (res.value.atributos !== undefined) newProps.atributos = res.value.atributos;
-
-                updateLocalJsonField(JSON_CACHE.data || (window.formularioJsonOriginal || {}), fieldsetName, fieldName, newProps);
-                updateLocalJsonField((window.formularioJsonOriginal || {}), fieldsetName, fieldName, newProps);
-
-                const $label = $field.find('label').first();
-                if (newProps.etiqueta) $label.text(newProps.etiqueta);
-                const $input = $field.find('input,select,textarea').first();
-                if ($input.length) {
-                    if (newProps.placeholder !== undefined) $input.attr('placeholder', newProps.placeholder || '');
-                    if (newProps.tipo && $input.is('input')) $input.attr('type', newProps.tipo);
-                }
-                Swal.fire('OK', 'Campo actualizado', 'success');
-             })
-             .fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
+            const block = li.closest('[data-block-type="tabs"]');
+            const nav = li.parentElement;
+            const content = block && block.querySelector('.tab-content');
+            // Eliminar pane
+            if (href && content) {
+                const pane = content.querySelector(href);
+                if (pane) pane.remove();
+            }
+            // Determinar a activar
+            let toActivate = li.previousElementSibling || li.nextElementSibling || null;
+            li.remove();
+            if (toActivate) {
+                const a2 = toActivate.querySelector('.nav-link');
+                if (a2) $(a2).trigger('click');
+            }
+            saveDesign();
         });
     });
+
+    // Forzar íconos de edición de campos si el backend no los generó
+    function ensureFieldEditIcons() {
+        document.querySelectorAll('#fd-root .draggable-field').forEach(field => {
+            if (!field.querySelector('.edit-icon[data-edit="field"]')) {
+                const fs = field.closest('.draggable-fieldset');
+                const fieldName = field.getAttribute('data-field-name') || field.dataset.fieldName || '';
+                const fsName = fs ? (fs.getAttribute('data-fieldset-name') || fs.dataset.fieldsetName || '') : '';
+                const btn = document.createElement('span');
+                btn.className = 'edit-icon';
+                btn.setAttribute('data-edit', 'field');
+                if (fsName) btn.setAttribute('data-fieldset', fsName);
+                if (fieldName) btn.setAttribute('data-field', fieldName);
+                btn.title = 'Editar campo';
+                btn.innerHTML = '<i class="fas fa-pencil-alt"></i>';
+                // Ubicarlo en el extremo derecho del campo
+                const wrap = document.createElement('div');
+                wrap.style.display = 'flex';
+                wrap.style.alignItems = 'center';
+                wrap.style.justifyContent = 'space-between';
+                // Si ya tiene un contenedor interno, intente reutilizarlo
+                const inner = field.firstElementChild;
+                if (inner && inner.classList.contains('d-flex')) {
+                    inner.appendChild(btn);
+                } else {
+                    while (field.firstChild) wrap.appendChild(field.firstChild);
+                    const right = document.createElement('div');
+                    right.appendChild(btn);
+                    wrap.appendChild(right);
+                    field.appendChild(wrap);
+                }
+            }
+        });
+    }
 
     function activateDesignMode() {
         if (!inDesign()) return;
         destroySortables();
-        initSortable();
         ensureAddTabButtons();
+        ensureFieldEditIcons();
+        initSortable();
         document.getElementById('undoBtn') && (document.getElementById('undoBtn').style.display = '');
         document.getElementById('redoBtn') && (document.getElementById('redoBtn').style.display = '');
         document.getElementById('saveLayoutBtn') && (document.getElementById('saveLayoutBtn').style.display = '');
     }
+
     function deactivateDesignMode() {
         destroySortables();
         document.getElementById('undoBtn') && (document.getElementById('undoBtn').style.display = 'none');

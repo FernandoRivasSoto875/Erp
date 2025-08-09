@@ -129,12 +129,11 @@ $(function(){
     function uiSetDesignMode(on) {
         $root.toggleClass('design-mode', !!on);
         $save.toggle(!!on);
-        $submit.prop('disabled', !!on); // deshabilitar submit solo en diseño
+        $submit.prop('disabled', !!on);
         if (window.DnDFormBuilder) {
             if (on) window.DnDFormBuilder.activateDesignMode();
             else window.DnDFormBuilder.deactivateDesignMode();
         }
-        // Mantener el query param sin recargar
         const url = new URL(location.href);
         url.searchParams.set('modoDiseno', on ? '1' : '0');
         history.replaceState(null, '', url.toString());

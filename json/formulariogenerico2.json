@@ -124,7 +124,7 @@
     "footer_legal": {
       "titulo": "Términos y Condiciones",
       "campos": [
-        { "nombre": "aceptar_terminos", "etiqueta": "Acepto los términos y condiciones", "tipo":, "opciones": { "si": "" } }
+        { "nombre": "aceptar_terminos", "etiqueta": "Acepto los términos y condiciones", "tipo": "checkbox", "opciones": { "si": "" } }
       ]
     },
     "todos_los_controles": {

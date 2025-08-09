@@ -129,16 +129,19 @@
     bindEditActions(body);
   }
 
+  // Asegura que los nodos de objeto/array lleven data-path en el summary
   function renderAnyNode(key, val, path, open=false){
     const t = typeOf(val);
     if (t === 'object') {
       const det = document.createElement('details'); det.open = open;
-      det.innerHTML = `<summary><span class="json-tree-node" data-path='${JSON.stringify(path)}'>
-        <i class="far fa-folder"></i>
-        <span class="json-node-key">${esc(key)}</span>
-        <span class="json-node-meta">object</span>
-        ${actionsForNode(path, 'object')}
-      </span></summary>`;
+      det.innerHTML = `<summary>
+        <span class="json-tree-node" data-path='${JSON.stringify(path)}'>
+          <i class="far fa-folder"></i>
+          <span class="json-node-key">${esc(key)}</span>
+          <span class="json-node-meta">object</span>
+          ${actionsForNode ? actionsForNode(path, 'object') : nodeActionsHtml()}
+        </span>
+      </summary>`;
       const wrap = document.createElement('div'); wrap.style.paddingLeft='12px';
       Object.keys(val||{}).forEach(k=> wrap.appendChild(renderAnyNode(k, val[k], path.concat(k))));
       det.appendChild(wrap);
@@ -146,12 +149,14 @@
     }
     if (t === 'array') {
       const det = document.createElement('details'); det.open = open;
-      det.innerHTML = `<summary><span class="json-tree-node" data-path='${JSON.stringify(path)}'>
-        <i class="far fa-folder-open"></i>
-        <span class="json-node-key">${esc(key)}</span>
-        <span class="json-node-meta">array(${val.length})</span>
-        ${actionsForNode(path, 'array')}
-      </span></summary>`;
+      det.innerHTML = `<summary>
+        <span class="json-tree-node" data-path='${JSON.stringify(path)}'>
+          <i class="far fa-folder-open"></i>
+          <span class="json-node-key">${esc(key)}</span>
+          <span class="json-node-meta">array(${val.length})</span>
+          ${actionsForNode ? actionsForNode(path, 'array') : nodeActionsHtml()}
+        </span>
+      </summary>`;
       const wrap = document.createElement('div'); wrap.style.paddingLeft='12px';
       val.forEach((item, idx)=> wrap.appendChild(renderAnyNode(`[${idx}]`, item, path.concat(idx))));
       det.appendChild(wrap);
@@ -160,19 +165,13 @@
     // hoja
     const div = document.createElement('div');
     div.className = 'json-tree-node';
-    div.dataset.path = JSON.stringify(path);
+    div.setAttribute('data-path', JSON.stringify(path));
     div.innerHTML = `
       <i class="far fa-dot-circle"></i>
       <span class="json-node-key">${esc(key)}</span>
       <span class="json-node-meta">${renderValueInline(val)}</span>
-      ${actionsForNode(path, 'leaf')}
+      ${actionsForNode ? actionsForNode(path, 'leaf') : nodeActionsHtml()}
     `;
-    // Click para resaltar fieldset si corresponde
-    const root = path[0], p2 = path[1], p3 = path[2];
-    if (root==='layout' && typeof val!=='object' && p2 && String(p3||'').includes('fieldset')) {
-      div.style.cursor='pointer';
-      div.addEventListener('click', (e)=> { if (e.target.closest('.json-node-actions')) return; highlightFieldset(val); });
-    }
     return div;
   }
 
@@ -218,23 +217,69 @@
     curr[path[path.length-1]] = value;
   }
 
-  function bindEditActions(root){
-    root.addEventListener('click', async function(e){
-      const node = e.target.closest('.json-tree-node'); if (!node) return;
-      const pathStr = node.getAttribute('data-path') || node.dataset.path; if (!pathStr) return;
-      let path; try { path = JSON.parse(pathStr); } catch { return; }
+  // Helper robusto para obtener el path desde el click
+  function getClickedNodeAndPath(target){
+    // 1) si se clickeó dentro de un nodo ya renderizado
+    let nodeEl = target.closest('.json-tree-node');
+    // 2) si fue dentro de <summary>, busca el json-tree-node del summary
+    if (!nodeEl) {
+      const summary = target.closest('summary');
+      if (summary) nodeEl = summary.querySelector('.json-tree-node');
+    }
+    if (!nodeEl) return { nodeEl:null, path:null };
 
-      if (e.target.closest('.act-edit')) {
-        await editNodeByPath(path, node); return;
+    const pathStr = nodeEl.getAttribute('data-path') || nodeEl.dataset.path;
+    if (!pathStr) return { nodeEl, path:null };
+
+    try {
+      const path = JSON.parse(pathStr);
+      return { nodeEl, path };
+    } catch {
+      return { nodeEl, path:null };
+    }
+  }
+
+  function bindEditActions(root){
+    // Evitar que <summary> se abra/cierre cuando se pulsan botones (pencil, +, flechas)
+    root.addEventListener('mousedown', function(e){
+      const btn = e.target.closest('.json-node-actions button');
+      if (!btn) return;
+      if (btn.closest('summary')) {
+        e.preventDefault(); // evita toggle del <details>
+        e.stopPropagation();
       }
-      if (e.target.closest('.act-add')) {
-        await addChildAtPath(path); return;
+    }, true);
+
+    root.addEventListener('click', async function(e){
+      const actionsBtn = e.target.closest('.json-node-actions button');
+      if (!actionsBtn) return;
+
+      const { nodeEl, path } = getClickedNodeAndPath(actionsBtn);
+      if (!nodeEl || !Array.isArray(path)) {
+        if (window.Swal) Swal.fire('Error', 'No se pudo determinar la ruta del nodo.', 'error');
+        return;
       }
-      if (e.target.closest('.act-up')) {
-        await moveArrayItem(path, -1); return;
+
+      // Enlazar acciones
+      if (actionsBtn.classList.contains('act-edit')) {
+        try { await editNodeByPath(path, nodeEl); }
+        catch(err){ if (window.Swal) Swal.fire('Error al editar', String(err.message||err), 'error'); }
+        return;
       }
-      if (e.target.closest('.act-down')) {
-        await moveArrayItem(path, +1); return;
+      if (actionsBtn.classList.contains('act-add')) {
+        try { await addChildAtPath(path); }
+        catch(err){ if (window.Swal) Swal.fire('Error al agregar', String(err.message||err), 'error'); }
+        return;
+      }
+      if (actionsBtn.classList.contains('act-up')) {
+        try { await moveArrayItem(path, -1); }
+        catch(err){ if (window.Swal) Swal.fire('Error al mover', String(err.message||err), 'error'); }
+        return;
+      }
+      if (actionsBtn.classList.contains('act-down')) {
+        try { await moveArrayItem(path, +1); }
+        catch(err){ if (window.Swal) Swal.fire('Error al mover', String(err.message||err), 'error'); }
+        return;
       }
     });
   }

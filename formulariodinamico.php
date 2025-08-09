@@ -50,7 +50,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 .sortable-ghost { background: #e7f1ff; border: 2px dashed #0d6efd; opacity: .7; }
 /* Ocultar iconos de edición si NO es modo diseño */
 #fd-root:not(.design-mode) .edit-icon,
-#fd-root:not(.design-mode) .edit-tab-icon { display: none !important; }
+#fd-root:not(.design-mode) .edit-tab-icon { display:none !important; }
 /* Parking visible solo en diseño */
 #elementos-fuera-container { display: <?php echo $modoDiseno ? 'block' : 'none'; ?>; }
 /* Switch flotante */

@@ -457,83 +457,132 @@ $(function(){
     function inDesign(){ const r=root(); return !!(r && r.classList.contains('design-mode')); }
     function getArchivoJson(){ return (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || ''; }
 
-    // Adjuntar handlers SIEMPRE; abortar si no es diseño al hacer click
-    $(document).off('click.fd.formtitle').on('click.fd.formtitle', '[data-edit="form-title"]', function(){
-        if (!inDesign()) return;
-        const titleEl = $('#form-title');
-        const current = titleEl.clone().children().remove().end().text().trim();
-        Swal.fire({ title: 'Título del formulario', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' })
-        .then(res => {
-            if (!res.isConfirmed || !res.value) return;
-            $.post('editar_propiedades.php', { archivo: getArchivoJson(), tipo:'form', titulo: res.value })
-             .done(resp => { if (resp && resp.success) { const icon = titleEl.find('.edit-icon').detach(); titleEl.text(res.value).append(icon); } else Swal.fire('Error', (resp && resp.error) || 'No se pudo actualizar', 'error'); })
-             .fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
+    // ===== NUEVO: helpers para leer/escribir el JSON de configuración =====
+    const JSON_CACHE = { data: null, loadedAt: 0 };
+
+    function asFieldsetsMap(fieldsets) {
+        if (!fieldsets) return {};
+        if (Array.isArray(fieldsets)) {
+            const map = {};
+            fieldsets.forEach(fs => {
+                if (!fs) return;
+                const key = fs.name || fs.nombre || null;
+                if (key) map[key] = fs;
+            });
+            return map;
+        }
+        return fieldsets;
+    }
+
+    function ensureJsonFresh() {
+        return new Promise((resolve) => {
+            const archivo = getArchivoJson();
+            // Si ya tenemos el JSON del servidor (inyectado por PHP), úsalo
+            if (!archivo) {
+                JSON_CACHE.data = window.formularioJsonOriginal || {};
+                return resolve(JSON_CACHE.data);
+            }
+            // Forzar a traer el archivo desde /json/ para asegurar valores actuales
+            $.getJSON('json/' + archivo)
+             .done(data => { JSON_CACHE.data = data || {}; resolve(JSON_CACHE.data); })
+             .fail(() => { // fallback al inyectado
+                 JSON_CACHE.data = window.formularioJsonOriginal || {};
+                 resolve(JSON_CACHE.data);
+             });
         });
-    });
+    }
 
-    $(document).off('click.fd.tabedit').on('click.fd.tabedit', '.edit-tab-icon', function(){
-        if (!inDesign()) return;
-        const a = $(this).closest('.nav-item').find('.nav-link');
-        const current = a.text().trim();
-        Swal.fire({ title: 'Título de pestaña', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' })
-        .then(res => { if (res.isConfirmed && res.value) { a.text(res.value); (window.DnDFormBuilder?.saveDesign?.()); } });
-    });
+    function getFieldDef(json, fieldsetName, fieldName) {
+        const fsets = asFieldsetsMap(json.fieldsets || {});
+        const fs = fsets[fieldsetName];
+        if (!fs) return null;
+        const campos = Array.isArray(fs.campos) ? fs.campos : [];
+        const idx = campos.findIndex(c => (c && c.nombre) === fieldName);
+        if (idx < 0) return null;
+        return { fieldset: fs, idx, campo: campos[idx] };
+    }
 
-    $(document).off('click.fd.fsedit').on('click.fd.fsedit', '.edit-icon[data-edit="fieldset"]', function(){
-        if (!inDesign()) return;
-        const fs = $(this).closest('.draggable-fieldset');
-        const name = fs.data('fieldsetName') || fs.attr('data-fieldset-name') || '';
-        const legend = fs.find('[data-fieldset-title]');
-        const current = legend.text().trim();
-        if (!name) return;
-        Swal.fire({ title: 'Título del grupo', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' })
-        .then(res => {
-            if (!res.isConfirmed || !res.value) return;
-            $.post('editar_propiedades.php', { archivo: getArchivoJson(), tipo:'fieldset', fieldset: name, titulo: res.value })
-             .done(resp => { if (resp && resp.success) { legend.text(res.value); } else Swal.fire('Error', (resp && resp.error) || 'No se pudo actualizar', 'error'); })
-             .fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
-        });
-    });
+    function updateLocalJsonField(json, fieldsetName, fieldName, newProps) {
+        const def = getFieldDef(json, fieldsetName, fieldName);
+        if (!def) return json;
+        const c = def.campo;
+        // Actualizar solo las props provistas
+        if (newProps.hasOwnProperty('etiqueta')) c.etiqueta = newProps.etiqueta;
+        if (newProps.hasOwnProperty('placeholder')) c.placeholder = newProps.placeholder;
+        if (newProps.hasOwnProperty('tipo')) c.tipo = newProps.tipo;
+        if (newProps.hasOwnProperty('valor_predeterminado')) c.valor_predeterminado = newProps.valor_predeterminado;
+        if (newProps.hasOwnProperty('opciones')) c.opciones = newProps.opciones;
+        if (newProps.hasOwnProperty('atributos')) c.atributos = newProps.atributos;
+        return json;
+    }
 
-    $(document).off('click.fd.fieldedit').on('click.fd.fieldedit', '.edit-icon[data-edit="field"]', function(){
+    // ===== Editores =====
+    // ...existing code for other editors...
+
+    // REEMPLAZAR el handler de campo por este (carga valores desde el JSON y prellena el modal)
+    $(document).off('click.fd.fieldedit').on('click.fd.fieldedit', '.edit-icon[data-edit="field"]', async function(){
         if (!inDesign()) return;
+
         const fieldWrapper = $(this).closest('.draggable-field');
         const fieldName = fieldWrapper.data('fieldName') || fieldWrapper.attr('data-field-name') || '';
         const fieldsetWrapper = fieldWrapper.closest('.draggable-fieldset');
         const fieldsetName = fieldsetWrapper.data('fieldsetName') || fieldsetWrapper.attr('data-fieldset-name') || '';
-        const labelEl = fieldWrapper.find('label').get(0);
-        const lbl = labelEl ? $(labelEl).text().trim() : '';
         if (!fieldsetName || !fieldName) return;
 
-        Swal.fire({
-            title: 'Propiedades del campo',
+        const json = await ensureJsonFresh();
+        const def = getFieldDef(json, fieldsetName, fieldName);
+        if (!def) {
+            return Swal.fire('Error', 'No se encontró el campo en el JSON', 'error');
+        }
+        const campo = def.campo || {};
+
+        // Valores actuales desde el JSON
+        const vEtiqueta = (campo.etiqueta || campo.nombre || '').toString();
+        const vPlaceholder = (campo.placeholder || '').toString();
+        const vTipo = (campo.tipo || 'text').toString();
+        const vValor = (campo.valor_predeterminado ?? '').toString();
+
+        // Normalizar opciones/atributos a JSON string bonito
+        let vOpciones = '';
+        if (campo.opciones !== undefined) {
+            try { vOpciones = JSON.stringify(campo.opciones, null, 2); } catch(e){ vOpciones = ''; }
+        }
+        let vAtributos = '';
+        if (campo.atributos !== undefined) {
+            try { vAtributos = JSON.stringify(campo.atributos, null, 2); } catch(e){ vAtributos = ''; }
+        }
+
+        // Construir modal preseleccionando el tipo
+        const tipos = ['text','textarea','number','email','password','select','selectdata','radio','checkbox','file','date','datatable','hidden'];
+        const optionsHtml = tipos.map(t => `<option value="${t}" ${t===vTipo?'selected':''}>${t}</option>`).join('');
+
+        await Swal.fire({
+            title: `Propiedades: ${fieldName}`,
             html: `
                 <div class="text-left">
                     <div class="form-group mb-2">
                         <label>Etiqueta</label>
-                        <input id="sw-etiqueta" class="form-control" value="${lbl}">
+                        <input id="sw-etiqueta" class="form-control" value="${$('<div>').text(vEtiqueta).html()}">
                     </div>
                     <div class="form-group mb-2">
                         <label>Placeholder</label>
-                        <input id="sw-placeholder" class="form-control" value="">
+                        <input id="sw-placeholder" class="form-control" value="${$('<div>').text(vPlaceholder).html()}">
                     </div>
                     <div class="form-group mb-2">
                         <label>Tipo</label>
-                        <select id="sw-tipo" class="form-control">
-                            ${['text','textarea','number','email','password','select','selectdata','radio','checkbox','file','date','datatable','hidden'].map(t=>`<option value="${t}">${t}</option>`).join('')}
-                        </select>
+                        <select id="sw-tipo" class="form-control">${optionsHtml}</select>
                     </div>
                     <div class="form-group mb-2">
                         <label>Valor predeterminado</label>
-                        <input id="sw-valor" class="form-control" value="">
+                        <input id="sw-valor" class="form-control" value="${$('<div>').text(vValor).html()}">
                     </div>
                     <div class="form-group mb-2">
                         <label>Opciones (JSON)</label>
-                        <textarea id="sw-opciones" class="form-control" rows="2" placeholder='{"1":"Opción 1"}'></textarea>
+                        <textarea id="sw-opciones" class="form-control" rows="3" placeholder='{"1":"Opción 1"}'>${vOpciones}</textarea>
                     </div>
                     <div class="form-group mb-0">
                         <label>Atributos (JSON)</label>
-                        <textarea id="sw-atributos" class="form-control" rows="2" placeholder='{"required":true}'></textarea>
+                        <textarea id="sw-atributos" class="form-control" rows="3" placeholder='{"required":true}'>${vAtributos}</textarea>
                     </div>
                 </div>
             `,
@@ -545,33 +594,67 @@ $(function(){
                 const placeholder = $('#sw-placeholder').val();
                 const tipo = $('#sw-tipo').val();
                 const valor_predeterminado = $('#sw-valor').val();
-                let opciones = $('#sw-opciones').val();
-                let atributos = $('#sw-atributos').val();
-                try { opciones = opciones ? JSON.stringify(JSON.parse(opciones)) : ''; } catch(e){ Swal.showValidationMessage('Opciones JSON inválido'); return false; }
-                try { atributos = atributos ? JSON.stringify(JSON.parse(atributos)) : ''; } catch(e){ Swal.showValidationMessage('Atributos JSON inválido'); return false; }
+                let opcionesTxt = $('#sw-opciones').val();
+                let atributosTxt = $('#sw-atributos').val();
+                let opciones, atributos;
+
+                if (opcionesTxt && opcionesTxt.trim().length) {
+                    try { opciones = JSON.parse(opcionesTxt); }
+                    catch(e){ Swal.showValidationMessage('Opciones JSON inválido'); return false; }
+                }
+                if (atributosTxt && atributosTxt.trim().length) {
+                    try { atributos = JSON.parse(atributosTxt); }
+                    catch(e){ Swal.showValidationMessage('Atributos JSON inválido'); return false; }
+                }
                 return { etiqueta, placeholder, tipo, valor_predeterminado, opciones, atributos };
             }
         }).then(res => {
             if (!res.isConfirmed) return;
+
             const payload = {
                 archivo: getArchivoJson(),
                 tipo: 'field',
                 fieldset: fieldsetName,
                 nombre: fieldName,
-                etiqueta: res.value.etiqueta || '',
-                placeholder: res.value.placeholder || '',
-                tipo: res.value.tipo || '',
-                'valor_predeterminado': res.value.valor_predeterminado || ''
+                etiqueta: res.value.etiqueta ?? '',
+                placeholder: res.value.placeholder ?? '',
+                tipo: res.value.tipo ?? '',
+                'valor_predeterminado': res.value.valor_predeterminado ?? ''
             };
-            if (res.value.opciones) payload.opciones = res.value.opciones;
-            if (res.value.atributos) payload.atributos = res.value.atributos;
+            if (res.value.opciones !== undefined) payload.opciones = JSON.stringify(res.value.opciones);
+            if (res.value.atributos !== undefined) payload.atributos = JSON.stringify(res.value.atributos);
 
             $.post('editar_propiedades.php', payload)
              .done(resp => {
-                if (resp && resp.success) {
-                    if (labelEl && res.value.etiqueta) $(labelEl).text(res.value.etiqueta);
-                    Swal.fire('OK','Campo actualizado','success');
-                } else Swal.fire('Error', (resp && resp.error) || 'No se pudo actualizar', 'error');
+                if (!(resp && resp.success)) {
+                    return Swal.fire('Error', (resp && resp.error) || 'No se pudo actualizar', 'error');
+                }
+                // Actualizar cache local y UI
+                const newProps = {
+                    etiqueta: res.value.etiqueta,
+                    placeholder: res.value.placeholder,
+                    tipo: res.value.tipo,
+                    valor_predeterminado: res.value.valor_predeterminado
+                };
+                if (res.value.opciones !== undefined) newProps.opciones = res.value.opciones;
+                if (res.value.atributos !== undefined) newProps.atributos = res.value.atributos;
+
+                // Cache en memoria
+                updateLocalJsonField(JSON_CACHE.data || (window.formularioJsonOriginal || {}), fieldsetName, fieldName, newProps);
+                updateLocalJsonField((window.formularioJsonOriginal || {}), fieldsetName, fieldName, newProps);
+
+                // UI: etiqueta/placeholder/tipo si es input
+                const labelEl = fieldWrapper.find('label').get(0);
+                if (labelEl && res.value.etiqueta) $(labelEl).text(res.value.etiqueta);
+
+                const inputEl = fieldWrapper.find('input,select,textarea').get(0);
+                if (inputEl) {
+                    if (res.value.placeholder !== undefined) $(inputEl).attr('placeholder', res.value.placeholder || '');
+                    if (res.value.tipo && inputEl.tagName === 'INPUT') $(inputEl).attr('type', res.value.tipo);
+                    // Nota: cambiar a select/textarea requeriría re-render; se deja para una iteración siguiente.
+                }
+
+                Swal.fire('OK', 'Campo actualizado', 'success');
              })
              .fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
         });
@@ -579,4 +662,9 @@ $(function(){
 
     // Mantener init de DnD/activar/desactivar como ya lo tienes
     // ...existing code...
+    document.addEventListener('DOMContentLoaded', function(){
+        if (inDesign()) {
+            // ...existing init...
+        }
+    });
 })();

@@ -113,7 +113,8 @@ if (!function_exists('renderTabsBlock')) {
             $active = $i === 0 ? 'active' : '';
             $sel = $i === 0 ? 'true' : 'false';
             $html .= '<li class="nav-item">';
-            $html .= '<a class="nav-link '.$active.'" data-toggle="pill" href="#'.$paneId.'" role="tab" aria-controls="'.$paneId.'" aria-selected="'.$sel.'">'.fd_escape($title).'</a>';
+            // CAMBIO: data-toggle="tab"
+            $html .= '<a class="nav-link '.$active.'" data-toggle="tab" href="#'.$paneId.'" role="tab" aria-controls="'.$paneId.'" aria-selected="'.$sel.'">'.fd_escape($title).'</a>';
             $html .= '</li>';
         }
         $html .= '</ul>';

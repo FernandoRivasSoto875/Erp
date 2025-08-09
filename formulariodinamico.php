@@ -115,17 +115,38 @@ require_once __DIR__ . '/formulariodinamicologica.php';
   </div>
 </div>
 
+<!-- Switch flotante de Modo Diseño -->
+<div class="design-mode-switch">
+  <input type="checkbox" id="designModeToggle" <?php echo $modoDiseno ? 'checked' : ''; ?> />
+  <label for="designModeToggle" class="mb-0">Modo diseño</label>
+</div>
+
 <script>
   // Archivo JSON activo y datos embebidos (el árbol los usa)
   window.FORM_CONFIG = { archivo_json: <?php echo json_encode($archivo_base); ?> };
   window.formularioJsonOriginal = <?php echo json_encode($json_data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
 
-  // Toggle de modo diseño (si tienes un switch llámalo desde ahí)
+  // Toggle de modo diseño
   function uiSetDesignMode(on){
     const root = document.getElementById('fd-root');
     if (root) root.classList.toggle('design-mode', !!on);
     window.dispatchEvent(new CustomEvent('design-mode-changed', { detail: { on: !!on } }));
   }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    const toggle = document.getElementById('designModeToggle');
+    if (!toggle) return;
+    // Sincroniza estado inicial (y notifica a paneles)
+    uiSetDesignMode(toggle.checked);
+    // Cambios del usuario
+    toggle.addEventListener('change', function(){
+      uiSetDesignMode(this.checked);
+      // Reflejar en la URL sin recargar
+      const url = new URL(location.href);
+      url.searchParams.set('modoDiseno', this.checked ? '1' : '0');
+      history.replaceState(null, '', url.toString());
+    });
+  });
 </script>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>

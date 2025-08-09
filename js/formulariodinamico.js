@@ -399,25 +399,22 @@ $(document).ready(function() {
             disableDesignMode(false);
         }
     })();
-
-    // Forzar MODO NORMAL lo antes posible (salvo ?modoDiseno=1)
-    (function enforceNormalModeEarly() {
-        try {
-            var isDesign = new URLSearchParams(window.location.search).get('modoDiseno') === '1';
-            if (!isDesign) {
-                if (document.body) {
-                    document.body.classList.remove('design-mode');
-                } else {
-                    document.addEventListener('DOMContentLoaded', function () {
-                        document.body && document.body.classList.remove('design-mode');
-                    }, { once: true });
-                }
-                var fuera = document.getElementById('elementos-fuera-container');
-                if (fuera) fuera.style.display = 'none';
-            }
-        } catch (e) {}
-    })();
 });
+
+// FIX: Forzar MODO NORMAL lo antes posible (salvo ?modoDiseno=1)
+(function normalModeGuardEarly() {
+    try {
+        var isDesign = new URLSearchParams(window.location.search).get('modoDiseno') === '1';
+        if (!isDesign) {
+            // Quitar cualquier rastro de diseño puesto por el servidor u otros scripts
+            if (document.body) document.body.classList.remove('design-mode');
+            var fuera = document.getElementById('elementos-fuera-container');
+            if (fuera) fuera.style.display = 'none';
+            var toggle = document.getElementById('designModeToggle');
+            if (toggle) toggle.checked = false;
+        }
+    } catch (e) {}
+})();
 
 (function(){
     let history = [], idx = -1;

@@ -116,15 +116,31 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 window.FORM_CONFIG = { archivo_json: '<?php echo addslashes($archivo_base); ?>' };
 window.formularioJsonOriginal = <?php echo json_encode($json_data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
 
-// Toggle modo diseño: recarga con el query param
 $(function(){
-    $('#designModeToggle').on('change', function(){
+    const $root = $('#fd-root');
+    const $save = $('#saveLayoutBtn');
+    const $submit = $('#formulariodinamico button[type="submit"]');
+    const $toggle = $('#designModeToggle');
+
+    function uiSetDesignMode(on) {
+        $root.toggleClass('design-mode', !!on);
+        $save.toggle(!!on);
+        $submit.prop('disabled', !!on); // deshabilita submit solo en diseño
+        if (window.DnDFormBuilder) {
+            if (on) window.DnDFormBuilder.activateDesignMode();
+            else window.DnDFormBuilder.deactivateDesignMode();
+        }
+        // Mantener el query param en la URL sin recargar
         const url = new URL(location.href);
-        url.searchParams.set('modoDiseno', this.checked ? '1' : '0');
-        location.href = url.toString();
-    });
-    // Mostrar botón Guardar solo en diseño
-    if (!$('#fd-root').hasClass('design-mode')) $('#saveLayoutBtn').hide();
+        url.searchParams.set('modoDiseno', on ? '1' : '0');
+        history.replaceState(null, '', url.toString());
+    }
+
+    // Toggle sin recargar
+    $toggle.on('change', function(){ uiSetDesignMode(this.checked); });
+
+    // Inicializar según estado renderizado por PHP
+    uiSetDesignMode($root.hasClass('design-mode'));
 });
 </script>
 <script src="js/formulariodinamico.js"></script>

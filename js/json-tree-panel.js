@@ -1,5 +1,5 @@
 (function(){
-  const CONFIG = { side: 'right', width: 360, showOnlyInDesignMode: true };
+  const CONFIG = { side: 'right', width: 360, showOnlyInDesignMode: true, editScope: 'all' }; // 'all' | 'safe'
 
   function $(sel, root){ return (root||document).querySelector(sel); }
   function $all(sel, root){ return Array.from((root||document).querySelectorAll(sel)); }
@@ -107,7 +107,9 @@
 
   function isEditablePath(path){
     const root = path && path[0];
-    return root === 'parametros' || root === 'layout' || root === 'fieldsets' || root === 'elementos_fuera';
+    if (CONFIG.editScope === 'all') return true;
+    // Modo seguro: permite editar solo estos bloques en el árbol
+    return root === 'parametros' || root === 'fieldsets';
   }
 
   // Render recursivo de TODO el JSON

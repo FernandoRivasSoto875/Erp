@@ -3,7 +3,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 
 // Solo diseño si ?modoDiseno=1
 $modoDiseno  = (isset($_GET['modoDiseno']) && $_GET['modoDiseno'] === '1') ? 1 : 0;
-$archivo_json = $_GET['archivo'] ?? 'formulariogenerico2.json';
+$archivo_json = $_GET['archivo'] ?? 'formulariogenerico.json';
 
 $archivo_base = basename($archivo_json);
 if (stripos($archivo_base, '.json') === false) $archivo_base .= '.json';
@@ -80,93 +80,26 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 </style>
 </head>
 <body>
-<div id="fd-root" class="<?php echo $modoDiseno ? 'design-mode' : ''; ?>">
-
-    <!-- Elementos fuera del formulario (siempre presente; CSS lo oculta fuera de diseño) -->
-    <div id="elementos-fuera-container" class="container mt-3 p-3 border rounded bg-light" data-dropzone="outside">
-        <h5 class="mb-2">Elementos fuera del formulario</h5>
-        <?php if (function_exists('generarContenedorFueraDelFormulario')) {
-            echo generarContenedorFueraDelFormulario($elementos_fuera, $fieldsets, [], false);
-        } ?>
-    </div>
-
-    <div class="container mt-3 mb-5">
-        <div class="card">
-            <div class="card-header text-center">
-                <h2 id="form-title" class="mb-0">
-                    <?php echo htmlspecialchars($params['titulo'] ?? $titulo_formulario); ?>
-                    <span class="edit-icon" data-edit="form-title" title="Editar título"><i class="fas fa-pencil-alt"></i></span>
-                </h2>
-            </div>
-            <div class="card-body">
-                <?php if (!empty($descripcion_formulario)): ?>
-                    <p class="text-muted"><?php echo htmlspecialchars($descripcion_formulario); ?></p>
-                <?php endif; ?>
-
-                <form id="formulariodinamico" method="POST" action="formulariodinamico.php?archivo=<?php echo urlencode($archivo_base); ?>" enctype="multipart/form-data">
-                    <?php if (function_exists('generarLayout')) {
-                        echo generarLayout($layout, $fieldsets, [], false);
-                    } ?>
-                    <div class="mt-3">
-                        <button type="submit" class="btn btn-primary" <?php echo $modoDiseno ? 'disabled' : ''; ?>>Guardar</button>
-                        <button type="button" class="btn btn-secondary" onclick="history.back()">Cancelar</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Controles de modo diseño -->
-    <div class="design-mode-switch">
-        <button id="undoBtn" class="btn btn-outline-secondary btn-sm" style="display:none" title="Deshacer"><i class="fas fa-undo"></i></button>
-        <button id="redoBtn" class="btn btn-outline-secondary btn-sm" style="display:none" title="Rehacer"><i class="fas fa-redo"></i></button>
-        <div class="custom-control custom-switch">
-            <input type="checkbox" class="custom-control-input" id="designModeToggle" <?php echo $modoDiseno ? 'checked' : ''; ?>>
-            <label class="custom-control-label" for="designModeToggle">Modo diseño</label>
-        </div>
-        <button id="saveLayoutBtn" class="btn btn-success btn-sm" style="<?php echo $modoDiseno ? '' : 'display:none'; ?>">Guardar diseño</button>
-    </div>
+<div id="fd-root" class="design-mode">
+  <h1 id="form-title">Formulario</h1>
+  <!-- ...tu formulario renderizado... -->
 </div>
 
-<!-- Carga JS (jQuery antes que Bootstrap 4) -->
-<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.14.0/Sortable.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-window.FORM_CONFIG = { archivo_json: '<?php echo addslashes($archivo_base); ?>' };
-window.formularioJsonOriginal = <?php echo json_encode($json_data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
+  // Apunta al archivo que quieres editar
+  window.FORM_CONFIG = { archivo_json: 'formulariogenerico.json' };
 
-$(function(){
-    const $root = $('#fd-root');
-    const $save = $('#saveLayoutBtn');
-    const $submit = $('#formulariodinamico button[type="submit"]');
-    const $toggle = $('#designModeToggle');
-
-    function uiSetDesignMode(on) {
-        $root.toggleClass('design-mode', !!on);
-        $save.toggle(!!on);
-        $submit.prop('disabled', !!on);
-        if (window.DnDFormBuilder) {
-            if (on) window.DnDFormBuilder.activateDesignMode();
-            else window.DnDFormBuilder.deactivateDesignMode();
-        }
-        const url = new URL(location.href);
-        url.searchParams.set('modoDiseno', on ? '1' : '0');
-        history.replaceState(null, '', url.toString());
-
-        // NUEVO: notificar a paneles (árbol JSON, etc.)
-        window.dispatchEvent(new CustomEvent('design-mode-changed', { detail: { on: !!on } }));
-    }
-
-    $toggle.on('change', function(){ uiSetDesignMode(this.checked); });
-    $save.on('click', function(){ window.DnDFormBuilder && window.DnDFormBuilder.saveDesign && window.DnDFormBuilder.saveDesign(); });
-
-    uiSetDesignMode($root.hasClass('design-mode'));
-});
+  // Cuando cambies el modo, notifica (el panel escucha este evento)
+  function uiSetDesignMode(on){
+    const root = document.getElementById('fd-root');
+    if (root) root.classList.toggle('design-mode', !!on);
+    window.dispatchEvent(new CustomEvent('design-mode-changed', { detail: { on: !!on } }));
+  }
+  // si ya tienes un toggle, llama uiSetDesignMode(true/false) allí.
 </script>
-<script src="js/formulariodinamico.js"></script>
-<script src="js/dragdrop-formulariodinamico.js"></script>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="js/json-tree-panel.js"></script>
 </body>
 </html>

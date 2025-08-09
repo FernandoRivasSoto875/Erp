@@ -63,12 +63,20 @@ require_once __DIR__ . '/formulariodinamicologica.php';
     <?php endif; ?>
 
     <form id="formulariodinamico" method="POST" action="formulariodinamico.php?archivo=<?php echo urlencode($archivo_base); ?>" enctype="multipart/form-data">
-        <?php
-        // IMPORTANTE: soloLectura = !$modoDiseno
-        echo generarLayout($layout, $fieldsets, [], !$modoDiseno);
-        ?>
+        <?php echo generarLayout($layout, $fieldsets, [], !$modoDiseno); ?>
         <button type="submit" class="btn btn-primary" <?php echo $modoDiseno ? 'disabled' : ''; ?>>Guardar</button>
     </form>
+
+    <!-- Switch flotante para activar modo diseño y guardar -->
+    <div class="design-mode-switch">
+        <button id="undoBtn" class="btn btn-outline-secondary btn-sm" style="display:none" title="Deshacer"><i class="fas fa-undo"></i></button>
+        <button id="redoBtn" class="btn btn-outline-secondary btn-sm" style="display:none" title="Rehacer"><i class="fas fa-redo"></i></button>
+        <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input" id="designModeToggle" <?php echo $modoDiseno ? 'checked' : ''; ?>>
+            <label class="custom-control-label" for="designModeToggle">Modo diseño</label>
+        </div>
+        <button id="saveLayoutBtn" class="btn btn-success btn-sm" style="<?php echo $modoDiseno ? '' : 'display:none'; ?>">Guardar diseño</button>
+    </div>
 </div>
 <!-- toggle que recarga con ?modoDiseno=1|0 -->
 <script>

@@ -56,7 +56,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 /* Señales visuales en diseño */
 #fd-root.design-mode .draggable-fieldset,
 #fd-root.design-mode .draggable-field { border: 2px dashed #0d6efd; background: rgba(13,110,253,.05); }
-.sortable-ghost { background: #e7f1ff; border: 2px dashed #0d6efd; opacity: .7; }
+.sortable-ghost { background:#e7f1ff; border:2px dashed #0d6efd; opacity:.7; }
 /* Switch flotante */
 .design-mode-switch { position: fixed; right: 16px; bottom: 16px; z-index: 1050; background: #fff; border-radius: 999px; padding: 8px 12px; box-shadow: 0 4px 12px rgba(0,0,0,.15); display: flex; align-items: center; gap: 8px; }
 .edit-icon { cursor: pointer; color: #6c757d; margin-left: 6px; }

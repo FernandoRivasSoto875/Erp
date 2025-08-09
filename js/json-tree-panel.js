@@ -1,13 +1,10 @@
 (function(){
-  const CONFIG = {
-    side: 'left', // 'left' | 'right'
-    width: 340,
-    showOnlyInDesignMode: true
-  };
+  const CONFIG = { side: 'right', width: 360, showOnlyInDesignMode: true };
 
   function $(sel, root){ return (root||document).querySelector(sel); }
   function $all(sel, root){ return Array.from((root||document).querySelectorAll(sel)); }
   function esc(s){ return String(s==null?'':s); }
+  function typeOf(v){ if (Array.isArray(v)) return 'array'; if (v===null) return 'null'; return typeof v==='object'?'object':typeof v; }
 
   function injectStyles(){
     if ($('#json-tree-panel-styles')) return;
@@ -43,7 +40,7 @@
       panel.className = 'json-tree-panel';
       panel.innerHTML = `
         <div class="json-tree-header">
-          <h6 class="json-tree-title"><i class="fas fa-sitemap"></i> Estructura JSON</h6>
+          <h6 class="json-tree-title"><i class="fas fa-sitemap"></i> Árbol del JSON</h6>
           <div class="json-tree-actions">
             <button title="Colapsar/Expandir" id="jsonTreeToggleAll"><i class="fas fa-compress-alt"></i></button>
             <button title="Refrescar" id="jsonTreeRefresh"><i class="fas fa-sync-alt"></i></button>
@@ -54,7 +51,6 @@
         <div class="json-tree-body" id="jsonTreeBody"></div>
       `;
       document.body.appendChild(panel);
-
       $('#jsonTreeClose').addEventListener('click', ()=> panel.style.display='none');
       $('#jsonTreeRefresh').addEventListener('click', buildTree);
       $('#jsonTreeToggleAll').addEventListener('click', toggleAll);
@@ -63,58 +59,72 @@
     return panel;
   }
 
-  function nodeActionsHtml(type){
-    const editBtn = `<button class="btn-icon act-edit" title="Editar"><i class="fas fa-pencil-alt"></i></button>`;
-    return `<span class="json-node-actions" data-node-type="${type}">${editBtn}</span>`;
+  function shouldShow(){
+    if (!CONFIG.showOnlyInDesignMode) return true;
+    const root = document.getElementById('fd-root');
+    return !!(root && root.classList.contains('design-mode'));
   }
 
-  // Render recursivo: marca TODOS los nodos bajo "parametros" como editables
-  function renderObjectTree(title, obj, path){
-    const d = document.createElement('details'); d.open = true;
-    const isParametrosRoot = (Array.isArray(path) && path[0] === 'parametros');
-    d.innerHTML = `<summary><span class="json-tree-node">
-      <span class="json-node-key">${esc(title)}</span>
-      <span class="json-node-meta">object</span>
-      ${isParametrosRoot ? nodeActionsHtml('param') : ''}
-    </span></summary>`;
-    const wrap = document.createElement('div');
-    Object.keys(obj || {}).forEach(key=>{
-      wrap.appendChild(renderAnyNode(key, obj[key], path.concat(key)));
-    });
-    d.appendChild(wrap);
-    return d;
+  // Carga JSON si no está en memoria
+  async function ensureJsonLoaded(){
+    if (window.formularioJsonOriginal) return window.formularioJsonOriginal;
+    const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || 'formulariogenerico2.json';
+    const url = 'json/' + archivo;
+    const r = await fetch(url, { cache:'no-store' });
+    if (!r.ok) throw new Error('No se pudo cargar '+url);
+    const data = await r.json();
+    window.formularioJsonOriginal = data || {};
+    return data;
   }
 
-  function renderAnyNode(key, val, path){
+  function nodeActionsHtml(){ return `<span class="json-node-actions"><button class="btn-icon act-edit" title="Editar"><i class="fas fa-pencil-alt"></i></button></span>`; }
+  function isEditablePath(path){
+    const root = path && path[0];
+    return root === 'parametros' || root === 'layout' || root === 'fieldsets' || root === 'elementos_fuera';
+  }
+
+  // Render recursivo de TODO el JSON
+  function buildTree(){
+    const data = window.formularioJsonOriginal || {};
+    const body = $('#jsonTreeBody'); if (!body) return;
+    body.innerHTML = '';
+    body.appendChild(renderAnyNode('parametros', data.parametros ?? {}, ['parametros'], true));
+    body.appendChild(renderAnyNode('layout', data.layout ?? {}, ['layout'], true));
+    body.appendChild(renderAnyNode('fieldsets', data.fieldsets ?? {}, ['fieldsets'], true));
+    if (data.elementos_fuera !== undefined) body.appendChild(renderAnyNode('elementos_fuera', data.elementos_fuera, ['elementos_fuera'], true));
+
+    // Otros nodos top-level no cubiertos
+    const handled = new Set(['parametros','layout','fieldsets','elementos_fuera']);
+    Object.keys(data).forEach(k=>{ if (!handled.has(k)) body.appendChild(renderAnyNode(k, data[k], [k], true)); });
+
+    bindEditActions(body);
+  }
+
+  function renderAnyNode(key, val, path, open=false){
     const t = typeOf(val);
-    const isParam = Array.isArray(path) && path[0] === 'parametros';
     if (t === 'object') {
-      const det = document.createElement('details'); det.open = false;
+      const det = document.createElement('details'); det.open = open;
       det.innerHTML = `<summary><span class="json-tree-node" data-path='${JSON.stringify(path)}'>
         <i class="far fa-folder"></i>
         <span class="json-node-key">${esc(key)}</span>
         <span class="json-node-meta">object</span>
-        ${isParam ? nodeActionsHtml('param') : ''}
+        ${isEditablePath(path) ? nodeActionsHtml() : ''}
       </span></summary>`;
       const wrap = document.createElement('div'); wrap.style.paddingLeft='12px';
-      Object.keys(val || {}).forEach(k=>{
-        wrap.appendChild(renderAnyNode(k, val[k], path.concat(k)));
-      });
+      Object.keys(val||{}).forEach(k=> wrap.appendChild(renderAnyNode(k, val[k], path.concat(k))));
       det.appendChild(wrap);
       return det;
     }
     if (t === 'array') {
-      const det = document.createElement('details'); det.open = false;
+      const det = document.createElement('details'); det.open = open;
       det.innerHTML = `<summary><span class="json-tree-node" data-path='${JSON.stringify(path)}'>
         <i class="far fa-folder-open"></i>
         <span class="json-node-key">${esc(key)}</span>
         <span class="json-node-meta">array(${val.length})</span>
-        ${isParam ? nodeActionsHtml('param') : ''}
+        ${isEditablePath(path) ? nodeActionsHtml() : ''}
       </span></summary>`;
       const wrap = document.createElement('div'); wrap.style.paddingLeft='12px';
-      val.forEach((item, idx)=>{
-        wrap.appendChild(renderAnyNode(`[${idx}]`, item, path.concat(idx)));
-      });
+      val.forEach((item, idx)=> wrap.appendChild(renderAnyNode(`[${idx}]`, item, path.concat(idx))));
       det.appendChild(wrap);
       return det;
     }
@@ -126,16 +136,17 @@
       <i class="far fa-dot-circle"></i>
       <span class="json-node-key">${esc(key)}</span>
       <span class="json-node-meta">${renderValueInline(val)}</span>
-      ${isParam ? nodeActionsHtml('param') : ''}
+      ${isEditablePath(path) ? nodeActionsHtml() : ''}
     `;
+    // Click para resaltar fieldset si corresponde
+    const root = path[0], p2 = path[1], p3 = path[2];
+    if (root==='layout' && typeof val!=='object' && p2 && String(p3||'').includes('fieldset')) {
+      div.style.cursor='pointer';
+      div.addEventListener('click', (e)=> { if (e.target.closest('.json-node-actions')) return; highlightFieldset(val); });
+    }
     return div;
   }
 
-  function typeOf(v){
-    if (Array.isArray(v)) return 'array';
-    if (v === null) return 'null';
-    return typeof v === 'object' ? 'object' : typeof v;
-  }
   function renderValueInline(v){
     const t = typeOf(v);
     if (t === 'object') return '{...}';
@@ -145,9 +156,29 @@
     if (t === 'null') return 'null';
     return String(v);
   }
-  function getAtPath(obj, path){
-    return path.reduce((acc, k)=> (acc==null?acc:acc[k]), obj);
+
+  function highlightFieldset(name){
+    const el = document.querySelector(`[data-fieldset-name="${CSS.escape(name)}"]`);
+    if (!el) return;
+    el.scrollIntoView({ behavior:'smooth', block:'center' });
+    el.classList.add('json-highlight');
+    setTimeout(()=> el.classList.remove('json-highlight'), 900);
   }
+
+  function toggleAll(){
+    const body = $('#jsonTreeBody'); const details = $all('details', body);
+    const anyClosed = details.some(d=>!d.open); details.forEach(d => d.open = anyClosed);
+  }
+  function filterTree(e){
+    const q = (e.target.value || '').toLowerCase();
+    const body = $('#jsonTreeBody');
+    $all('.json-tree-node', body).forEach(n=>{
+      const txt = n.textContent.toLowerCase();
+      n.style.display = txt.includes(q) ? '' : 'none';
+    });
+  }
+
+  function getAtPath(obj, path){ return path.reduce((acc, k)=> (acc==null?acc:acc[k]), obj); }
   function setAtPath(obj, path, value){
     let curr = obj;
     for (let i=0; i<path.length-1; i++){
@@ -158,168 +189,81 @@
     curr[path[path.length-1]] = value;
   }
 
-  // Guardar todo el objeto "parametros" (reemplazo)
-  function postGuardarParametros(nuevosParametros){
-    const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || '';
-    const form = new FormData();
-    form.append('archivo', archivo);
-    form.append('parametros', JSON.stringify(nuevosParametros));
-    return fetch('guardar_layout.php', { method:'POST', body: form })
-      .then(r => r.ok ? r.json() : r.json().then(e=>Promise.reject(new Error(e.error||'Error HTTP'))))
-      .then(j => { if (j.success===false) throw new Error(j.error||'Error'); return j; });
+  function bindEditActions(root){
+    root.addEventListener('click', async function(e){
+      const btn = e.target.closest('.act-edit'); if (!btn) return;
+      const node = btn.closest('.json-tree-node'); if (!node) return;
+      const pathStr = node.getAttribute('data-path') || node.dataset.path;
+      if (!pathStr) return;
+      let path; try { path = JSON.parse(pathStr); } catch { return; }
+      await editNodeByPath(path, node);
+    });
   }
 
-  // Edición de cualquier nodo bajo "parametros": primitivos, objetos y arrays
-  async function editParametroNode(path, nodeEl){
+  async function editNodeByPath(path, nodeEl){
+    const rootKey = path[0];
     const data = window.formularioJsonOriginal || {};
-    const params = data.parametros || {};
-    // path es completo (p.ej. ['parametros','mensajes','exito'] o ['parametros','botones',0,'texto'])
-    const subPath = path.slice(1); // quita 'parametros'
-    const current = getAtPath({ parametros: params }, ['parametros', ...subPath]);
+    const currentRoot = data[rootKey];
+    const subPath = path.slice(1);
+    const current = subPath.length ? getAtPath(currentRoot, subPath) : currentRoot;
     const t = typeOf(current);
 
     // Editor según tipo
     let nuevoVal;
     if (t === 'object' || t === 'array' || t === 'null') {
-      const { value: jsonStr } = await Swal.fire({
-        title: `Editar ${path.join('.')}`,
-        input: 'textarea',
-        inputValue: (t === 'null') ? 'null' : JSON.stringify(current, null, 2),
-        inputAttributes: { spellcheck: 'false', style: 'min-height:220px;font-family:monospace;' },
-        showCancelButton: true,
-        confirmButtonText: 'Guardar',
-        preConfirm: (txt)=> {
-          try { return JSON.parse(txt); } catch(e){ Swal.showValidationMessage('JSON inválido'); return false; }
-        }
-      });
-      if (jsonStr == null) return;
-      nuevoVal = jsonStr; // ya parseado en preConfirm
+      const { value: jsonObj } = await swalJsonEditor(path.join('.'), (t==='null')?'null':JSON.stringify(current, null, 2));
+      if (jsonObj == null) return;
+      nuevoVal = jsonObj;
     } else if (t === 'boolean') {
-      const { value: choice } = await Swal.fire({
-        title: `Editar ${path.join('.')}`,
-        input: 'select',
-        inputOptions: { 'true': 'true', 'false': 'false' },
-        inputValue: current ? 'true' : 'false',
-        showCancelButton: true,
-        confirmButtonText: 'Guardar'
-      });
-      if (choice == null) return;
-      nuevoVal = (choice === 'true');
+      const { value: choice } = await Swal.fire({ title:`Editar ${path.join('.')}`, input:'select',
+        inputOptions:{ 'true':'true','false':'false' }, inputValue: current ? 'true':'false',
+        showCancelButton:true, confirmButtonText:'Guardar' });
+      if (choice == null) return; nuevoVal = (choice === 'true');
     } else if (t === 'number') {
-      const { value: num } = await Swal.fire({
-        title: `Editar ${path.join('.')}`,
-        input: 'number',
-        inputValue: current,
-        showCancelButton: true,
-        confirmButtonText: 'Guardar'
-      });
-      if (num == null) return;
-      nuevoVal = Number(num);
+      const { value: num } = await Swal.fire({ title:`Editar ${path.join('.')}`, input:'number',
+        inputValue: current, showCancelButton:true, confirmButtonText:'Guardar' });
+      if (num == null) return; nuevoVal = Number(num);
     } else {
-      const { value: txt } = await Swal.fire({
-        title: `Editar ${path.join('.')}`,
-        input: 'text',
-        inputValue: String(current ?? ''),
-        showCancelButton: true,
-        confirmButtonText: 'Guardar'
-      });
-      if (txt == null) return;
-      nuevoVal = txt;
+      const { value: txt } = await Swal.fire({ title:`Editar ${path.join('.')}`, input:'text',
+        inputValue: String(current ?? ''), showCancelButton:true, confirmButtonText:'Guardar' });
+      if (txt == null) return; nuevoVal = txt;
     }
 
-    // Aplica, guarda y refresca
-    const nuevosParametros = JSON.parse(JSON.stringify(params));
-    setAtPath(nuevosParametros, subPath, nuevoVal);
-    try {
-      await postGuardarParametros(nuevosParametros);
-      data.parametros = nuevosParametros; // actualiza en memoria
-      // refresca nodo visual
-      const meta = nodeEl.querySelector('.json-node-meta');
-      if (meta) meta.textContent = renderValueInline(nuevoVal);
-      // si era objeto/array, reconstruir para ver cambios internos
-      if (typeOf(nuevoVal) === 'object' || typeOf(nuevoVal) === 'array') buildTree();
-    } catch(err) { showAjaxError(err); }
-  }
+    // Aplica en memoria
+    const newRoot = JSON.parse(JSON.stringify(currentRoot ?? (Array.isArray(subPath[0])?[]:{})));
+    if (subPath.length) setAtPath(newRoot, subPath, nuevoVal); else Object.assign(newRoot, nuevoVal);
 
-  function bindEditActions(root){
-    root.addEventListener('click', function(e){
-      const btn = e.target.closest('.act-edit');
-      if (!btn) return;
-      const actions = btn.closest('.json-node-actions');
-      const type = actions?.getAttribute('data-node-type');
-      const node = actions.closest('.json-tree-node');
-      if (!type || !node) return;
-
-      if (type === 'param') {
-        // toma path desde el propio nodo o desde el summary contenedor
-        let pathStr = node.dataset.path;
-        if (!pathStr) {
-          const detailsSummaryNode = actions.closest('summary')?.querySelector('.json-tree-node');
-          pathStr = detailsSummaryNode && detailsSummaryNode.getAttribute('data-path');
-        }
-        if (!pathStr) return;
-        let path; try { path = JSON.parse(pathStr); } catch(_){ return; }
-        if (Array.isArray(path) && path[0] === 'parametros') editParametroNode(path, node);
-        return;
+    // Persistir según root
+    if (rootKey === 'parametros') {
+      await postGuardar({ parametros: newRoot });
+      data.parametros = newRoot;
+    } else if (rootKey === 'layout') {
+      await postGuardar({ layout: newRoot });
+      data.layout = newRoot;
+    } else if (rootKey === 'fieldsets') {
+      await postGuardar({ fieldsets: newRoot });
+      data.fieldsets = newRoot;
+      // sincroniza leyendas si cambió titulo de algún fieldset
+      if (subPath.length >= 1) {
+        const fsName = subPath[0];
+        const fs = newRoot[fsName];
+        if (fs && fs.titulo) syncLegend(fsName, fs.titulo);
       }
+    } else if (rootKey === 'elementos_fuera') {
+      await postGuardar({ elementos_fuera: newRoot });
+      data.elementos_fuera = newRoot;
+    } else {
+      // otros nodos de nivel raíz: reemplaza bloque
+      const payload = {}; payload[rootKey] = newRoot;
+      await postGuardar(payload);
+      data[rootKey] = newRoot;
+    }
 
-      const actionsMap = {
-        form: editForm,
-        fieldset: () => {
-          const name = node.querySelector('.json-node-key')?.textContent?.trim();
-          if (name) editFieldset(name);
-        },
-        field: () => {
-          const fs = node.getAttribute('data-fs');
-          const field = node.getAttribute('data-field');
-          if (fs && field) editField(fs, field);
-        },
-        tab: () => {
-          const titleMeta = node.querySelector('.json-node-meta')?.textContent?.trim();
-          editTab(titleMeta);
-        }
-      };
-
-      const action = actionsMap[type];
-      if (action) action();
-    });
-  }
-
-  async function editForm(){
-    const data = window.formularioJsonOriginal || {};
-    const params = data.parametros || {};
-    const { value: titulo } = await Swal.fire({
-      title: 'Título del formulario', input:'text',
-      inputValue: params.titulo ?? data.titulo ?? '', showCancelButton:true, confirmButtonText:'Guardar'
-    });
-    if (titulo == null) return;
-    postEditar({
-      tipo: 'form',
-      titulo: String(titulo)
-    }).then(()=>{ (params.titulo=data.parametros.titulo=titulo), buildTree(); $('#form-title') && ($('#form-title').textContent=titulo); })
-      .catch(showAjaxError);
-  }
-
-  async function editFieldset(name){
-    const data = window.formularioJsonOriginal || {};
-    const fs = (data.fieldsets||{})[name] || {};
-    const { value: formVals } = await Swal.fire({
-      title: `Editar fieldset "${name}"`,
-      html: `
-        <input id="fs_title" class="swal2-input" placeholder="Título" value="${esc(fs.titulo||name)}">
-        <input id="fs_desc" class="swal2-input" placeholder="Descripción" value="${esc(fs.descripcion||'')}">
-      `,
-      focusConfirm:false, showCancelButton:true,
-      preConfirm: () => ({ titulo: $('#fs_title')?.value || '', descripcion: $('#fs_desc')?.value || '' })
-    });
-    if (!formVals) return;
-    postEditar({
-      tipo:'fieldset',
-      fieldset: name,
-      titulo: formVals.titulo,
-      descripcion: formVals.descripcion
-    }).then(()=>{ if (!data.fieldsets[name]) data.fieldsets[name]={}; data.fieldsets[name].titulo=formVals.titulo; data.fieldsets[name].descripcion=formVals.descripcion; buildTree(); syncLegend(name, formVals.titulo); })
-      .catch(showAjaxError);
+    // refresca vista
+    const meta = nodeEl.querySelector('.json-node-meta');
+    if (meta) meta.textContent = renderValueInline(nuevoVal);
+    // si era objeto/array, reconstruir árbol
+    if (typeOf(nuevoVal) === 'object' || typeOf(nuevoVal) === 'array' || subPath.length===0) buildTree();
   }
 
   function syncLegend(fsName, nuevoTitulo){
@@ -327,106 +271,46 @@
     if (el) el.textContent = nuevoTitulo || fsName;
   }
 
-  async function editField(fsName, fieldName){
-    const data = window.formularioJsonOriginal || {};
-    const fs = (data.fieldsets||{})[fsName] || {};
-    const campo = (fs.campos||[]).find(c => c && c.nombre === fieldName) || { nombre: fieldName };
-    const { value: vals } = await Swal.fire({
-      title: `Editar campo "${fieldName}"`,
-      html: `
-        <input id="f_label" class="swal2-input" placeholder="Etiqueta" value="${esc(campo.etiqueta||'')}">
-        <input id="f_placeholder" class="swal2-input" placeholder="Placeholder" value="${esc(campo.placeholder||'')}">
-        <input id="f_tipo" class="swal2-input" placeholder="Tipo" value="${esc(campo.tipo||'text')}">
-      `,
-      focusConfirm:false, showCancelButton:true,
-      preConfirm: () => ({ etiqueta: $('#f_label')?.value||'', placeholder: $('#f_placeholder')?.value||'', tipo: $('#f_tipo')?.value||'text' })
-    });
-    if (!vals) return;
-    postEditar({
-      tipo: 'field',
-      fieldset: fsName,
-      nombre: fieldName,
-      etiqueta: vals.etiqueta,
-      placeholder: vals.placeholder,
-      tipo: vals.tipo
-    }).then(()=>{
-      const c = (fs.campos||[]).find(x=>x && x.nombre===fieldName);
-      if (c){ c.etiqueta=vals.etiqueta; c.placeholder=vals.placeholder; c.tipo=vals.tipo; }
-      buildTree();
-    }).catch(showAjaxError);
-  }
-
-  async function editTab(currentTitle){
-    const { value: newTitle } = await Swal.fire({
-      title:'Renombrar pestaña', input:'text', inputValue: currentTitle||'', showCancelButton:true, confirmButtonText:'Guardar'
-    });
-    if (!newTitle || newTitle===currentTitle) return;
-    try {
-      const data = window.formularioJsonOriginal || {};
-      const tabs = (((data||{}).layout||{}).main||{}).tabs || [];
-      const t = tabs.find(tt => (tt.title||'') === (currentTitle||''));
-      if (!t) throw new Error('Pestaña no encontrada');
-      t.title = newTitle;
-      // Guarda usando guardar_layout (solo layout)
-      await postGuardarLayout({ layout: { main: { type:'tabs', tabs } } });
-      buildTree();
-      // También actualizar DOM de nav si existe
-      const a = $(`#fd-root [data-block-type="tabs"] .nav .nav-link:contains("${CSS.escape(currentTitle)}")`);
-      if (a) a.textContent = newTitle;
-    } catch(err) {
-      showAjaxError(err);
+  function swalJsonEditor(title, initial){
+    if (!window.Swal) {
+      const txt = window.prompt('JSON para '+title, initial); if (txt==null) return Promise.resolve({ value:null });
+      try { return Promise.resolve({ value: JSON.parse(txt) }); } catch(e){ alert('JSON inválido'); return Promise.resolve({ value:null }); }
     }
+    return Swal.fire({
+      title: title, input: 'textarea', inputValue: initial,
+      inputAttributes:{ spellcheck:'false', style:'min-height:260px;font-family:monospace;' },
+      showCancelButton:true, confirmButtonText:'Guardar',
+      preConfirm: (txt)=> { try { return JSON.parse(txt); } catch(e){ Swal.showValidationMessage('JSON inválido'); return false; } }
+    });
   }
 
-  function showAjaxError(err){
-    const msg = (err && err.message) || 'Error';
-    if (window.Swal) Swal.fire('Error', msg, 'error'); else alert(msg);
-  }
-
-  function postEditar(payload){
+  function postGuardar(blocks){
     const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || '';
     const form = new FormData();
     form.append('archivo', archivo);
-    Object.keys(payload).forEach(k=> form.append(k, payload[k]));
-    return fetch('editar_propiedades.php', { method:'POST', body: form })
-      .then(r => r.ok ? r.json() : r.json().then(e=>Promise.reject(new Error(e.error||'Error HTTP'))))
-      .then(j => { if (j.success===false) throw new Error(j.error||'Error'); return j; });
-  }
-
-  function postGuardarLayout(partial){
-    const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || '';
-    const form = new FormData();
-    form.append('archivo', archivo);
-    form.append('layout', JSON.stringify(partial));
+    if (blocks.parametros !== undefined) form.append('parametros', JSON.stringify(blocks.parametros));
+    if (blocks.layout !== undefined) form.append('layout', JSON.stringify(blocks.layout));
+    if (blocks.fieldsets !== undefined) form.append('fieldsets', JSON.stringify(blocks.fieldsets));
+    if (blocks.elementos_fuera !== undefined) form.append('elementos_fuera', JSON.stringify(blocks.elementos_fuera));
     return fetch('guardar_layout.php', { method:'POST', body: form })
       .then(r => r.ok ? r.json() : r.json().then(e=>Promise.reject(new Error(e.error||'Error HTTP'))))
       .then(j => { if (j.success===false) throw new Error(j.error||'Error'); return j; });
   }
 
-  function shouldShow(){
-    if (!CONFIG.showOnlyInDesignMode) return true;
-    const root = document.getElementById('fd-root');
-    return !!(root && root.classList.contains('design-mode'));
+  function onDesignModeChanged(e){
+    const panel = $('#json-tree-panel'); if (!panel) return;
+    panel.style.display = e.detail && e.detail.on ? '' : 'none';
+    if (e.detail && e.detail.on) buildTree();
   }
 
-  function init(){
+  async function init(){
     injectStyles();
-    const data = window.formularioJsonOriginal;
-    if (!data) return;
+    await ensureJsonLoaded();
     const panel = ensurePanel();
     panel.style.display = shouldShow() ? '' : 'none';
-    buildTree();
+    if (shouldShow()) buildTree();
 
-    // NUEVO: reaccionar al cambio de modo
-    window.addEventListener('design-mode-changed', (e)=>{
-      panel.style.display = e.detail && e.detail.on ? '' : 'none';
-      if (e.detail && e.detail.on) buildTree();
-    });
-
-    const toggle = document.getElementById('designModeToggle');
-    if (toggle){
-      toggle.addEventListener('change', ()=> { panel.style.display = shouldShow() ? '' : 'none'; });
-    }
+    window.addEventListener('design-mode-changed', onDesignModeChanged);
   }
 
   document.addEventListener('DOMContentLoaded', init);

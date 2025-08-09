@@ -23,7 +23,7 @@ try {
     $json['parametros'] = $json['parametros'] ?? [];
     $fieldsets = $json['fieldsets'] ?? [];
 
-    // Normalizar fieldsets a mapa por clave de array o por 'name'
+    // Normalizar fieldsets a mapa si vienen como lista
     if (is_array($fieldsets) && array_keys($fieldsets) === range(0, count($fieldsets)-1)) {
         $map = [];
         foreach ($fieldsets as $fs) {
@@ -51,49 +51,42 @@ try {
             if ($nombre === '') throw new InvalidArgumentException('Falta nombre del campo');
 
             $campos = $fieldsets[$fieldset]['campos'] ?? [];
-            $encontrado = false;
-            foreach ($campos as &$c) {
-                if (($c['nombre'] ?? null) !== $nombre) continue;
-                $encontrado = true;
-
-                // 2.1) Props JSON específicas
-                if (isset($_POST['opciones'])) {
-                    $opts = json_decode((string)$_POST['opciones'], true);
-                    if (json_last_error() === JSON_ERROR_NONE) $c['opciones'] = $opts;
-                    else throw new InvalidArgumentException('Opciones JSON inválido');
-                }
-                if (isset($_POST['atributos'])) {
-                    $attrs = json_decode((string)$_POST['atributos'], true);
-                    if (json_last_error() === JSON_ERROR_NONE) $c['atributos'] = $attrs;
-                    else throw new InvalidArgumentException('Atributos JSON inválido');
-                }
-
-                // 2.2) Cualquier otra propiedad enviada (genérica)
-                $reservadas = ['archivo','tipo','fieldset','nombre','opciones','atributos'];
-                foreach ($_POST as $k => $v) {
-                    if (in_array($k, $reservadas, true)) continue;
-                    // Mantener strings; el front valida/parsea donde corresponda
-                    $c[$k] = (string)$v;
-                }
-                break;
+            $idx = -1;
+            foreach ($campos as $i => $c) {
+                if (($c['nombre'] ?? null) === $nombre) { $idx = $i; break; }
             }
-            unset($c);
+            if ($idx < 0) throw new InvalidArgumentException('Campo no encontrado en el fieldset');
 
-            if (!$encontrado) throw new InvalidArgumentException('Campo no encontrado en el fieldset');
+            if (isset($_POST['opciones'])) {
+                $opts = json_decode((string)$_POST['opciones'], true);
+                if (json_last_error() !== JSON_ERROR_NONE) throw new InvalidArgumentException('Opciones JSON inválido');
+                $campos[$idx]['opciones'] = $opts;
+            }
+            if (isset($_POST['atributos'])) {
+                $attrs = json_decode((string)$_POST['atributos'], true);
+                if (json_last_error() !== JSON_ERROR_NONE) throw new InvalidArgumentException('Atributos JSON inválido');
+                $campos[$idx]['atributos'] = $attrs;
+            }
+
+            $reservadas = ['archivo','tipo','fieldset','nombre','opciones','atributos'];
+            foreach ($_POST as $k => $v) {
+                if (in_array($k, $reservadas, true)) continue;
+                $campos[$idx][$k] = (string)$v;
+            }
+
             $fieldsets[$fieldset]['campos'] = $campos;
             $json['fieldsets'] = $fieldsets;
 
-            // Guardar con backup y lock
             $backup = $path.'.bak-'.date('Ymd_His');
             @copy($path, $backup);
             file_put_contents($path, json_encode($json, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES), LOCK_EX);
 
-            // Devolver el campo actualizado
-            $campoActualizado = null;
-            foreach ($json['fieldsets'][$fieldset]['campos'] as $c2) {
-                if (($c2['nombre'] ?? null) === $nombre) { $campoActualizado = $c2; break; }
-            }
-            echo json_encode(['success'=>true,'message'=>'Campo actualizado','backup'=>basename($backup),'field'=>$campoActualizado], JSON_UNESCAPED_UNICODE);
+            echo json_encode([
+                'success'=>true,
+                'message'=>'Campo actualizado',
+                'backup'=>basename($backup),
+                'field'=>$json['fieldsets'][$fieldset]['campos'][$idx] ?? null
+            ], JSON_UNESCAPED_UNICODE);
             return;
 
         default:
@@ -101,7 +94,6 @@ try {
     }
 
     $json['fieldsets'] = $fieldsets;
-
     $backup = $path.'.bak-'.date('Ymd_His');
     @copy($path, $backup);
     file_put_contents($path, json_encode($json, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES), LOCK_EX);

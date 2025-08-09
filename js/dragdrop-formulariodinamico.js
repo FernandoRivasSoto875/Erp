@@ -457,7 +457,40 @@ $(function(){
     function inDesign(){ const r=root(); return !!(r && r.classList.contains('design-mode')); }
     function getArchivoJson(){ return (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || ''; }
 
-    // ---------- Guardado del diseño ----------
+    // ------- JSON helpers -------
+    const JSON_CACHE = { data: null };
+    function asFieldsetsMap(fieldsets) {
+        if (!fieldsets) return {};
+        if (Array.isArray(fieldsets)) {
+            const m={}; fieldsets.forEach(fs=>{ const k=(fs&& (fs.name||fs.nombre)); if(k) m[k]=fs; }); return m;
+        }
+        return fieldsets;
+    }
+    function fetchJson() {
+        const archivo = getArchivoJson();
+        return $.getJSON('json/' + archivo).then(d => {
+            JSON_CACHE.data = d || {};
+            return JSON_CACHE.data;
+        }).catch(() => {
+            JSON_CACHE.data = window.formularioJsonOriginal || {};
+            return JSON_CACHE.data;
+        });
+    }
+    function getFieldDef(json, fieldsetName, fieldName) {
+        const fsets = asFieldsetsMap(json.fieldsets || {});
+        const fs = fsets[fieldsetName]; if (!fs) return null;
+        const campos = Array.isArray(fs.campos) ? fs.campos : [];
+        const idx = campos.findIndex(c => (c && c.nombre) === fieldName);
+        if (idx < 0) return null;
+        return { fs, idx, campo: campos[idx] };
+    }
+    function updateLocalJsonField(json, fieldsetName, fieldName, newProps) {
+        const def = getFieldDef(json, fieldsetName, fieldName); if (!def) return;
+        const c = def.campo;
+        Object.keys(newProps).forEach(k => { if (newProps[k] !== undefined) c[k]=newProps[k]; });
+    }
+
+    // ------- Guardado del layout -------
     function collectElementosFuera() {
         const out = document.getElementById('elementos-fuera-container');
         if (!out) return [];
@@ -470,13 +503,28 @@ $(function(){
         });
         return items;
     }
-
+    function reorderFieldsetsFromDOM(originalFieldsets) {
+        const copy = JSON.parse(JSON.stringify(originalFieldsets || {}));
+        document.querySelectorAll('.draggable-fieldset[data-fieldset-name]').forEach(fs => {
+            const name = fs.getAttribute('data-fieldset-name');
+            if (!name || !copy[name]) return;
+            const fields = Array.from(fs.querySelectorAll('.sortable-fields-container .draggable-field[data-field-name]')).map(n => n.getAttribute('data-field-name'));
+            if (!fields.length) return;
+            const current = Array.isArray(copy[name].campos) ? copy[name].campos : [];
+            const map = {}; current.forEach(c => { if (c && c.nombre) map[c.nombre]=c; });
+            const reordered = [];
+            fields.forEach(fname => { if (map[fname]) reordered.push(map[fname]); });
+            current.forEach(c => { if (c && c.nombre && !reordered.find(rc=>rc.nombre===c.nombre)) reordered.push(c); });
+            copy[name].campos = reordered;
+        });
+        return copy;
+    }
     function buildLayoutFromDOM() {
         const layout = [];
         const container = document.querySelector('#fd-root [data-layout-container]');
         if (!container) return layout;
 
-        // Bloques de tabs
+        // Tabs
         container.querySelectorAll('[data-block-type="tabs"]').forEach(block => {
             const tabs = [];
             const idToTitle = {};
@@ -487,7 +535,6 @@ $(function(){
                 const id = pane.id;
                 const title = idToTitle[id] || 'Pestaña';
                 const row = { columns: [] };
-                // Cada fieldset dentro del pane
                 const names = Array.from(pane.querySelectorAll('.draggable-fieldset[data-fieldset-name]')).map(fs => fs.getAttribute('data-fieldset-name'));
                 if (names.length) names.forEach(n => row.columns.push({ width: 12, fieldset: n }));
                 else row.columns.push({ width: 12 }); // vacío
@@ -496,7 +543,7 @@ $(function(){
             layout.push({ type: 'tabs', tabs });
         });
 
-        // Otros bloques genéricos si existieran
+        // Header/Footer/Generic
         container.querySelectorAll('[data-block-type="generic"],[data-block-type="header"],[data-block-type="footer"]').forEach(block => {
             const type = block.getAttribute('data-block-type') || 'generic';
             const rows = [];
@@ -515,10 +562,11 @@ $(function(){
 
         return layout;
     }
-
     function saveDesign() {
         const archivo = getArchivoJson();
         if (!archivo) return;
+        const original = (window.formularioJsonOriginal && window.formularioJsonOriginal.fieldsets) || {};
+        const fieldsets = reorderFieldsetsFromDOM(original);
         const layout = buildLayoutFromDOM();
         const elementos_fuera = collectElementosFuera();
         const layout_html = (document.querySelector('#fd-root [data-layout-container]') || {}).innerHTML || '';
@@ -527,15 +575,12 @@ $(function(){
             archivo,
             layout: JSON.stringify(layout),
             elementos_fuera: JSON.stringify(elementos_fuera),
+            fieldsets: JSON.stringify(fieldsets),
             layout_html
-        }).fail(xhr => {
-            const msg = (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red';
-            if (window.Swal) Swal.fire('Error', msg, 'error');
-            else alert(msg);
-        });
+        }).fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
     }
 
-    // ---------- CRUD de pestañas ----------
+    // ------- CRUD de pestañas -------
     function ensureCrudUI() {
         document.querySelectorAll('#fd-root [data-block-type="tabs"]').forEach(block => {
             // Botón + Pestaña (debajo del ul.nav)
@@ -571,7 +616,6 @@ $(function(){
             });
         });
     }
-
     function addTab(block, title) {
         title = title || 'Nueva pestaña';
         const nav = block.querySelector('ul.nav');
@@ -609,18 +653,13 @@ $(function(){
         initSortable(); // habilitar DnD en el nuevo pane
         saveDesign();
     }
-
-    // Renombrar pestaña
     $(document).on('click', '.edit-tab-icon', function(){
         if (!inDesign()) return;
         const $a = $(this).closest('.nav-item').find('.nav-link');
         const current = $a.text().trim();
-        if (!window.Swal) return;
         Swal.fire({ title: 'Título de pestaña', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' })
         .then(res => { if (res.isConfirmed && res.value) { $a.text(res.value); saveDesign(); } });
     });
-
-    // Eliminar pestaña
     $(document).on('click', '.delete-tab-icon', function(){
         if (!inDesign()) return;
         const li = this.closest('.nav-item');
@@ -631,46 +670,28 @@ $(function(){
         const nav = li.parentElement;
         const content = block && block.querySelector('.tab-content');
 
-        const doDelete = () => {
-            // Eliminar pane asociado
+        Swal.fire({ title:'Eliminar pestaña', text:'Esta acción no se puede deshacer', icon:'warning', showCancelButton:true, confirmButtonText:'Eliminar' })
+        .then(res => {
+            if (!res.isConfirmed) return;
             if (href && content) {
                 const pane = content.querySelector(href);
                 if (pane) pane.remove();
             }
-            // Determinar tab a activar
             let toActivate = li.previousElementSibling || li.nextElementSibling || null;
             li.remove();
             if (toActivate) {
                 const a2 = toActivate.querySelector('.nav-link');
                 if (a2) $(a2).trigger('click');
-            } else {
-                // Si no queda ninguna, nada que activar
-                if (content) {
-                    const firstPane = content.querySelector('.tab-pane');
-                    if (firstPane) firstPane.classList.add('show','active');
-                }
             }
             saveDesign();
-        };
-
-        if (window.Swal) {
-            Swal.fire({ title:'Eliminar pestaña', text:'Esta acción no se puede deshacer', icon:'warning', showCancelButton:true, confirmButtonText:'Eliminar' })
-                .then(res => { if (res.isConfirmed) doDelete(); });
-        } else {
-            if (confirm('Eliminar pestaña?')) doDelete();
-        }
+        });
     });
-
     // Navegación de tabs (Bootstrap o fallback)
     $(document).on('click', '#fd-root ul.nav .nav-link[href^="#"]', function(e){
         const $a = $(this);
-        const href = $a.attr('href');
-        if (typeof $().tab === 'function') {
-            e.preventDefault();
-            $a.tab('show');
-            return;
-        }
+        if (typeof $().tab === 'function') { e.preventDefault(); $a.tab('show'); return; }
         e.preventDefault();
+        const href = $a.attr('href');
         const $nav = $a.closest('ul');
         const $block = $nav.closest('[data-block-type="tabs"]');
         const $content = $block.find('.tab-content');
@@ -680,14 +701,24 @@ $(function(){
         $content.find(href).addClass('show active');
     });
 
-    // ---------- Sortables ----------
+    // ------- Sortables -------
     let sortables = [];
     function destroySortables(){ sortables.forEach(s=>{ try{s.destroy();}catch(e){} }); sortables=[]; }
-
     function initSortable() {
         if (!inDesign() || typeof Sortable === 'undefined') return;
 
-        // Reordenar fieldsets dentro de columnas/panes
+        // Campos dentro de fieldset
+        document.querySelectorAll('#fd-root .sortable-fields-container').forEach(el => {
+            sortables.push(Sortable.create(el, {
+                group: { name: 'fields', pull: true, put: true },
+                draggable: '.draggable-field',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onEnd: () => saveDesign()
+            }));
+        });
+
+        // Fieldsets en columnas/panes y “fuera”
         document.querySelectorAll('#fd-root [data-col-width], #fd-root [data-dropzone="tab-pane"], #elementos-fuera-container').forEach(el => {
             sortables.push(Sortable.create(el, {
                 group: { name: 'fieldsets', pull: true, put: true },
@@ -707,7 +738,6 @@ $(function(){
                 draggable: '.nav-item',
                 handle: '.nav-link',
                 onEnd: () => {
-                    // Reordenar panes a mismo orden que las tabs
                     const block = nav.closest('[data-block-type="tabs"]');
                     const content = block && block.querySelector('.tab-content');
                     if (!content) return;
@@ -724,18 +754,126 @@ $(function(){
         });
     }
 
-    // ---------- Activación del modo diseño ----------
+    // ------- Editores -------
+    $(document).on('click', '[data-edit="form-title"]', function(){
+        if (!inDesign()) return;
+        const $title = $('#form-title');
+        const current = $title.clone().children().remove().end().text().trim();
+        Swal.fire({ title: 'Título del formulario', input: 'text', inputValue: current, showCancelButton: true, confirmButtonText: 'Guardar' })
+        .then(res => {
+            if (!res.isConfirmed || !res.value) return;
+            $.post('editar_propiedades.php', { archivo: getArchivoJson(), tipo:'form', titulo: res.value })
+             .done(resp => { if (resp && resp.success) { const icon = $title.find('.edit-icon').detach(); $title.text(res.value).append(icon); } else Swal.fire('Error', (resp && resp.error) || 'No se pudo actualizar', 'error'); })
+             .fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
+        });
+    });
+
+    // Campo: propiedades con precarga desde JSON
+    $(document).on('click', '.edit-icon[data-edit="field"]', async function(){
+        if (!inDesign()) return;
+        const $field = $(this).closest('.draggable-field');
+        const fieldName = $field.data('fieldName') || $field.attr('data-field-name') || '';
+        const $fs = $field.closest('.draggable-fieldset');
+        const fieldsetName = $fs.data('fieldsetName') || $fs.attr('data-fieldset-name') || $(this).attr('data-fieldset') || '';
+        if (!fieldsetName || !fieldName) return;
+
+        const json = await fetchJson();
+        const def = getFieldDef(json, fieldsetName, fieldName);
+        if (!def) return Swal.fire('Error', 'No se encontró el campo en el JSON', 'error');
+        const campo = def.campo || {};
+
+        const vEtiqueta = (campo.etiqueta || campo.nombre || '').toString();
+        const vPlaceholder = (campo.placeholder || '').toString();
+        const vTipo = (campo.tipo || 'text').toString();
+        const vValor = (campo.valor_predeterminado ?? '').toString();
+        let vOpciones = ''; try { if (campo.opciones !== undefined) vOpciones = JSON.stringify(campo.opciones, null, 2); } catch(e){}
+        let vAtributos = ''; try { if (campo.atributos !== undefined) vAtributos = JSON.stringify(campo.atributos, null, 2); } catch(e){}
+
+        const tipos = ['text','textarea','number','email','password','select','selectdata','radio','checkbox','file','date','datatable','hidden'];
+        const optionsHtml = tipos.map(t => `<option value="${t}" ${t===vTipo?'selected':''}>${t}</option>`).join('');
+        const esc = s => $('<div>').text(s ?? '').html();
+
+        await Swal.fire({
+            title: `Propiedades: ${fieldName}`,
+            html: `
+                <div class="text-left">
+                    <div class="form-group mb-2"><label>Etiqueta</label><input id="sw-etiqueta" class="form-control" value="${esc(vEtiqueta)}"></div>
+                    <div class="form-group mb-2"><label>Placeholder</label><input id="sw-placeholder" class="form-control" value="${esc(vPlaceholder)}"></div>
+                    <div class="form-group mb-2"><label>Tipo</label><select id="sw-tipo" class="form-control">${optionsHtml}</select></div>
+                    <div class="form-group mb-2"><label>Valor predeterminado</label><input id="sw-valor" class="form-control" value="${esc(vValor)}"></div>
+                    <div class="form-group mb-2"><label>Opciones (JSON)</label><textarea id="sw-opciones" class="form-control" rows="3" placeholder='{"1":"Opción 1"}'>${vOpciones}</textarea></div>
+                    <div class="form-group mb-0"><label>Atributos (JSON)</label><textarea id="sw-atributos" class="form-control" rows="3" placeholder='{"required":true}'>${vAtributos}</textarea></div>
+                </div>
+            `,
+            focusConfirm: false,
+            showCancelButton: true,
+            confirmButtonText: 'Guardar',
+            preConfirm: () => {
+                const etiqueta = $('#sw-etiqueta').val();
+                const placeholder = $('#sw-placeholder').val();
+                const tipo = $('#sw-tipo').val();
+                const valor_predeterminado = $('#sw-valor').val();
+                let opcionesTxt = $('#sw-opciones').val();
+                let atributosTxt = $('#sw-atributos').val();
+                let opciones, atributos;
+                if (opcionesTxt && opcionesTxt.trim()) { try { opciones = JSON.parse(opcionesTxt); } catch(e){ Swal.showValidationMessage('Opciones JSON inválido'); return false; } }
+                if (atributosTxt && atributosTxt.trim()) { try { atributos = JSON.parse(atributosTxt); } catch(e){ Swal.showValidationMessage('Atributos JSON inválido'); return false; } }
+                return { etiqueta, placeholder, tipo, valor_predeterminado, opciones, atributos };
+            }
+        }).then(res => {
+            if (!res.isConfirmed) return;
+            const payload = {
+                archivo: getArchivoJson(),
+                tipo: 'field',
+                fieldset: fieldsetName,
+                nombre: fieldName,
+                etiqueta: res.value.etiqueta ?? '',
+                placeholder: res.value.placeholder ?? '',
+                tipo: res.value.tipo ?? '',
+                'valor_predeterminado': res.value.valor_predeterminado ?? ''
+            };
+            if (res.value.opciones !== undefined) payload.opciones = JSON.stringify(res.value.opciones);
+            if (res.value.atributos !== undefined) payload.atributos = JSON.stringify(res.value.atributos);
+
+            $.post('editar_propiedades.php', payload)
+             .done(resp => {
+                if (!(resp && resp.success)) return Swal.fire('Error', (resp && resp.error) || 'No se pudo actualizar', 'error');
+                // Cache y UI
+                const newProps = {
+                    etiqueta: res.value.etiqueta,
+                    placeholder: res.value.placeholder,
+                    tipo: res.value.tipo,
+                    valor_predeterminado: res.value.valor_predeterminado
+                };
+                if (res.value.opciones !== undefined) newProps.opciones = res.value.opciones;
+                if (res.value.atributos !== undefined) newProps.atributos = res.value.atributos;
+
+                updateLocalJsonField(JSON_CACHE.data || (window.formularioJsonOriginal || {}), fieldsetName, fieldName, newProps);
+                updateLocalJsonField((window.formularioJsonOriginal || {}), fieldsetName, fieldName, newProps);
+
+                const $label = $field.find('label').first();
+                if (newProps.etiqueta) $label.text(newProps.etiqueta);
+                const $input = $field.find('input,select,textarea').first();
+                if ($input.length) {
+                    if (newProps.placeholder !== undefined) $input.attr('placeholder', newProps.placeholder || '');
+                    if (newProps.tipo && $input.is('input')) $input.attr('type', newProps.tipo);
+                }
+                Swal.fire('OK', 'Campo actualizado', 'success');
+             })
+             .fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
+        });
+    });
+
+    // ------- Activación diseño -------
     function activateDesignMode() {
         if (!inDesign()) return;
-        ensureCrudUI();
         destroySortables();
+        ensureCrudUI();
         initSortable();
-        // Mostrar controles flotantes si existen
         const u = document.getElementById('undoBtn'); if (u) u.style.display = '';
         const r = document.getElementById('redoBtn'); if (r) r.style.display = '';
         const s = document.getElementById('saveLayoutBtn'); if (s) s.style.display = '';
     }
-
     function deactivateDesignMode() {
         destroySortables();
         const u = document.getElementById('undoBtn'); if (u) u.style.display = 'none';
@@ -743,12 +881,10 @@ $(function(){
         const s = document.getElementById('saveLayoutBtn'); if (s) s.style.display = 'none';
     }
 
-    // Exponer API al toggle externo
     window.DnDFormBuilder = Object.assign({}, window.DnDFormBuilder || {}, {
         saveDesign, activateDesignMode, deactivateDesignMode
     });
 
-    // Inicializar si ya viene en diseño
     document.addEventListener('DOMContentLoaded', function(){
         if (inDesign()) activateDesignMode();
     });

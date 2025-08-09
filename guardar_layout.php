@@ -6,7 +6,7 @@ header('Content-Type: application/json; charset=utf-8');
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new RuntimeException('Método no permitido');
     $archivo = $_POST['archivo'] ?? '';
-    if (!$archivo) throw new InvalidArgumentException('Falta archivo');
+    if ($archivo === '') throw new InvalidArgumentException('Falta archivo');
 
     $base = basename($archivo);
     if (stripos($base, '.json') === false) $base .= '.json';
@@ -39,9 +39,9 @@ try {
     @copy($path, $backup);
     file_put_contents($path, json_encode($json, JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE));
 
-    echo json_encode(['success'=>true, 'message'=>'Layout guardado', 'backup'=>basename($backup)]);
+    echo json_encode(['success'=>true,'message'=>'Layout guardado','backup'=>basename($backup)]);
 } catch (Throwable $e) {
     http_response_code(400);
-    echo json_encode(['success'=>false, 'error'=>$e->getMessage()]);
+    echo json_encode(['success'=>false,'error'=>$e->getMessage()]);
 }
 

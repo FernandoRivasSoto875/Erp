@@ -244,6 +244,37 @@ $(document).ready(function() {
         });
     });
 
+    // Lógica para editar el título del formulario (persistir en editar_propiedades.php)
+    $(document).on('click', '[data-edit="form-title"]', function() {
+        if (!body.hasClass('design-mode')) return;
+        const titleEl = $('#form-title');
+        const oldTitle = titleEl.clone().children().remove().end().text().trim(); // solo texto, sin icono
+        Swal.fire({
+            title: 'Título del formulario',
+            input: 'text',
+            inputValue: oldTitle,
+            showCancelButton: true,
+            confirmButtonText: 'Guardar',
+        }).then((result) => {
+            if (result.isConfirmed && result.value) {
+                const newTitle = result.value;
+                const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || '';
+                $.post('editar_propiedades.php', { archivo, tipo:'form', titulo: newTitle })
+                 .done(resp => {
+                    if (resp && resp.success) {
+                        const icon = titleEl.find('.edit-icon').detach();
+                        titleEl.text(newTitle).append(icon);
+                        saveState();
+                        Swal.fire('OK','Actualizado','success');
+                    } else {
+                        Swal.fire('Error', (resp && resp.error) || 'No se pudo actualizar', 'error');
+                    }
+                 })
+                 .fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
+            }
+        });
+    });
+
     // --- LÓGICA DEL EDITOR VISUAL DE PROPIEDADES ---
     function abrirEditorPropiedades(tipo, datos, onGuardar) {
         // tipo: 'field', 'fieldset', 'tab'

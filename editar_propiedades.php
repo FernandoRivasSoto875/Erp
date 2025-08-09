@@ -6,11 +6,11 @@ header('Content-Type: application/json; charset=utf-8');
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') throw new RuntimeException('Método no permitido');
     $archivo  = $_POST['archivo']  ?? '';
-    $tipo     = $_POST['tipo']     ?? ''; // 'fieldset' | 'field'
+    $tipo     = $_POST['tipo']     ?? ''; // 'form' | 'fieldset' | 'field'
     $fieldset = $_POST['fieldset'] ?? '';
     $nombre   = $_POST['nombre']   ?? '';
 
-    if (!$archivo || !$tipo) throw new InvalidArgumentException('Parámetros insuficientes');
+    if ($archivo === '' || $tipo === '') throw new InvalidArgumentException('Parámetros insuficientes');
 
     $base = basename($archivo);
     if (stripos($base, '.json') === false) $base .= '.json';
@@ -19,43 +19,55 @@ try {
 
     $json = json_decode(file_get_contents($path), true);
     if (!is_array($json)) $json = [];
+    $json['parametros'] = $json['parametros'] ?? [];
     $fieldsets = $json['fieldsets'] ?? [];
 
-    // Normalizar a mapa por name si viene lista
-    if (array_keys($fieldsets) === range(0, count($fieldsets)-1)) {
+    // Normalizar fieldsets a mapa por name si vinieran como lista
+    if (is_array($fieldsets) && array_keys($fieldsets) === range(0, count($fieldsets)-1)) {
         $map = [];
-        foreach ($fieldsets as $fs) {
-            if (!empty($fs['name'])) $map[$fs['name']] = $fs;
-        }
+        foreach ($fieldsets as $fs) if (!empty($fs['name'])) $map[$fs['name']] = $fs;
         if ($map) $fieldsets = $map;
     }
 
-    if ($tipo === 'fieldset') {
-        if (!$fieldset || !isset($fieldsets[$fieldset])) throw new InvalidArgumentException('Fieldset no encontrado');
-        if (isset($_POST['titulo'])) $fieldsets[$fieldset]['titulo'] = (string)$_POST['titulo'];
-    } elseif ($tipo === 'field') {
-        if (!$fieldset || !isset($fieldsets[$fieldset])) throw new InvalidArgumentException('Fieldset no encontrado');
-        if (!$nombre) throw new InvalidArgumentException('Falta nombre del campo');
-        $campos = $fieldsets[$fieldset]['campos'] ?? [];
-        foreach ($campos as &$c) {
-            if (($c['nombre'] ?? null) === $nombre) {
-                foreach (['etiqueta','placeholder','valor_predeterminado','tipo','query','data-formula'] as $k) {
-                    if (isset($_POST[$k])) $c[$k] = (string)$_POST[$k];
+    switch ($tipo) {
+        case 'form':
+            if (isset($_POST['titulo']))       $json['parametros']['titulo'] = (string)$_POST['titulo'];
+            if (isset($_POST['comentario']))   $json['parametros']['comentario'] = (string)$_POST['comentario'];
+            if (isset($_POST['pie']))          $json['parametros']['pie'] = (string)$_POST['pie'];
+            if (isset($_POST['tituloimagen'])) $json['parametros']['tituloimagen'] = (string)$_POST['tituloimagen'];
+            break;
+
+        case 'fieldset':
+            if ($fieldset === '' || !isset($fieldsets[$fieldset])) throw new InvalidArgumentException('Fieldset no encontrado');
+            if (isset($_POST['titulo'])) $fieldsets[$fieldset]['titulo'] = (string)$_POST['titulo'];
+            break;
+
+        case 'field':
+            if ($fieldset === '' || !isset($fieldsets[$fieldset])) throw new InvalidArgumentException('Fieldset no encontrado');
+            if ($nombre === '') throw new InvalidArgumentException('Falta nombre del campo');
+            $campos = $fieldsets[$fieldset]['campos'] ?? [];
+            foreach ($campos as &$c) {
+                if (($c['nombre'] ?? null) === $nombre) {
+                    foreach (['etiqueta','placeholder','valor_predeterminado','tipo','query','data-formula'] as $k) {
+                        if (isset($_POST[$k])) $c[$k] = (string)$_POST[$k];
+                    }
+                    if (isset($_POST['opciones'])) {
+                        $opts = json_decode((string)$_POST['opciones'], true);
+                        if (json_last_error() === JSON_ERROR_NONE) $c['opciones'] = $opts;
+                    }
+                    if (isset($_POST['atributos'])) {
+                        $attrs = json_decode((string)$_POST['atributos'], true);
+                        if (json_last_error() === JSON_ERROR_NONE) $c['atributos'] = $attrs;
+                    }
+                    break;
                 }
-                if (isset($_POST['opciones'])) {
-                    $opts = json_decode((string)$_POST['opciones'], true);
-                    if (json_last_error() === JSON_ERROR_NONE) $c['opciones'] = $opts;
-                }
-                if (isset($_POST['atributos'])) {
-                    $attrs = json_decode((string)$_POST['atributos'], true);
-                    if (json_last_error() === JSON_ERROR_NONE) $c['atributos'] = $attrs;
-                }
-                break;
             }
-        }
-        $fieldsets[$fieldset]['campos'] = $campos;
-    } else {
-        throw new InvalidArgumentException('Tipo no soportado');
+            unset($c);
+            $fieldsets[$fieldset]['campos'] = $campos;
+            break;
+
+        default:
+            throw new InvalidArgumentException('Tipo no soportado');
     }
 
     $json['fieldsets'] = $fieldsets;

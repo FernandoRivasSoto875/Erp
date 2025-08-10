@@ -2,14 +2,20 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 // Solo diseño si ?modoDiseno=1
-$modoDiseno  = (isset($_GET['modoDiseno']) && $_GET['modoDiseno'] === '1') ? 1 : 0;
-$archivo_json = $_GET['archivo'] ?? 'formulariogenerico.json';
+$modoDiseno  = (isset($_GET['modoDiseno']) && $_GET['modoDiseno'] === '1');
 
 $archivo_base = 'formulariogenerico2.json';
 $json_path = __DIR__ . DIRECTORY_SEPARATOR . 'json' . DIRECTORY_SEPARATOR . $archivo_base;
-$modoDiseno = isset($_GET['modoDiseno']) ? ($_GET['modoDiseno'] === '1') : false;
-$json_text = is_file($json_path) ? file_get_contents($json_path) : '{}';
-$json_data = json_decode($json_text, true); if (!is_array($json_data)) { $json_data = []; }
+
+// Carga JSON y captura error si hay
+$json_text  = is_file($json_path) ? file_get_contents($json_path) : '{}';
+$json_data  = json_decode($json_text, true);
+$json_error = null;
+if ($json_data === null && json_last_error() !== JSON_ERROR_NONE) {
+    $json_error = json_last_error_msg();
+    $json_data  = [];
+}
+
 $titulo_formulario      = $json_data['titulo'] ?? 'Formulario Dinámico';
 $descripcion_formulario = $json_data['descripcion'] ?? '';
 $fieldsets              = $json_data['fieldsets'] ?? [];
@@ -36,7 +42,8 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 <title><?php echo htmlspecialchars($params['titulo'] ?? $titulo_formulario); ?></title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<!-- Consejo: alinea Bootstrap (usa 5.x en CSS y JS o 4.x en ambos) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
 </head>
@@ -47,7 +54,10 @@ require_once __DIR__ . '/formulariodinamicologica.php';
       <h1 id="form-title"><?php echo htmlspecialchars($params['titulo'] ?? $titulo_formulario); ?></h1>
 
       <?php if ($json_error): ?>
-        <div class="alert alert-danger">JSON inválido: <?php echo htmlspecialchars($json_error); ?>. Corrige el archivo <?php echo htmlspecialchars($archivo_base); ?> (posibles comas finales).</div>
+        <div class="alert alert-danger">
+          JSON inválido: <?php echo htmlspecialchars($json_error); ?>.
+          Corrige el archivo <?php echo htmlspecialchars($archivo_base); ?> (posibles comas finales).
+        </div>
       <?php endif; ?>
 
       <?php if (!empty($descripcion_formulario)): ?>
@@ -59,7 +69,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
         if (function_exists('generarLayout')) {
             echo generarLayout($layout, $fieldsets, $json_data['valores'] ?? [], false);
         } else {
-            echo '<div class="alert alert-warning">Falta la función generarLayout(). Incluye formulariodinamicologica.php con las funciones de render.</div>';
+            echo '<div class="alert alert-warning">Falta la función generarLayout(). Incluye [formulariodinamicologica.php](http://_vscodecontentref_/0) con las funciones de render.</div>';
         }
         ?>
       </div>
@@ -67,7 +77,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
       <?php if ($modoDiseno): ?>
         <div id="elementos-fuera-container" class="mt-3">
           <?php
-          if (function_exists('generarContenedorFueraDelFormulario')) { // <- comilla y paréntesis corregidos
+          if (function_exists('generarContenedorFueraDelFormulario')) {
               echo generarContenedorFueraDelFormulario($elementos_fuera, $fieldsets, [], false);
           }
           ?>
@@ -99,7 +109,6 @@ require_once __DIR__ . '/formulariodinamicologica.php';
       if (toggle && root){
         toggle.addEventListener('change', function(){
           root.classList.toggle('design-mode', this.checked);
-          // Opcional: persistir en la URL
           const url = new URL(location.href);
           url.searchParams.set('modoDiseno', this.checked ? '1' : '0');
           history.replaceState(null, '', url.toString());
@@ -109,7 +118,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
     })();
   </script>
 
-  <!-- Incluye SOLO este archivo del árbol -->
+  <!-- Árbol (se activa solo en modo diseño) -->
   <script src="js/json-tree-panel.js"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

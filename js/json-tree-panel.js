@@ -6,12 +6,13 @@
   const CONFIG = { showOnlyInDesignMode: true };
   let lastDesignOn = null;
 
-  function $(s, r){ return (r||document).querySelector(s); }
-  function $all(s, r){ return Array.from((r||document).querySelectorAll(s)); }
-  function typeOf(v){ if (Array.isArray(v)) return 'array'; return v===null?'null':(typeof v==='object'?'object':typeof v); }
-  function esc(s){ return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
-  function deepClone(v){ return JSON.parse(JSON.stringify(v)); }
-  function getAtPath(obj, path){ return (path||[]).reduce((acc,k)=> (acc==null?acc:acc[k]), obj); }
+  // Helpers
+  const $ = (s, r)=> (r||document).querySelector(s);
+  const $all = (s, r)=> Array.from((r||document).querySelectorAll(s));
+  const typeOf = v => Array.isArray(v) ? 'array' : (v===null ? 'null' : (typeof v==='object' ? 'object' : typeof v));
+  const esc = s => String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  const deepClone = v => JSON.parse(JSON.stringify(v));
+  const getAtPath = (obj, path)=> (path||[]).reduce((acc,k)=> (acc==null?acc:acc[k]), obj);
   function setAtPath(obj, path, val){
     if (!path || !path.length) return;
     let cur = obj;
@@ -22,17 +23,37 @@
     }
     cur[path[path.length-1]] = val;
   }
-
   function shouldShow(){
     if (!CONFIG.showOnlyInDesignMode) return true;
     const root = document.getElementById('fd-root');
     return !!(root && root.classList.contains('design-mode'));
   }
+  function injectStyles(){
+    if ($('#json-tree-panel-styles')) return;
+    const css = `
+      .json-tree-panel{ position:fixed; top:60px; right:12px; width:460px; height:72vh; background:#fff; border:1px solid #dcdfe3; border-radius:8px; box-shadow:0 10px 24px rgba(16,24,40,.12); z-index:9999; display:flex; flex-direction:column; overflow:hidden; }
+      .json-tree-header{ padding:8px 10px; background:#f8f9fb; border-bottom:1px solid #e9ecef; display:flex; align-items:center; justify-content:space-between; }
+      .json-tree-title{ margin:0; font-size:13px; color:#344054; }
+      .json-tree-actions button{ background:none; border:0; cursor:pointer; padding:4px 6px; color:#475467; }
+      .json-tree-search{ padding:8px 10px; border-bottom:1px solid #f0f2f5; }
+      .json-tree-search input{ width:100%; border:1px solid #d0d5dd; border-radius:6px; padding:6px 10px; font-size:12px; }
+      .json-tree-body{ overflow:auto; padding:6px 8px 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size:12px; }
+      .json-tree-node{ padding:6px 8px; border-radius:6px; margin:2px 0; display:flex; align-items:center; gap:8px; transition:background .15s ease,border-color .15s ease; border:1px solid transparent; }
+      .json-tree-node:hover{ background:#f8fafc; border-color:#eef2f6; }
+      .json-node-key{ font-weight:600; color:#344054; }
+      .json-node-meta{ color:#667085; margin-left:auto; padding-left:6px; }
+      .json-node-actions button{ background:none; border:0; cursor:pointer; padding:2px 4px; color:#667085; }
+      #fd-tree-toggle-btn{ position:fixed; top:60px; right:486px; z-index:9999; display:inline-flex; gap:6px; align-items:center; background:#0d6efd; color:#fff; border:0; padding:7px 12px; border-radius:6px; font-size:12px; cursor:pointer; box-shadow:0 4px 10px rgba(13,110,253,.25); }
+    `;
+    const st = document.createElement('style'); st.id='json-tree-panel-styles'; st.textContent = css;
+    document.head.appendChild(st);
+  }
 
   // Carga JSON si no viene embebido
   async function ensureJsonLoaded(){
-    if (window.formularioJsonOriginal && Object.keys(window.formularioJsonOriginal).length) return window.formularioJsonOriginal;
-    const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || 'formulariogenerico2.json';
+    if (window.formularioJsonOriginal && typeof window.formularioJsonOriginal === 'object') return window.formularioJsonOriginal;
+    const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || '';
+    if (!archivo) { window.formularioJsonOriginal = {}; return window.formularioJsonOriginal; }
     const url = 'json/' + archivo;
     const r = await fetch(url, { cache:'no-store' });
     if (!r.ok) throw new Error('No se pudo cargar '+url+' ('+r.status+')');
@@ -40,7 +61,7 @@
     let data;
     try { data = JSON.parse(txt); }
     catch {
-      const noComments = txt.replace(/\/\/.*$/mg,'').replace(/\/\*[\s\S]*?\*\//g,'')
+      const noComments = txt.replace(/\/\/.*$/mg,'').replace(/\/\*[\s\S]*?\*\//g,'');
       const noTrailing = noComments.replace(/,\s*([}\]])/g, '$1');
       data = JSON.parse(noTrailing);
     }
@@ -48,6 +69,7 @@
     return window.formularioJsonOriginal;
   }
 
+  // Panel y botón (solo se crean en modo diseño)
   function ensurePanel(){
     let panel = $('#json-tree-panel');
     if (panel) return panel;
@@ -68,12 +90,11 @@
     `;
     document.body.appendChild(panel);
     $('#jsonTreeClose').addEventListener('click', ()=> panel.style.display='none');
-    $('#jsonTreeRefresh').addEventListener('click', ()=> buildTree());
+    $('#jsonTreeRefresh').addEventListener('click', buildTree);
     $('#jsonTreeFilter').addEventListener('input', filterTree);
     $('#jsonTreeInit').addEventListener('click', ensureBaseStructureInteractive);
     return panel;
   }
-
   function ensureToggleButton(){
     if ($('#fd-tree-toggle-btn')) return;
     const btn = document.createElement('button');
@@ -81,21 +102,20 @@
     btn.innerHTML = '<i class="fas fa-sitemap"></i> Árbol';
     btn.addEventListener('click', ()=>{
       const p = ensurePanel();
-      const isHidden = getComputedStyle(p).display === 'none';
-      p.style.display = isHidden ? '' : 'none';
-      if (isHidden) buildTree();
+      const hidden = getComputedStyle(p).display === 'none';
+      p.style.display = hidden ? '' : 'none';
+      if (hidden) buildTree();
     });
     document.body.appendChild(btn);
-    btn.style.display = 'none'; // oculto por defecto
+    btn.style.display = 'none';
   }
 
-  // Construcción del árbol (solo si estamos en diseño y existe data)
+  // Render
   function buildTree(){
     if (!shouldShow()) return;
     const data = window.formularioJsonOriginal || {};
     const body = $('#jsonTreeBody'); if (!body) return;
 
-    // Claves existentes, en orden preferido
     const preferred = ['parametros','layout','fieldsets','elementos_fuera'];
     const keys = preferred.filter(k => Object.prototype.hasOwnProperty.call(data, k))
       .concat(Object.keys(data).filter(k => !preferred.includes(k)));
@@ -105,10 +125,8 @@
       : '<div class="text-muted" style="padding:8px;">JSON vacío</div>';
 
     bindEditActions(body);
-    if (typeof bindTreeDragAndDrop === 'function') bindTreeDragAndDrop(body); // opcional
     updatePanelTitle();
   }
-
   function renderNode(key, val, path, level){
     const pad = Math.max(0, level * 12);
     const t = typeOf(val);
@@ -132,7 +150,6 @@
     }
     return html;
   }
-
   function renderValue(v){
     const t = typeOf(v);
     if (t==='string') return `"${v}"`;
@@ -142,13 +159,11 @@
     if (t==='object') return 'object';
     return String(v);
   }
-
   function updatePanelTitle(){
     const title = $('.json-tree-title'); if (!title) return;
     const count = $('#jsonTreeBody')?.querySelectorAll('.json-tree-node')?.length || 0;
     title.textContent = `Árbol del JSON (${count})`;
   }
-
   function filterTree(){
     const q = ($('#jsonTreeFilter')?.value || '').trim().toLowerCase();
     const body = $('#jsonTreeBody'); if (!body) return;
@@ -159,7 +174,7 @@
     updatePanelTitle();
   }
 
-  // Persistencia básica por raíz
+  // Persistencia (por raíz)
   function postGuardar(blocks){
     const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || '';
     const form = new FormData();
@@ -178,7 +193,7 @@
     window.formularioJsonOriginal[rootKey] = updatedRoot;
   }
 
-  // CRUD mínimos (evita errores y funcionan)
+  // CRUD mínimos
   async function editNodeByPath(path){
     const data = window.formularioJsonOriginal || {};
     const rootKey = path[0], sub = path.slice(1);
@@ -233,8 +248,19 @@
     await persistRootByPath(path, root);
     buildTree();
   }
+  function bindEditActions(root){
+    root.addEventListener('click', async (e)=>{
+      const btn = e.target.closest('.json-node-actions button'); if (!btn) return;
+      const node = e.target.closest('.json-tree-node'); if (!node) return;
+      let path; try { path = JSON.parse(node.getAttribute('data-path')); } catch { return; }
+      if (btn.classList.contains('act-edit')) return editNodeByPath(path);
+      if (btn.classList.contains('act-dup')) return duplicateAtPath(path);
+      if (btn.classList.contains('act-del')) return deleteAtPath(path);
+      if (btn.classList.contains('act-rename')) return renameAtPath(path);
+    });
+  }
 
-  // Inicializador no destructivo
+  // Inicializador base (no destructivo)
   async function ensureBaseStructureInteractive(){
     await ensureJsonLoaded();
     const data = window.formularioJsonOriginal || {};
@@ -249,7 +275,7 @@
     buildTree();
   }
 
-  // Transiciones de modo diseño
+  // Reacciona a cambios de modo diseño
   async function onDesignModeChanged(e){
     const on = !!(e && e.detail && e.detail.on);
     if (on === lastDesignOn) return;

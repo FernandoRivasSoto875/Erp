@@ -47,15 +47,14 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
 <style>
-  /* Oculta todo lo de diseño fuera de modo diseño */
+  /* Oculta todo lo de diseño cuando no está activo */
   #fd-root:not(.design-mode) .fd-design-only,
   #fd-root:not(.design-mode) [data-design-only="true"],
   #fd-root:not(.design-mode) .fd-dnd-handle { display:none !important; }
 </style>
 </head>
 <body>
-  <!-- Apagado por defecto salvo ?modoDiseno=1 -->
-  <div id="fd-root" class="<?php echo (!empty($_GET['modoDiseno']) && $_GET['modoDiseno']==='1') ? 'design-mode' : ''; ?>">
+  <div id="fd-root" class="<?php echo $modoDiseno ? 'design-mode' : ''; ?>">
     <div class="container py-3">
       <h1 id="form-title"><?php echo htmlspecialchars($params['titulo'] ?? $titulo_formulario); ?></h1>
 
@@ -92,26 +91,22 @@ require_once __DIR__ . '/formulariodinamicologica.php';
     </div>
   </div>
 
-  <!-- Toggle de diseño -->
+  <!-- Toggle modo diseño (opcional) -->
   <div style="position:fixed;bottom:12px;right:12px;z-index:1055;">
-    <label class="form-check-label">
-      <input type="checkbox" id="designModeToggle" class="form-check-input"
-             <?php echo (!empty($_GET['modoDiseno']) && $_GET['modoDiseno']==='1') ? 'checked' : ''; ?>>
-      Modo diseño
-    </label>
+    <label><input type="checkbox" id="designModeToggle" <?php echo $modoDiseno ? 'checked' : ''; ?>> Modo diseño</label>
   </div>
 
   <script>
-    // Define JSON y archivo ANTES de cargar los scripts
+    // Define estas variables ANTES de incluir los JS
     window.FORM_CONFIG = { archivo_json: <?php echo json_encode($archivo_base ?? 'formulariogenerico2.json'); ?> };
     window.formularioJsonOriginal = <?php echo json_encode($json_data ?? [], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
 
-    // Toggle modo diseño: solo añade/quita clase y emite evento (no fuerza encendido)
+    // No forzar diseño al cargar; solo reflejar estado + emitir evento
     (function(){
       const root = document.getElementById('fd-root');
       const toggle = document.getElementById('designModeToggle');
       function emit(on){ window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } })); }
-      if (root) emit(root.classList.contains('design-mode'));
+      emit(root && root.classList.contains('design-mode'));
       if (toggle && root){
         toggle.addEventListener('change', function(){
           root.classList.toggle('design-mode', this.checked);
@@ -123,8 +118,6 @@ require_once __DIR__ . '/formulariodinamicologica.php';
       }
     })();
   </script>
-
-  <!-- Incluye después de las variables anteriores -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script src="js/json-tree-panel.js"></script>
   <script src="js/form-dnd.js"></script>

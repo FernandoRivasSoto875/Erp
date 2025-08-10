@@ -219,33 +219,31 @@
   function onDesignModeChanged(e){
     const on = !!(e && e.detail && e.detail.on);
 
-    // No crear nada si no está en modo diseño
+    // Fuera de diseño: ocultar si existiera y no crear nada
+    const panel = document.getElementById('json-tree-panel');
+    const btn = document.getElementById('fd-tree-toggle-btn');
     if (!on){
-      const panel = $('#json-tree-panel');
-      const btn = $('#fd-tree-toggle-btn');
       if (panel) panel.style.display = 'none';
       if (btn) btn.style.display = 'none';
       return;
     }
 
-    // Modo diseño ON: crear on-demand
-    injectStyles();
-    let panel = $('#json-tree-panel');
-    let btn = $('#fd-tree-toggle-btn');
-    if (!panel) panel = ensurePanel();
-    if (!btn) ensureToggleButton();
-
-    panel.style.display = panel.style.display || 'none'; // cerrado por defecto
-    btn.style.display = 'inline-flex';
+    // En diseño: crear on-demand
+    injectStyles && injectStyles();
+    const ensure = (sel, createFn)=> document.getElementById(sel) || createFn();
+    const p = ensure('json-tree-panel', ensurePanel);
+    const b = ensure('fd-tree-toggle-btn', ensureToggleButton);
+    b.style.display = 'inline-flex';
 
     // Si el panel ya está abierto, refrescar
-    if (getComputedStyle(panel).display !== 'none') buildTree();
+    if (getComputedStyle(p).display !== 'none') buildTree();
   }
 
   // Boot: solo registrar listeners y sincronizar
   window.addEventListener('load', ()=>{
     window.addEventListener('design-mode-changed', onDesignModeChanged);
-    onDesignModeChanged({ detail:{ on: shouldShow() } });
+    // Solo sincroniza estado, no crea nada si está apagado
+    onDesignModeChanged({ detail:{ on: (document.getElementById('fd-root')?.classList.contains('design-mode')) } });
   });
 
 })();

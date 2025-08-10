@@ -17,8 +17,13 @@
 
   function initFieldDnD(){
     if (typeof Sortable === 'undefined') return;
-    // Campos dentro de cada fieldset
-    $all('fieldset[data-fieldset-name] .sortable-fields-container').forEach(container=>{
+    if (!document.getElementById('fd-root')?.classList.contains('design-mode')) return;
+
+    const containers = $all('fieldset[data-fieldset-name] .sortable-fields-container');
+    if (containers.length === 0){
+      console.warn('[DnD] No se encontraron contenedores .sortable-fields-container dentro de fieldset[data-fieldset-name]. Verifica selectores.');
+    }
+    containers.forEach(container=>{
       if (container.__fdSortable) return;
       container.__fdSortable = new Sortable(container, {
         group: 'fd-fields',
@@ -38,14 +43,14 @@
 
             const itemEl = evt.item;
             const fieldName = itemEl.getAttribute('data-field-name');
-            if (!fieldName) return;
+            if (!fieldName) { console.warn('[DnD] Falta data-field-name en el elemento arrastrado.'); return; }
 
             const idxFrom = fromArr.findIndex(c => (c && (c.nombre||c.name)) === fieldName);
-            if (idxFrom < 0) return;
+            if (idxFrom < 0) { console.warn('[DnD] Campo no encontrado en JSON:', fieldName); return; }
             const [moved] = fromArr.splice(idxFrom, 1);
 
-            // Posición destino basada en índice del DOM
-            const idxTo = Array.prototype.indexOf.call(evt.to.children, itemEl);
+            // Usa newIndex si está
+            const idxTo = (typeof evt.newIndex === 'number') ? evt.newIndex : Array.prototype.indexOf.call(evt.to.children, itemEl);
             toArr.splice(idxTo, 0, moved);
 
             fieldsets[fromFs].campos = fromArr;
@@ -54,7 +59,6 @@
             await postGuardarFieldsets(fieldsets);
             window.formularioJsonOriginal.fieldsets = fieldsets;
 
-            // Refresca árbol si está abierto
             if (window.FD_refreshTree) window.FD_refreshTree();
           }catch(err){
             console.error(err);

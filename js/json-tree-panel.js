@@ -94,6 +94,78 @@
     return panel;
   }
 
+  // Cargar mapa de tipos (iconos) desde json/form-types.json
+  async function ensureFormTypesLoaded(){
+    if (window.FORM_TYPES_MAP) return window.FORM_TYPES_MAP;
+    try{
+      const r = await fetch('json/form-types.json', { cache:'no-store' });
+      if (!r.ok) throw new Error('HTTP '+r.status);
+      window.FORM_TYPES_MAP = await r.json();
+    }catch(err){
+      console.warn('[json-tree] No se pudo cargar form-types.json:', err);
+      window.FORM_TYPES_MAP = { field_types:{}, fieldset_types:{} };
+    }
+    return window.FORM_TYPES_MAP;
+  }
+
+  // Resolver definiciones de tipo (case-insensitive)
+  function resolveTypeDef(group, key){
+    if (!group || !key) return null;
+    if (group[key]) return { key, def: group[key] };
+    const low = String(key).toLowerCase();
+    const foundKey = Object.keys(group).find(k => String(k).toLowerCase() === low);
+    return foundKey ? { key: foundKey, def: group[foundKey] } : null;
+  }
+
+  function getTypeIconFromKey(keyStr){
+    const map = window.FORM_TYPES_MAP || {};
+    const ft = resolveTypeDef(map.field_types, keyStr);
+    if (ft && ft.def && ft.def.icon) return { iconClass: ft.def.icon, title: ft.key };
+    const fs = resolveTypeDef(map.fieldset_types, keyStr);
+    if (fs && fs.def && fs.def.icon) return { iconClass: fs.def.icon, title: fs.key };
+    return null;
+  }
+
+  // Heurística para recuperar icono según valor y contexto
+  function getTypeIcon(nodeVal, path, key){
+    const map = window.FORM_TYPES_MAP || {};
+    const inFieldsets = (path||[]).map(String).some(k => k.toLowerCase() === 'fieldsets');
+
+    // Cuando el nodo es la propiedad "type" o "layout" con string
+    if ((key === 'type' || key === 'layout') && typeof nodeVal === 'string' && nodeVal){
+      return getTypeIconFromKey(nodeVal);
+    }
+
+    // Cuando el nodo es un objeto (field o fieldset)
+    if (nodeVal && typeof nodeVal === 'object' && !Array.isArray(nodeVal)){
+      // Fields: type, component, subtype (si type==='input')
+      if (typeof nodeVal.type === 'string'){
+        const r = resolveTypeDef(map.field_types, nodeVal.type);
+        if (r && r.def && r.def.icon) return { iconClass: r.def.icon, title: r.key };
+      }
+      if (typeof nodeVal.component === 'string'){
+        const r = resolveTypeDef(map.field_types, nodeVal.component);
+        if (r && r.def && r.def.icon) return { iconClass: r.def.icon, title: r.key };
+      }
+      if (nodeVal.type === 'input' && typeof nodeVal.subtype === 'string'){
+        const r = resolveTypeDef(map.field_types, nodeVal.subtype);
+        if (r && r.def && r.def.icon) return { iconClass: r.def.icon, title: r.key };
+      }
+
+      // Fieldsets/containers: type o layout bajo fieldsets
+      if (typeof nodeVal.type === 'string'){
+        const r = resolveTypeDef(map.fieldset_types, nodeVal.type);
+        if (r && r.def && r.def.icon) return { iconClass: r.def.icon, title: r.key };
+      }
+      if (typeof nodeVal.layout === 'string'){
+        const r = resolveTypeDef(map.fieldset_types, nodeVal.layout);
+        if (r && r.def && r.def.icon) return { iconClass: r.def.icon, title: r.key };
+      }
+    }
+
+    return null; // sin icono
+  }
+
   function ensureToggleButton(){
     if ($('#fd-tree-toggle-btn')) return;
     const btn = document.createElement('button');
@@ -108,7 +180,9 @@
       const hidden = getComputedStyle(p).display === 'none';
       p.style.display = hidden ? '' : 'none';
       if (hidden){
-        try { await ensureJsonLoaded(); } catch(e){ console.error(e); }
+        try {
+          await Promise.all([ensureJsonLoaded(), ensureFormTypesLoaded()]);
+        } catch(e){ console.error(e); }
         buildTree(true);
       }
     });
@@ -162,11 +236,23 @@
     const meta = (t==='object') ? 'object' : (t==='array') ? `array(${(val||[]).length})` : renderValue(val);
     const canToggle = hasChildrenValue(val);
 
+    // NUEVO: icono por tipo
+    let iconInfo = getTypeIcon(val, path, key);
+    // Para primitivos "type"/"layout" con string
+    if (!iconInfo && (key === 'type' || key === 'layout') && typeof val === 'string'){
+      iconInfo = getTypeIconFromKey(val);
+    }
+    const iconHtml = iconInfo
+      ? `<i class="${esc(iconInfo.iconClass)} text-secondary" title="${esc(iconInfo.title)}" aria-hidden="true" style="min-width:1rem;"></i>`
+      : '';
+
     let html = `<div class="json-tree-item" data-path='${esc(JSON.stringify(path))}'>`;
     html += `<div class="json-row list-group-item border-0 border-bottom">`;
     html += canToggle
       ? `<button class="json-toggle" aria-label="expandir"><i class="fas fa-chevron-right"></i></button>`
       : `<span style="display:inline-block;width:1.25rem;"></span>`;
+    // Inserta icono antes del nombre
+    html += iconHtml;
     html += `<span class="json-node-key">${esc(String(key))}</span>`;
     html += `<small class="text-secondary ms-auto">${esc(meta)}</small>`;
     html += `<span class="json-node-actions ms-2">
@@ -740,17 +826,20 @@
   // Mostrar/ocultar el botón/panel según modo diseño
   function onDesignModeChanged(e){
     const on = !!(e && e.detail && e.detail.on);
-    const panel = document.getElementById('json-tree-panel');
-    const btn = document.getElementById('fd-tree-toggle-btn');
-
+    const panel = $('#json-tree-panel');
+    const btn0 = $('#fd-tree-toggle-btn');
     if (!on){
       if (panel) panel.style.display = 'none';
-      if (btn) btn.style.display = 'none';
+      if (btn0) btn0.style.display = 'none';
       return;
     }
     ensureToggleButton();
-    const b = document.getElementById('fd-tree-toggle-btn');
-    if (b) b.style.display = 'inline-flex';
+    const btn = $('#fd-tree-toggle-btn');
+    if (btn) btn.style.display = 'inline-flex';
+    // Precargar tipos cuando entra a modo diseño
+    try {
+      Promise.all([ensureFormTypesLoaded()]);
+    } catch(e){ console.error(e); }
   }
 
   // Boot

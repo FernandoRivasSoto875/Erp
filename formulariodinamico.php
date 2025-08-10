@@ -147,11 +147,15 @@ require_once __DIR__ . '/formulariodinamicologica.php';
     })();
   </script>
 
-  <?php /* Define variables GLOBALES antes de cargar el runtime DnD */ ?>
+  <?php /* Variables globales del formulario */ ?>
   <script>
     window.FORM_CONFIG = { archivo_json: <?php echo json_encode($archivo_base ?? 'formulariogenerico2.json'); ?> };
     window.formularioJsonOriginal = <?php echo json_encode($json_data ?? [], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
   </script>
+
+  <?php /* Cargar dependencias antes del runtime DnD (IMPORTANTE) */ ?>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
   <!-- DnD solo en modo diseño (tabs y campos). No persiste, solo UI. -->
   <script src="js/form-runtime-dnd.js"></script>
@@ -164,13 +168,16 @@ require_once __DIR__ . '/formulariodinamicologica.php';
       function emit(on){
         window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } }));
       }
-      // Estado inicial
+
+      // Log rápido para verificar dependencias
+      console.info('[FD] bootstrap?', !!window.bootstrap, 'Sortable?', !!window.Sortable);
+
+      // Estado inicial + refresco si ya está en diseño
       emit(root && root.classList.contains('design-mode'));
-      // Si ya está en diseño al cargar, refresca DnD
       if (root && root.classList.contains('design-mode') && window.formRuntimeDndRefresh){
-        window.formRuntimeDndRefresh();
+        setTimeout(()=> window.formRuntimeDndRefresh(), 50);
       }
-      // Toggle del modo diseño desde el checkbox
+
       if (toggle && root){
         toggle.addEventListener('change', function(){
           root.classList.toggle('design-mode', this.checked);
@@ -178,31 +185,12 @@ require_once __DIR__ . '/formulariodinamicologica.php';
           url.searchParams.set('modoDiseno', this.checked ? '1' : '0');
           history.replaceState(null, '', url.toString());
           emit(this.checked);
-          // Refresca DnD solo cuando está en diseño
           if (this.checked && window.formRuntimeDndRefresh){
-            window.formRuntimeDndRefresh();
+            setTimeout(()=> window.formRuntimeDndRefresh(), 50);
           }
         });
       }
-      // Botón externo opcional
-      document.getElementById('btnDesignMode')?.addEventListener('click', function(){
-        if (!root) return;
-        const on = !root.classList.contains('design-mode');
-        root.classList.toggle('design-mode', on);
-        emit(on);
-        if (on && window.formRuntimeDndRefresh){
-          window.formRuntimeDndRefresh();
-        }
-      });
     })();
-
-    // Eventos opcionales (el árbol puede escuchar y persistir si corresponde)
-    window.addEventListener('form-dnd:tabs-reordered', (e)=> {
-      // console.log('tabs reorder', e.detail);
-    });
-    window.addEventListener('form-dnd:fields-reordered', (e)=> {
-      // console.log('fields reorder', e.detail);
-    });
   </script>
 
   <?php /* El árbol se mantiene intacto */ ?>

@@ -45,120 +45,82 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 
 <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-<style>
-/* Solo visibles en modo diseño */
-#fd-root:not(.design-mode) .add-tab-button,
-#fd-root:not(.design-mode) .edit-tab-icon,
-#fd-root:not(.design-mode) .delete-tab-icon,
-#fd-root:not(.design-mode) .edit-icon { display: none !important; }
-/* “Elementos fuera” visible solo en diseño */
-#fd-root:not(.design-mode) #elementos-fuera-container { display: none !important; }
-/* Señales visuales en diseño */
-#fd-root.design-mode .draggable-fieldset,
-#fd-root.design-mode .draggable-field { border: 2px dashed #0d6efd; background: rgba(13,110,253,.05); }
-.sortable-ghost { background:#e7f1ff; border:2px dashed #0d6efd; opacity:.7; }
-/* Switch flotante */
-.design-mode-switch { position: fixed; right: 16px; bottom: 16px; z-index: 1050; background: #fff; border-radius: 999px; padding: 8px 12px; box-shadow: 0 4px 12px rgba(0,0,0,.15); display: flex; align-items: center; gap: 8px; }
-.edit-icon { cursor: pointer; color: #6c757d; margin-left: 6px; }
-.edit-icon:hover { color: #0d6efd; }
-/* CRUD de tabs visible en diseño */
-#fd-root:not(.design-mode) .add-tab-button,
-#fd-root:not(.design-mode) .edit-tab-icon,
-#fd-root:not(.design-mode) .delete-tab-icon { display: none !important; }
-
-#fd-root [data-block-type="tabs"] .nav .edit-tab-icon,
-#fd-root [data-block-type="tabs"] .nav .delete-tab-icon {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 6px;
-  font-size: .9rem;
-  cursor: pointer;
-  color: #6c757d;
-}
-#fd-root.design-mode [data-block-type="tabs"] .nav .edit-tab-icon:hover,
-#fd-root.design-mode [data-block-type="tabs"] .nav .delete-tab-icon:hover { color: #0d6efd; }
-
-#fd-root .nav-tabs { flex-direction: row !important; }
-#fd-root .nav-tabs .nav-item { margin-bottom: -1px; }
-#fd-root .tab-content .tab-pane { display: none; }
-#fd-root .tab-content .tab-pane.show.active { display: block; }
-</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
 </head>
 <body>
-<div id="fd-root" class="<?php echo $modoDiseno ? 'design-mode' : ''; ?>">
-  <div class="container py-3">
-    <h1 id="form-title"><?php echo htmlspecialchars($params['titulo'] ?? $titulo_formulario); ?></h1>
+  <!-- Contenedor raíz: el árbol SOLO se activa cuando tiene la clase design-mode -->
+  <div id="fd-root" class="<?php echo $modoDiseno ? 'design-mode' : ''; ?>">
+    <div class="container py-3">
+      <h1 id="form-title"><?php echo htmlspecialchars($params['titulo'] ?? $titulo_formulario); ?></h1>
 
-    <?php if ($json_error): ?>
-      <div class="alert alert-danger">JSON inválido: <?php echo htmlspecialchars($json_error); ?>. Corrige el archivo <?php echo htmlspecialchars($archivo_base); ?> (posibles comas finales).</div>
-    <?php endif; ?>
+      <?php if ($json_error): ?>
+        <div class="alert alert-danger">JSON inválido: <?php echo htmlspecialchars($json_error); ?>. Corrige el archivo <?php echo htmlspecialchars($archivo_base); ?> (posibles comas finales).</div>
+      <?php endif; ?>
 
-    <?php if (!empty($descripcion_formulario)): ?>
-      <p class="text-muted"><?php echo htmlspecialchars($descripcion_formulario); ?></p>
-    <?php endif; ?>
+      <?php if (!empty($descripcion_formulario)): ?>
+        <p class="text-muted"><?php echo htmlspecialchars($descripcion_formulario); ?></p>
+      <?php endif; ?>
 
-    <div id="form-container">
-      <?php
-      if (function_exists('generarLayout')) {
-          echo generarLayout($layout, $fieldsets, $json_data['valores'] ?? [], false);
-      } else {
-          echo '<div class="alert alert-warning">Falta la función generarLayout(). Incluye formulariodinamicologica.php con las funciones de render.</div>';
-      }
-      ?>
-    </div>
-
-    <?php if ($modoDiseno): ?>
-      <div id="elementos-fuera-container" class="mt-3">
+      <div id="form-container">
         <?php
-        if (function_exists('generarContenedorFueraDelFormulario')) { // <- comilla y paréntesis corregidos
-            echo generarContenedorFueraDelFormulario($elementos_fuera, $fieldsets, [], false);
+        if (function_exists('generarLayout')) {
+            echo generarLayout($layout, $fieldsets, $json_data['valores'] ?? [], false);
+        } else {
+            echo '<div class="alert alert-warning">Falta la función generarLayout(). Incluye formulariodinamicologica.php con las funciones de render.</div>';
         }
         ?>
       </div>
-    <?php endif; ?>
+
+      <?php if ($modoDiseno): ?>
+        <div id="elementos-fuera-container" class="mt-3">
+          <?php
+          if (function_exists('generarContenedorFueraDelFormulario')) { // <- comilla y paréntesis corregidos
+              echo generarContenedorFueraDelFormulario($elementos_fuera, $fieldsets, [], false);
+          }
+          ?>
+        </div>
+      <?php endif; ?>
+    </div>
   </div>
-</div>
 
-<!-- Switch flotante de Modo Diseño -->
-<div class="design-mode-switch">
-  <input type="checkbox" id="designModeToggle" <?php echo $modoDiseno ? 'checked' : ''; ?> />
-  <label for="designModeToggle" class="mb-0">Modo diseño</label>
-</div>
+  <!-- Switch opcional para probar modo diseño -->
+  <div style="position:fixed;bottom:12px;right:12px;z-index:9999;">
+    <label style="user-select:none;">
+      <input type="checkbox" id="designModeToggle" <?php echo $modoDiseno ? 'checked' : ''; ?> />
+      Modo diseño
+    </label>
+  </div>
 
-<!-- Config: fuente de verdad (usa el archivo cargado en PHP) -->
-<script>
-  window.FORM_CONFIG = { archivo_json: <?php echo json_encode($archivo_base); ?> };
-  window.formularioJsonOriginal = <?php echo json_encode($json_data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
+  <script>
+    // Fuente de verdad para el panel
+    window.FORM_CONFIG = { archivo_json: <?php echo json_encode($archivo_base); ?> };
+    // Embebe el JSON ya cargado (evita fetch)
+    window.formularioJsonOriginal = <?php echo json_encode($json_data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
 
-  // Toggle de modo diseño (ya presente)
-  function uiSetDesignMode(on){
-    const root = document.getElementById('fd-root');
-    if (root) root.classList.toggle('design-mode', !!on);
-    window.dispatchEvent(new CustomEvent('design-mode-changed', { detail: { on: !!on } }));
-  }
-  document.addEventListener('DOMContentLoaded', function(){
-    const toggle = document.getElementById('designModeToggle');
-    if (!toggle) return;
-    uiSetDesignMode(toggle.checked);
-    toggle.addEventListener('change', function(){
-      uiSetDesignMode(this.checked);
-      const url = new URL(location.href);
-      url.searchParams.set('modoDiseno', this.checked ? '1' : '0');
-      history.replaceState(null, '', url.toString());
-    });
-  });
-  // Tabs fallback (…tu código existente…)
-</script>
+    // Toggle: añade/quita clase y emite el evento que escucha el panel
+    (function(){
+      const toggle = document.getElementById('designModeToggle');
+      const root = document.getElementById('fd-root');
+      function emit(on){ window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } })); }
+      if (root) emit(root.classList.contains('design-mode'));
+      if (toggle && root){
+        toggle.addEventListener('change', function(){
+          root.classList.toggle('design-mode', this.checked);
+          // Opcional: persistir en la URL
+          const url = new URL(location.href);
+          url.searchParams.set('modoDiseno', this.checked ? '1' : '0');
+          history.replaceState(null, '', url.toString());
+          emit(this.checked);
+        });
+      }
+    })();
+  </script>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- Incluye SOLO este archivo del árbol -->
+  <script src="js/json-tree-panel.js"></script>
 
-<!-- Incluye el árbol UNA sola vez, después de FORM_CONFIG y formularioJsonOriginal -->
-<script src="js/json-tree-panel.js"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-<script src="js/form-dnd.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <script src="js/form-dnd.js"></script>
 </body>
 </html>

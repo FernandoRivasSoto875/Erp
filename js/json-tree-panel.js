@@ -178,18 +178,25 @@
 
   // Observa cambios de modo diseño y sincroniza estado inicial sin crear el panel fuera de diseño
   function watchDesignMode(){
-    const root = document.getElementById('fd-root');
-    if (!root) return;
-    const emit = ()=> window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: shouldShow() } }));
-    new MutationObserver(emit).observe(root, { attributes:true, attributeFilter:['class'] });
-    // sincroniza una vez con el estado actual
-    emit();
+    function bind(root){
+      const emit = ()=> window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: root.classList.contains('design-mode') } }));
+      new MutationObserver(emit).observe(root, { attributes:true, attributeFilter:['class'] });
+      emit(); // estado inicial
+    }
+    const rootNow = document.getElementById('fd-root');
+    if (rootNow) return bind(rootNow);
+    // Espera a que aparezca #fd-root si se renderiza tarde
+    const mo = new MutationObserver(()=>{
+      const r = document.getElementById('fd-root');
+      if (r){ mo.disconnect(); bind(r); }
+    });
+    mo.observe(document.documentElement, { childList:true, subtree:true });
   }
 
   // Boot mínimo: no crea panel ni carga JSON si no estás en diseño
   window.addEventListener('load', ()=>{
-    // estilos del panel si los tienes en este archivo; si no, omite
-    // injectStyles(); // <-- deja esta llamada si tu archivo la define
+    // Opcional: estilos (si tienes injectStyles definido, descomenta)
+    // injectStyles();
     watchDesignMode();
     window.addEventListener('design-mode-changed', onDesignModeChanged);
   });

@@ -260,6 +260,7 @@
             icon.classList.toggle('fa-chevron-down', open);
           }
         }
+        
         any = any || show;
       });
       return any;
@@ -658,48 +659,4 @@
     // Nativo
     setNativeDraggables(!hasFilter);
   }
-
-  // Observa #fd-root y emite design-mode-changed
-  function whenRootReady(cb){
-    const root = document.getElementById('fd-root');
-    if (root) return cb(root);
-    const mo = new MutationObserver(()=>{
-      const r = document.getElementById('fd-root');
-      if (r){ mo.disconnect(); cb(r); }
-    });
-    mo.observe(document.documentElement, { childList:true, subtree:true });
-  }
-  function watchDesignMode(){
-    whenRootReady((root)=>{
-      const emit = ()=> window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: root.classList.contains('design-mode') } }));
-      new MutationObserver(emit).observe(root, { attributes:true, attributeFilter:['class'] });
-      // estado inicial
-      emit();
-    });
-  }
-
-  // Reacciona al cambio de modo
-  function onDesignModeChanged(e){
-    const on = !!(e && e.detail && e.detail.on);
-    const panel = $('#json-tree-panel');
-    const btn0 = $('#fd-tree-toggle-btn');
-    if (!on){
-      if (panel) panel.style.display = 'none';
-      if (btn0) btn0.style.display = 'none';
-      return;
-    }
-    ensureToggleButton();
-    const btn = $('#fd-tree-toggle-btn');
-    if (btn) btn.style.display = 'inline-flex';
-  }
-
-  // API para refrescar
-  window.FD_refreshTree = function(){ if (shouldShow() && $('#json-tree-panel') && getComputedStyle($('#json-tree-panel')).display !== 'none') buildTree(); };
-  window.addEventListener('fd-json-updated', ()=> window.FD_refreshTree());
-
-  // Boot
-  window.addEventListener('load', ()=>{
-    watchDesignMode();
-    window.addEventListener('design-mode-changed', onDesignModeChanged);
-  });
 })();

@@ -3,40 +3,14 @@
   if (window.__JSON_TREE_PANEL_LOADED__) return;
   window.__JSON_TREE_PANEL_LOADED__ = true;
 
-  const CONFIG = { showOnlyInDesignMode: true };
-  let lastDesignOn = null;
-
   // Helpers
   const $ = (s, r)=> (r||document).querySelector(s);
   const $all = (s, r)=> Array.from((r||document).querySelectorAll(s));
   const typeOf = v => Array.isArray(v) ? 'array' : (v===null ? 'null' : (typeof v==='object' ? 'object' : typeof v));
   const esc = s => String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-  const deepClone = v => JSON.parse(JSON.stringify(v));
-  const getAtPath = (obj, path)=> (path||[]).reduce((acc,k)=> (acc==null?acc:acc[k]), obj);
-  function setAtPath(obj, path, val){
-    if (!path || !path.length) return;
-    let cur = obj;
-    for (let i=0;i<path.length-1;i++){
-      const k = path[i];
-      if (cur[k]==null || typeof cur[k]!=='object') cur[k] = (typeof path[i+1]==='number')?[]:{};
-      cur = cur[k];
-    }
-    cur[path[path.length-1]] = val;
-  }
-  function shouldShow(){
-    if (!CONFIG.showOnlyInDesignMode) return true;
-    const root = document.getElementById('fd-root');
-    return !!(root && root.classList.contains('design-mode'));
-  }
-  function hasBootstrap(){
-    try {
-      if (window.bootstrap) return true;
-      const v = getComputedStyle(document.documentElement).getPropertyValue('--bs-body-font-family');
-      return !!(v && v.trim().length);
-    } catch { return false; }
-  }
+  const shouldShow = ()=> !!(document.getElementById('fd-root') && document.getElementById('fd-root').classList.contains('design-mode'));
 
-  // CSS mínimo (posicionamiento; el look lo da Bootstrap)
+  // CSS mínimo (posición). El look lo da Bootstrap si está cargado
   function injectStyles(){
     if ($('#json-tree-panel-styles')) return;
     const css = `
@@ -52,23 +26,14 @@
   async function ensureJsonLoaded(){
     if (window.formularioJsonOriginal && typeof window.formularioJsonOriginal === 'object') return window.formularioJsonOriginal;
     const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || '';
-    if (!archivo) { window.formularioJsonOriginal = {}; return window.formularioJsonOriginal; }
-    const url = 'json/' + archivo;
-    const r = await fetch(url, { cache:'no-store' });
-    if (!r.ok) throw new Error('No se pudo cargar '+url+' ('+r.status+')');
-    const txt = await r.text();
-    let data;
-    try { data = JSON.parse(txt); }
-    catch {
-      const noComments = txt.replace(/\/\/.*$/mg,'').replace(/\/\*[\s\S]*?\*\//g,'');
-      const noTrailing = noComments.replace(/,\s*([}\]])/g, '$1');
-      data = JSON.parse(noTrailing);
-    }
-    window.formularioJsonOriginal = data || {};
+    if (!archivo){ window.formularioJsonOriginal = {}; return window.formularioJsonOriginal; }
+    const r = await fetch('json/' + archivo, { cache:'no-store' });
+    if (!r.ok) throw new Error('No se pudo cargar json/' + archivo + ' ('+r.status+')');
+    window.formularioJsonOriginal = await r.json();
     return window.formularioJsonOriginal;
   }
 
-  // Panel y botón (Bootstrap)
+  // UI: panel y botón (Bootstrap si existe)
   function ensurePanel(){
     let panel = $('#json-tree-panel');
     if (panel) return panel;
@@ -105,6 +70,7 @@
     $('#jsonTreeInit').addEventListener('click', ensureBaseStructureInteractive);
     return panel;
   }
+
   function ensureToggleButton(){
     if ($('#fd-tree-toggle-btn')) return;
     const btn = document.createElement('button');
@@ -113,18 +79,21 @@
     btn.className = 'btn btn-primary btn-sm shadow position-fixed';
     btn.style.top = '60px';
     btn.style.right = '486px';
-    btn.textContent = 'Árbol';
-    btn.addEventListener('click', ()=>{
+    btn.innerHTML = '<i class="fas fa-sitemap me-1"></i> Árbol';
+    btn.addEventListener('click', async ()=>{
       const p = ensurePanel();
       const hidden = getComputedStyle(p).display === 'none';
       p.style.display = hidden ? '' : 'none';
-      if (hidden) buildTree();
+      if (hidden){
+        try { await ensureJsonLoaded(); } catch(e){ console.error(e); }
+        buildTree();
+      }
     });
     btn.style.display = 'none';
     document.body.appendChild(btn);
   }
 
-  // Render (usa list-group de Bootstrap para los items)
+  // Render del árbol
   function buildTree(){
     if (!shouldShow()) return;
     const body = $('#jsonTreeBody'); if (!body) return;
@@ -140,6 +109,7 @@
 
     updatePanelTitle();
   }
+
   function renderNode(key, val, path, level){
     const pad = Math.max(0, level * 12);
     const t = typeOf(val);
@@ -147,7 +117,7 @@
 
     let html = `<div class="json-tree-node list-group-item d-flex align-items-center gap-2 py-1 px-2 border-0 border-bottom"
                     data-path='${esc(JSON.stringify(path))}' style="margin-left:${pad}px;">
-      <span class="json-node-key">${esc(String(key))}</span>
+      <span class="json-node-key fw-semibold">${esc(String(key))}</span>
       <small class="text-secondary ms-auto">${esc(meta)}</small>
       <span class="json-node-actions ms-2">
         <button class="btn btn-link btn-sm text-secondary p-0 act-edit" title="Editar"><i class="fas fa-pencil-alt"></i></button>
@@ -188,23 +158,7 @@
     updatePanelTitle();
   }
 
-  // Opcional: inicializar estructura mínima
-  async function ensureBaseStructureInteractive(){
-    const data = window.formularioJsonOriginal || {};
-    const payload = {};
-    if (!data.parametros || typeof data.parametros!=='object') payload.parametros = {};
-    if (!data.layout || typeof data.layout!=='object') payload.layout = { header:{type:'header',rows:[]}, main:{type:'generic',rows:[{columns:[{width:12}]}]}, footer:{type:'footer',rows:[]} };
-    if (!data.fieldsets || typeof data.fieldsets!=='object') payload.fieldsets = {};
-    if (!Array.isArray(data.elementos_fuera)) payload.elementos_fuera = [];
-    if (!Object.keys(payload).length) return alert('La estructura base ya existe.');
-    try{
-      await postGuardar(payload);
-      window.formularioJsonOriginal = { ...data, ...payload };
-      buildTree();
-    } catch(e){ console.error(e); }
-  }
-
-  // Guardado por raíz (si lo usas)
+  // Guardado por raíz (si lo usas con los botones)
   function postGuardar(blocks){
     const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || '';
     const form = new FormData();
@@ -214,14 +168,46 @@
     });
     return fetch('guardar_layout.php', { method:'POST', body: form }).then(r=>r.json());
   }
+  async function ensureBaseStructureInteractive(){
+    await ensureJsonLoaded();
+    const data = window.formularioJsonOriginal || {};
+    const payload = {};
+    if (!data.parametros || typeof data.parametros!=='object') payload.parametros = {};
+    if (!data.layout || typeof data.layout!=='object') payload.layout = { header:{type:'header',rows:[]}, main:{type:'generic',rows:[{columns:[{width:12}]}]}, footer:{type:'footer',rows:[]} };
+    if (!data.fieldsets || typeof data.fieldsets!=='object') payload.fieldsets = {};
+    if (!Array.isArray(data.elementos_fuera)) payload.elementos_fuera = [];
+    if (!Object.keys(payload).length) { alert('La estructura base ya existe.'); return; }
+    await postGuardar(payload);
+    window.formularioJsonOriginal = { ...data, ...payload };
+    buildTree();
+  }
 
-  // Eventos
+  // Observa #fd-root y emite design-mode-changed
+  function whenRootReady(cb){
+    const root = document.getElementById('fd-root');
+    if (root) return cb(root);
+    const mo = new MutationObserver(()=>{
+      const r = document.getElementById('fd-root');
+      if (r){ mo.disconnect(); cb(r); }
+    });
+    mo.observe(document.documentElement, { childList:true, subtree:true });
+  }
+  function watchDesignMode(){
+    whenRootReady((root)=>{
+      const emit = ()=> window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: root.classList.contains('design-mode') } }));
+      new MutationObserver(emit).observe(root, { attributes:true, attributeFilter:['class'] });
+      // estado inicial
+      emit();
+    });
+  }
+
+  // Reacciona al cambio de modo
   function onDesignModeChanged(e){
     const on = !!(e && e.detail && e.detail.on);
 
     // Fuera de diseño: ocultar si existiera y no crear nada
-    const panel = document.getElementById('json-tree-panel');
-    const btn = document.getElementById('fd-tree-toggle-btn');
+    const panel = $('#json-tree-panel');
+    const btn = $('#fd-tree-toggle-btn');
     if (!on){
       if (panel) panel.style.display = 'none';
       if (btn) btn.style.display = 'none';
@@ -229,21 +215,17 @@
     }
 
     // En diseño: crear on-demand
-    injectStyles && injectStyles();
-    const ensure = (sel, createFn)=> document.getElementById(sel) || createFn();
-    const p = ensure('json-tree-panel', ensurePanel);
-    const b = ensure('fd-tree-toggle-btn', ensureToggleButton);
-    b.style.display = 'inline-flex';
-
-    // Si el panel ya está abierto, refrescar
-    if (getComputedStyle(p).display !== 'none') buildTree();
+    ensureToggleButton();
+    if (btn) btn.style.display = 'inline-flex';
   }
 
-  // Boot: solo registrar listeners y sincronizar
-  window.addEventListener('load', ()=>{
-    window.addEventListener('design-mode-changed', onDesignModeChanged);
-    // Solo sincroniza estado, no crea nada si está apagado
-    onDesignModeChanged({ detail:{ on: (document.getElementById('fd-root')?.classList.contains('design-mode')) } });
-  });
+  // API para refrescar
+  window.FD_refreshTree = function(){ if (shouldShow() && $('#json-tree-panel') && getComputedStyle($('#json-tree-panel')).display !== 'none') buildTree(); };
+  window.addEventListener('fd-json-updated', ()=> window.FD_refreshTree());
 
+  // Boot
+  window.addEventListener('load', ()=>{
+    watchDesignMode();
+    window.addEventListener('design-mode-changed', onDesignModeChanged);
+  });
 })();

@@ -154,6 +154,42 @@ require_once __DIR__ . '/formulariodinamicologica.php';
   </script>
 
   <!-- Render del formulario dinámico -->
+  <div id="fd-root" class="<?php echo !empty($modoDiseno) ? 'design-mode' : '' ?>">
+    <div class="container py-3">
+      <h1 id="form-title"><?php echo htmlspecialchars($params['titulo'] ?? $titulo_formulario); ?></h1>
+
+      <?php if ($json_error): ?>
+        <div class="alert alert-danger">
+          JSON inválido: <?php echo htmlspecialchars($json_error); ?>.
+          Corrige el archivo <?php echo htmlspecialchars($archivo_base); ?> (posibles comas finales).
+        </div>
+      <?php endif; ?>
+
+      <?php if (!empty($descripcion_formulario)): ?>
+        <p class="text-muted"><?php echo htmlspecialchars($descripcion_formulario); ?></p>
+      <?php endif; ?>
+
+      <div id="form-container">
+        <?php
+        if (function_exists('generarLayout')) {
+            echo generarLayout($layout, $fieldsets, $json_data['valores'] ?? [], false);
+        } else {
+            echo '<div class="alert alert-warning">Falta la función generarLayout(). Incluye [formulariodinamicologica.php](http://_vscodecontentref_/0) con las funciones de render.</div>';
+        }
+        ?>
+      </div>
+
+      <?php if ($modoDiseno): ?>
+        <div id="elementos-fuera-container" class="mt-3">
+          <?php
+          if (function_exists('generarContenedorFueraDelFormulario')) {
+              echo generarContenedorFueraDelFormulario($elementos_fuera, $fieldsets, [], false);
+          }
+          ?>
+        </div>
+      <?php endif; ?>
+    </div>
+  </div>
 
   <style>
     /* Oculta el icono/acción de lápiz solo dentro del formulario */

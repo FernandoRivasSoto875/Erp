@@ -38,6 +38,7 @@
       #jsonTreeBody .json-children.show{ display:block; }
       .json-toggle{ width:1.25rem; height:1.25rem; display:inline-flex; align-items:center; justify-content:center; border:0; background:transparent; color:#6c757d; cursor:pointer; }
       .json-node-key{ font-weight:600; cursor:pointer; }
+      .json-drag-ghost{ opacity:.6; background:#eef2ff !important; }
     `;
     const st = document.createElement('style'); st.id='json-tree-panel-styles'; st.textContent = css;
     document.head.appendChild(st);
@@ -86,8 +87,8 @@
     document.body.appendChild(panel);
     $('#jsonTreeClose').addEventListener('click', ()=> panel.style.display='none');
     $('#jsonTreeRefresh').addEventListener('click', ()=>{ buildTree(true); });
-    $('#jsonTreeFilter').addEventListener('input', filterTree);
-    $('#jsonTreeFilterClear').addEventListener('click', ()=>{ const i=$('#jsonTreeFilter'); if(i){ i.value=''; buildTree(true); }});
+    $('#jsonTreeFilter').addEventListener('input', ()=>{ filterTree(); updateSortablesDisabled(); });
+    $('#jsonTreeFilterClear').addEventListener('click', ()=>{ const i=$('#jsonTreeFilter'); if(i){ i.value=''; buildTree(true); updateSortablesDisabled(); }});
     $('#jsonTreeInit').addEventListener('click', ensureBaseStructureInteractive);
     bindTreeEvents();
     return panel;
@@ -132,12 +133,15 @@
     if (resetState){
       // Colapsar todo por defecto al reconstruir
       $all('#jsonTreeBody .json-children').forEach(c=> c.classList.remove('show'));
-      // Opcional: podrías expandir el primer nivel si lo prefieres
-      // $all('#jsonTreeBody > .json-tree-item > .json-children').forEach(c=> c.classList.add('show'));
     }
     updatePanelTitle();
+
     // Enlazar acciones CRUD tras render
     bindCrudActions();
+    // Inicializar DnD en hijos de cada padre
+    initTreeDnD();
+    // Desactivar DnD si hay filtro activo
+    updateSortablesDisabled();
   }
 
   function hasChildrenValue(val){
@@ -159,7 +163,6 @@
       : `<span style="display:inline-block;width:1.25rem;"></span>`;
     html += `<span class="json-node-key">${esc(String(key))}</span>`;
     html += `<small class="text-secondary ms-auto">${esc(meta)}</small>`;
-    // Acciones (si las usas; no se enlazan aquí)
     html += `<span class="json-node-actions ms-2">
         <button class="btn btn-link btn-sm text-secondary p-0 act-edit" title="Editar"><i class="fas fa-pencil-alt"></i></button>
         <button class="btn btn-link btn-sm text-secondary p-0 act-dup" title="Duplicar"><i class="fas fa-clone"></i></button>
@@ -197,18 +200,15 @@
   // Toggle expand/collapse
   function bindTreeEvents(){
     const body = $('#jsonTreeBody'); if (!body) return;
-
     body.addEventListener('click', (e)=>{
       const toggleBtn = e.target.closest('.json-toggle');
       const keyEl = e.target.closest('.json-node-key');
-      const row = e.target.closest('.json-row');
       if (toggleBtn || keyEl){
         const item = (toggleBtn || keyEl)?.closest('.json-tree-item');
         if (!item) return;
         const children = item.querySelector(':scope > .json-children');
         if (!children) return;
         const isOpen = children.classList.toggle('show');
-        // Actualiza el ícono
         const icon = item.querySelector(':scope > .json-row .json-toggle i');
         if (icon){
           icon.classList.toggle('fa-chevron-right', !isOpen);
@@ -224,16 +224,13 @@
     const rootCont = $('#jsonTreeBody'); if (!rootCont) return;
 
     if (!q){
-      // Restaurar: mostrar todo y colapsar
       $all('.json-tree-item', rootCont).forEach(it=> it.style.display = '');
       $all('.json-children', rootCont).forEach(c=> c.classList.remove('show'));
-      // Reset de iconos
       $all('.json-toggle i', rootCont).forEach(i=> { i.classList.add('fa-chevron-right'); i.classList.remove('fa-chevron-down'); });
       updatePanelTitle();
       return;
     }
 
-    // Recorrer recursivo bottom-up
     const apply = (container)=>{
       let any=false;
       const items = $all(':scope > .json-tree-item', container);
@@ -248,7 +245,6 @@
         const show = matchSelf || matchChild;
         it.style.display = show ? '' : 'none';
 
-        // Si hay match en hijos o en este nodo, abrir hijos (si existen)
         if (children){
           const open = matchChild || matchSelf;
           children.classList.toggle('show', open);
@@ -277,6 +273,15 @@
     });
     return fetch('guardar_layout.php', { method:'POST', body: form }).then(r=>r.json());
   }
+
+  // Persistir raíz afectada
+  async function persistRootByPath(path, updatedRoot){
+    const rootKey = path[0];
+    await postGuardar({ [rootKey]: updatedRoot });
+    if (!window.formularioJsonOriginal) window.formularioJsonOriginal = {};
+    window.formularioJsonOriginal[rootKey] = updatedRoot;
+  }
+
   async function ensureBaseStructureInteractive(){
     await ensureJsonLoaded();
     const data = window.formularioJsonOriginal || {};
@@ -289,6 +294,198 @@
     await postGuardar(payload);
     window.formularioJsonOriginal = { ...data, ...payload };
     buildTree(true);
+  }
+
+  // CRUD: binding
+  function bindCrudActions(){
+    const body = $('#jsonTreeBody'); if (!body) return;
+    if (body.__crudBound) return;
+    body.__crudBound = true;
+    body.addEventListener('click', (e)=>{
+      const btn = e.target.closest('.json-node-actions .btn'); if (!btn) return;
+      const item = e.target.closest('.json-tree-item'); if (!item) return;
+      let path; try { path = JSON.parse(item.getAttribute('data-path')); } catch { return; }
+
+      if (btn.classList.contains('act-edit'))   { e.preventDefault(); editNodeByPath(path); return; }
+      if (btn.classList.contains('act-dup'))    { e.preventDefault(); duplicateNodeByPath(path); return; }
+      if (btn.classList.contains('act-del'))    { e.preventDefault(); deleteNodeByPath(path); return; }
+      if (btn.classList.contains('act-rename')) { e.preventDefault(); renameNodeByPath(path); return; }
+    });
+  }
+
+  // CRUD: editar valor
+  async function editNodeByPath(path){
+    try{
+      const data = window.formularioJsonOriginal || {};
+      const rootKey = path[0], sub = path.slice(1);
+      let root = deepClone(data[rootKey]);
+      let cur  = sub.length ? getAtPath(root, sub) : root;
+
+      const prev = (typeOf(cur)==='object' || typeOf(cur)==='array') ? JSON.stringify(cur, null, 2) : JSON.stringify(cur);
+      const input = window.prompt('Editar valor (JSON)\nEj: "texto", 123, true, {"a":1}', prev);
+      if (input == null) return;
+      let val; try { val = JSON.parse(input); } catch(e){ alert('JSON inválido: ' + e.message); return; }
+
+      if (sub.length === 0) root = val; else setAtPath(root, sub, val);
+      await persistRootByPath(path, root);
+      buildTree();
+    }catch(err){ console.error(err); alert('Error al editar: '+(err.message||err)); }
+  }
+
+  // CRUD: duplicar
+  async function duplicateNodeByPath(path){
+    try{
+      const data = window.formularioJsonOriginal || {};
+      const rootKey = path[0], sub = path.slice(1);
+      let root = deepClone(data[rootKey]);
+
+      const parentPath = sub.slice(0,-1);
+      const key = sub[sub.length-1];
+      let parent = parentPath.length ? getAtPath(root, parentPath) : root;
+      if (parent == null) return;
+
+      const val = deepClone(parent[key]);
+
+      if (Array.isArray(parent)){
+        if (typeof key !== 'number') { alert('Índice inválido.'); return; }
+        parent.splice(key+1, 0, val);
+      } else if (parent && typeof parent === 'object'){
+        const base = String(key);
+        let nk = base + '_copia', i = 2;
+        while (Object.prototype.hasOwnProperty.call(parent, nk)) nk = base + '_copia' + (i++);
+        parent[nk] = val;
+      } else {
+        alert('No se puede duplicar aquí.');
+        return;
+      }
+
+      await persistRootByPath(path, root);
+      buildTree();
+    }catch(err){ console.error(err); alert('Error al duplicar: '+(err.message||err)); }
+  }
+
+  // CRUD: eliminar
+  async function deleteNodeByPath(path){
+    try{
+      if (!confirm('¿Eliminar este elemento?')) return;
+      const data = window.formularioJsonOriginal || {};
+      const rootKey = path[0], sub = path.slice(1);
+      let root = deepClone(data[rootKey]);
+
+      if (sub.length === 0){
+        if (!confirm('Esto vaciará la raíz "'+rootKey+'". ¿Continuar?')) return;
+        root = (rootKey === 'elementos_fuera') ? [] : {};
+      } else {
+        const parentPath = sub.slice(0,-1);
+        const key = sub[sub.length-1];
+        let parent = parentPath.length ? getAtPath(root, parentPath) : root;
+
+        if (Array.isArray(parent) && typeof key === 'number') parent.splice(key,1);
+        else if (parent && typeof parent === 'object') delete parent[key];
+        else { alert('No se pudo eliminar.'); return; }
+      }
+
+      await persistRootByPath(path, root);
+      buildTree();
+    }catch(err){ console.error(err); alert('Error al eliminar: '+(err.message||err)); }
+  }
+
+  // CRUD: renombrar clave
+  async function renameNodeByPath(path){
+    try{
+      const data = window.formularioJsonOriginal || {};
+      const rootKey = path[0], sub = path.slice(1);
+      if (sub.length === 0) { alert('No puedes renombrar la raíz.'); return; }
+      let root = deepClone(data[rootKey]);
+
+      const parentPath = sub.slice(0,-1);
+      const key = sub[sub.length-1];
+      let parent = parentPath.length ? getAtPath(root, parentPath) : root;
+
+      if (!(parent && typeof parent === 'object') || Array.isArray(parent)){
+        alert('Solo se puede renombrar una clave de objeto.'); return;
+      }
+
+      const nuevo = window.prompt('Nueva clave', String(key));
+      if (!nuevo || nuevo === key) return;
+      if (Object.prototype.hasOwnProperty.call(parent, nuevo)) { alert('La clave ya existe.'); return; }
+
+      parent[nuevo] = parent[key]; delete parent[key];
+
+      await persistRootByPath(path, root);
+      buildTree();
+    }catch(err){ console.error(err); alert('Error al renombrar: '+(err.message||err)); }
+  }
+
+  // Drag & Drop: inicializar en cada contenedor de hijos
+  function initTreeDnD(){
+    if (typeof Sortable === 'undefined') return;
+    // Evita re-init
+    $all('#jsonTreeBody .json-children').forEach((cont, idx)=>{
+      if (cont.__jtSortable) return;
+      // Grupo único por contenedor para impedir mover entre padres
+      const groupName = 'jt-' + (cont.closest('.json-tree-item')?.getAttribute('data-path') || 'root') + '-' + idx;
+      cont.__jtSortable = new Sortable(cont, {
+        group: { name: groupName, put: false, pull: false },
+        animation: 150,
+        draggable: ':scope > .json-tree-item',
+        handle: '.json-row, .json-node-key, .json-toggle',
+        ghostClass: 'json-drag-ghost',
+        onEnd: async (evt)=>{
+          try{
+            if (!evt || evt.from !== evt.to) return; // solo dentro del mismo padre
+            const parentItem = evt.to.closest('.json-tree-item'); // puede ser null si es top-level (no lo inicializamos)
+            if (!parentItem) return;
+            let parentPath = JSON.parse(parentItem.getAttribute('data-path') || '[]');
+
+            const data = window.formularioJsonOriginal || {};
+            const rootKey = parentPath[0];
+            const sub = parentPath.slice(1);
+            let rootClone = deepClone(data[rootKey]);
+            let parentVal = sub.length ? getAtPath(rootClone, sub) : rootClone;
+
+            const t = typeOf(parentVal);
+            if (t === 'array'){
+              const arr = parentVal;
+              const from = evt.oldIndex;
+              const to   = evt.newIndex;
+              if (from === to) return;
+              const [moved] = arr.splice(from, 1);
+              arr.splice(to, 0, moved);
+              // write back
+              if (sub.length===0) rootClone = arr; else setAtPath(rootClone, sub, arr);
+              await persistRootByPath(parentPath, rootClone);
+              buildTree();
+            } else if (t === 'object'){
+              const obj = parentVal || {};
+              // Nuevo orden según DOM
+              const newOrder = Array.from(evt.to.children)
+                .map(el => JSON.parse(el.getAttribute('data-path')||'[]').slice(-1)[0])
+                .filter(k => k !== undefined);
+              const reordered = {};
+              newOrder.forEach(k => { reordered[k] = obj[k]; });
+              // write back
+              if (sub.length===0) rootClone = reordered; else setAtPath(rootClone, sub, reordered);
+              await persistRootByPath(parentPath, rootClone);
+              buildTree();
+            } else {
+              // no-op
+            }
+          }catch(err){
+            console.error(err);
+            alert('Error al reordenar: '+(err.message||err));
+          }
+        }
+      });
+    });
+  }
+
+  // Desactivar DnD si hay filtro activo (evita índices inconsistentes)
+  function updateSortablesDisabled(){
+    const hasFilter = (($('#jsonTreeFilter')?.value || '').trim().length > 0);
+    $all('#jsonTreeBody .json-children').forEach(cont=>{
+      if (cont.__jtSortable) cont.__jtSortable.option('disabled', hasFilter);
+    });
   }
 
   // Observa #fd-root y emite design-mode-changed
@@ -313,8 +510,6 @@
   // Reacciona al cambio de modo
   function onDesignModeChanged(e){
     const on = !!(e && e.detail && e.detail.on);
-
-    // Fuera de diseño: ocultar si existiera y no crear nada
     const panel = $('#json-tree-panel');
     const btn0 = $('#fd-tree-toggle-btn');
     if (!on){
@@ -322,10 +517,8 @@
       if (btn0) btn0.style.display = 'none';
       return;
     }
-
-    // En diseño: crear on-demand
     ensureToggleButton();
-    const btn = $('#fd-tree-toggle-btn'); // FIX: obtener referencia correcta
+    const btn = $('#fd-tree-toggle-btn');
     if (btn) btn.style.display = 'inline-flex';
   }
 

@@ -400,3 +400,101 @@
       e.dataTransfer.effectAllowed = 'move';
     });
     root.addEventListener('dragend', ()=>{
+      $all('.json-tree-node', root).forEach(n=> n.classList.remove('drag-src'));
+      dragSrcPath = null;
+    });
+    root.addEventListener('dragover', (e)=>{
+      e.preventDefault();
+      const n = e.target.closest('.json-tree-node');
+      if (!n) return;
+      const dstPath = JSON.parse(n.getAttribute('data-path'));
+      if (pathsEqual(dragSrcPath, dstPath)) return;
+      if (canMove(dragSrcPath, dstPath)){
+        n.classList.add('drop-ok');
+      } else {
+        n.classList.add('drop-bad');
+      }
+    });
+    root.addEventListener('dragleave', (e)=>{
+      const n = e.target.closest('.json-tree-node');
+      if (n) {
+        n.classList.remove('drop-ok');
+        n.classList.remove('drop-bad');
+      }
+    });
+    root.addEventListener('drop', async (e)=>{
+      e.preventDefault();
+      const n = e.target.closest('.json-tree-node'); if (!n) return;
+      const dstPath = JSON.parse(n.getAttribute('data-path'));
+      if (pathsEqual(dragSrcPath, dstPath)) return;
+      if (!canMove(dragSrcPath, dstPath)) return;
+
+      // mover
+      const data = window.formularioJsonOriginal || {};
+      const srcRootKey = dragSrcPath[0], dstRootKey = dstPath[0];
+      const srcSubPath = dragSrcPath.slice(1), dstSubPath = dstPath.slice(1);
+      let srcRoot = deepClone(data[srcRootKey]);
+      let dstRoot = deepClone(data[dstRootKey]);
+      let srcParent, dstParent, srcIdx, dstIdx;
+
+      // determinar padre y índice de origen
+      if (srcSubPath.length === 0) {
+        srcParent = null; srcIdx = -1;
+      } else {
+        srcParent = getAtPath(srcRoot, srcSubPath.slice(0,-1));
+        srcIdx = srcSubPath[srcSubPath.length-1];
+      }
+
+      // determinar padre e índice de destino
+      if (dstSubPath.length === 0) {
+        dstParent = null; dstIdx = -1;
+      } else {
+        dstParent = getAtPath(dstRoot, dstSubPath.slice(0,-1));
+        dstIdx = dstSubPath[dstSubPath.length-1];
+      }
+
+      // eliminar de origen
+      if (srcParent && Array.isArray(srcParent)) srcParent.splice(srcIdx, 1);
+      else if (srcParent && typeof srcParent==='object') delete srcParent[srcIdx];
+
+      // agregar a destino
+      if (dstParent && Array.isArray(dstParent)) dstParent.splice(dstIdx+1, 0, getAtPath(data, dragSrcPath));
+      else if (dstParent && typeof dstParent==='object') dstParent[dstIdx] = getAtPath(data, dragSrcPath);
+
+      await persistRootByPath([srcRootKey], srcRoot);
+      await persistRootByPath([dstRootKey], dstRoot);
+      buildTree();
+    });
+  }
+
+  // Mostrar solo en modo diseño
+  function onDesignModeChanged(e){
+    const on = !!(e && e.detail && e.detail.on);
+    const panel = $('#json-tree-panel');
+    const btn = $('#fd-tree-toggle-btn');
+    if (panel) panel.style.display = on ? '' : 'none';
+    if (btn) btn.style.display = on ? 'inline-flex' : 'none';
+    if (on) ensureJsonLoaded().then(buildTree).catch(console.error);
+  }
+
+  // Boot
+  window.addEventListener('load', async ()=>{
+    injectStyles();
+    ensurePanel();
+    ensureToggleButton();
+    watchDesignMode();
+
+    window.addEventListener('design-mode-changed', onDesignModeChanged);
+
+    // Sincroniza inmediatamente con el estado actual (si ya existe #fd-root)
+    const initialOn = shouldShow();
+    window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: initialOn } }));
+
+    if (initialOn) {
+      try { await ensureJsonLoaded(); buildTree(); } catch(e){ console.error(e); }
+    } else {
+      const p = $('#json-tree-panel'); if (p) p.style.display = 'none';
+      const b = $('#fd-tree-toggle-btn'); if (b) b.style.display = 'none';
+    }
+  });
+})();

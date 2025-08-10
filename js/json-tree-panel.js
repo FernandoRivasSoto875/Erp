@@ -1,4 +1,8 @@
 (function(){
+  // Evitar doble carga del panel
+  if (window.__JSON_TREE_PANEL_LOADED__) return;
+  window.__JSON_TREE_PANEL_LOADED__ = true;
+
   const CONFIG = { showOnlyInDesignMode: true };
 
   // Helpers
@@ -16,6 +20,7 @@
   function parseLenientJson(text){
     try { return JSON.parse(text); } catch(_){
       const noComments = text.replace(/\/\/.*$/mg,'').replace(/\/\*[\s\S]*?\*\//g,'');
+
       const noTrailing = noComments.replace(/,\s*([}\]])/g, '$1');
       return JSON.parse(noTrailing);
     }
@@ -25,12 +30,28 @@
     const root = document.getElementById('fd-root');
     return !!(root && root.classList.contains('design-mode'));
   }
+
+  // Espera a que #fd-root exista y luego observa cambios de clase (robusto)
+  function whenRootReady(cb){
+    const root = document.getElementById('fd-root');
+    if (root) return cb(root);
+    const mo = new MutationObserver(()=>{
+      const r = document.getElementById('fd-root');
+      if (r) { mo.disconnect(); cb(r); }
+    });
+    mo.observe(document.documentElement, { childList:true, subtree:true });
+  }
+
   function watchDesignMode(){
-    const root = document.getElementById('fd-root'); if (!root) return;
-    new MutationObserver(()=>{
-      const on = root.classList.contains('design-mode');
-      window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on } }));
-    }).observe(root, { attributes:true, attributeFilter:['class'] });
+    whenRootReady((root)=>{
+      const emit = ()=> {
+        const on = root.classList.contains('design-mode');
+        window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on } }));
+      };
+      new MutationObserver(emit).observe(root, { attributes:true, attributeFilter:['class'] });
+      // sincroniza estado inicial
+      emit();
+    });
   }
 
   // Carga JSON actual
@@ -86,6 +107,7 @@
     panel.id = 'json-tree-panel';
     panel.className = 'json-tree-panel';
     panel.innerHTML = `
+
       <div class="json-tree-header">
         <h6 class="json-tree-title"><i class="fas fa-sitemap"></i> Árbol del JSON</h6>
         <div class="json-tree-actions">
@@ -111,12 +133,14 @@
     btn.innerHTML = '<i class="fas fa-sitemap"></i> Árbol';
     btn.addEventListener('click', ()=>{
       const p = ensurePanel();
-      p.style.display = (p.style.display==='none'?'':'') === '' ? 'none' : '';
+      const isHidden = getComputedStyle(p).display === 'none';
+      // toggle
+      p.style.display = isHidden ? '' : 'none';
       // al abrir, construir
-      if (p.style.display !== 'none') ensureJsonLoaded().then(buildTree).catch(console.error);
+      if (isHidden) ensureJsonLoaded().then(buildTree).catch(console.error);
     });
     document.body.appendChild(btn);
-    // Solo visible en modo diseño
+    // visible solo en modo diseño (se sincroniza con el evento)
     btn.style.display = shouldShow() ? 'inline-flex' : 'none';
   }
 
@@ -376,119 +400,3 @@
       e.dataTransfer.effectAllowed = 'move';
     });
     root.addEventListener('dragend', ()=>{
-      dragSrcPath = null;
-      $all('.json-tree-node.drag-src', root).forEach(n=> n.classList.remove('drag-src'));
-      $all('.json-tree-node.drop-ok,.json-tree-node.drop-bad', root).forEach(n=> n.classList.remove('drop-ok','drop-bad'));
-    });
-    root.addEventListener('dragover', (e)=>{
-      if (!dragSrcPath) return;
-      const over = e.target.closest('.json-tree-node'); if (!over) return;
-      const dst = JSON.parse(over.getAttribute('data-path'));
-      if (!canMove(dragSrcPath, dst)) { over.classList.add('drop-bad'); return; }
-      e.preventDefault(); over.classList.add('drop-ok'); over.classList.remove('drop-bad');
-    });
-    root.addEventListener('dragleave', (e)=>{
-      const over = e.target.closest('.json-tree-node'); if (!over) return;
-      over.classList.remove('drop-ok','drop-bad');
-    });
-    root.addEventListener('drop', async (e)=>{
-      const over = e.target.closest('.json-tree-node'); if (!over) return;
-      const dst = JSON.parse(over.getAttribute('data-path'));
-      $all('.json-tree-node.drop-ok,.json-tree-node.drop-bad', root).forEach(n=> n.classList.remove('drop-ok','drop-bad'));
-      if (!dragSrcPath || !canMove(dragSrcPath, dst)) return;
-      e.preventDefault();
-
-      const data = window.formularioJsonOriginal || {};
-      const rootKey = dragSrcPath[0];
-      let rootObj = deepClone(data[rootKey]);
-
-      // extraer valor origen
-      const srcParentPath = dragSrcPath.slice(1, -1), srcKey = dragSrcPath[dragSrcPath.length-1];
-      let srcParent = srcParentPath.length ? getAtPath(rootObj, srcParentPath) : rootObj;
-      const movingVal = deepClone(srcParent[srcKey]);
-      // eliminar del origen
-      if (Array.isArray(srcParent) && typeof srcKey==='number') srcParent.splice(srcKey,1);
-      else delete srcParent[srcKey];
-
-      // destino: si es array, push; si es objeto, pedir clave; si es hoja, insertar en su padre
-      let dstVal = getAtPath(rootObj, dst.slice(1));
-      let parentPath = null, asArray = false, insertIndex = null;
-      if (Array.isArray(dstVal)) {
-        parentPath = dst.slice(1); asArray = true;
-      } else if (dstVal && typeof dstVal==='object') {
-        parentPath = dst.slice(1);
-      } else {
-        parentPath = dst.slice(1, -1);
-        const last = dst[dst.length-1];
-        const parent = getAtPath(rootObj, parentPath);
-        if (Array.isArray(parent) && typeof last==='number'){ asArray = true; insertIndex = last+1; }
-      }
-
-      if (asArray) {
-        const arr = getAtPath(rootObj, parentPath) || [];
-        const copy = arr.slice();
-        if (insertIndex==null || insertIndex<0 || insertIndex>copy.length) copy.push(movingVal);
-        else copy.splice(insertIndex, 0, movingVal);
-        setAtPath(rootObj, parentPath, copy);
-      } else {
-        const obj = getAtPath(rootObj, parentPath) || {};
-        let suggested = (typeof dragSrcPath[dragSrcPath.length-1]==='string') ? dragSrcPath[dragSrcPath.length-1] : 'nuevo';
-        if (Object.prototype.hasOwnProperty.call(obj, suggested)) {
-          suggested = window.prompt('Clave para nuevo hijo', suggested) || suggested + '_copia';
-        }
-        obj[suggested] = movingVal;
-        setAtPath(rootObj, parentPath, obj);
-      }
-
-      await persistRootByPath(dragSrcPath, rootObj);
-      buildTree();
-    });
-  }
-
-  // Inicializador de estructura base (no destructivo)
-  async function ensureBaseStructureInteractive(){
-    await ensureJsonLoaded();
-    const data = window.formularioJsonOriginal || {};
-    const payload = {};
-    if (!data.parametros || typeof data.parametros!=='object') payload.parametros = {};
-    if (!data.layout || typeof data.layout!=='object'){
-      payload.layout = {
-        header: { type:'header', rows: [] },
-        main: { type:'generic', rows: [ { columns: [ { width: 12 } ] } ] },
-        footer: { type:'footer', rows: [] }
-      };
-    }
-    if (!data.fieldsets || typeof data.fieldsets!=='object') payload.fieldsets = {};
-    if (!Array.isArray(data.elementos_fuera)) payload.elementos_fuera = [];
-    if (!Object.keys(payload).length) return alert('La estructura base ya existe.');
-    await postGuardar(payload);
-    window.formularioJsonOriginal = { ...data, ...payload };
-    buildTree();
-  }
-
-  // Mostrar solo en modo diseño
-  function onDesignModeChanged(e){
-    const on = !!(e && e.detail && e.detail.on);
-    const panel = $('#json-tree-panel');
-    const btn = $('#fd-tree-toggle-btn');
-    if (panel) panel.style.display = on ? '' : 'none';
-    if (btn) btn.style.display = on ? 'inline-flex' : 'none';
-    if (on) ensureJsonLoaded().then(buildTree).catch(console.error);
-  }
-
-  // Boot
-  window.addEventListener('load', async ()=>{
-    injectStyles();
-    ensurePanel();
-    ensureToggleButton();
-    watchDesignMode();
-    window.addEventListener('design-mode-changed', onDesignModeChanged);
-    if (shouldShow()) {
-      try { await ensureJsonLoaded(); buildTree(); } catch(e){ console.error(e); }
-    } else {
-      const p = $('#json-tree-panel'); if (p) p.style.display = 'none';
-      const b = $('#fd-tree-toggle-btn'); if (b) b.style.display = 'none';
-    }
-  });
-
-})();

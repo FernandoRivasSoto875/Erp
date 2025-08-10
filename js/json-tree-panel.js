@@ -122,6 +122,9 @@
     const body = $('#jsonTreeBody'); if (!body) return;
     const data = window.formularioJsonOriginal || {};
 
+    // NUEVO: capturar ramas abiertas antes de reconstruir (si no vamos a resetear)
+    const openPaths = (!resetState) ? captureOpenPaths() : [];
+
     const preferred = ['parametros','layout','fieldsets','elementos_fuera'];
     const keys = preferred.filter(k => Object.prototype.hasOwnProperty.call(data, k))
       .concat(Object.keys(data).filter(k => !preferred.includes(k)));
@@ -133,6 +136,9 @@
     if (resetState){
       // Colapsar todo por defecto al reconstruir
       $all('#jsonTreeBody .json-children').forEach(c=> c.classList.remove('show'));
+    } else {
+      // NUEVO: restaurar ramas abiertas
+      restoreOpenPaths(openPaths);
     }
     updatePanelTitle();
 
@@ -417,27 +423,60 @@
     }catch(err){ console.error(err); alert('Error al renombrar: '+(err.message||err)); }
   }
 
+  // NUEVO: guardar/restaurar estado expandido
+  function captureOpenPaths(){
+    const paths = [];
+    $all('#jsonTreeBody .json-tree-item > .json-children.show').forEach(ch=>{
+      const item = ch.closest('.json-tree-item');
+      if (!item) return;
+      const p = item.getAttribute('data-path');
+      if (p) paths.push(p);
+    });
+    return paths;
+  }
+  function restoreOpenPaths(paths){
+    if (!paths || !paths.length) return;
+    const set = new Set(paths);
+    $all('#jsonTreeBody .json-tree-item').forEach(item=>{
+      const p = item.getAttribute('data-path');
+      if (!p || !set.has(p)) return;
+      const ch = item.querySelector(':scope > .json-children');
+      if (!ch) return;
+      ch.classList.add('show');
+      const icon = item.querySelector(':scope > .json-row .json-toggle i');
+      if (icon){
+        icon.classList.remove('fa-chevron-right');
+        icon.classList.add('fa-chevron-down');
+      }
+    });
+  }
+
   // Drag & Drop: inicializar en cada contenedor de hijos
   function initTreeDnD(){
-    if (typeof Sortable === 'undefined') return;
+    if (typeof Sortable === 'undefined'){
+      console.warn('[json-tree] SortableJS no encontrado. DnD deshabilitado.');
+      return;
+    }
     // Evita re-init
     $all('#jsonTreeBody .json-children').forEach((cont, idx)=>{
       if (cont.__jtSortable) return;
-      // Grupo único por contenedor para impedir mover entre padres
-      const groupName = 'jt-' + (cont.closest('.json-tree-item')?.getAttribute('data-path') || 'root') + '-' + idx;
+      const parentItem = cont.closest('.json-tree-item');
+      const parentPathAttr = parentItem?.getAttribute('data-path') || '[]';
+      const groupName = 'jt-' + parentPathAttr + '-' + idx;
+
       cont.__jtSortable = new Sortable(cont, {
-        group: { name: groupName, put: false, pull: false },
+        group: { name: groupName, put: false, pull: false }, // solo reordenar entre hermanos
         animation: 150,
         draggable: ':scope > .json-tree-item',
         handle: '.json-row, .json-node-key, .json-toggle',
         ghostClass: 'json-drag-ghost',
         onEnd: async (evt)=>{
           try{
-            if (!evt || evt.from !== evt.to) return; // solo dentro del mismo padre
-            const parentItem = evt.to.closest('.json-tree-item'); // puede ser null si es top-level (no lo inicializamos)
-            if (!parentItem) return;
-            let parentPath = JSON.parse(parentItem.getAttribute('data-path') || '[]');
+            if (!evt || evt.from !== evt.to) return; // impedir mover entre padres
+            const parentItem2 = evt.to.closest('.json-tree-item');
+            if (!parentItem2) return;
 
+            const parentPath = JSON.parse(parentItem2.getAttribute('data-path') || '[]');
             const data = window.formularioJsonOriginal || {};
             const rootKey = parentPath[0];
             const sub = parentPath.slice(1);
@@ -452,19 +491,19 @@
               if (from === to) return;
               const [moved] = arr.splice(from, 1);
               arr.splice(to, 0, moved);
-              // write back
               if (sub.length===0) rootClone = arr; else setAtPath(rootClone, sub, arr);
               await persistRootByPath(parentPath, rootClone);
-              buildTree();
+              buildTree(); // preserva estado expandido
             } else if (t === 'object'){
               const obj = parentVal || {};
-              // Nuevo orden según DOM
               const newOrder = Array.from(evt.to.children)
-                .map(el => JSON.parse(el.getAttribute('data-path')||'[]').slice(-1)[0])
+                .map(el => {
+                  const p = JSON.parse(el.getAttribute('data-path')||'[]');
+                  return p[p.length-1];
+                })
                 .filter(k => k !== undefined);
               const reordered = {};
               newOrder.forEach(k => { reordered[k] = obj[k]; });
-              // write back
               if (sub.length===0) rootClone = reordered; else setAtPath(rootClone, sub, reordered);
               await persistRootByPath(parentPath, rootClone);
               buildTree();

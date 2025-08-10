@@ -283,9 +283,14 @@
   // Persistir raíz afectada
   async function persistRootByPath(path, updatedRoot){
     const rootKey = path[0];
-    await postGuardar({ [rootKey]: updatedRoot });
+    // Persistencia optimista: actualiza el estado local primero
     if (!window.formularioJsonOriginal) window.formularioJsonOriginal = {};
     window.formularioJsonOriginal[rootKey] = updatedRoot;
+    try{
+      await postGuardar({ [rootKey]: updatedRoot });
+    }catch(err){
+      console.warn('[json-tree] Error al guardar en servidor, se mantiene estado local:', err);
+    }
   }
 
   async function ensureBaseStructureInteractive(){
@@ -453,78 +458,205 @@
 
   // Drag & Drop: inicializar en cada contenedor de hijos
   function initTreeDnD(){
-    if (typeof Sortable === 'undefined'){
-      console.warn('[json-tree] SortableJS no encontrado. DnD deshabilitado.');
+    // Si hay Sortable, úsalo
+    if (typeof Sortable !== 'undefined'){
+      // Evita re-init
+      $all('#jsonTreeBody .json-children').forEach((cont, idx)=>{
+        if (cont.__jtSortable) return;
+        const parentItem = cont.closest('.json-tree-item');
+        const parentPathAttr = parentItem?.getAttribute('data-path') || '[]';
+        const groupName = 'jt-' + parentPathAttr + '-' + idx;
+
+        cont.__jtSortable = new Sortable(cont, {
+          group: { name: groupName, put: false, pull: false }, // solo reordenar entre hermanos
+          animation: 150,
+          draggable: ':scope > .json-tree-item',
+          handle: '.json-row, .json-node-key, .json-toggle',
+          ghostClass: 'json-drag-ghost',
+          onEnd: async (evt)=>{
+            try{
+              if (!evt || evt.from !== evt.to) return; // impedir mover entre padres
+              const parentItem2 = evt.to.closest('.json-tree-item');
+              if (!parentItem2) return;
+
+              const parentPath = JSON.parse(parentItem2.getAttribute('data-path') || '[]');
+              const data = window.formularioJsonOriginal || {};
+              const rootKey = parentPath[0];
+              const sub = parentPath.slice(1);
+              let rootClone = deepClone(data[rootKey]);
+              let parentVal = sub.length ? getAtPath(rootClone, sub) : rootClone;
+
+              const t = typeOf(parentVal);
+              if (t === 'array'){
+                const arr = parentVal;
+                const from = evt.oldIndex;
+                const to   = evt.newIndex;
+                if (from === to) return;
+                const [moved] = arr.splice(from, 1);
+                arr.splice(to, 0, moved);
+                if (sub.length===0) rootClone = arr; else setAtPath(rootClone, sub, arr);
+                await persistRootByPath(parentPath, rootClone);
+                buildTree(); // preserva estado expandido
+              } else if (t === 'object'){
+                const obj = parentVal || {};
+                const newOrder = Array.from(evt.to.children)
+                  .map(el => {
+                    const p = JSON.parse(el.getAttribute('data-path')||'[]');
+                    return p[p.length-1];
+                  })
+                  .filter(k => k !== undefined);
+                const reordered = {};
+                newOrder.forEach(k => { reordered[k] = obj[k]; });
+                if (sub.length===0) rootClone = reordered; else setAtPath(rootClone, sub, reordered);
+                await persistRootByPath(parentPath, rootClone);
+                buildTree();
+              }
+            }catch(err){
+              console.error(err);
+              alert('Error al reordenar: '+(err.message||err));
+            }
+          }
+        });
+      });
       return;
     }
-    // Evita re-init
-    $all('#jsonTreeBody .json-children').forEach((cont, idx)=>{
-      if (cont.__jtSortable) return;
-      const parentItem = cont.closest('.json-tree-item');
-      const parentPathAttr = parentItem?.getAttribute('data-path') || '[]';
-      const groupName = 'jt-' + parentPathAttr + '-' + idx;
 
-      cont.__jtSortable = new Sortable(cont, {
-        group: { name: groupName, put: false, pull: false }, // solo reordenar entre hermanos
-        animation: 150,
-        draggable: ':scope > .json-tree-item',
-        handle: '.json-row, .json-node-key, .json-toggle',
-        ghostClass: 'json-drag-ghost',
-        onEnd: async (evt)=>{
-          try{
-            if (!evt || evt.from !== evt.to) return; // impedir mover entre padres
-            const parentItem2 = evt.to.closest('.json-tree-item');
-            if (!parentItem2) return;
+    // Fallback nativo (HTML5 DnD) si no hay SortableJS
+    initNativeDnD();
+  }
 
-            const parentPath = JSON.parse(parentItem2.getAttribute('data-path') || '[]');
-            const data = window.formularioJsonOriginal || {};
-            const rootKey = parentPath[0];
-            const sub = parentPath.slice(1);
-            let rootClone = deepClone(data[rootKey]);
-            let parentVal = sub.length ? getAtPath(rootClone, sub) : rootClone;
+  // NUEVO: DnD nativo (sin SortableJS)
+  function initNativeDnD(){
+    const root = $('#jsonTreeBody');
+    if (!root) return;
 
-            const t = typeOf(parentVal);
-            if (t === 'array'){
-              const arr = parentVal;
-              const from = evt.oldIndex;
-              const to   = evt.newIndex;
-              if (from === to) return;
-              const [moved] = arr.splice(from, 1);
-              arr.splice(to, 0, moved);
-              if (sub.length===0) rootClone = arr; else setAtPath(rootClone, sub, arr);
-              await persistRootByPath(parentPath, rootClone);
-              buildTree(); // preserva estado expandido
-            } else if (t === 'object'){
-              const obj = parentVal || {};
-              const newOrder = Array.from(evt.to.children)
-                .map(el => {
-                  const p = JSON.parse(el.getAttribute('data-path')||'[]');
-                  return p[p.length-1];
-                })
-                .filter(k => k !== undefined);
-              const reordered = {};
-              newOrder.forEach(k => { reordered[k] = obj[k]; });
-              if (sub.length===0) rootClone = reordered; else setAtPath(rootClone, sub, reordered);
-              await persistRootByPath(parentPath, rootClone);
-              buildTree();
-            } else {
-              // no-op
-            }
-          }catch(err){
-            console.error(err);
-            alert('Error al reordenar: '+(err.message||err));
-          }
-        }
-      });
+    // marca items arrastrables (solo hijos de un padre)
+    setNativeDraggables(true);
+
+    if (root.__nativeDnDBound) return;
+    root.__nativeDnDBound = true;
+
+    let dragItem = null;
+    let dragContainer = null;
+
+    root.addEventListener('dragstart', (e)=>{
+      const row = e.target.closest('.json-tree-item > .json-row');
+      if (!row) return;
+      if (isDnDDisabled()) { e.preventDefault(); return; }
+      dragItem = row.parentElement; // .json-tree-item
+      dragContainer = dragItem.parentElement; // .json-children
+      if (!dragContainer || !dragContainer.classList.contains('json-children')){
+        // no permitimos arrastrar top-level
+        e.preventDefault();
+        dragItem = dragContainer = null;
+        return;
+      }
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', dragItem.getAttribute('data-path') || '');
+      setTimeout(()=> dragItem.classList.add('json-drag-ghost'), 0);
     });
+
+    root.addEventListener('dragover', (e)=>{
+      if (!dragItem) return;
+      const overItem = e.target.closest('.json-tree-item');
+      const overContainer = overItem?.parentElement;
+      if (overContainer !== dragContainer) return; // solo mismo padre
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+    });
+
+    root.addEventListener('drop', async (e)=>{
+      if (!dragItem) return;
+      const overItem = e.target.closest('.json-tree-item');
+      const overContainer = overItem?.parentElement;
+      if (overContainer !== dragContainer) { cleanupDrag(); return; }
+      e.preventDefault();
+
+      // insert antes o después según posición del cursor
+      const rect = overItem.getBoundingClientRect();
+      const before = (e.clientY - rect.top) < rect.height / 2;
+      if (before) {
+        overContainer.insertBefore(dragItem, overItem);
+      } else {
+        overContainer.insertBefore(dragItem, overItem.nextSibling);
+      }
+
+      try{
+        const parentItem = overContainer.closest('.json-tree-item');
+        if (!parentItem) { cleanupDrag(); return; }
+        const parentPath = JSON.parse(parentItem.getAttribute('data-path') || '[]');
+
+        // Actualiza el JSON según nuevo orden DOM
+        const data = window.formularioJsonOriginal || {};
+        const rootKey = parentPath[0];
+        const sub = parentPath.slice(1);
+        let rootClone = deepClone(data[rootKey]);
+        let parentVal = sub.length ? getAtPath(rootClone, sub) : rootClone;
+
+        const children = Array.from(overContainer.children);
+        const t = typeOf(parentVal);
+        if (t === 'array'){
+          const arr = parentVal;
+          // recalcula orden por índice DOM tomando los valores previos
+          const oldVals = arr.slice();
+          const newArr = children.map((el)=>{
+            const p = JSON.parse(el.getAttribute('data-path')||'[]');
+            const idx = p[p.length-1];
+            return oldVals[idx];
+          });
+          if (sub.length===0) rootClone = newArr; else setAtPath(rootClone, sub, newArr);
+          await persistRootByPath(parentPath, rootClone);
+          buildTree();
+        } else if (t === 'object'){
+          const obj = parentVal || {};
+          const newOrder = children
+            .map(el => {
+              const p = JSON.parse(el.getAttribute('data-path')||'[]');
+              return p[p.length-1];
+            })
+            .filter(k => k !== undefined);
+          const reordered = {};
+          newOrder.forEach(k => { reordered[k] = obj[k]; });
+          if (sub.length===0) rootClone = reordered; else setAtPath(rootClone, sub, reordered);
+          await persistRootByPath(parentPath, rootClone);
+          buildTree();
+        }
+      }catch(err){
+        console.error(err);
+        alert('Error al reordenar: '+(err.message||err));
+      }finally{
+        cleanupDrag();
+      }
+    });
+
+    root.addEventListener('dragend', cleanupDrag);
+
+    function cleanupDrag(){
+      if (dragItem) dragItem.classList.remove('json-drag-ghost');
+      dragItem = null;
+      dragContainer = null;
+    }
+  }
+
+  function setNativeDraggables(enabled){
+    $all('#jsonTreeBody .json-children > .json-tree-item > .json-row').forEach(row=>{
+      row.setAttribute('draggable', enabled ? 'true' : 'false');
+    });
+  }
+
+  function isDnDDisabled(){
+    return (($('#jsonTreeFilter')?.value || '').trim().length > 0);
   }
 
   // Desactivar DnD si hay filtro activo (evita índices inconsistentes)
   function updateSortablesDisabled(){
     const hasFilter = (($('#jsonTreeFilter')?.value || '').trim().length > 0);
+    // SortableJS
     $all('#jsonTreeBody .json-children').forEach(cont=>{
       if (cont.__jtSortable) cont.__jtSortable.option('disabled', hasFilter);
     });
+    // Nativo
+    setNativeDraggables(!hasFilter);
   }
 
   // Observa #fd-root y emite design-mode-changed

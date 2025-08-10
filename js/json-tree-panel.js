@@ -659,4 +659,53 @@
     // Nativo
     setNativeDraggables(!hasFilter);
   }
+
+  // Observa #fd-root y emite 'design-mode-changed'
+  function whenRootReady(cb){
+    const root = document.getElementById('fd-root');
+    if (root) return cb(root);
+    const mo = new MutationObserver(()=>{
+      const r = document.getElementById('fd-root');
+      if (r){ mo.disconnect(); cb(r); }
+    });
+    mo.observe(document.documentElement, { childList:true, subtree:true });
+  }
+
+  function watchDesignMode(){
+    whenRootReady((root)=>{
+      const emit = ()=> window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: root.classList.contains('design-mode') } }));
+      new MutationObserver(emit).observe(root, { attributes:true, attributeFilter:['class'] });
+      // Estado inicial
+      emit();
+    });
+  }
+
+  // Mostrar/ocultar el botón/panel según modo diseño
+  function onDesignModeChanged(e){
+    const on = !!(e && e.detail && e.detail.on);
+    const panel = document.getElementById('json-tree-panel');
+    const btn = document.getElementById('fd-tree-toggle-btn');
+
+    if (!on){
+      if (panel) panel.style.display = 'none';
+      if (btn) btn.style.display = 'none';
+      return;
+    }
+    ensureToggleButton();
+    const b = document.getElementById('fd-tree-toggle-btn');
+    if (b) b.style.display = 'inline-flex';
+  }
+
+  // Boot
+  window.addEventListener('load', ()=>{
+    watchDesignMode();
+    window.addEventListener('design-mode-changed', onDesignModeChanged);
+
+    // Si ya está en modo diseño al cargar
+    if (document.getElementById('fd-root')?.classList.contains('design-mode')){
+      ensureToggleButton();
+      const b = document.getElementById('fd-tree-toggle-btn');
+      if (b) b.style.display = 'inline-flex';
+    }
+  });
 })();

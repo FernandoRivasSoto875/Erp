@@ -74,7 +74,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
         if (function_exists('generarLayout')) {
             echo generarLayout($layout, $fieldsets, $json_data['valores'] ?? [], false);
         } else {
-            echo '<div class="alert alert-warning">Falta la función generarLayout(). Incluye [formulariodinamicologica.php](http://_vscodecontentref_/0) con las funciones de render.</div>';
+            echo '<div class="alert alert-warning">Falta la función generarLayout().</div>';
         }
         ?>
       </div>
@@ -98,7 +98,6 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 
   <!-- Ocultar SIEMPRE el icono de lápiz en el formulario (no afecta al árbol) -->
   <style id="fd-hide-pencil-form">
-    /* Oculta cualquier botón/ícono de edición SOLO dentro del formulario */
     #fd-root .fd-edit-btn,
     #fd-root .fd-field-edit,
     #fd-root .field-edit-btn,
@@ -110,40 +109,27 @@ require_once __DIR__ . '/formulariodinamicologica.php';
   </style>
 
   <script>
-    // Quita y bloquea la acción del "lápiz" dentro del formulario
+    // Bloquea cualquier “lápiz” que se inyecte dinámicamente
     (function(){
       const SEL = '.fd-edit-btn, .fd-field-edit, .field-edit-btn, [data-action="edit-field"], .btn-edit, .icon-edit, .fa-pencil, .fa-pencil-alt';
-      function removePencils(root){
-        if (!root) return;
-        root.querySelectorAll(SEL).forEach(el => el.remove());
-      }
       function init(){
         const root = document.getElementById('fd-root');
         if (!root) return;
-        removePencils(root);
-        // Evita clicks si algún botón se agrega dinámicamente
-        root.addEventListener('click', function(e){
-          if (e.target.closest(SEL)){
-            e.preventDefault(); e.stopPropagation();
-          }
+        root.querySelectorAll(SEL).forEach(el => el.remove());
+        root.addEventListener('click', e=>{
+          if (e.target.closest(SEL)){ e.preventDefault(); e.stopPropagation(); }
         }, true);
-        // Observa inyecciones dinámicas y las elimina
-        const mo = new MutationObserver(muts=>{
+        new MutationObserver(muts=>{
           muts.forEach(m=>{
             m.addedNodes.forEach(n=>{
-              if (n.nodeType !== 1) return;
-              if (n.matches && n.matches(SEL)) n.remove();
-              n.querySelectorAll && n.querySelectorAll(SEL).forEach(el=> el.remove());
+              if (n.nodeType!==1) return;
+              if (n.matches?.(SEL)) n.remove();
+              n.querySelectorAll?.(SEL).forEach(el=> el.remove());
             });
           });
-        });
-        mo.observe(root, { childList:true, subtree:true });
+        }).observe(root, { childList:true, subtree:true });
       }
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-      } else {
-        init();
-      }
+      if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
     })();
   </script>
 
@@ -153,61 +139,11 @@ require_once __DIR__ . '/formulariodinamicologica.php';
     window.formularioJsonOriginal = <?php echo json_encode($json_data ?? [], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
   </script>
 
-  <!-- Render del formulario dinámico -->
-  <div id="fd-root" class="<?php echo !empty($modoDiseno) ? 'design-mode' : '' ?>">
-    <div class="container py-3">
-      <h1 id="form-title"><?php echo htmlspecialchars($params['titulo'] ?? $titulo_formulario); ?></h1>
-
-      <?php if ($json_error): ?>
-        <div class="alert alert-danger">
-          JSON inválido: <?php echo htmlspecialchars($json_error); ?>.
-          Corrige el archivo <?php echo htmlspecialchars($archivo_base); ?> (posibles comas finales).
-        </div>
-      <?php endif; ?>
-
-      <?php if (!empty($descripcion_formulario)): ?>
-        <p class="text-muted"><?php echo htmlspecialchars($descripcion_formulario); ?></p>
-      <?php endif; ?>
-
-      <div id="form-container">
-        <?php
-        if (function_exists('generarLayout')) {
-            echo generarLayout($layout, $fieldsets, $json_data['valores'] ?? [], false);
-        } else {
-            echo '<div class="alert alert-warning">Falta la función generarLayout(). Incluye [formulariodinamicologica.php](http://_vscodecontentref_/0) con las funciones de render.</div>';
-        }
-        ?>
-      </div>
-
-      <?php if ($modoDiseno): ?>
-        <div id="elementos-fuera-container" class="mt-3">
-          <?php
-          if (function_exists('generarContenedorFueraDelFormulario')) {
-              echo generarContenedorFueraDelFormulario($elementos_fuera, $fieldsets, [], false);
-          }
-          ?>
-        </div>
-      <?php endif; ?>
-    </div>
-  </div>
-
-  <style>
-    /* Oculta el icono/acción de lápiz solo dentro del formulario */
-    #fd-root .fd-edit-btn,
-    #fd-root .fd-field-edit,
-    #fd-root .field-edit-btn,
-    #fd-root [data-action="edit-field"],
-    #fd-root .btn-edit,
-    #fd-root .icon-edit,
-    #fd-root .fa-pencil,
-    #fd-root .fa-pencil-alt { display: none !important; }
-  </style>
-
-  <!-- Dependencias para tabs y DnD (deben ir después de renderizar el formulario) -->
+  <!-- Dependencias para tabs y DnD (después de renderizar el formulario) -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
-  <!-- Opcional: estiliza el formulario con Bootstrap (wrappers/labels) -->
+  <!-- Opcional: aplicar estilos Bootstrap al HTML generado -->
   <script src="js/form-bootstrap-enhancer.js"></script>
 
   <!-- DnD del formulario: tabs, fields, fieldsets (solo en modo diseño) -->
@@ -216,30 +152,41 @@ require_once __DIR__ . '/formulariodinamicologica.php';
   <script>
     (function(){
       const root = document.getElementById('fd-root');
-
-      // Emitir estado inicial del modo diseño
-      window.dispatchEvent(new CustomEvent('design-mode-changed', {
-        detail:{ on: !!root?.classList.contains('design-mode') }
-      }));
-
-      // Toggle opcional: si existe un control para modo diseño
       const toggle = document.getElementById('designModeToggle');
-      if (toggle && root){
-        const set = (on)=>{
-          root.classList.toggle('design-mode', !!on);
-          window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } }));
-          if (on && window.formRuntimeDndRefresh) setTimeout(()=> window.formRuntimeDndRefresh(), 50);
-        };
-        set(toggle.checked);
-        toggle.addEventListener('change', ()=> set(toggle.checked));
+      const container = document.getElementById('form-container');
+
+      function emit(on){
+        window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } }));
       }
+      function refreshIfDesign(){
+        if (root?.classList.contains('design-mode') && window.formRuntimeDndRefresh){
+          setTimeout(()=> window.formRuntimeDndRefresh(), 0);
+        }
+      }
+
+      // Estado inicial
+      emit(root?.classList.contains('design-mode'));
+      refreshIfDesign();
+
+      // Toggle modo diseño
+      toggle?.addEventListener('change', function(){
+        root?.classList.toggle('design-mode', this.checked);
+        emit(this.checked);
+        refreshIfDesign();
+      });
+
+      // Cuando el HTML del formulario se genere/actualice en runtime, refresca DnD
+      if (container){
+        const mo = new MutationObserver(debounce(()=> refreshIfDesign(), 120));
+        mo.observe(container, { childList:true, subtree:true });
+      }
+
+      function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
     })();
   </script>
 
-  <?php /* El árbol se mantiene intacto */ ?>
   <script src="js/json-tree-panel.js"></script>
 
-  <?php /* Elimina script antiguo que podía interferir con el DnD del formulario */ ?>
-  <!-- <script src="js/form-dnd.js"></script> -->
+  <!-- Eliminar duplicados: NO vuelvas a renderizar #fd-root ni el estilo del lápiz más abajo -->
 </body>
 </html>

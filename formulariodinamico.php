@@ -54,7 +54,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 </style>
 </head>
 <body>
-  <div id="fd-root" class="<?php echo $modoDiseno ? 'design-mode' : ''; ?>">
+  <div id="fd-root" class="<?php echo $modoDiseno ? 'design-mode' : '' ?>">
     <div class="container py-3">
       <h1 id="form-title"><?php echo htmlspecialchars($params['titulo'] ?? $titulo_formulario); ?></h1>
 
@@ -96,6 +96,20 @@ require_once __DIR__ . '/formulariodinamicologica.php';
     <label><input type="checkbox" id="designModeToggle" <?php echo $modoDiseno ? 'checked' : ''; ?>> Modo diseño</label>
   </div>
 
+  <!-- Ocultar SIEMPRE el icono de lápiz en el formulario (no afecta al árbol) -->
+  <style id="fd-hide-pencil-form">
+    #fd-root .fd-edit-btn,
+    #fd-root .fd-field-edit,
+    #fd-root .field-edit-btn,
+    #fd-root .btn-edit,
+    #fd-root [data-action="edit-field"] {
+      display: none !important;
+    }
+  </style>
+
+  <!-- DnD solo en modo diseño (tabs y campos). No persiste, solo UI. -->
+  <script src="js/form-runtime-dnd.js"></script>
+
   <script>
     // Define estas variables ANTES de incluir los JS
     window.FORM_CONFIG = { archivo_json: <?php echo json_encode($archivo_base ?? 'formulariogenerico2.json'); ?> };
@@ -117,6 +131,21 @@ require_once __DIR__ . '/formulariodinamicologica.php';
         });
       }
     })();
+
+    // Si tienes un botón de “Modo diseño”, asegura el toggle de la clase
+    document.getElementById('btnDesignMode')?.addEventListener('click', function(){
+      const root = document.getElementById('fd-root');
+      if (!root) return;
+      root.classList.toggle('design-mode');
+    });
+
+    // Opcional: escucha eventos para que el árbol persista si lo deseas
+    window.addEventListener('form-dnd:tabs-reordered', (e)=> {
+      // console.log('tabs reorder', e.detail);
+    });
+    window.addEventListener('form-dnd:fields-reordered', (e)=> {
+      // console.log('fields reorder', e.detail);
+    });
   </script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script src="js/json-tree-panel.js"></script>

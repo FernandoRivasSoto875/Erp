@@ -275,6 +275,32 @@
     return false;
   }
 
+  // NUEVO: resolver etiqueta visible del nodo (field/fieldset)
+  function resolveFieldLabel(nodeVal, path, key){
+    if (!nodeVal || typeof nodeVal !== 'object' || Array.isArray(nodeVal)) return null;
+
+    // posibles nombres de etiqueta
+    const LABEL_KEYS = [
+      'etiqueta','label','titulo','título','legend','caption',
+      'nombre_mostrar','nombre','name','texto','text','descripcion','description'
+    ];
+
+    // etiqueta directa en el objeto
+    let v = getFirstStringProp(nodeVal, LABEL_KEYS);
+    if (v) return v;
+
+    // etiqueta dentro de props/config/opciones
+    const nestedKeys = ['props','config','opciones','options','ui'];
+    for (const nk of nestedKeys){
+      const sub = getPropIgnoreCase(nodeVal, nk);
+      if (sub && typeof sub === 'object'){
+        v = getFirstStringProp(sub, LABEL_KEYS);
+        if (v) return v;
+      }
+    }
+    return null;
+  }
+
   function renderNode(key, val, path, isRoot){
     const t = typeOf(val);
     const meta = (t==='object') ? 'object' : (t==='array') ? `array(${(val||[]).length})` : renderValue(val);
@@ -289,10 +315,10 @@
       ? `<i class="${esc(iconInfo.iconClass)} text-secondary" title="${esc(iconInfo.title)}" aria-hidden="true" style="min-width:1rem;"></i>`
       : '';
 
-    // NUEVO: Etiqueta (badge) con el tipo detectado
-    const typeName = (iconInfo && iconInfo.title) || resolveTypeName(val, path, key);
-    const labelHtml = typeName
-      ? `<span class="badge bg-light text-secondary border ms-1" title="${esc(typeName)}">${esc(typeName)}</span>`
+    // NUEVO: Etiqueta del elemento (antes del nombre/índice)
+    const displayLabel = resolveFieldLabel(val, path, key);
+    const labelHtml = displayLabel
+      ? `<span class="json-node-label text-primary">${esc(displayLabel)}</span>`
       : '';
 
     let html = `<div class="json-tree-item" data-path='${esc(JSON.stringify(path))}'>`;
@@ -300,11 +326,10 @@
     html += canToggle
       ? `<button class="json-toggle" aria-label="expandir"><i class="fas fa-chevron-right"></i></button>`
       : `<span style="display:inline-block;width:1.25rem;"></span>`;
-    // Icono antes del nombre (incluye índices [0], [1], ...)
+    // Icono + Etiqueta antes del nombre (incluye índices [0], [1], ...)
     html += iconHtml;
+    html += labelHtml ? labelHtml + ' ' : '';
     html += `<span class="json-node-key">${esc(String(key))}</span>`;
-    // Etiqueta (badge) a la vista para saber qué se parametriza
-    html += labelHtml;
     html += `<small class="text-secondary ms-auto">${esc(meta)}</small>`;
     html += `<span class="json-node-actions ms-2">
         <button class="btn btn-link btn-sm text-secondary p-0 act-edit" title="Editar"><i class="fas fa-pencil-alt"></i></button>

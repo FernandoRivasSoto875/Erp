@@ -44,12 +44,14 @@
     setTimeout(()=>{
       attachTabsDnD();
       attachFieldsDnD();
+      attachFieldsetsDnD(); // NUEVO: mover grupos (fieldsets)
       const root = document.getElementById('fd-root');
       if (root){
         const rescan = debounce(()=>{
           if (!isDesign()) return;
           attachTabsDnD();
           attachFieldsDnD();
+          attachFieldsetsDnD(); // re-escanea fieldsets
         }, 150);
         state.mo = new MutationObserver(rescan);
         state.mo.observe(root, { childList:true, subtree:true });
@@ -215,6 +217,141 @@
         oldNames,
         namesInDom,
         orderIndices
+      }
+    }));
+  }
+
+  // --------- Fieldsets (grupo de fields) DnD: solo UI; emite evento ----------
+  function attachFieldsetsDnD(){
+    const fieldsets = window.formularioJsonOriginal?.fieldsets;
+    if (!fieldsets || typeof fieldsets !== 'object') return;
+
+    // Mapa: contenedor DOM => [wrapper de cada fieldset dentro]
+    const byContainer = new Map();
+
+    Object.keys(fieldsets).forEach(fsName=>{
+      const fs = fieldsets[fsName] || {};
+      const campos = Array.isArray(fs.campos) ? fs.campos : [];
+
+      // 1) intenta localizar un wrapper del fieldset por atributos comunes
+      let fsWrapper = findFieldsetGroupWrapper(fsName);
+      let container = null;
+
+      // 2) si no hay wrapper directo, dedúcelo por los campos que contiene
+      if (!fsWrapper && campos.length){
+        const fieldWraps = [];
+        campos.forEach(c=>{
+          const name = c?.nombre || c?.name || c?.field || '';
+          if (!name) return;
+          const ctrl = findFieldControlInDOM(name);
+          if (!ctrl) return;
+          const wrap = closestFieldWrapper(ctrl);
+          if (wrap) fieldWraps.push(wrap);
+        });
+        if (fieldWraps.length){
+          // contenedor común de campos del fieldset
+          const common = commonParent(fieldWraps);
+          // elegir entre los hijos directos del contenedor común el que más campos del fs contiene
+          if (common){
+            let bestChild = null, bestCount = 0;
+            Array.from(common.children).forEach(ch=>{
+              const count = fieldWraps.filter(w => ch.contains(w)).length;
+              if (count > bestCount){ bestChild = ch; bestCount = count; }
+            });
+            if (bestChild && bestCount > 0){
+              fsWrapper = bestChild;
+            }
+          }
+        }
+      }
+
+      if (!fsWrapper) return; // no encontramos wrapper para este fieldset
+
+      // Marca el wrapper con data-fs-name
+      fsWrapper.dataset.fsName = fsName;
+
+      // Añade grip/handle visible
+      ensureFieldsetHandle(fsWrapper);
+
+      // Determina su contenedor (padre directo)
+      container = fsWrapper.parentElement;
+      if (!container) return;
+
+      // Evita reconfigurar el mismo contenedor
+      if (!byContainer.has(container)) byContainer.set(container, []);
+      byContainer.get(container).push(fsWrapper);
+    });
+
+    // Inicializa DnD por contenedor con 2+ fieldsets
+    byContainer.forEach((wrappers, container)=>{
+      if (wrappers.length < 2) return;
+      if (state.attached.has(container)) return; // ya está
+      state.attached.add(container);
+
+      // Asegura que los wrappers sean hijos directos del contenedor
+      const selector = ':scope > [data-fs-name]';
+
+      if (hasSortable()){
+        const s = new Sortable(container, {
+          animation: 150,
+          draggable: selector,
+          handle: '.fd-dnd-handle, .fd-dnd-fs-handle',
+          ghostClass: 'fd-dnd-ghost',
+          onEnd: (evt)=>{
+            if (!evt || evt.from !== evt.to) return;
+            emitFieldsetsReordered(container);
+          }
+        });
+        state.sortables.push(s);
+      } else {
+        const off = initNativeListDnD(container, ()=> emitFieldsetsReordered(container), '.fd-dnd-handle, .fd-dnd-fs-handle');
+        state.native.push(off);
+      }
+    });
+  }
+
+  function findFieldsetGroupWrapper(fsName){
+    // Busca por atributos/ids comunes
+    const sels = [
+      `#fd-root [data-fieldset="${cssEscape(fsName)}"]`,
+      `#fd-root [data-fieldset-name="${cssEscape(fsName)}"]`,
+      `#fd-root [data-fs="${cssEscape(fsName)}"]`,
+      `#fd-root [data-fs-name="${cssEscape(fsName)}"]`,
+      `#fd-root #fs-${cssEscape(fsName)}`,
+      `#fd-root #fieldset-${cssEscape(fsName)}`
+    ];
+    for (const s of sels){
+      const el = document.querySelector(s);
+      if (el) return el;
+    }
+    return null;
+  }
+
+  function ensureFieldsetHandle(wrapper){
+    // Inserta grip en encabezado si existe; si no, crea uno al inicio
+    let target =
+      wrapper.querySelector(':scope > .card-header, :scope > legend, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6') ||
+      wrapper.firstElementChild || wrapper;
+
+    if (!target.querySelector('.fd-dnd-fs-handle')){
+      const grip = document.createElement('span');
+      grip.className = 'fd-dnd-fs-handle fd-dnd-handle';
+      grip.title = 'Arrastra para mover el grupo';
+      grip.style.display = 'inline-block';
+      grip.style.marginRight = '6px';
+      grip.innerHTML = '<i class="fas fa-grip-horizontal fd-dnd-grip">⋮⋮</i>';
+      target.insertBefore(grip, target.firstChild);
+    }
+  }
+
+  function emitFieldsetsReordered(container){
+    const fsOrder = Array.from(container.children)
+      .filter(ch => ch.hasAttribute('data-fs-name'))
+      .map(ch => ch.getAttribute('data-fs-name'));
+    window.dispatchEvent(new CustomEvent('form-dnd:fieldset-groups-reordered', {
+      detail: {
+        containerSelector: container.id ? `#${container.id}` : undefined,
+        fsOrder
       }
     }));
   }

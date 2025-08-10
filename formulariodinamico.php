@@ -107,20 +107,33 @@ require_once __DIR__ . '/formulariodinamicologica.php';
     }
   </style>
 
+  <?php /* Mueve SortableJS antes del runtime DnD para usarlo si está disponible */ ?>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+  <?php /* Define variables GLOBALES antes de cargar el runtime DnD */ ?>
+  <script>
+    window.FORM_CONFIG = { archivo_json: <?php echo json_encode($archivo_base ?? 'formulariogenerico2.json'); ?> };
+    window.formularioJsonOriginal = <?php echo json_encode($json_data ?? [], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
+  </script>
+
   <!-- DnD solo en modo diseño (tabs y campos). No persiste, solo UI. -->
   <script src="js/form-runtime-dnd.js"></script>
 
   <script>
-    // Define estas variables ANTES de incluir los JS
-    window.FORM_CONFIG = { archivo_json: <?php echo json_encode($archivo_base ?? 'formulariogenerico2.json'); ?> };
-    window.formularioJsonOriginal = <?php echo json_encode($json_data ?? [], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
-
-    // No forzar diseño al cargar; solo reflejar estado + emitir evento
     (function(){
       const root = document.getElementById('fd-root');
       const toggle = document.getElementById('designModeToggle');
-      function emit(on){ window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } })); }
+
+      function emit(on){
+        window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } }));
+      }
+      // Estado inicial
       emit(root && root.classList.contains('design-mode'));
+      // Si ya está en diseño al cargar, refresca DnD
+      if (root && root.classList.contains('design-mode') && window.formRuntimeDndRefresh){
+        window.formRuntimeDndRefresh();
+      }
+      // Toggle del modo diseño desde el checkbox
       if (toggle && root){
         toggle.addEventListener('change', function(){
           root.classList.toggle('design-mode', this.checked);
@@ -128,18 +141,25 @@ require_once __DIR__ . '/formulariodinamicologica.php';
           url.searchParams.set('modoDiseno', this.checked ? '1' : '0');
           history.replaceState(null, '', url.toString());
           emit(this.checked);
+          // Refresca DnD solo cuando está en diseño
+          if (this.checked && window.formRuntimeDndRefresh){
+            window.formRuntimeDndRefresh();
+          }
         });
       }
+      // Botón externo opcional
+      document.getElementById('btnDesignMode')?.addEventListener('click', function(){
+        if (!root) return;
+        const on = !root.classList.contains('design-mode');
+        root.classList.toggle('design-mode', on);
+        emit(on);
+        if (on && window.formRuntimeDndRefresh){
+          window.formRuntimeDndRefresh();
+        }
+      });
     })();
 
-    // Si tienes un botón de “Modo diseño”, asegura el toggle de la clase
-    document.getElementById('btnDesignMode')?.addEventListener('click', function(){
-      const root = document.getElementById('fd-root');
-      if (!root) return;
-      root.classList.toggle('design-mode');
-    });
-
-    // Opcional: escucha eventos para que el árbol persista si lo deseas
+    // Eventos opcionales (el árbol puede escuchar y persistir si corresponde)
     window.addEventListener('form-dnd:tabs-reordered', (e)=> {
       // console.log('tabs reorder', e.detail);
     });
@@ -147,8 +167,11 @@ require_once __DIR__ . '/formulariodinamicologica.php';
       // console.log('fields reorder', e.detail);
     });
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+  <?php /* El árbol se mantiene intacto */ ?>
   <script src="js/json-tree-panel.js"></script>
-  <script src="js/form-dnd.js"></script>
+
+  <?php /* Elimina script antiguo que podía interferir con el DnD del formulario */ ?>
+  <!-- <script src="js/form-dnd.js"></script> -->
 </body>
 </html>

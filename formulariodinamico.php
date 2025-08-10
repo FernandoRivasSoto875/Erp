@@ -95,11 +95,37 @@ require_once __DIR__ . '/formulariodinamicologica.php';
   </div>
 
   <script>
-    // Fuente de verdad para el panel
+    // Fuente de verdad
     window.FORM_CONFIG = { archivo_json: <?php echo json_encode($archivo_base); ?> };
-    // Embebe el JSON ya cargado (evita fetch)
     window.formularioJsonOriginal = <?php echo json_encode($json_data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
   </script>
+
+  <!-- Sincroniza el modo diseño y emite eventos -->
+  <script>
+    (function(){
+      const root = document.getElementById('fd-root');
+      const toggle = document.getElementById('designModeToggle');
+      function emit(on){ window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } })); }
+      // Estado inicial (desde la clase ya puesta por PHP)
+      emit(root && root.classList.contains('design-mode'));
+      // Cambios desde el switch
+      if (toggle && root){
+        toggle.addEventListener('change', function(){
+          root.classList.toggle('design-mode', this.checked);
+          emit(this.checked);
+          // Persistir en URL
+          const url = new URL(location.href);
+          url.searchParams.set('modoDiseno', this.checked ? '1' : '0');
+          history.replaceState(null, '', url.toString());
+        });
+      }
+      // API opcional para notificar cambios del JSON desde otros scripts
+      window.FD_notifyJsonUpdated = function(){
+        window.dispatchEvent(new Event('fd-json-updated'));
+      };
+    })();
+  </script>
+
   <script src="js/json-tree-panel.js"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

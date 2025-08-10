@@ -43,7 +43,6 @@
       .json-tree-panel{ position:fixed; top:60px; right:12px; width:460px; height:72vh; z-index:1055; resize:both; }
       .json-tree-panel .card-body.scroll{ overflow:auto; height:calc(100% - 94px); }
       #fd-tree-toggle-btn{ position:fixed; top:60px; right:486px; z-index:1055; }
-      .json-node-key{ font-weight:600; }
     `;
     const st = document.createElement('style'); st.id='json-tree-panel-styles'; st.textContent = css;
     document.head.appendChild(st);
@@ -73,9 +72,11 @@
   function ensurePanel(){
     let panel = $('#json-tree-panel');
     if (panel) return panel;
+    injectStyles();
     panel = document.createElement('div');
     panel.id = 'json-tree-panel';
     panel.className = 'json-tree-panel card shadow';
+    panel.style.display = 'none';
     panel.innerHTML = `
       <div class="card-header d-flex align-items-center justify-content-between py-2">
         <h6 class="mb-0 json-tree-title"><i class="fas fa-sitemap me-1"></i> Árbol del JSON</h6>
@@ -109,27 +110,25 @@
     const btn = document.createElement('button');
     btn.id = 'fd-tree-toggle-btn';
     btn.type = 'button';
-    btn.className = 'btn btn-primary btn-sm shadow';
+    btn.className = 'btn btn-primary btn-sm shadow position-fixed';
     btn.style.top = '60px';
     btn.style.right = '486px';
-    btn.innerHTML = '<i class="fas fa-sitemap me-1"></i> Árbol';
-    // Posicionado con utilidades + style (right/top ya arriba)
-    btn.classList.add('position-fixed');
+    btn.textContent = 'Árbol';
     btn.addEventListener('click', ()=>{
       const p = ensurePanel();
       const hidden = getComputedStyle(p).display === 'none';
       p.style.display = hidden ? '' : 'none';
       if (hidden) buildTree();
     });
-    document.body.appendChild(btn);
     btn.style.display = 'none';
+    document.body.appendChild(btn);
   }
 
   // Render (usa list-group de Bootstrap para los items)
   function buildTree(){
     if (!shouldShow()) return;
-    const data = window.formularioJsonOriginal || {};
     const body = $('#jsonTreeBody'); if (!body) return;
+    const data = window.formularioJsonOriginal || {};
 
     const preferred = ['parametros','layout','fieldsets','elementos_fuera'];
     const keys = preferred.filter(k => Object.prototype.hasOwnProperty.call(data, k))
@@ -139,7 +138,6 @@
       ? keys.map(k => renderNode(k, data[k], [k], 0)).join('')
       : `<div class="list-group-item text-muted py-2">JSON vacío</div>`;
 
-    bindEditActions(body);
     updatePanelTitle();
   }
   function renderNode(key, val, path, level){
@@ -147,7 +145,8 @@
     const t = typeOf(val);
     const meta = (t==='object') ? 'object' : (t==='array') ? `array(${(val||[]).length})` : renderValue(val);
 
-    let html = `<div class="json-tree-node list-group-item d-flex align-items-center gap-2 py-1 px-2 border-0 border-bottom" data-path='${esc(JSON.stringify(path))}' draggable="true" style="margin-left:${pad}px;">
+    let html = `<div class="json-tree-node list-group-item d-flex align-items-center gap-2 py-1 px-2 border-0 border-bottom"
+                    data-path='${esc(JSON.stringify(path))}' style="margin-left:${pad}px;">
       <span class="json-node-key">${esc(String(key))}</span>
       <small class="text-secondary ms-auto">${esc(meta)}</small>
       <span class="json-node-actions ms-2">
@@ -189,95 +188,8 @@
     updatePanelTitle();
   }
 
-  // Persistencia (por raíz)
-  function postGuardar(blocks){
-    const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || '';
-    const form = new FormData();
-    form.append('archivo', archivo);
-    ['parametros','layout','fieldsets','elementos_fuera'].forEach(k=>{
-      if (Object.prototype.hasOwnProperty.call(blocks, k)) form.append(k, JSON.stringify(blocks[k]));
-    });
-    return fetch('guardar_layout.php', { method:'POST', body: form })
-      .then(r => r.ok ? r.json() : r.json().then(e=>Promise.reject(new Error(e.error||'Error HTTP'))))
-      .then(j => { if (j.success===false) throw new Error(j.error||'Error'); return j; });
-  }
-  async function persistRootByPath(path, updatedRoot){
-    const rootKey = path[0];
-    await postGuardar({ [rootKey]: updatedRoot });
-    if (!window.formularioJsonOriginal) window.formularioJsonOriginal = {};
-    window.formularioJsonOriginal[rootKey] = updatedRoot;
-  }
-
-  // CRUD mínimos
-  async function editNodeByPath(path){
-    const data = window.formularioJsonOriginal || {};
-    const rootKey = path[0], sub = path.slice(1);
-    let root = deepClone(data[rootKey]);
-    let cur = root; sub.forEach(k=> cur = cur[k]);
-    const prev = (typeOf(cur)==='object' || typeOf(cur)==='array') ? JSON.stringify(cur, null, 2) : JSON.stringify(cur);
-    const input = window.prompt('Editar valor (JSON)', prev);
-    if (input == null) return;
-    let val; try { val = JSON.parse(input); } catch(e){ return alert('JSON inválido'); }
-    setAtPath(root, sub, val);
-    await persistRootByPath(path, root);
-    buildTree();
-  }
-  async function duplicateAtPath(path){
-    const data = window.formularioJsonOriginal || {};
-    const rootKey = path[0], sub = path.slice(1);
-    let root = deepClone(data[rootKey]);
-    const parentPath = sub.slice(0,-1), key = sub[sub.length-1];
-    let parent = parentPath.length ? getAtPath(root, parentPath) : root;
-    const val = deepClone(parent[key]);
-    if (Array.isArray(parent) && typeof key==='number') parent.splice(key+1, 0, val);
-    else if (parent && typeof parent==='object'){
-      let nk = String(key) + '_copia', i=2;
-      while (Object.prototype.hasOwnProperty.call(parent, nk)) nk = String(key) + '_copia' + (i++);
-      parent[nk] = val;
-    }
-    await persistRootByPath(path, root);
-    buildTree();
-  }
-  async function deleteAtPath(path){
-    if (!confirm('¿Eliminar elemento?')) return;
-    const data = window.formularioJsonOriginal || {};
-    const rootKey = path[0], sub = path.slice(1);
-    let root = deepClone(data[rootKey]);
-    const parentPath = sub.slice(0,-1), key = sub[sub.length-1];
-    let parent = parentPath.length ? getAtPath(root, parentPath) : root;
-    if (Array.isArray(parent) && typeof key==='number') parent.splice(key,1);
-    else if (parent && typeof parent==='object') delete parent[key];
-    await persistRootByPath(path, root);
-    buildTree();
-  }
-  async function renameAtPath(path){
-    const data = window.formularioJsonOriginal || {};
-    const rootKey = path[0], sub = path.slice(1);
-    let root = deepClone(data[rootKey]);
-    const parentPath = sub.slice(0,-1), key = sub[sub.length-1];
-    let parent = parentPath.length ? getAtPath(root, parentPath) : root;
-    if (!(parent && typeof parent==='object') || typeof key!=='string') return;
-    const nuevo = window.prompt('Nueva clave', String(key)); if (!nuevo || nuevo===key) return;
-    if (Object.prototype.hasOwnProperty.call(parent, nuevo)) return alert('La clave ya existe.');
-    parent[nuevo] = parent[key]; delete parent[key];
-    await persistRootByPath(path, root);
-    buildTree();
-  }
-  function bindEditActions(root){
-    root.addEventListener('click', async (e)=>{
-      const btn = e.target.closest('.json-node-actions button'); if (!btn) return;
-      const node = e.target.closest('.json-tree-node'); if (!node) return;
-      let path; try { path = JSON.parse(node.getAttribute('data-path')); } catch { return; }
-      if (btn.classList.contains('act-edit')) return editNodeByPath(path);
-      if (btn.classList.contains('act-dup')) return duplicateAtPath(path);
-      if (btn.classList.contains('act-del')) return deleteAtPath(path);
-      if (btn.classList.contains('act-rename')) return renameAtPath(path);
-    });
-  }
-
-  // Inicializador base (no destructivo)
+  // Opcional: inicializar estructura mínima
   async function ensureBaseStructureInteractive(){
-    await ensureJsonLoaded();
     const data = window.formularioJsonOriginal || {};
     const payload = {};
     if (!data.parametros || typeof data.parametros!=='object') payload.parametros = {};
@@ -285,59 +197,51 @@
     if (!data.fieldsets || typeof data.fieldsets!=='object') payload.fieldsets = {};
     if (!Array.isArray(data.elementos_fuera)) payload.elementos_fuera = [];
     if (!Object.keys(payload).length) return alert('La estructura base ya existe.');
-    await postGuardar(payload);
-    window.formularioJsonOriginal = { ...data, ...payload };
-    buildTree();
+    try{
+      await postGuardar(payload);
+      window.formularioJsonOriginal = { ...data, ...payload };
+      buildTree();
+    } catch(e){ console.error(e); }
   }
 
-  // Reacciona a cambios de modo diseño
-  async function onDesignModeChanged(e){
+  // Guardado por raíz (si lo usas)
+  function postGuardar(blocks){
+    const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || '';
+    const form = new FormData();
+    form.append('archivo', archivo);
+    ['parametros','layout','fieldsets','elementos_fuera'].forEach(k=>{
+      if (Object.prototype.hasOwnProperty.call(blocks, k)) form.append(k, JSON.stringify(blocks[k]));
+    });
+    return fetch('guardar_layout.php', { method:'POST', body: form }).then(r=>r.json());
+  }
+
+  // Eventos
+  function onDesignModeChanged(e){
     const on = !!(e && e.detail && e.detail.on);
-    if (on === lastDesignOn) return;
-    lastDesignOn = on;
-
-    let panel = $('#json-tree-panel');
-    let btn = $('#fd-tree-toggle-btn');
-
-    if (on) {
-      injectStyles();
-      if (!hasBootstrap()) console.warn('Bootstrap no detectado. El panel usa clases Bootstrap (card, btn, list-group).');
-      if (!panel) panel = ensurePanel();
-      if (!btn) ensureToggleButton();
-      panel.style.display = '';
-      btn.style.display = 'inline-flex';
-      try { await ensureJsonLoaded(); buildTree(); } catch(err){ console.error(err); }
-    } else {
-      if (panel) panel.style.display = 'none';
+    const panel = ensurePanel();
+    ensureToggleButton();
+    const btn = $('#fd-tree-toggle-btn');
+    if (!on){
+      panel.style.display = 'none';
       if (btn) btn.style.display = 'none';
+      return;
     }
+    // Modo diseño ON
+    btn.style.display = 'inline-flex';
+    // No abrir automáticamente; el usuario pulsa el botón.
+    // Si ya estaba abierto, refresca.
+    if (getComputedStyle(panel).display !== 'none') buildTree();
   }
 
-  // Observa #fd-root y sincroniza estado
-  function whenRootReady(cb){
-    const root = document.getElementById('fd-root');
-    if (root) return cb(root);
-    const mo = new MutationObserver(()=>{
-      const r = document.getElementById('fd-root');
-      if (r){ mo.disconnect(); cb(r); }
-    });
-    mo.observe(document.documentElement, { childList:true, subtree:true });
-  }
-  function watchDesignMode(){
-    whenRootReady((root)=>{
-      const emit = ()=> window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: root.classList.contains('design-mode') } }));
-      new MutationObserver(emit).observe(root, { attributes:true, attributeFilter:['class'] });
-      // Sincroniza estado inicial al cargar
-      emit();
-    });
-  }
+  // Exponer API de refresh y escuchar actualizaciones del JSON
+  window.FD_refreshTree = function(){ if (shouldShow()) buildTree(); };
+  window.addEventListener('fd-json-updated', ()=> window.FD_refreshTree());
 
-  // Boot: no crea panel ni carga JSON si no es diseño
+  // Boot: solo registrar listeners
   window.addEventListener('load', ()=>{
-    watchDesignMode();
     window.addEventListener('design-mode-changed', onDesignModeChanged);
-    // Disparo inicial para alinear estado
-    window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: shouldShow() } }));
+    // Sincroniza estado inicial (oculta por defecto)
+    onDesignModeChanged({ detail:{ on: shouldShow() } });
   });
 
 })();

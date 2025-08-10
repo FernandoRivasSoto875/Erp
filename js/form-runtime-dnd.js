@@ -1,23 +1,17 @@
 (function(){
-  // Dependencias: opcional SortableJS. Si no está, usa fallback nativo básico para tabs/campos.
+  // DnD SOLO en el formulario y SOLO en modo diseño (#fd-root.design-mode)
   const $  = (s, r=document)=> r.querySelector(s);
   const $$ = (s, r=document)=> Array.from(r.querySelectorAll(s));
   const hasSortable = ()=> typeof window.Sortable !== 'undefined';
 
-  // Estilos: ocultar lápices/edición en el formulario en modo diseño y mostrar manilla de arrastre
+  // Estilos mínimos para DnD (sin ocultar lápiz ni otras acciones)
   injectStyles();
   function injectStyles(){
     if ($('#fd-form-dnd-styles')) return;
     const css = `
-      #fd-root.design-mode .fd-edit-btn,
-      #fd-root.design-mode .fd-field-edit,
-      #fd-root.design-mode .field-edit-btn,
-      #fd-root.design-mode .btn-edit,
-      #fd-root.design-mode [data-action="edit-field"]{ display:none !important; }
-      #fd-root.design-mode .fd-dnd-handle{ cursor:grab; opacity:.8; }
+      #fd-root.design-mode .fd-dnd-handle{ cursor:grab; opacity:.9; user-select:none; }
       #fd-root.design-mode .fd-dnd-ghost{ opacity:.6; background:#eef2ff !important; }
-      /* Grip visible */
-      #fd-root.design-mode .fd-dnd-grip{ cursor:grab; opacity:.7; margin-right:6px; }
+      #fd-root.design-mode .fd-dnd-grip{ cursor:grab; opacity:.8; margin-right:6px; user-select:none; }
       #fd-root.design-mode .nav-tabs .fd-dnd-grip{ font-size:.9em; }
     `;
     const st = document.createElement('style');
@@ -26,37 +20,15 @@
     document.head.appendChild(st);
   }
 
-  // Util: clonado simple
-  const deepClone = (o)=> JSON.parse(JSON.stringify(o||null));
+  const state = { sortables: [], native: [], attached: new WeakSet(), mo: null };
+  const debounce = (fn, ms=100)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; };
+  const isDesign = ()=> !!document.getElementById('fd-root')?.classList.contains('design-mode');
 
-  // Persistir solo la raíz afectada
-  async function postGuardarRoot(rootName, newValue){
-    try{
-      const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || 'json/formulariogenerico2.json';
-      const fd = new FormData();
-      fd.append('archivo', archivo);
-      fd.append(rootName, JSON.stringify(newValue));
-      const r = await fetch('guardar_layout.php', { method:'POST', body: fd });
-      if (!r.ok) throw new Error('HTTP '+r.status);
-      const j = await r.json().catch(()=> ({}));
-      if (j && j.error) throw new Error(j.error);
-    }catch(err){
-      console.warn('[form-dnd] Error guardando:', err);
-    }
-  }
-
-  // Observa activación de modo diseño
   whenRootReady((root)=>{
-    const mo = new MutationObserver(()=> {
-      const on = root.classList.contains('design-mode');
-      if (on) enableDesignDnD(); else disableDesignDnD();
-    });
-    mo.observe(root, { attributes:true, attributeFilter:['class'] });
-
-    // estado inicial
-    if (root.classList.contains('design-mode')) enableDesignDnD();
+    const moClass = new MutationObserver(()=> { isDesign() ? enableDesignDnD() : disableDesignDnD(); });
+    moClass.observe(root, { attributes:true, attributeFilter:['class'] });
+    if (isDesign()) enableDesignDnD();
   });
-
   function whenRootReady(cb){
     const root = document.getElementById('fd-root');
     if (root) return cb(root);
@@ -67,46 +39,70 @@
     mo.observe(document.documentElement, { childList:true, subtree:true });
   }
 
-  // Estado para destruir DnD al salir de diseño
-  const state = { sortables: [], native: [] };
-
   function enableDesignDnD(){
     destroyAllDnD();
-    // Tabs
-    attachTabsDnD();
-    // Fields por fieldset
-    attachFieldsDnD();
+    setTimeout(()=>{
+      attachTabsDnD();
+      attachFieldsDnD();
+      const root = document.getElementById('fd-root');
+      if (root){
+        const rescan = debounce(()=>{
+          if (!isDesign()) return;
+          attachTabsDnD();
+          attachFieldsDnD();
+        }, 150);
+        state.mo = new MutationObserver(rescan);
+        state.mo.observe(root, { childList:true, subtree:true });
+      }
+    }, 50);
   }
-
-  function disableDesignDnD(){
-    destroyAllDnD();
-  }
-
+  function disableDesignDnD(){ destroyAllDnD(); }
   function destroyAllDnD(){
+    if (state.mo){ try{ state.mo.disconnect(); }catch{} state.mo = null; }
     state.sortables.forEach(s=> { try{s && s.destroy && s.destroy();}catch{} });
     state.sortables = [];
     state.native.forEach(off=> { try{off && off();}catch{} });
     state.native = [];
+    state.attached = new WeakSet();
+    // Limpia grips/handles añadidos
+    $$('#fd-root .fd-dnd-handle, #fd-root .fd-dnd-grip').forEach(el=>{
+      if (el.classList.contains('fd-dnd-handle')) el.remove();
+      else el.remove();
+    });
+    // Quita draggable de elementos
+    $$('#fd-root [draggable="true"]').forEach(el=> el.removeAttribute('draggable'));
   }
 
-  // --------- DnD de Tabs (Bootstrap nav-tabs) ----------
+  // --------- Tabs DnD (solo UI; emite evento para que EL ÁRBOL guarde) ----------
   function attachTabsDnD(){
-    const json = window.formularioJsonOriginal;
-    const tabsJson = json?.layout?.main?.tabs;
+    const tabsJson = window.formularioJsonOriginal?.layout?.main?.tabs;
     if (!Array.isArray(tabsJson) || tabsJson.length===0) return;
 
-    const candidates = $$('#fd-root .nav-tabs');
-    const ul = candidates.find(u => u.children.length === tabsJson.length);
-    if (!ul) return;
+    const titles = tabsJson.map(t=> String(t.title||'').trim()).filter(Boolean);
+    if (!titles.length) return;
 
-    Array.from(ul.children).forEach((li, i)=>{
+    const candidates = $$('#fd-root .nav-tabs');
+    if (!candidates.length) return;
+
+    let best = null, bestScore = 0;
+    for (const ul of candidates){
+      const liTitles = Array.from(ul.children).map(li=>{
+        const link = li.querySelector('a,button'); return (link?.textContent || '').trim();
+      });
+      const score = liTitles.filter(t=> titles.includes(t)).length;
+      if (score > bestScore){ best = ul; bestScore = score; }
+    }
+    const ul = best || candidates[0];
+    if (!ul || state.attached.has(ul)) return;
+    state.attached.add(ul);
+
+    Array.from(ul.children).forEach(li=>{
       const link = li.querySelector('a,button');
       const title = (link?.textContent || '').trim();
       li.dataset.tabTitle = title;
       li.classList.add('fd-dnd-handle');
-      // Añadir grip visible al inicio del link
       if (link && !link.querySelector('.fd-dnd-grip')){
-        link.insertAdjacentHTML('afterbegin', '<i class="fas fa-grip-lines fd-dnd-grip" title="Arrastra para reordenar pestañas"></i>');
+        link.insertAdjacentHTML('afterbegin', '<i class="fas fa-grip-lines fd-dnd-grip" title="Arrastra para reordenar pestañas">⋮⋮</i>');
       }
     });
 
@@ -118,77 +114,43 @@
         ghostClass: 'fd-dnd-ghost',
         onEnd: async (evt)=>{
           if (!evt || evt.from !== evt.to) return;
-          await applyTabsNewOrderByDom(ul);
+          emitTabsReordered(ul, tabsJson);
         }
       });
       state.sortables.push(s);
     } else {
-      // Fallback nativo básico
-      const off = initNativeListDnD(ul, async ()=> await applyTabsNewOrderByDom(ul));
+      const off = initNativeListDnD(ul, ()=> emitTabsReordered(ul, tabsJson), 'li, .fd-dnd-grip');
       state.native.push(off);
     }
   }
-
-  async function applyTabsNewOrderByDom(ul){
-    try{
-      const json = window.formularioJsonOriginal;
-      const oldTabs = json?.layout?.main?.tabs;
-      if (!Array.isArray(oldTabs)) return;
-
-      // Nuevo orden por títulos
-      const newOrderTitles = Array.from(ul.children).map(li => (li.dataset.tabTitle||'').trim());
-      const used = new Set();
-      const newTabs = [];
-      newOrderTitles.forEach(t=>{
-        const idx = oldTabs.findIndex((x, i)=> !used.has(i) && String(x.title||'').trim() === t);
-        if (idx>=0){ newTabs.push(deepClone(oldTabs[idx])); used.add(idx); }
-      });
-      // Conserva los que no aparecieron (por si no coincidieron) al final
-      oldTabs.forEach((tab, i)=> { if (!used.has(i)) newTabs.push(deepClone(tab)); });
-
-      // Actualiza en memoria y persiste layout
-      const newLayout = deepClone(json.layout);
-      newLayout.main = newLayout.main || {};
-      newLayout.main.tabs = newTabs;
-      window.formularioJsonOriginal.layout = newLayout;
-      await postGuardarRoot('layout', newLayout);
-
-      // Reordena también .tab-content si existe (por data-bs-target/href)
-      const tabContent = ul.nextElementSibling && ul.nextElementSibling.classList.contains('tab-content') ? ul.nextElementSibling : $('#fd-root .tab-content');
-      if (tabContent){
-        const panes = Array.from(tabContent.children);
-        // Mapear pane por texto del header si coincide data-tab-title con pane aria-labelledby o por orden previo
-        // Heurística: usa el índice actual según títulos
-        const paneMap = new Map();
-        panes.forEach((p, i)=> paneMap.set(i, p));
-        // Mover panes siguiendo el nuevo orden de LI
-        newOrderTitles.forEach((_, i)=> {
-          const pane = paneMap.get(i);
-          if (pane) tabContent.appendChild(pane);
-        });
+  function emitTabsReordered(ul, tabsJson){
+    const oldTitles = tabsJson.map(t=> String(t.title||'').trim());
+    const newOrderTitles = Array.from(ul.children).map(li => (li.dataset.tabTitle||'').trim());
+    const orderIndices = newOrderTitles.map(t => oldTitles.findIndex(x=> x === t));
+    window.dispatchEvent(new CustomEvent('form-dnd:tabs-reordered', {
+      detail: {
+        layoutPath: ['layout','main','tabs'],
+        oldTitles,
+        newOrderTitles,
+        orderIndices
       }
-    }catch(e){
-      console.error('[form-dnd] Reordenando tabs:', e);
-      alert('No se pudo reordenar pestañas.');
-    }
+    }));
   }
 
-  // --------- DnD de Fields por Fieldset ----------
+  // --------- Fields DnD (solo UI; emite evento para que EL ÁRBOL guarde) ----------
   function attachFieldsDnD(){
-    const json = window.formularioJsonOriginal;
-    const fieldsets = json?.fieldsets;
+    const fieldsets = window.formularioJsonOriginal?.fieldsets;
     if (!fieldsets || typeof fieldsets !== 'object') return;
 
     Object.keys(fieldsets).forEach(fsName=>{
       const campos = fieldsets[fsName]?.campos;
-      if (!Array.isArray(campos) || campos.length === 0) return;
+      if (!Array.isArray(campos) || campos.length < 2) return;
 
-      // Encuentra wrappers DOM de cada campo por su "nombre"
+      // Encuentra wrappers DOM por nombre
       const wrappers = [];
       campos.forEach(c=>{
         const name = c?.nombre || c?.name || c?.field || '';
         if (!name) return;
-        // Busca el control y su contenedor visual
         const ctrl = findFieldControlInDOM(name);
         if (!ctrl) return;
         const wrap = closestFieldWrapper(ctrl);
@@ -196,11 +158,10 @@
       });
       if (wrappers.length < 2) return;
 
-      // Determina contenedor común
       const container = commonParent(wrappers.map(w=> w.wrap));
-      if (!container) return;
+      if (!container || state.attached.has(container)) return;
+      state.attached.add(container);
 
-      // Asegura data-name en cada wrapper y handle de arrastre
       wrappers.forEach(({name, wrap})=>{
         wrap.dataset.fdName = name;
         if (!wrap.querySelector('.fd-dnd-handle')){
@@ -211,8 +172,7 @@
           h.style.minHeight = '12px';
           h.style.display = 'inline-block';
           h.style.marginRight = '4px';
-          // Icono grip visible
-          h.innerHTML = '<i class="fas fa-grip-vertical fd-dnd-grip"></i>';
+          h.innerHTML = '<i class="fas fa-grip-vertical fd-dnd-grip">⋮⋮</i>';
           wrap.insertBefore(h, wrap.firstChild);
         }
       });
@@ -223,81 +183,51 @@
           draggable: directChildSelector(container, wrappers.map(w=>w.wrap)),
           handle: '.fd-dnd-handle',
           ghostClass: 'fd-dnd-ghost',
-          onEnd: async (evt)=>{
+          onEnd: (evt)=>{
             if (!evt || evt.from !== evt.to) return;
-            await applyFieldsNewOrderByDom(container, fsName);
+            emitFieldsReordered(container, fsName, campos);
           }
         });
         state.sortables.push(s);
       } else {
-        const off = initNativeListDnD(container, async ()=> await applyFieldsNewOrderByDom(container, fsName), '.fd-dnd-handle');
+        const off = initNativeListDnD(container, ()=> emitFieldsReordered(container, fsName, campos), '.fd-dnd-handle');
         state.native.push(off);
       }
     });
   }
+  function emitFieldsReordered(container, fsName, campos){
+    const oldNames = (campos||[]).map(c=> c?.nombre || c?.name || c?.field).filter(Boolean);
+    const children = Array.from(container.children).filter(ch=> ch.querySelector('[name], [id], [data-fd-name]'));
+    const namesInDom = children.map(ch=>{
+      const byData = ch.getAttribute('data-fd-name');
+      if (byData) return byData;
+      const ctrl = ch.querySelector('[name]');
+      if (ctrl && ctrl.name) return ctrl.name;
+      const byId = ch.querySelector('[id]');
+      if (byId && byId.id) return byId.id;
+      return null;
+    }).filter(Boolean);
+    const orderIndices = namesInDom.map(n => oldNames.findIndex(x=> x === n));
+    window.dispatchEvent(new CustomEvent('form-dnd:fields-reordered', {
+      detail: {
+        fieldset: fsName,
+        jsonPath: ['fieldsets', fsName, 'campos'],
+        oldNames,
+        namesInDom,
+        orderIndices
+      }
+    }));
+  }
 
+  // --------- Utils ----------
   function directChildSelector(container, elements){
-    // Construye un selector que asegure arrastrar solo wrappers directos del contenedor
-    // Preferimos usar > .form-group / > .mb-3 / > [data-fd-name]
-    const classes = ['form-group','mb-3','form-floating'];
+    const classes = ['form-group','mb-3','form-floating','fd-field','col','row'];
     const selectors = classes.map(c=> `:scope > .${c}`);
     selectors.push(':scope > [data-fd-name]');
-    // Si ninguno coincide, permite todos los hijos elemento
     const anyMatch = elements.some(el => el.parentElement === container && (classes.some(c=> el.classList.contains(c)) || el.hasAttribute('data-fd-name')));
     return anyMatch ? selectors.join(',') : ':scope > *';
   }
-
-  async function applyFieldsNewOrderByDom(container, fsName){
-    try{
-      const json = window.formularioJsonOriginal;
-      const fs = json?.fieldsets?.[fsName];
-      const old = Array.isArray(fs?.campos) ? fs.campos : [];
-      if (!old.length) return;
-
-      // Orden nuevo por wrappers (buscando el control y su name/id)
-      const children = Array.from(container.children).filter(ch=> ch.querySelector('[name], [id], [data-fd-name]'));
-      const namesInDom = children.map(ch=>{
-        const byData = ch.getAttribute('data-fd-name');
-        if (byData) return byData;
-        const ctrl = ch.querySelector('[name]');
-        if (ctrl && ctrl.name) return ctrl.name;
-        const byId = ch.querySelector('[id]');
-        if (byId && byId.id) return byId.id;
-        return null;
-      }).filter(Boolean);
-
-      // Mapea campos del JSON por "nombre" y reordena
-      const mapByName = new Map();
-      old.forEach(c=> { const n = c?.nombre || c?.name || c?.field; if (n) mapByName.set(n, c); });
-
-      const newCampos = [];
-      const used = new Set();
-      namesInDom.forEach(n=>{
-        if (!mapByName.has(n)) return;
-        newCampos.push(deepClone(mapByName.get(n)));
-        used.add(n);
-      });
-      // Conserva los no encontrados al final
-      old.forEach(c=>{
-        const n = c?.nombre || c?.name || c?.field;
-        if (n && !used.has(n)) newCampos.push(deepClone(c));
-      });
-
-      // Actualiza en memoria y persiste fieldsets (solo el que cambió)
-      const newFieldsets = deepClone(json.fieldsets || {});
-      if (!newFieldsets[fsName]) newFieldsets[fsName] = {};
-      newFieldsets[fsName].campos = newCampos;
-      window.formularioJsonOriginal.fieldsets = newFieldsets;
-      await postGuardarRoot('fieldsets', newFieldsets);
-    }catch(e){
-      console.error('[form-dnd] Reordenando campos:', e);
-      alert('No se pudo reordenar campos.');
-    }
-  }
-
-  // --------- Utilidades DOM ----------
   function findFieldControlInDOM(name){
-    // Busca por name, id y data-name
     let el = $(`#fd-root [name="${cssEscape(name)}"]`);
     if (el) return el;
     el = $(`#fd-root [data-name="${cssEscape(name)}"]`);
@@ -305,11 +235,9 @@
     el = $(`#fd-root #${cssEscape(name)}`);
     return el || null;
   }
-
   function closestFieldWrapper(el){
     return el.closest('.form-group, .mb-3, .form-floating, .fd-field, .col, .row') || el.parentElement;
   }
-
   function commonParent(nodes){
     if (!nodes.length) return null;
     if (nodes.length === 1) return nodes[0].parentElement;
@@ -327,17 +255,18 @@
     }
     return paths[0][i-1] || null;
   }
-
   function cssEscape(s){
     return String(s).replace(/(["\\.#\[\]:])/g, '\\$1');
   }
-
-  // Fallback DnD nativo simple para listas (ul/li o contenedor lineal)
   function initNativeListDnD(container, onDrop, handleSelector){
+    if (state.attached.has(container)) return ()=>{};
+    state.attached.add(container);
+
     let dragEl = null;
     const onDragStart = (e)=>{
-      const target = handleSelector ? e.target.closest(handleSelector) : e.target;
-      const row = target ? target.closest(':scope > *') : null;
+      const handle = handleSelector ? e.target.closest(handleSelector) : e.target;
+      if (!handle) return;
+      const row = handle.closest(':scope > *') || handle.closest('*');
       if (!row || row.parentElement !== container) return;
       dragEl = row;
       e.dataTransfer.effectAllowed = 'move';
@@ -364,10 +293,8 @@
     container.addEventListener('dragstart', onDragStart);
     container.addEventListener('dragover', onDragOver);
     container.addEventListener('drop', onDropEv);
-    // Hacer hijos arrastrables
-    Array.from(container.children).forEach(ch=>{
-      ch.setAttribute('draggable', 'true');
-    });
+    Array.from(container.children).forEach(ch=> ch.setAttribute('draggable', 'true'));
+
     return ()=> {
       container.removeEventListener('dragstart', onDragStart);
       container.removeEventListener('dragover', onDragOver);
@@ -375,4 +302,7 @@
       Array.from(container.children).forEach(ch=> ch.removeAttribute('draggable'));
     };
   }
+
+  // Refresco manual si cambias el DOM del formulario durante diseño
+  window.formRuntimeDndRefresh = ()=> { if (isDesign()){ enableDesignDnD(); } };
 })();

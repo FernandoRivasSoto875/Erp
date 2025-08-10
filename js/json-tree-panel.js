@@ -148,16 +148,20 @@
   const tree = { data:{}, el:null, filter:'' };
 
   function buildTree(){
-    const panel = ensurePanel();
-    panel.style.display = shouldShow() ? '' : 'none';
+    // Mostrar solo si ya existe el panel y estamos en modo diseño
+    const panel = $('#json-tree-panel'); if (!panel || !shouldShow()) return;
     const body = $('#jsonTreeBody'); if (!body) return;
+
     const data = window.formularioJsonOriginal || {};
     tree.data = data;
 
+    // Solo claves existentes, manteniendo orden preferido
     const order = ['parametros','layout','fieldsets','elementos_fuera'];
-    const keys = [...new Set(order.concat(Object.keys(data)))];
+    const keys = order.filter(k => Object.prototype.hasOwnProperty.call(data, k))
+      .concat(Object.keys(data).filter(k => !order.includes(k)));
 
-    body.innerHTML = keys.map(k => renderAnyNode(k, data[k], [k], true)).join('') || '<div class="text-muted" style="padding:8px;">JSON vacío</div>';
+    body.innerHTML = keys.map(k => renderAnyNode(k, data[k], [k], true)).join('') ||
+                     '<div class="text-muted" style="padding:8px;">JSON vacío</div>';
     bindEditActions(body);
     bindTreeDragAndDrop(body);
     updatePanelTitle();
@@ -470,31 +474,32 @@
   // Mostrar solo en modo diseño
   function onDesignModeChanged(e){
     const on = !!(e && e.detail && e.detail.on);
-    const panel = $('#json-tree-panel');
-    const btn = $('#fd-tree-toggle-btn');
-    if (panel) panel.style.display = on ? '' : 'none';
-    if (btn) btn.style.display = on ? 'inline-flex' : 'none';
-    if (on) ensureJsonLoaded().then(buildTree).catch(console.error);
+    let panel = $('#json-tree-panel');
+    let btn = $('#fd-tree-toggle-btn');
+
+    if (on) {
+      // Crear lazily cuando se entra a modo diseño
+      if (!panel) panel = ensurePanel();
+      if (!btn) ensureToggleButton();
+      panel.style.display = '';
+      btn.style.display = 'inline-flex';
+      ensureJsonLoaded().then(buildTree).catch(console.error);
+    } else {
+      if (panel) panel.style.display = 'none';
+      if (btn) btn.style.display = 'none';
+    }
   }
 
   // Boot
   window.addEventListener('load', async ()=>{
     injectStyles();
-    ensurePanel();
-    ensureToggleButton();
     watchDesignMode();
 
+    // Escuchar cambios de modo diseño
     window.addEventListener('design-mode-changed', onDesignModeChanged);
 
-    // Sincroniza inmediatamente con el estado actual (si ya existe #fd-root)
+    // Sincroniza estado inicial (sin crear panel/botón si no está en diseño)
     const initialOn = shouldShow();
     window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: initialOn } }));
-
-    if (initialOn) {
-      try { await ensureJsonLoaded(); buildTree(); } catch(e){ console.error(e); }
-    } else {
-      const p = $('#json-tree-panel'); if (p) p.style.display = 'none';
-      const b = $('#fd-tree-toggle-btn'); if (b) b.style.display = 'none';
-    }
   });
 })();

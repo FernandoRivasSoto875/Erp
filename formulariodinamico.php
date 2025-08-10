@@ -129,7 +129,6 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 <!-- Config del archivo JSON y carga del árbol -->
 <script>
   window.FORM_CONFIG = window.FORM_CONFIG || {};
-  // Asegura el nombre del JSON
   window.FORM_CONFIG.archivo_json = 'formulariogenerico2.json';
 </script>
 <script src="js/json-tree-panel.js"></script>

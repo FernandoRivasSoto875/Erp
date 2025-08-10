@@ -461,7 +461,7 @@
   function initTreeDnD(){
     // Si hay Sortable, úsalo
     if (typeof Sortable !== 'undefined'){
-      // Evita re-init
+      // Hijos por padre (objetos/arrays)
       $all('#jsonTreeBody .json-children').forEach((cont, idx)=>{
         if (cont.__jtSortable) return;
         const parentItem = cont.closest('.json-tree-item');
@@ -471,14 +471,20 @@
         cont.__jtSortable = new Sortable(cont, {
           group: { name: groupName, put: false, pull: false }, // solo reordenar entre hermanos
           animation: 150,
-          draggable: ':scope > .json-tree-item',
+          draggable: '.json-tree-item', // FIX: quitar :scope para compatibilidad
           handle: '.json-row, .json-node-key, .json-toggle',
           ghostClass: 'json-drag-ghost',
           onEnd: async (evt)=>{
             try{
               if (!evt || evt.from !== evt.to) return; // impedir mover entre padres
               const parentItem2 = evt.to.closest('.json-tree-item');
-              if (!parentItem2) return;
+
+              // Reordenar en nivel raíz (sin parentItem)
+              if (!parentItem2){
+                await reorderRootByDom(evt.to);
+                buildTree();
+                return;
+              }
 
               const parentPath = JSON.parse(parentItem2.getAttribute('data-path') || '[]');
               const data = window.formularioJsonOriginal || {};
@@ -519,6 +525,9 @@
           }
         });
       });
+
+      // DnD en nivel raíz (#jsonTreeBody)
+      initRootDnDSortable();
       return;
     }
 
@@ -526,12 +535,51 @@
     initNativeDnD();
   }
 
+  // DnD Sortable en nivel raíz
+  function initRootDnDSortable(){
+    const root = document.getElementById('jsonTreeBody');
+    if (!root || root.__jtSortableRoot) return;
+    root.__jtSortableRoot = new Sortable(root, {
+      group: { name: 'jt-root', put: false, pull: false },
+      animation: 150,
+      draggable: '.json-tree-item',
+      handle: '.json-row, .json-node-key, .json-toggle',
+      ghostClass: 'json-drag-ghost',
+      onEnd: async (evt)=>{
+        try{
+          if (!evt || evt.from !== evt.to) return;
+          await reorderRootByDom(evt.to);
+          buildTree();
+        }catch(err){
+          console.error(err);
+          alert('Error al reordenar raíz: ' + (err.message||err));
+        }
+      }
+    });
+  }
+
+  // Reconstruye el objeto raíz según el orden DOM (solo vista; no se postea)
+  async function reorderRootByDom(containerEl){
+    const data = window.formularioJsonOriginal || {};
+    const order = Array.from(containerEl.children)
+      .map(el => {
+        const p = JSON.parse(el.getAttribute('data-path')||'[]');
+        return p[0];
+      })
+      .filter(k => k != null);
+    const newRoot = {};
+    order.forEach(k => { if (k in data) newRoot[k] = data[k]; });
+    // Si quedan claves no renderizadas, las conservamos al final
+    Object.keys(data).forEach(k => { if (!(k in newRoot)) newRoot[k] = data[k]; });
+    window.formularioJsonOriginal = newRoot;
+  }
+
   // NUEVO: DnD nativo (sin SortableJS)
   function initNativeDnD(){
     const root = $('#jsonTreeBody');
     if (!root) return;
 
-    // marca items arrastrables (solo hijos de un padre)
+    // Marca items arrastrables (hijos y raíz)
     setNativeDraggables(true);
 
     if (root.__nativeDnDBound) return;
@@ -544,10 +592,10 @@
       const row = e.target.closest('.json-tree-item > .json-row');
       if (!row) return;
       if (isDnDDisabled()) { e.preventDefault(); return; }
-      dragItem = row.parentElement; // .json-tree-item
-      dragContainer = dragItem.parentElement; // .json-children
-      if (!dragContainer || !dragContainer.classList.contains('json-children')){
-        // no permitimos arrastrar top-level
+      dragItem = row.parentElement;          // .json-tree-item
+      dragContainer = dragItem.parentElement; // .json-children o #jsonTreeBody
+      // permitir también root
+      if (!dragContainer || !(dragContainer.classList.contains('json-children') || dragContainer.id === 'jsonTreeBody')){
         e.preventDefault();
         dragItem = dragContainer = null;
         return;
@@ -561,7 +609,7 @@
       if (!dragItem) return;
       const overItem = e.target.closest('.json-tree-item');
       const overContainer = overItem?.parentElement;
-      if (overContainer !== dragContainer) return; // solo mismo padre
+      if (overContainer !== dragContainer) return; // solo mismo padre (incluye raíz)
       e.preventDefault();
       e.dataTransfer.dropEffect = 'move';
     });
@@ -573,16 +621,19 @@
       if (overContainer !== dragContainer) { cleanupDrag(); return; }
       e.preventDefault();
 
-      // insert antes o después según posición del cursor
       const rect = overItem.getBoundingClientRect();
       const before = (e.clientY - rect.top) < rect.height / 2;
-      if (before) {
-        overContainer.insertBefore(dragItem, overItem);
-      } else {
-        overContainer.insertBefore(dragItem, overItem.nextSibling);
-      }
+      if (before) overContainer.insertBefore(dragItem, overItem);
+      else overContainer.insertBefore(dragItem, overItem.nextSibling);
 
       try{
+        // Si es raíz
+        if (overContainer.id === 'jsonTreeBody'){
+          await reorderRootByDom(overContainer);
+          buildTree();
+          return;
+        }
+
         const parentItem = overContainer.closest('.json-tree-item');
         if (!parentItem) { cleanupDrag(); return; }
         const parentPath = JSON.parse(parentItem.getAttribute('data-path') || '[]');
@@ -598,7 +649,6 @@
         const t = typeOf(parentVal);
         if (t === 'array'){
           const arr = parentVal;
-          // recalcula orden por índice DOM tomando los valores previos
           const oldVals = arr.slice();
           const newArr = children.map((el)=>{
             const p = JSON.parse(el.getAttribute('data-path')||'[]');
@@ -640,7 +690,12 @@
   }
 
   function setNativeDraggables(enabled){
+    // Hijos
     $all('#jsonTreeBody .json-children > .json-tree-item > .json-row').forEach(row=>{
+      row.setAttribute('draggable', enabled ? 'true' : 'false');
+    });
+    // Raíz
+    $all('#jsonTreeBody > .json-tree-item > .json-row').forEach(row=>{
       row.setAttribute('draggable', enabled ? 'true' : 'false');
     });
   }
@@ -656,6 +711,8 @@
     $all('#jsonTreeBody .json-children').forEach(cont=>{
       if (cont.__jtSortable) cont.__jtSortable.option('disabled', hasFilter);
     });
+    const root = document.getElementById('jsonTreeBody');
+    if (root && root.__jtSortableRoot) root.__jtSortableRoot.option('disabled', hasFilter);
     // Nativo
     setNativeDraggables(!hasFilter);
   }

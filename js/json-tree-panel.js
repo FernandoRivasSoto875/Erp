@@ -28,12 +28,12 @@
   function injectStyles(){
     if ($('#json-tree-panel-styles')) return;
     const css = `
-      .json-tree-panel{ position:fixed; top:60px; right:12px; width:460px; height:72vh; z-index:1055; resize:both; }
+      .json-tree-panel{ position:fixed; top:60px; right:12px; width:460px; min-width:360px; max-width:95vw; height:72vh; z-index:1055; resize:both; }
       .json-tree-panel .card-body.scroll{ overflow:auto; height:calc(100% - 94px); }
       #fd-tree-toggle-btn{ position:fixed; top:60px; right:486px; z-index:1055; }
       /* Árbol jerárquico */
       #jsonTreeBody .json-tree-item{ }
-      #jsonTreeBody .json-row{ display:flex; align-items:center; gap:.5rem; padding:.25rem .5rem; }
+      #jsonTreeBody .json-row{ display:flex; align-items:center; gap:.5rem; padding:.25rem .5rem; white-space:nowrap; }
       #jsonTreeBody .json-children{ display:none; padding-left:12px; border-left:1px dashed #e5e7eb; margin-left:8px; }
       #jsonTreeBody .json-children.show{ display:block; }
       .json-toggle{ width:1.25rem; height:1.25rem; display:inline-flex; align-items:center; justify-content:center; border:0; background:transparent; color:#6c757d; cursor:pointer; }
@@ -222,10 +222,10 @@
       const hidden = getComputedStyle(p).display === 'none';
       p.style.display = hidden ? '' : 'none';
       if (hidden){
-        try {
-          await Promise.all([ensureJsonLoaded(), ensureFormTypesLoaded()]);
-        } catch(e){ console.error(e); }
+        try { await ensureJsonLoaded(); } catch(e){ console.error(e); }
         buildTree(true);
+        // NUEVO: auto width al abrir
+        scheduleAutoWidth();
       }
     });
     btn.style.display = 'none';
@@ -236,16 +236,8 @@
   function buildTree(resetState=false){
     if (!shouldShow()) return;
     const body = $('#jsonTreeBody'); if (!body) return;
-
-    // Asegura el mapa de tipos antes de renderizar; si aún no está, cargar y reintentar
-    if (!window.FORM_TYPES_MAP){
-      ensureFormTypesLoaded().then(()=> buildTree(resetState)).catch(()=>{/* no-op */});
-      return;
-    }
-
     const data = window.formularioJsonOriginal || {};
 
-    // NUEVO: capturar ramas abiertas antes de reconstruir (si no vamos a resetear)
     const openPaths = (!resetState) ? captureOpenPaths() : [];
 
     const preferred = ['parametros','layout','fieldsets','elementos_fuera'];
@@ -266,6 +258,9 @@
     bindCrudActions();
     initTreeDnD();
     updateSortablesDisabled();
+
+    // NUEVO: ajustar ancho automáticamente tras render
+    requestAnimationFrame(scheduleAutoWidth);
   }
 
   function hasChildrenValue(val){
@@ -382,6 +377,8 @@
           icon.classList.toggle('fa-chevron-right', !isOpen);
           icon.classList.toggle('fa-chevron-down', isOpen);
         }
+        // NUEVO: ajustar ancho al expandir/colapsar
+        scheduleAutoWidth();
       }
     });
   }
@@ -396,6 +393,8 @@
       $all('.json-children', rootCont).forEach(c=> c.classList.remove('show'));
       $all('.json-toggle i', rootCont).forEach(i=> { i.classList.add('fa-chevron-right'); i.classList.remove('fa-chevron-down'); });
       updatePanelTitle();
+      // NUEVO: re-ajustar ancho
+      scheduleAutoWidth();
       return;
     }
 
@@ -422,7 +421,6 @@
             icon.classList.toggle('fa-chevron-down', open);
           }
         }
-        
         any = any || show;
       });
       return any;
@@ -430,6 +428,8 @@
 
     apply(rootCont);
     updatePanelTitle();
+    // NUEVO: re-ajustar ancho tras filtrar
+    scheduleAutoWidth();
   }
 
   // Guardado por raíz (si lo usas con los botones)
@@ -918,16 +918,71 @@
     } catch(e){ console.error(e); }
   }
 
+  // Helper: debounce
+  function debounce(fn, wait=50){
+    let t; return function(...args){ clearTimeout(t); t = setTimeout(()=> fn.apply(this, args), wait); };
+  }
+
+  // Calcular el ancho óptimo del panel considerando el string más largo del árbol
+  function estimateMaxContentWidth(){
+    const panel = $('#json-tree-panel');
+    if (!panel) return 460;
+
+    // 1) Medida real de filas visibles
+    let maxRowScroll = 0;
+    $all('#jsonTreeBody .json-row').forEach(r=> { maxRowScroll = Math.max(maxRowScroll, r.scrollWidth); });
+
+    // 2) Estimación por texto para nodos colapsados
+    const data = window.formularioJsonOriginal || {};
+    const sample = $('#jsonTreeBody .json-row') || document.body;
+    const cs = getComputedStyle(sample);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    // Construir font CSS para measureText
+    const font = `${cs.fontWeight || 'normal'} ${cs.fontSize || '14px'} ${cs.fontFamily || 'sans-serif'}`;
+    ctx.font = font;
+
+    let maxTextWidth = 0;
+    function traverse(val, key, path){
+      // etiqueta visible si existe
+      let label = '';
+      if (val && typeof val === 'object' && !Array.isArray(val)){
+        const L = resolveFieldLabel ? resolveFieldLabel(val, path, key) : null;
+        if (L) label = String(L);
+      }
+      const keyStr = key==null ? '' : String(key);
+      const composed = (label ? label + ' ' : '') + keyStr;
+      const w = ctx.measureText(composed).width;
+      if (w > maxTextWidth) maxTextWidth = w;
+
+      if (Array.isArray(val)){
+        val.forEach((it, i)=> traverse(it, `[${i}]`, (path||[]).concat(i)));
+      } else if (val && typeof val === 'object'){
+        Object.keys(val).forEach(k=> traverse(val[k], k, (path||[]).concat(k)));
+      }
+    }
+    Object.keys(data).forEach(k=> traverse(data[k], k, [k]));
+
+    // Padding para chevrón, icono, acciones y márgenes
+    const extras = 180;
+    return Math.max(maxRowScroll, Math.ceil(maxTextWidth) + extras);
+  }
+
+  const scheduleAutoWidth = debounce(function(){
+    const panel = $('#json-tree-panel');
+    if (!panel || getComputedStyle(panel).display === 'none') return;
+    const minW = 460;
+    const maxW = Math.max(360, Math.min(window.innerWidth - 24, 1400));
+    const wanted = estimateMaxContentWidth();
+    const width = Math.max(minW, Math.min(maxW, wanted));
+    panel.style.width = width + 'px';
+  }, 50);
+
   // Boot
   window.addEventListener('load', ()=>{
     watchDesignMode();
     window.addEventListener('design-mode-changed', onDesignModeChanged);
-
-    // Si ya está en modo diseño al cargar
-    if (document.getElementById('fd-root')?.classList.contains('design-mode')){
-      ensureToggleButton();
-      const b = document.getElementById('fd-tree-toggle-btn');
-      if (b) b.style.display = 'inline-flex';
-    }
+    // NUEVO: re-ajustar al redimensionar ventana
+    window.addEventListener('resize', scheduleAutoWidth);
   });
 })();

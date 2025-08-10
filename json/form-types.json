@@ -1,0 +1,43 @@
+{
+  "field_types": {
+    "text":        { "html": "input", "subtype": "text" },
+    "textarea":    { "html": "textarea" },
+    "number":      { "html": "input", "subtype": "number" },
+    "integer":     { "html": "input", "subtype": "number", "step": 1 },
+    "decimal":     { "html": "input", "subtype": "number", "step": "0.01" },
+    "date":        { "html": "input", "subtype": "date" },
+    "datetime":    { "html": "input", "subtype": "datetime-local" },
+    "time":        { "html": "input", "subtype": "time" },
+    "email":       { "html": "input", "subtype": "email" },
+    "tel":         { "html": "input", "subtype": "tel" },
+    "url":         { "html": "input", "subtype": "url" },
+    "password":    { "html": "input", "subtype": "password" },
+    "checkbox":    { "html": "input", "subtype": "checkbox" },
+    "switch":      { "html": "input", "subtype": "checkbox" },
+    "radio":       { "html": "input", "subtype": "radio" },
+    "select":      { "html": "select", "multiple": false },
+    "multiselect": { "html": "select", "multiple": true },
+    "chips":       { "html": "custom", "component": "chips" },
+    "autocomplete":{ "html": "custom", "component": "autocomplete" },
+    "lookup":      { "html": "custom", "component": "lookup" },
+    "file":        { "html": "input", "subtype": "file" },
+    "image":       { "html": "input", "subtype": "file", "accept": "image/*" },
+    "color":       { "html": "input", "subtype": "color" },
+    "range":       { "html": "input", "subtype": "range" },
+    "hidden":      { "html": "input", "subtype": "hidden" },
+    "html":        { "html": "custom", "component": "html" },
+    "markdown":    { "html": "custom", "component": "markdown" },
+    "badge":       { "html": "custom", "component": "badge" },
+    "button":      { "html": "button", "variant": "primary" }
+  },
+  "fieldset_types": {
+    "group":     { "layout": "stack" },
+    "card":      { "layout": "stack" },
+    "row":       { "layout": "row" },
+    "column":    { "layout": "column" },
+    "tabs":      { "layout": "tabs" },
+    "accordion": { "layout": "accordion" },
+    "stepper":   { "layout": "steps" },
+    "divider":   { "layout": "separator" }
+  }
+}

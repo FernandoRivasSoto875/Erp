@@ -126,6 +126,13 @@ require_once __DIR__ . '/formulariodinamicologica.php';
   <label for="designModeToggle" class="mb-0">Modo diseño</label>
 </div>
 
+<!-- Config del archivo JSON y carga del árbol -->
+<script>
+  window.FORM_CONFIG = window.FORM_CONFIG || {};
+  // Asegura el nombre del JSON
+  window.FORM_CONFIG.archivo_json = 'formulariogenerico2.json';
+</script>
+<script src="js/json-tree-panel.js"></script>
 <script>
   // Archivo JSON activo y datos embebidos (el árbol los usa)
   window.FORM_CONFIG = { archivo_json: <?php echo json_encode($archivo_base); ?> };

@@ -10,6 +10,20 @@
   const esc = s => String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   const shouldShow = ()=> !!(document.getElementById('fd-root') && document.getElementById('fd-root').classList.contains('design-mode'));
 
+  // Helpers extra para CRUD
+  const deepClone = v => JSON.parse(JSON.stringify(v));
+  const getAtPath = (obj, path)=> (path||[]).reduce((acc,k)=> (acc==null?acc:acc[k]), obj);
+  function setAtPath(obj, path, val){
+    if (!path || !path.length) return;
+    let cur = obj;
+    for (let i=0;i<path.length-1;i++){
+      const k = path[i];
+      if (cur[k]==null || typeof cur[k]!=='object') cur[k] = (typeof path[i+1]==='number')?[]:{};
+      cur = cur[k];
+    }
+    cur[path[path.length-1]] = val;
+  }
+
   // CSS mínimo (posición). El look lo da Bootstrap si está cargado
   function injectStyles(){
     if ($('#json-tree-panel-styles')) return;
@@ -122,6 +136,8 @@
       // $all('#jsonTreeBody > .json-tree-item > .json-children').forEach(c=> c.classList.add('show'));
     }
     updatePanelTitle();
+    // Enlazar acciones CRUD tras render
+    bindCrudActions();
   }
 
   function hasChildrenValue(val){

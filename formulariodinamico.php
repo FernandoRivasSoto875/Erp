@@ -153,41 +153,49 @@ require_once __DIR__ . '/formulariodinamicologica.php';
     window.formularioJsonOriginal = <?php echo json_encode($json_data ?? [], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
   </script>
 
-  <?php /* Cargar dependencias antes del runtime DnD (IMPORTANTE) */ ?>
+  <!-- Render del formulario dinámico -->
+
+  <style>
+    /* Oculta el icono/acción de lápiz solo dentro del formulario */
+    #fd-root .fd-edit-btn,
+    #fd-root .fd-field-edit,
+    #fd-root .field-edit-btn,
+    #fd-root [data-action="edit-field"],
+    #fd-root .btn-edit,
+    #fd-root .icon-edit,
+    #fd-root .fa-pencil,
+    #fd-root .fa-pencil-alt { display: none !important; }
+  </style>
+
+  <!-- Dependencias para tabs y DnD (deben ir después de renderizar el formulario) -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+  <!-- Opcional: estiliza el formulario con Bootstrap (wrappers/labels) -->
   <script src="js/form-bootstrap-enhancer.js"></script>
+
+  <!-- DnD del formulario: tabs, fields, fieldsets (solo en modo diseño) -->
   <script src="js/form-runtime-dnd.js"></script>
 
   <script>
     (function(){
       const root = document.getElementById('fd-root');
+
+      // Emitir estado inicial del modo diseño
+      window.dispatchEvent(new CustomEvent('design-mode-changed', {
+        detail:{ on: !!root?.classList.contains('design-mode') }
+      }));
+
+      // Toggle opcional: si existe un control para modo diseño
       const toggle = document.getElementById('designModeToggle');
-
-      function emit(on){
-        window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } }));
-      }
-
-      // Log rápido para verificar dependencias
-      console.info('[FD] bootstrap?', !!window.bootstrap, 'Sortable?', !!window.Sortable);
-
-      // Estado inicial + refresco si ya está en diseño
-      emit(root && root.classList.contains('design-mode'));
-      if (root && root.classList.contains('design-mode') && window.formRuntimeDndRefresh){
-        setTimeout(()=> window.formRuntimeDndRefresh(), 50);
-      }
-
       if (toggle && root){
-        toggle.addEventListener('change', function(){
-          root.classList.toggle('design-mode', this.checked);
-          const url = new URL(location.href);
-          url.searchParams.set('modoDiseno', this.checked ? '1' : '0');
-          history.replaceState(null, '', url.toString());
-          emit(this.checked);
-          if (this.checked && window.formRuntimeDndRefresh){
-            setTimeout(()=> window.formRuntimeDndRefresh(), 50);
-          }
-        });
+        const set = (on)=>{
+          root.classList.toggle('design-mode', !!on);
+          window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } }));
+          if (on && window.formRuntimeDndRefresh) setTimeout(()=> window.formRuntimeDndRefresh(), 50);
+        };
+        set(toggle.checked);
+        toggle.addEventListener('change', ()=> set(toggle.checked));
       }
     })();
   </script>

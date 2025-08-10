@@ -50,17 +50,28 @@
   function injectStyles(){
     if ($('#json-tree-panel-styles')) return;
     const css = `
-      .json-tree-panel{ position:fixed; top:60px; right:12px; width:420px; height:70vh; background:#fff; border:1px solid #ccc; border-radius:6px; box-shadow:0 6px 18px rgba(0,0,0,.15); z-index:9999; display:flex; flex-direction:column; }
-      .json-tree-header{ padding:6px 8px; background:#f7f7f7; border-bottom:1px solid #ddd; display:flex; align-items:center; justify-content:space-between; }
-      .json-tree-title{ margin:0; font-size:13px; }
-      .json-tree-actions button{ background:none; border:0; cursor:pointer; padding:4px 6px; }
-      .json-tree-search{ padding:4px 8px; border-bottom:1px solid #eee; }
-      .json-tree-body{ overflow:auto; padding:6px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size:12px; }
-      .json-tree-node{ padding:2px 4px; border-radius:4px; margin:1px 0; display:flex; align-items:center; gap:6px; }
-      .json-node-key{ font-weight:600; }
-      .json-node-meta{ color:#666; margin-left:auto; }
-      .json-node-actions button{ background:none; border:0; cursor:pointer; padding:2px 4px; color:#555; }
-      #fd-tree-toggle-btn{ position:fixed; top:60px; right:446px; z-index:9999; display:inline-flex; gap:6px; align-items:center; background:#0d6efd; color:#fff; border:0; padding:6px 10px; border-radius:4px; font-size:12px; cursor:pointer; }
+      .json-tree-panel{ position:fixed; top:60px; right:12px; width:460px; height:72vh; background:#fff; border:1px solid #dcdfe3; border-radius:8px; box-shadow:0 10px 24px rgba(16,24,40,.12); z-index:9999; display:flex; flex-direction:column; overflow:hidden; }
+      .json-tree-header{ padding:8px 10px; background:#f8f9fb; border-bottom:1px solid #e9ecef; display:flex; align-items:center; justify-content:space-between; }
+      .json-tree-title{ margin:0; font-size:13px; color:#344054; }
+      .json-tree-actions button{ background:none; border:0; cursor:pointer; padding:4px 6px; color:#475467; }
+      .json-tree-actions button:hover{ color:#0d6efd; }
+      .json-tree-search{ padding:8px 10px; border-bottom:1px solid #f0f2f5; }
+      .json-tree-search input{ width:100%; border:1px solid #d0d5dd; border-radius:6px; padding:6px 10px; font-size:12px; }
+      .json-tree-body{ overflow:auto; padding:6px 8px 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size:12px; background:linear-gradient(#fff, #fff) padding-box, linear-gradient(0deg, #fff, #f8fafc) border-box; }
+      .json-tree-node{ padding:6px 8px; border-radius:6px; margin:2px 0; display:flex; align-items:center; gap:8px; transition:background .15s ease,border-color .15s ease; border:1px solid transparent; }
+      .json-tree-node:hover{ background:#f8fafc; border-color:#eef2f6; }
+      .json-node-icon{ width:18px; text-align:center; color:#667085; }
+      .json-node-key{ font-weight:600; color:#344054; }
+      .json-node-meta{ color:#667085; margin-left:auto; padding-left:6px; }
+      .json-node-actions button{ background:none; border:0; cursor:pointer; padding:2px 4px; color:#667085; }
+      .json-node-actions button:hover{ color:#0d6efd; }
+      .json-badge{ display:inline-block; font-weight:600; padding:1px 6px; border-radius:10px; font-size:11px; border:1px solid #e4e7ec; color:#475467; background:#f8fafc; margin-left:6px; }
+      .json-badge.field{ border-color:#ffd9b3; background:#fff7ed; color:#b54708; }
+      .json-badge.array{ border-color:#e0e7ff; background:#eef2ff; color:#3730a3; }
+      .json-badge.object{ border-color:#d1fae5; background:#ecfdf5; color:#047857; }
+      .pos-badge{ display:inline-block; margin-left:6px; background:#eef2ff; color:#3730a3; border:1px solid #e0e7ff; border-radius:999px; padding:0 7px; font-size:11px; }
+      #fd-tree-toggle-btn{ position:fixed; top:60px; right:486px; z-index:9999; display:inline-flex; gap:6px; align-items:center; background:#0d6efd; color:#fff; border:0; padding:7px 12px; border-radius:6px; font-size:12px; cursor:pointer; box-shadow:0 4px 10px rgba(13,110,253,.25); }
+      #fd-tree-toggle-btn:hover{ filter:brightness(.98); }
       .json-tree-node.drag-src{ opacity:.6; }
       .json-tree-node.drop-ok{ outline:2px dashed #0d6efd; }
       .json-tree-node.drop-bad{ outline:2px dashed #dc3545; }
@@ -138,15 +149,87 @@
     return `<span class="json-node-actions">${parts.join('')}</span>`;
   }
 
+  // Iconos y metadata de nodos
+  const FIELD_TYPE_ICONS = {
+    text:'fa-i-cursor', textarea:'fa-align-left', number:'fa-hashtag', integer:'fa-hashtag', decimal:'fa-hashtag',
+    select:'fa-caret-down', multiselect:'fa-list-ul', checkbox:'fa-check-square', radio:'fa-dot-circle',
+    date:'fa-calendar-day', datetime:'fa-calendar-alt', time:'fa-clock',
+    email:'fa-envelope', tel:'fa-phone', url:'fa-link',
+    file:'fa-paperclip', image:'fa-image', color:'fa-palette',
+    password:'fa-key', switch:'fa-toggle-on', range:'fa-sliders-h', html:'fa-code'
+  };
+  function isFieldNode(path, val){
+    // fieldsets.<fs>.campos[<idx>] -> objeto campo
+    return Array.isArray(path)
+      && path.length >= 4
+      && path[0] === 'fieldsets'
+      && path[2] === 'campos'
+      && typeof path[3] === 'number'
+      && val && typeof val === 'object';
+  }
+  function getFieldInfo(path, val){
+    const idx = path[3];
+    const nombre = (val && (val.nombre || val.name)) ? String(val.nombre || val.name) : '';
+    const tipo = (val && (val.tipo || val.type)) ? String(val.tipo || val.type).toLowerCase() : '';
+    const icon = FIELD_TYPE_ICONS[tipo] || 'fa-square';
+    return { idx, nombre, tipo, icon };
+  }
+  function getGenericIcon(path, key, val, type){
+    // Íconos generales por contexto
+    if (path.length === 1){
+      if (key === 'parametros') return 'fa-cog';
+      if (key === 'layout') return 'fa-th-large';
+      if (key === 'fieldsets') return 'fa-layer-group';
+      if (key === 'elementos_fuera') return 'fa-box-open';
+    }
+    if (type === 'array') return 'fa-list-ol';
+    if (type === 'object'){
+      const t = (val && val.type) ? String(val.type).toLowerCase() : '';
+      if (t === 'tabs') return 'fa-folder-open';
+      if (t === 'fieldset-group') return 'fa-object-group';
+      if (t === 'header') return 'fa-heading';
+      if (t === 'footer') return 'fa-ellipsis-h';
+      if (t === 'generic') return 'fa-th';
+      // ítem de grupo explícito
+      if (val && val.type === 'fieldset') return 'fa-clipboard-list';
+    }
+    // Hojas por tipo simple
+    if (type === 'string') return 'fa-quote-right';
+    if (type === 'number') return 'fa-hashtag';
+    if (type === 'boolean') return 'fa-toggle-on';
+    if (type === 'null') return 'fa-ban';
+    return 'fa-folder';
+  }
+
   function renderAnyNode(key, val, path, open){
     const t = typeOf(val);
     const indent = Math.max(0, (path.length-1) * 12);
-    const meta = t==='object' ? 'object' : t==='array' ? `array(${(val||[]).length})` : renderValueInline(val);
-    let html = `<div class="json-tree-node" data-path='${esc(JSON.stringify(path))}' draggable="true" style="margin-left:${indent}px;">
-      <span class="json-node-key">${esc(String(key))}</span>
-      <span class="json-node-meta">${esc(meta)}</span>
+
+    // Campo: nombre + posición + icono por tipo
+    let isField = isFieldNode(path, val);
+    let iconClass, displayKey = String(key), extraBadges = '';
+    if (isField){
+      const info = getFieldInfo(path, val);
+      iconClass = info.icon;
+      displayKey = (info.nombre ? info.nombre : displayKey) + ` <span class="pos-badge">#${info.idx}</span>`;
+      extraBadges += info.tipo ? ` <span class="json-badge field">${esc(info.tipo)}</span>` : '';
+    } else {
+      iconClass = getGenericIcon(path, key, val, t);
+      // Badges para object/array
+      if (t === 'array') extraBadges += ` <span class="json-badge array">array(${(val||[]).length})</span>`;
+      else if (t === 'object') extraBadges += ` <span class="json-badge object">object</span>`;
+    }
+
+    const meta = (t==='object' || t==='array') ? '' : esc(renderValueInline(val));
+
+    let html = `<div class="json-tree-node${isField?' is-field-node':''}" data-path='${esc(JSON.stringify(path))}' draggable="true" style="margin-left:${indent}px;">
+      <span class="json-node-icon"><i class="fas ${iconClass}"></i></span>
+      <span class="json-node-key">${displayKey}</span>
+      ${extraBadges}
+      <span class="json-node-meta">${meta}</span>
       ${actionsForNode(path, val, t)}
     </div>`;
+
     if (t === 'object') {
       Object.keys(val||{}).forEach(k=>{
         html += renderAnyNode(k, val[k], path.concat(k), false);

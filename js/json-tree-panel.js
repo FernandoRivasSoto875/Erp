@@ -17,6 +17,13 @@
       .json-tree-panel{ position:fixed; top:60px; right:12px; width:460px; height:72vh; z-index:1055; resize:both; }
       .json-tree-panel .card-body.scroll{ overflow:auto; height:calc(100% - 94px); }
       #fd-tree-toggle-btn{ position:fixed; top:60px; right:486px; z-index:1055; }
+      /* Árbol jerárquico */
+      #jsonTreeBody .json-tree-item{ }
+      #jsonTreeBody .json-row{ display:flex; align-items:center; gap:.5rem; padding:.25rem .5rem; }
+      #jsonTreeBody .json-children{ display:none; padding-left:12px; border-left:1px dashed #e5e7eb; margin-left:8px; }
+      #jsonTreeBody .json-children.show{ display:block; }
+      .json-toggle{ width:1.25rem; height:1.25rem; display:inline-flex; align-items:center; justify-content:center; border:0; background:transparent; color:#6c757d; cursor:pointer; }
+      .json-node-key{ font-weight:600; cursor:pointer; }
     `;
     const st = document.createElement('style'); st.id='json-tree-panel-styles'; st.textContent = css;
     document.head.appendChild(st);
@@ -64,10 +71,11 @@
     `;
     document.body.appendChild(panel);
     $('#jsonTreeClose').addEventListener('click', ()=> panel.style.display='none');
-    $('#jsonTreeRefresh').addEventListener('click', buildTree);
+    $('#jsonTreeRefresh').addEventListener('click', ()=>{ buildTree(true); });
     $('#jsonTreeFilter').addEventListener('input', filterTree);
-    $('#jsonTreeFilterClear').addEventListener('click', ()=>{ const i=$('#jsonTreeFilter'); if(i){ i.value=''; buildTree(); }});
+    $('#jsonTreeFilterClear').addEventListener('click', ()=>{ const i=$('#jsonTreeFilter'); if(i){ i.value=''; buildTree(true); }});
     $('#jsonTreeInit').addEventListener('click', ensureBaseStructureInteractive);
+    bindTreeEvents();
     return panel;
   }
 
@@ -86,15 +94,15 @@
       p.style.display = hidden ? '' : 'none';
       if (hidden){
         try { await ensureJsonLoaded(); } catch(e){ console.error(e); }
-        buildTree();
+        buildTree(true);
       }
     });
     btn.style.display = 'none';
     document.body.appendChild(btn);
   }
 
-  // Render del árbol
-  function buildTree(){
+  // Render del árbol jerárquico (colapsado por defecto)
+  function buildTree(resetState=false){
     if (!shouldShow()) return;
     const body = $('#jsonTreeBody'); if (!body) return;
     const data = window.formularioJsonOriginal || {};
@@ -104,36 +112,56 @@
       .concat(Object.keys(data).filter(k => !preferred.includes(k)));
 
     body.innerHTML = keys.length
-      ? keys.map(k => renderNode(k, data[k], [k], 0)).join('')
+      ? keys.map(k => renderNode(k, data[k], [k], /*isRoot*/true)).join('')
       : `<div class="list-group-item text-muted py-2">JSON vacío</div>`;
 
+    if (resetState){
+      // Colapsar todo por defecto al reconstruir
+      $all('#jsonTreeBody .json-children').forEach(c=> c.classList.remove('show'));
+      // Opcional: podrías expandir el primer nivel si lo prefieres
+      // $all('#jsonTreeBody > .json-tree-item > .json-children').forEach(c=> c.classList.add('show'));
+    }
     updatePanelTitle();
   }
 
-  function renderNode(key, val, path, level){
-    const pad = Math.max(0, level * 12);
+  function hasChildrenValue(val){
+    const t = typeOf(val);
+    if (t==='object') return Object.keys(val||{}).length>0;
+    if (t==='array') return (val||[]).length>0;
+    return false;
+  }
+
+  function renderNode(key, val, path, isRoot){
     const t = typeOf(val);
     const meta = (t==='object') ? 'object' : (t==='array') ? `array(${(val||[]).length})` : renderValue(val);
+    const canToggle = hasChildrenValue(val);
 
-    let html = `<div class="json-tree-node list-group-item d-flex align-items-center gap-2 py-1 px-2 border-0 border-bottom"
-                    data-path='${esc(JSON.stringify(path))}' style="margin-left:${pad}px;">
-      <span class="json-node-key fw-semibold">${esc(String(key))}</span>
-      <small class="text-secondary ms-auto">${esc(meta)}</small>
-      <span class="json-node-actions ms-2">
+    let html = `<div class="json-tree-item" data-path='${esc(JSON.stringify(path))}'>`;
+    html += `<div class="json-row list-group-item border-0 border-bottom">`;
+    html += canToggle
+      ? `<button class="json-toggle" aria-label="expandir"><i class="fas fa-chevron-right"></i></button>`
+      : `<span style="display:inline-block;width:1.25rem;"></span>`;
+    html += `<span class="json-node-key">${esc(String(key))}</span>`;
+    html += `<small class="text-secondary ms-auto">${esc(meta)}</small>`;
+    // Acciones (si las usas; no se enlazan aquí)
+    html += `<span class="json-node-actions ms-2">
         <button class="btn btn-link btn-sm text-secondary p-0 act-edit" title="Editar"><i class="fas fa-pencil-alt"></i></button>
         <button class="btn btn-link btn-sm text-secondary p-0 act-dup" title="Duplicar"><i class="fas fa-clone"></i></button>
         <button class="btn btn-link btn-sm text-secondary p-0 act-rename" title="Renombrar"><i class="fas fa-i-cursor"></i></button>
         <button class="btn btn-link btn-sm text-danger p-0 act-del" title="Eliminar"><i class="fas fa-trash"></i></button>
-      </span>
-    </div>`;
+      </span>`;
+    html += `</div>`;
 
-    if (t === 'object') {
-      Object.keys(val||{}).forEach(k=>{ html += renderNode(k, val[k], path.concat(k), level+1); });
-    } else if (t === 'array') {
-      (val||[]).forEach((item, idx)=>{ html += renderNode(`[${idx}]`, item, path.concat(idx), level+1); });
+    if (t==='object' || t==='array'){
+      const children = (t==='object')
+        ? Object.keys(val||{}).map(k=> renderNode(k, val[k], path.concat(k), false)).join('')
+        : (val||[]).map((item, idx)=> renderNode(`[${idx}]`, item, path.concat(idx), false)).join('');
+      html += `<div class="json-children">${children}</div>`;
     }
+    html += `</div>`;
     return html;
   }
+
   function renderValue(v){
     const t = typeOf(v);
     if (t==='string') return `"${v}"`;
@@ -143,18 +171,83 @@
     if (t==='object') return 'object';
     return String(v);
   }
+
   function updatePanelTitle(){
     const title = $('.json-tree-title'); if (!title) return;
-    const count = $('#jsonTreeBody')?.querySelectorAll('.json-tree-node')?.length || 0;
+    const count = $('#jsonTreeBody')?.querySelectorAll('.json-tree-item')?.length || 0;
     title.textContent = `Árbol del JSON (${count})`;
   }
+
+  // Toggle expand/collapse
+  function bindTreeEvents(){
+    const body = $('#jsonTreeBody'); if (!body) return;
+
+    body.addEventListener('click', (e)=>{
+      const toggleBtn = e.target.closest('.json-toggle');
+      const keyEl = e.target.closest('.json-node-key');
+      const row = e.target.closest('.json-row');
+      if (toggleBtn || keyEl){
+        const item = (toggleBtn || keyEl)?.closest('.json-tree-item');
+        if (!item) return;
+        const children = item.querySelector(':scope > .json-children');
+        if (!children) return;
+        const isOpen = children.classList.toggle('show');
+        // Actualiza el ícono
+        const icon = item.querySelector(':scope > .json-row .json-toggle i');
+        if (icon){
+          icon.classList.toggle('fa-chevron-right', !isOpen);
+          icon.classList.toggle('fa-chevron-down', isOpen);
+        }
+      }
+    });
+  }
+
+  // Filtro: muestra nodos coincidentes y abre sus ancestros
   function filterTree(){
     const q = ($('#jsonTreeFilter')?.value || '').trim().toLowerCase();
-    const body = $('#jsonTreeBody'); if (!body) return;
-    if (!q) return buildTree();
-    $all('.json-tree-node', body).forEach(n=>{
-      n.style.display = n.textContent.toLowerCase().includes(q) ? '' : 'none';
-    });
+    const rootCont = $('#jsonTreeBody'); if (!rootCont) return;
+
+    if (!q){
+      // Restaurar: mostrar todo y colapsar
+      $all('.json-tree-item', rootCont).forEach(it=> it.style.display = '');
+      $all('.json-children', rootCont).forEach(c=> c.classList.remove('show'));
+      // Reset de iconos
+      $all('.json-toggle i', rootCont).forEach(i=> { i.classList.add('fa-chevron-right'); i.classList.remove('fa-chevron-down'); });
+      updatePanelTitle();
+      return;
+    }
+
+    // Recorrer recursivo bottom-up
+    const apply = (container)=>{
+      let any=false;
+      const items = $all(':scope > .json-tree-item', container);
+      items.forEach(it=>{
+        const row = it.querySelector(':scope > .json-row');
+        const text = (row?.textContent || '').toLowerCase();
+        const matchSelf = text.includes(q);
+        const children = it.querySelector(':scope > .json-children');
+        let matchChild = false;
+        if (children) matchChild = apply(children);
+
+        const show = matchSelf || matchChild;
+        it.style.display = show ? '' : 'none';
+
+        // Si hay match en hijos o en este nodo, abrir hijos (si existen)
+        if (children){
+          const open = matchChild || matchSelf;
+          children.classList.toggle('show', open);
+          const icon = it.querySelector(':scope > .json-row .json-toggle i');
+          if (icon){
+            icon.classList.toggle('fa-chevron-right', !open);
+            icon.classList.toggle('fa-chevron-down', open);
+          }
+        }
+        any = any || show;
+      });
+      return any;
+    };
+
+    apply(rootCont);
     updatePanelTitle();
   }
 
@@ -179,7 +272,7 @@
     if (!Object.keys(payload).length) { alert('La estructura base ya existe.'); return; }
     await postGuardar(payload);
     window.formularioJsonOriginal = { ...data, ...payload };
-    buildTree();
+    buildTree(true);
   }
 
   // Observa #fd-root y emite design-mode-changed
@@ -207,15 +300,16 @@
 
     // Fuera de diseño: ocultar si existiera y no crear nada
     const panel = $('#json-tree-panel');
-    const btn = $('#fd-tree-toggle-btn');
+    const btn0 = $('#fd-tree-toggle-btn');
     if (!on){
       if (panel) panel.style.display = 'none';
-      if (btn) btn.style.display = 'none';
+      if (btn0) btn0.style.display = 'none';
       return;
     }
 
     // En diseño: crear on-demand
     ensureToggleButton();
+    const btn = $('#fd-tree-toggle-btn'); // FIX: obtener referencia correcta
     if (btn) btn.style.display = 'inline-flex';
   }
 

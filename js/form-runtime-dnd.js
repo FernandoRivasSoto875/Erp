@@ -43,15 +43,15 @@
     destroyAllDnD();
     setTimeout(()=>{
       attachTabsDnD();
-      attachFieldsDnD();
-      attachFieldsetsDnD(); // NUEVO: mover grupos (fieldsets)
+      attachFieldsDnD();       // reordenar y mover campos (incluye entre pestañas)
+      attachFieldsetsDnD();    // mover grupos/fieldsets (opcional)
       const root = document.getElementById('fd-root');
       if (root){
         const rescan = debounce(()=>{
           if (!isDesign()) return;
           attachTabsDnD();
           attachFieldsDnD();
-          attachFieldsetsDnD(); // re-escanea fieldsets
+          attachFieldsetsDnD();
         }, 150);
         state.mo = new MutationObserver(rescan);
         state.mo.observe(root, { childList:true, subtree:true });
@@ -252,14 +252,17 @@
     }));
   }
 
-  // --------- Fields DnD (solo UI; emite evento para que EL ÁRBOL guarde) ----------
+  // --------- Fields DnD (reordenar y mover entre grupos/pestañas) ----------
   function attachFieldsDnD(){
-    const fieldsets = window.formularioJsonOriginal?.fieldsets;
+    const json = window.formularioJsonOriginal;
+    const fieldsets = json?.fieldsets;
     if (!fieldsets || typeof fieldsets !== 'object') return;
 
+    // 1) Detecta contenedores de campos por fieldset y márcalos
+    const containers = [];
     Object.keys(fieldsets).forEach(fsName=>{
       const campos = fieldsets[fsName]?.campos;
-      if (!Array.isArray(campos) || campos.length < 2) return;
+      if (!Array.isArray(campos) || campos.length < 1) return;
 
       // Encuentra wrappers DOM por nombre
       const wrappers = [];
@@ -271,18 +274,25 @@
         const wrap = closestFieldWrapper(ctrl);
         if (wrap) wrappers.push({ name, wrap });
       });
-      if (wrappers.length < 2) return;
+      if (!wrappers.length) return;
 
       const container = commonParent(wrappers.map(w=> w.wrap));
-      if (!container || state.attached.has(container)) return;
-      state.attached.add(container);
+      if (!container) return;
+
+      // Marca el contenedor y los hijos
+      container.dataset.fsContainer = fsName;
+      container.dataset.fdFieldsGroup = '1'; // grupo cruzado
+      // Detectar pestaña (pane) en la que vive
+      const pane = container.closest('.tab-pane');
+      if (pane && pane.id) container.dataset.tabPaneId = pane.id;
 
       wrappers.forEach(({name, wrap})=>{
         wrap.dataset.fdName = name;
+        // Handle visible
         if (!wrap.querySelector('.fd-dnd-handle')){
           const h = document.createElement('div');
           h.className = 'fd-dnd-handle';
-          h.title = 'Arrastra para reordenar';
+          h.title = 'Arrastra para reordenar o mover';
           h.style.minWidth = '12px';
           h.style.minHeight = '12px';
           h.style.display = 'inline-block';
@@ -292,44 +302,107 @@
         }
       });
 
+      containers.push({ fsName, container });
+    });
+
+    if (!containers.length) return;
+
+    // 2) Inicializa Sortable en cada contenedor con grupo cruzado
+    containers.forEach(({ fsName, container })=>{
+      if (state.attached.has(container)) return;
+      state.attached.add(container);
+
+      const draggableSel = directChildSelector(container, Array.from(container.children));
+
       if (hasSortable()){
         const s = new Sortable(container, {
           animation: 150,
-          draggable: directChildSelector(container, wrappers.map(w=>w.wrap)),
+          draggable: draggableSel,
           handle: '.fd-dnd-handle',
           ghostClass: 'fd-dnd-ghost',
-          onEnd: (evt)=>{
-            if (!evt || evt.from !== evt.to) return;
-            emitFieldsReordered(container, fsName, campos);
-          }
+          group: { name: 'fd-fields', pull: true, put: true }, // mover entre contenedores
+          onAdd: (evt)=> handleFieldMove(evt),
+          onUpdate: (evt)=> handleFieldMove(evt) // reorden dentro del mismo
         });
         state.sortables.push(s);
       } else {
-        const off = initNativeListDnD(container, ()=> emitFieldsReordered(container, fsName, campos), '.fd-dnd-handle');
+        // Fallback: reorden local; no soporta cross-container
+        const off = initNativeListDnD(container, ()=>{
+          emitFieldsReordered(container, container.dataset.fsContainer, /*campos*/null);
+        }, '.fd-dnd-handle');
         state.native.push(off);
       }
     });
   }
-  function emitFieldsReordered(container, fsName, campos){
-    const oldNames = (campos||[]).map(c=> c?.nombre || c?.name || c?.field).filter(Boolean);
+
+  function handleFieldMove(evt){
+    // Fuente y destino
+    const toCont = evt.to;
+    const fromCont = evt.from;
+    const item = evt.item;
+
+    const toFs = toCont?.dataset?.fsContainer || null;
+    const fromFs = fromCont?.dataset?.fsContainer || null;
+    const toTab = toCont?.dataset?.tabPaneId || null;
+    const fromTab = fromCont?.dataset?.tabPaneId || null;
+
+    const name = getFieldNameFromWrapper(item);
+    const toIndex = evt.newIndex;
+    const fromIndex = evt.oldIndex;
+
+    // Emite evento para persistir vía árbol u otro gestor
+    window.dispatchEvent(new CustomEvent('form-dnd:field-moved', {
+      detail: {
+        name,
+        fromFieldset: fromFs,
+        toFieldset: toFs,
+        fromTabId: fromTab,
+        toTabId: toTab,
+        fromIndex,
+        toIndex
+      }
+    }));
+
+    // Además, emite el reorder completo del contenedor destino
+    emitFieldsReordered(toCont, toFs, null);
+
+    // Si reorden en el mismo contenedor, también emite por la fuente (opcional)
+    if (fromCont && fromCont !== toCont){
+      emitFieldsReordered(fromCont, fromFs, null);
+    }
+  }
+
+  function getFieldNameFromWrapper(wrap){
+    if (!wrap) return null;
+    const data = wrap.getAttribute('data-fd-name');
+    if (data) return data;
+    const byName = wrap.querySelector('[name]');
+    if (byName?.name) return byName.name;
+    const byDataName = wrap.querySelector('[data-name]');
+    if (byDataName?.getAttribute('data-name')) return byDataName.getAttribute('data-name');
+    const byId = wrap.querySelector('[id]');
+    if (byId?.id) return byId.id;
+    return null;
+  }
+
+  function emitFieldsReordered(container, fsName){
+    // Calcula nombres en DOM (orden actual)
     const children = Array.from(container.children).filter(ch=> ch.querySelector('[name], [id], [data-fd-name]'));
     const namesInDom = children.map(ch=>{
-      const byData = ch.getAttribute('data-fd-name');
-      if (byData) return byData;
+      const d = ch.getAttribute('data-fd-name');
+      if (d) return d;
       const ctrl = ch.querySelector('[name]');
-      if (ctrl && ctrl.name) return ctrl.name;
+      if (ctrl?.name) return ctrl.name;
       const byId = ch.querySelector('[id]');
-      if (byId && byId.id) return byId.id;
+      if (byId?.id) return byId.id;
       return null;
     }).filter(Boolean);
-    const orderIndices = namesInDom.map(n => oldNames.findIndex(x=> x === n));
+
     window.dispatchEvent(new CustomEvent('form-dnd:fields-reordered', {
       detail: {
-        fieldset: fsName,
-        jsonPath: ['fieldsets', fsName, 'campos'],
-        oldNames,
-        namesInDom,
-        orderIndices
+        fieldset: fsName || null,
+        jsonPath: fsName ? ['fieldsets', fsName, 'campos'] : null,
+        namesInDom
       }
     }));
   }

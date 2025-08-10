@@ -10,6 +10,18 @@
   function $all(s, r){ return Array.from((r||document).querySelectorAll(s)); }
   function typeOf(v){ if (Array.isArray(v)) return 'array'; return v===null?'null':(typeof v==='object'?'object':typeof v); }
   function esc(s){ return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+  function deepClone(v){ return JSON.parse(JSON.stringify(v)); }
+  function getAtPath(obj, path){ return (path||[]).reduce((acc,k)=> (acc==null?acc:acc[k]), obj); }
+  function setAtPath(obj, path, val){
+    if (!path || !path.length) return;
+    let cur = obj;
+    for (let i=0;i<path.length-1;i++){
+      const k = path[i];
+      if (cur[k]==null || typeof cur[k]!=='object') cur[k] = (typeof path[i+1]==='number')?[]:{};
+      cur = cur[k];
+    }
+    cur[path[path.length-1]] = val;
+  }
 
   function shouldShow(){
     if (!CONFIG.showOnlyInDesignMode) return true;
@@ -93,7 +105,7 @@
       : '<div class="text-muted" style="padding:8px;">JSON vacío</div>';
 
     bindEditActions(body);
-    bindTreeDragAndDrop(body);
+    if (typeof bindTreeDragAndDrop === 'function') bindTreeDragAndDrop(body); // opcional
     updatePanelTitle();
   }
 
@@ -147,21 +159,97 @@
     updatePanelTitle();
   }
 
-  // CRUD y DnD (tu implementación existente)
-  function bindEditActions(root){
-    root.addEventListener('click', async (e)=>{
-      const btn = e.target.closest('.json-node-actions button'); if (!btn) return;
-      const node = e.target.closest('.json-tree-node'); if (!node) return;
-      let path; try { path = JSON.parse(node.getAttribute('data-path')); } catch { return; }
-      if (btn.classList.contains('act-edit')) return editNodeByPath(path);
-      if (btn.classList.contains('act-dup')) return duplicateAtPath(path);
-      if (btn.classList.contains('act-del')) return deleteAtPath(path);
-      if (btn.classList.contains('act-rename')) return renameAtPath(path);
+  // Persistencia básica por raíz
+  function postGuardar(blocks){
+    const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || '';
+    const form = new FormData();
+    form.append('archivo', archivo);
+    ['parametros','layout','fieldsets','elementos_fuera'].forEach(k=>{
+      if (Object.prototype.hasOwnProperty.call(blocks, k)) form.append(k, JSON.stringify(blocks[k]));
     });
+    return fetch('guardar_layout.php', { method:'POST', body: form })
+      .then(r => r.ok ? r.json() : r.json().then(e=>Promise.reject(new Error(e.error||'Error HTTP'))))
+      .then(j => { if (j.success===false) throw new Error(j.error||'Error'); return j; });
   }
-  // ...existing code (editNodeByPath, duplicateAtPath, deleteAtPath, renameAtPath, DnD helpers)...
+  async function persistRootByPath(path, updatedRoot){
+    const rootKey = path[0];
+    await postGuardar({ [rootKey]: updatedRoot });
+    if (!window.formularioJsonOriginal) window.formularioJsonOriginal = {};
+    window.formularioJsonOriginal[rootKey] = updatedRoot;
+  }
 
-  // Reacciona SOLO a transiciones (false->true / true->false)
+  // CRUD mínimos (evita errores y funcionan)
+  async function editNodeByPath(path){
+    const data = window.formularioJsonOriginal || {};
+    const rootKey = path[0], sub = path.slice(1);
+    let root = deepClone(data[rootKey]);
+    let cur = root; sub.forEach(k=> cur = cur[k]);
+    const prev = (typeOf(cur)==='object' || typeOf(cur)==='array') ? JSON.stringify(cur, null, 2) : JSON.stringify(cur);
+    const input = window.prompt('Editar valor (JSON)', prev);
+    if (input == null) return;
+    let val; try { val = JSON.parse(input); } catch(e){ return alert('JSON inválido'); }
+    setAtPath(root, sub, val);
+    await persistRootByPath(path, root);
+    buildTree();
+  }
+  async function duplicateAtPath(path){
+    const data = window.formularioJsonOriginal || {};
+    const rootKey = path[0], sub = path.slice(1);
+    let root = deepClone(data[rootKey]);
+    const parentPath = sub.slice(0,-1), key = sub[sub.length-1];
+    let parent = parentPath.length ? getAtPath(root, parentPath) : root;
+    const val = deepClone(parent[key]);
+    if (Array.isArray(parent) && typeof key==='number') parent.splice(key+1, 0, val);
+    else if (parent && typeof parent==='object'){
+      let nk = String(key) + '_copia', i=2;
+      while (Object.prototype.hasOwnProperty.call(parent, nk)) nk = String(key) + '_copia' + (i++);
+      parent[nk] = val;
+    }
+    await persistRootByPath(path, root);
+    buildTree();
+  }
+  async function deleteAtPath(path){
+    if (!confirm('¿Eliminar elemento?')) return;
+    const data = window.formularioJsonOriginal || {};
+    const rootKey = path[0], sub = path.slice(1);
+    let root = deepClone(data[rootKey]);
+    const parentPath = sub.slice(0,-1), key = sub[sub.length-1];
+    let parent = parentPath.length ? getAtPath(root, parentPath) : root;
+    if (Array.isArray(parent) && typeof key==='number') parent.splice(key,1);
+    else if (parent && typeof parent==='object') delete parent[key];
+    await persistRootByPath(path, root);
+    buildTree();
+  }
+  async function renameAtPath(path){
+    const data = window.formularioJsonOriginal || {};
+    const rootKey = path[0], sub = path.slice(1);
+    let root = deepClone(data[rootKey]);
+    const parentPath = sub.slice(0,-1), key = sub[sub.length-1];
+    let parent = parentPath.length ? getAtPath(root, parentPath) : root;
+    if (!(parent && typeof parent==='object') || typeof key!=='string') return;
+    const nuevo = window.prompt('Nueva clave', String(key)); if (!nuevo || nuevo===key) return;
+    if (Object.prototype.hasOwnProperty.call(parent, nuevo)) return alert('La clave ya existe.');
+    parent[nuevo] = parent[key]; delete parent[key];
+    await persistRootByPath(path, root);
+    buildTree();
+  }
+
+  // Inicializador no destructivo
+  async function ensureBaseStructureInteractive(){
+    await ensureJsonLoaded();
+    const data = window.formularioJsonOriginal || {};
+    const payload = {};
+    if (!data.parametros || typeof data.parametros!=='object') payload.parametros = {};
+    if (!data.layout || typeof data.layout!=='object') payload.layout = { header:{type:'header',rows:[]}, main:{type:'generic',rows:[{columns:[{width:12}]}]}, footer:{type:'footer',rows:[]} };
+    if (!data.fieldsets || typeof data.fieldsets!=='object') payload.fieldsets = {};
+    if (!Array.isArray(data.elementos_fuera)) payload.elementos_fuera = [];
+    if (!Object.keys(payload).length) return alert('La estructura base ya existe.');
+    await postGuardar(payload);
+    window.formularioJsonOriginal = { ...data, ...payload };
+    buildTree();
+  }
+
+  // Transiciones de modo diseño
   async function onDesignModeChanged(e){
     const on = !!(e && e.detail && e.detail.on);
     if (on === lastDesignOn) return;
@@ -182,7 +270,7 @@
     }
   }
 
-  // Espera y observa #fd-root
+  // Observa #fd-root y emite eventos
   function whenRootReady(cb){
     const root = document.getElementById('fd-root');
     if (root) return cb(root);
@@ -192,24 +280,16 @@
     });
     mo.observe(document.documentElement, { childList:true, subtree:true });
   }
-
   function watchDesignMode(){
     whenRootReady((root)=>{
       const emit = ()=> window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: root.classList.contains('design-mode') } }));
       new MutationObserver(emit).observe(root, { attributes:true, attributeFilter:['class'] });
-      // No forzar activación: sincroniza estado actual pero sin crear panel si está apagado
-      emit();
+      emit(); // estado actual (no crea panel si está apagado)
     });
   }
 
-  // Boot: limpiar cualquier panel/botón preexistente si no es diseño
+  // Boot: no crear nada si no es diseño
   window.addEventListener('load', ()=>{
-    const panel = $('#json-tree-panel');
-    const btn = $('#fd-tree-toggle-btn');
-    if (!shouldShow()){
-      if (panel) panel.style.display = 'none';
-      if (btn) btn.style.display = 'none';
-    }
     watchDesignMode();
     window.addEventListener('design-mode-changed', onDesignModeChanged);
   });

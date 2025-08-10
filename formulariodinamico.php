@@ -5,18 +5,11 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 $modoDiseno  = (isset($_GET['modoDiseno']) && $_GET['modoDiseno'] === '1') ? 1 : 0;
 $archivo_json = $_GET['archivo'] ?? 'formulariogenerico.json';
 
-$archivo_base = basename($archivo_json);
-if (stripos($archivo_base, '.json') === false) $archivo_base .= '.json';
-$json_path = __DIR__ . '/json/' . $archivo_base;
-
-if (!is_file($json_path)) {
-    die("<div class='alert alert-danger'>No existe el archivo: " . htmlspecialchars($json_path) . "</div>");
-}
-
-$json_data_raw = file_get_contents($json_path);
-$json_data = json_decode($json_data_raw, true) ?: [];
-$json_error = (json_last_error() !== JSON_ERROR_NONE) ? json_last_error_msg() : '';
-
+$archivo_base = 'formulariogenerico2.json';
+$json_path = __DIR__ . DIRECTORY_SEPARATOR . 'json' . DIRECTORY_SEPARATOR . $archivo_base;
+$modoDiseno = isset($_GET['modoDiseno']) ? ($_GET['modoDiseno'] === '1') : false;
+$json_text = is_file($json_path) ? file_get_contents($json_path) : '{}';
+$json_data = json_decode($json_text, true); if (!is_array($json_data)) { $json_data = []; }
 $titulo_formulario      = $json_data['titulo'] ?? 'Formulario Dinámico';
 $descripcion_formulario = $json_data['descripcion'] ?? '';
 $fieldsets              = $json_data['fieldsets'] ?? [];

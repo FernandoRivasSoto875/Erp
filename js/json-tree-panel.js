@@ -184,6 +184,30 @@
     return null; // sin icono
   }
 
+  // NUEVO: resolver el nombre/etiqueta de tipo aunque no exista ícono
+  function resolveTypeName(nodeVal, path, key){
+    const FIELD_KEYS = ['type','tipo','control','component','componente','widget','kind'];
+    const SUBTYPE_KEYS = ['subtype','subtipo'];
+    const CONTAINER_KEYS = ['type','layout','tipo'];
+
+    const keyLower = typeof key === 'string' ? key.toLowerCase() : '';
+    if (['type','layout','tipo'].includes(keyLower) && typeof nodeVal === 'string' && nodeVal) return nodeVal;
+
+    if (nodeVal && typeof nodeVal === 'object' && !Array.isArray(nodeVal)){
+      const fieldType = getFirstStringProp(nodeVal, FIELD_KEYS);
+      if (fieldType){
+        if (String(fieldType).toLowerCase() === 'input'){
+          const sub = getFirstStringProp(nodeVal, SUBTYPE_KEYS);
+          if (sub) return sub;
+        }
+        return fieldType;
+      }
+      const contType = getFirstStringProp(nodeVal, CONTAINER_KEYS);
+      if (contType) return contType;
+    }
+    return null;
+  }
+
   function ensureToggleButton(){
     if ($('#fd-tree-toggle-btn')) return;
     const btn = document.createElement('button');
@@ -265,14 +289,22 @@
       ? `<i class="${esc(iconInfo.iconClass)} text-secondary" title="${esc(iconInfo.title)}" aria-hidden="true" style="min-width:1rem;"></i>`
       : '';
 
+    // NUEVO: Etiqueta (badge) con el tipo detectado
+    const typeName = (iconInfo && iconInfo.title) || resolveTypeName(val, path, key);
+    const labelHtml = typeName
+      ? `<span class="badge bg-light text-secondary border ms-1" title="${esc(typeName)}">${esc(typeName)}</span>`
+      : '';
+
     let html = `<div class="json-tree-item" data-path='${esc(JSON.stringify(path))}'>`;
     html += `<div class="json-row list-group-item border-0 border-bottom">`;
     html += canToggle
       ? `<button class="json-toggle" aria-label="expandir"><i class="fas fa-chevron-right"></i></button>`
       : `<span style="display:inline-block;width:1.25rem;"></span>`;
-    // Icono antes del nombre, visible también en índices [0], [1], ...
+    // Icono antes del nombre (incluye índices [0], [1], ...)
     html += iconHtml;
     html += `<span class="json-node-key">${esc(String(key))}</span>`;
+    // Etiqueta (badge) a la vista para saber qué se parametriza
+    html += labelHtml;
     html += `<small class="text-secondary ms-auto">${esc(meta)}</small>`;
     html += `<span class="json-node-actions ms-2">
         <button class="btn btn-link btn-sm text-secondary p-0 act-edit" title="Editar"><i class="fas fa-pencil-alt"></i></button>

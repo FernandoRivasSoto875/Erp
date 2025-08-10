@@ -46,10 +46,16 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"/>
+<style>
+  /* Oculta todo lo de diseño fuera de modo diseño */
+  #fd-root:not(.design-mode) .fd-design-only,
+  #fd-root:not(.design-mode) [data-design-only="true"],
+  #fd-root:not(.design-mode) .fd-dnd-handle { display:none !important; }
+</style>
 </head>
 <body>
-  <!-- Contenedor raíz: el árbol SOLO se activa cuando tiene la clase design-mode -->
-  <div id="fd-root" class="<?php echo $modoDiseno ? 'design-mode' : ''; ?>">
+  <!-- Apagado por defecto salvo ?modoDiseno=1 -->
+  <div id="fd-root" class="<?php echo (!empty($_GET['modoDiseno']) && $_GET['modoDiseno']==='1') ? 'design-mode' : ''; ?>">
     <div class="container py-3">
       <h1 id="form-title"><?php echo htmlspecialchars($params['titulo'] ?? $titulo_formulario); ?></h1>
 
@@ -86,50 +92,41 @@ require_once __DIR__ . '/formulariodinamicologica.php';
     </div>
   </div>
 
-  <!-- Switch opcional para probar modo diseño -->
-  <div style="position:fixed;bottom:12px;right:12px;z-index:9999;">
-    <label style="user-select:none;">
-      <input type="checkbox" id="designModeToggle" <?php echo $modoDiseno ? 'checked' : ''; ?> />
+  <!-- Toggle de diseño -->
+  <div style="position:fixed;bottom:12px;right:12px;z-index:1055;">
+    <label class="form-check-label">
+      <input type="checkbox" id="designModeToggle" class="form-check-input"
+             <?php echo (!empty($_GET['modoDiseno']) && $_GET['modoDiseno']==='1') ? 'checked' : ''; ?>>
       Modo diseño
     </label>
   </div>
 
   <script>
-    // Fuente de verdad
-    window.FORM_CONFIG = { archivo_json: <?php echo json_encode($archivo_base); ?> };
-    window.formularioJsonOriginal = <?php echo json_encode($json_data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
-  </script>
+    // Define JSON y archivo ANTES de cargar los scripts
+    window.FORM_CONFIG = { archivo_json: <?php echo json_encode($archivo_base ?? 'formulariogenerico2.json'); ?> };
+    window.formularioJsonOriginal = <?php echo json_encode($json_data ?? [], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
 
-  <!-- Sincroniza el modo diseño y emite eventos -->
-  <script>
+    // Toggle modo diseño: solo añade/quita clase y emite evento (no fuerza encendido)
     (function(){
       const root = document.getElementById('fd-root');
       const toggle = document.getElementById('designModeToggle');
       function emit(on){ window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } })); }
-      // Estado inicial (desde la clase ya puesta por PHP)
-      emit(root && root.classList.contains('design-mode'));
-      // Cambios desde el switch
+      if (root) emit(root.classList.contains('design-mode'));
       if (toggle && root){
         toggle.addEventListener('change', function(){
           root.classList.toggle('design-mode', this.checked);
-          emit(this.checked);
-          // Persistir en URL
           const url = new URL(location.href);
           url.searchParams.set('modoDiseno', this.checked ? '1' : '0');
           history.replaceState(null, '', url.toString());
+          emit(this.checked);
         });
       }
-      // API opcional para notificar cambios del JSON desde otros scripts
-      window.FD_notifyJsonUpdated = function(){
-        window.dispatchEvent(new Event('fd-json-updated'));
-      };
     })();
   </script>
 
-  <script src="js/json-tree-panel.js"></script>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Incluye después de las variables anteriores -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <script src="js/json-tree-panel.js"></script>
   <script src="js/form-dnd.js"></script>
 </body>
 </html>

@@ -1,70 +1,110 @@
 (function(){
   if (window.__FORM_DND_LOADED__) return; window.__FORM_DND_LOADED__ = true;
 
-  function $all(sel, root){ return Array.from((root||document).querySelectorAll(sel)); }
-  function deepClone(v){ return JSON.parse(JSON.stringify(v)); }
+  const $ = (s, r)=> (r||document).querySelector(s);
+  const $all = (s, r)=> Array.from((r||document).querySelectorAll(s));
+  const clone = v => JSON.parse(JSON.stringify(v));
 
-  function postGuardar(blocks){
+  function postGuardarFieldsets(fieldsets){
     const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || '';
     const form = new FormData();
     form.append('archivo', archivo);
-    if (blocks.fieldsets) form.append('fieldsets', JSON.stringify(blocks.fieldsets));
+    form.append('fieldsets', JSON.stringify(fieldsets));
     return fetch('guardar_layout.php', { method:'POST', body: form })
-      .then(r => r.ok ? r.json() : r.json().then(e=>Promise.reject(new Error(e.error||'Error HTTP'))))
-      .then(j => { if (j.success===false) throw new Error(j.error||'Error'); return j; });
+      .then(r=>r.ok ? r.json() : Promise.reject(new Error('Error HTTP '+r.status)))
+      .then(j=>{ if (j?.success===false) throw new Error(j.error||'Error'); return j; });
   }
 
-  function initFieldSortable(){
+  function initFieldDnD(){
     if (typeof Sortable === 'undefined') return;
-    $all('#fd-root fieldset.draggable-fieldset .sortable-fields-container').forEach(container=>{
+    // Campos dentro de cada fieldset
+    $all('fieldset[data-fieldset-name] .sortable-fields-container').forEach(container=>{
       if (container.__fdSortable) return;
       container.__fdSortable = new Sortable(container, {
         group: 'fd-fields',
         animation: 150,
-        handle: '.form-group, .draggable-field',
+        handle: '.fd-dnd-handle, .form-group, .draggable-field',
         ghostClass: 'bg-light',
         onEnd: async (evt)=>{
-          try {
-            const fromFs = evt.from.closest('fieldset.draggable-fieldset')?.getAttribute('data-fieldset-name');
-            const toFs   = evt.to.closest('fieldset.draggable-fieldset')?.getAttribute('data-fieldset-name');
+          try{
+            const fromFs = evt.from.closest('fieldset[data-fieldset-name]')?.getAttribute('data-fieldset-name');
+            const toFs   = evt.to.closest('fieldset[data-fieldset-name]')?.getAttribute('data-fieldset-name');
             if (!fromFs || !toFs) return;
 
             const data = window.formularioJsonOriginal || {};
-            const fieldsets = deepClone(data.fieldsets || {});
+            const fieldsets = clone(data.fieldsets || {});
             const fromArr = fieldsets[fromFs]?.campos || [];
             const toArr   = fieldsets[toFs]?.campos || [];
 
-            const draggedEl = evt.item;
-            const fieldName = draggedEl.getAttribute('data-field-name');
+            const itemEl = evt.item;
+            const fieldName = itemEl.getAttribute('data-field-name');
             if (!fieldName) return;
 
             const idxFrom = fromArr.findIndex(c => (c && (c.nombre||c.name)) === fieldName);
             if (idxFrom < 0) return;
             const [moved] = fromArr.splice(idxFrom, 1);
 
-            const idxTo = Array.prototype.indexOf.call(evt.to.children, evt.item);
+            // Posición destino basada en índice del DOM
+            const idxTo = Array.prototype.indexOf.call(evt.to.children, itemEl);
             toArr.splice(idxTo, 0, moved);
 
             fieldsets[fromFs].campos = fromArr;
             fieldsets[toFs].campos   = toArr;
-            await postGuardar({ fieldsets });
+
+            await postGuardarFieldsets(fieldsets);
             window.formularioJsonOriginal.fieldsets = fieldsets;
-          } catch(err){
-            console.error('Reordenar campos:', err);
+
+            // Refresca árbol si está abierto
+            if (window.FD_refreshTree) window.FD_refreshTree();
+          }catch(err){
+            console.error(err);
             if (window.Swal) Swal.fire('Error', String(err.message||err), 'error');
           }
         }
       });
     });
+
+    // Orden de fieldsets (opcional)
+    const fsWrap = document.querySelector('[data-fieldsets-wrapper]');
+    if (fsWrap && !fsWrap.__fdFsSortable){
+      fsWrap.__fdFsSortable = new Sortable(fsWrap, {
+        group: 'fd-fieldsets',
+        animation: 150,
+        handle: '.fd-fieldset-dnd-handle, legend, .card-header',
+        onEnd: async (evt)=>{
+          try{
+            const data = window.formularioJsonOriginal || {};
+            const orderEls = $all('[data-fieldset-name]', fsWrap);
+            const newOrder = orderEls.map(el => el.getAttribute('data-fieldset-name')).filter(Boolean);
+            if (!newOrder.length) return;
+
+            const fieldsets = clone(data.fieldsets || {});
+            const reordered = {};
+            newOrder.forEach(name => reordered[name] = fieldsets[name]);
+            await postGuardarFieldsets(reordered);
+            window.formularioJsonOriginal.fieldsets = reordered;
+
+            if (window.FD_refreshTree) window.FD_refreshTree();
+          }catch(err){
+            console.error(err);
+            if (window.Swal) Swal.fire('Error', String(err.message||err), 'error');
+          }
+        }
+      });
+    }
   }
 
   function onDesignModeChanged(e){
     const on = !!(e && e.detail && e.detail.on);
-    if (on) setTimeout(initFieldSortable, 50);
+    if (!on) return;
+    setTimeout(initFieldDnD, 50);
   }
 
-  window.addEventListener('load', ()=> {
+  window.addEventListener('load', ()=>{
     window.addEventListener('design-mode-changed', onDesignModeChanged);
-    if (document.getElementById('fd-root')?.classList.contains('design-mode')) setTimeout(initFieldSortable, 50);
+    // Si ya está en diseño al cargar
+    if (document.getElementById('fd-root')?.classList.contains('design-mode')){
+      setTimeout(initFieldDnD, 50);
+    }
   });
 })();

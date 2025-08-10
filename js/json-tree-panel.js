@@ -218,29 +218,33 @@
   // Eventos
   function onDesignModeChanged(e){
     const on = !!(e && e.detail && e.detail.on);
-    const panel = ensurePanel();
-    ensureToggleButton();
-    const btn = $('#fd-tree-toggle-btn');
+
+    // No crear nada si no está en modo diseño
     if (!on){
-      panel.style.display = 'none';
+      const panel = $('#json-tree-panel');
+      const btn = $('#fd-tree-toggle-btn');
+      if (panel) panel.style.display = 'none';
       if (btn) btn.style.display = 'none';
       return;
     }
-    // Modo diseño ON
+
+    // Modo diseño ON: crear on-demand
+    injectStyles();
+    let panel = $('#json-tree-panel');
+    let btn = $('#fd-tree-toggle-btn');
+    if (!panel) panel = ensurePanel();
+    if (!btn) ensureToggleButton();
+
+    panel.style.display = panel.style.display || 'none'; // cerrado por defecto
     btn.style.display = 'inline-flex';
-    // No abrir automáticamente; el usuario pulsa el botón.
-    // Si ya estaba abierto, refresca.
+
+    // Si el panel ya está abierto, refrescar
     if (getComputedStyle(panel).display !== 'none') buildTree();
   }
 
-  // Exponer API de refresh y escuchar actualizaciones del JSON
-  window.FD_refreshTree = function(){ if (shouldShow()) buildTree(); };
-  window.addEventListener('fd-json-updated', ()=> window.FD_refreshTree());
-
-  // Boot: solo registrar listeners
+  // Boot: solo registrar listeners y sincronizar
   window.addEventListener('load', ()=>{
     window.addEventListener('design-mode-changed', onDesignModeChanged);
-    // Sincroniza estado inicial (oculta por defecto)
     onDesignModeChanged({ detail:{ on: shouldShow() } });
   });
 

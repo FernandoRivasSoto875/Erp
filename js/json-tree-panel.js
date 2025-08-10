@@ -117,6 +117,22 @@
     return foundKey ? { key: foundKey, def: group[foundKey] } : null;
   }
 
+  // Helpers para obtener propiedades con alias y case-insensitive
+  function getPropIgnoreCase(obj, wanted){
+    if (!obj || typeof obj !== 'object') return undefined;
+    const keys = Object.keys(obj);
+    const wl = String(wanted).toLowerCase();
+    const k = keys.find(x => String(x).toLowerCase() === wl);
+    return k ? obj[k] : undefined;
+  }
+  function getFirstStringProp(obj, names){
+    for (const n of names){
+      const v = getPropIgnoreCase(obj, n);
+      if (typeof v === 'string' && v.trim()) return v.trim();
+    }
+    return null;
+  }
+
   function getTypeIconFromKey(keyStr){
     const map = window.FORM_TYPES_MAP || {};
     const ft = resolveTypeDef(map.field_types, keyStr);
@@ -126,40 +142,42 @@
     return null;
   }
 
-  // Heurística para recuperar icono según valor y contexto
+  // Heurística para recuperar icono según valor y contexto (con alias)
   function getTypeIcon(nodeVal, path, key){
     const map = window.FORM_TYPES_MAP || {};
-    const inFieldsets = (path||[]).map(String).some(k => k.toLowerCase() === 'fieldsets');
+    // Aliases de propiedades para fields/containers
+    const FIELD_KEYS = ['type','tipo','control','component','componente','widget','kind'];
+    const SUBTYPE_KEYS = ['subtype','subtipo'];
+    const CONTAINER_KEYS = ['type','layout','tipo'];
 
-    // Cuando el nodo es la propiedad "type" o "layout" con string
-    if ((key === 'type' || key === 'layout') && typeof nodeVal === 'string' && nodeVal){
-      return getTypeIconFromKey(nodeVal);
+    // Si es propiedad "type/layout" (o alias) con string
+    const keyLower = typeof key === 'string' ? key.toLowerCase() : '';
+    if (['type','layout','tipo'].includes(keyLower) && typeof nodeVal === 'string' && nodeVal){
+      const ico = getTypeIconFromKey(nodeVal);
+      if (ico) return ico;
     }
 
-    // Cuando el nodo es un objeto (field o fieldset)
+    // Si es un objeto (field o fieldset)
     if (nodeVal && typeof nodeVal === 'object' && !Array.isArray(nodeVal)){
-      // Fields: type, component, subtype (si type==='input')
-      if (typeof nodeVal.type === 'string'){
-        const r = resolveTypeDef(map.field_types, nodeVal.type);
+      // 1) Intenta como field contra field_types
+      const fieldType = getFirstStringProp(nodeVal, FIELD_KEYS);
+      if (fieldType){
+        const r = resolveTypeDef(map.field_types, fieldType);
         if (r && r.def && r.def.icon) return { iconClass: r.def.icon, title: r.key };
       }
-      if (typeof nodeVal.component === 'string'){
-        const r = resolveTypeDef(map.field_types, nodeVal.component);
-        if (r && r.def && r.def.icon) return { iconClass: r.def.icon, title: r.key };
+      // 2) Si es input, usa subtype/subtipo
+      if (fieldType && String(fieldType).toLowerCase() === 'input'){
+        const sub = getFirstStringProp(nodeVal, SUBTYPE_KEYS);
+        if (sub){
+          const rs = resolveTypeDef(map.field_types, sub);
+          if (rs && rs.def && rs.def.icon) return { iconClass: rs.def.icon, title: rs.key };
+        }
       }
-      if (nodeVal.type === 'input' && typeof nodeVal.subtype === 'string'){
-        const r = resolveTypeDef(map.field_types, nodeVal.subtype);
-        if (r && r.def && r.def.icon) return { iconClass: r.def.icon, title: r.key };
-      }
-
-      // Fieldsets/containers: type o layout bajo fieldsets
-      if (typeof nodeVal.type === 'string'){
-        const r = resolveTypeDef(map.fieldset_types, nodeVal.type);
-        if (r && r.def && r.def.icon) return { iconClass: r.def.icon, title: r.key };
-      }
-      if (typeof nodeVal.layout === 'string'){
-        const r = resolveTypeDef(map.fieldset_types, nodeVal.layout);
-        if (r && r.def && r.def.icon) return { iconClass: r.def.icon, title: r.key };
+      // 3) Intenta como contenedor/fieldset contra fieldset_types
+      const contType = getFirstStringProp(nodeVal, CONTAINER_KEYS);
+      if (contType){
+        const rc = resolveTypeDef(map.fieldset_types, contType);
+        if (rc && rc.def && rc.def.icon) return { iconClass: rc.def.icon, title: rc.key };
       }
     }
 
@@ -194,6 +212,13 @@
   function buildTree(resetState=false){
     if (!shouldShow()) return;
     const body = $('#jsonTreeBody'); if (!body) return;
+
+    // Asegura el mapa de tipos antes de renderizar; si aún no está, cargar y reintentar
+    if (!window.FORM_TYPES_MAP){
+      ensureFormTypesLoaded().then(()=> buildTree(resetState)).catch(()=>{/* no-op */});
+      return;
+    }
+
     const data = window.formularioJsonOriginal || {};
 
     // NUEVO: capturar ramas abiertas antes de reconstruir (si no vamos a resetear)
@@ -208,19 +233,14 @@
       : `<div class="list-group-item text-muted py-2">JSON vacío</div>`;
 
     if (resetState){
-      // Colapsar todo por defecto al reconstruir
       $all('#jsonTreeBody .json-children').forEach(c=> c.classList.remove('show'));
     } else {
-      // NUEVO: restaurar ramas abiertas
       restoreOpenPaths(openPaths);
     }
     updatePanelTitle();
 
-    // Enlazar acciones CRUD tras render
     bindCrudActions();
-    // Inicializar DnD en hijos de cada padre
     initTreeDnD();
-    // Desactivar DnD si hay filtro activo
     updateSortablesDisabled();
   }
 
@@ -236,10 +256,9 @@
     const meta = (t==='object') ? 'object' : (t==='array') ? `array(${(val||[]).length})` : renderValue(val);
     const canToggle = hasChildrenValue(val);
 
-    // NUEVO: icono por tipo
+    // Icono por tipo (fields, fieldsets y propiedades type/layout)
     let iconInfo = getTypeIcon(val, path, key);
-    // Para primitivos "type"/"layout" con string
-    if (!iconInfo && (key === 'type' || key === 'layout') && typeof val === 'string'){
+    if (!iconInfo && (key === 'type' || key === 'layout' || key === 'tipo') && typeof val === 'string'){
       iconInfo = getTypeIconFromKey(val);
     }
     const iconHtml = iconInfo
@@ -251,7 +270,7 @@
     html += canToggle
       ? `<button class="json-toggle" aria-label="expandir"><i class="fas fa-chevron-right"></i></button>`
       : `<span style="display:inline-block;width:1.25rem;"></span>`;
-    // Inserta icono antes del nombre
+    // Icono antes del nombre, visible también en índices [0], [1], ...
     html += iconHtml;
     html += `<span class="json-node-key">${esc(String(key))}</span>`;
     html += `<small class="text-secondary ms-auto">${esc(meta)}</small>`;

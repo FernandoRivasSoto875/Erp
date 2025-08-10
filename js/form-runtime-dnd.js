@@ -16,6 +16,9 @@
       #fd-root.design-mode [data-action="edit-field"]{ display:none !important; }
       #fd-root.design-mode .fd-dnd-handle{ cursor:grab; opacity:.8; }
       #fd-root.design-mode .fd-dnd-ghost{ opacity:.6; background:#eef2ff !important; }
+      /* Grip visible */
+      #fd-root.design-mode .fd-dnd-grip{ cursor:grab; opacity:.7; margin-right:6px; }
+      #fd-root.design-mode .nav-tabs .fd-dnd-grip{ font-size:.9em; }
     `;
     const st = document.createElement('style');
     st.id = 'fd-form-dnd-styles';
@@ -92,17 +95,19 @@
     const tabsJson = json?.layout?.main?.tabs;
     if (!Array.isArray(tabsJson) || tabsJson.length===0) return;
 
-    // Detecta el UL de pestañas cuyo conteo coincide
     const candidates = $$('#fd-root .nav-tabs');
     const ul = candidates.find(u => u.children.length === tabsJson.length);
     if (!ul) return;
 
-    // Marca cada LI con data-tab-title
     Array.from(ul.children).forEach((li, i)=>{
       const link = li.querySelector('a,button');
       const title = (link?.textContent || '').trim();
       li.dataset.tabTitle = title;
       li.classList.add('fd-dnd-handle');
+      // Añadir grip visible al inicio del link
+      if (link && !link.querySelector('.fd-dnd-grip')){
+        link.insertAdjacentHTML('afterbegin', '<i class="fas fa-grip-lines fd-dnd-grip" title="Arrastra para reordenar pestañas"></i>');
+      }
     });
 
     if (hasSortable()){
@@ -206,7 +211,8 @@
           h.style.minHeight = '12px';
           h.style.display = 'inline-block';
           h.style.marginRight = '4px';
-          // Inserta un pequeño handler al inicio del wrapper (no altera contenido)
+          // Icono grip visible
+          h.innerHTML = '<i class="fas fa-grip-vertical fd-dnd-grip"></i>';
           wrap.insertBefore(h, wrap.firstChild);
         }
       });

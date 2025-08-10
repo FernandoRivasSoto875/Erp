@@ -4,20 +4,38 @@
   window.__JSON_TREE_PANEL_LOADED__ = true;
 
   const CONFIG = { showOnlyInDesignMode: true };
+  let lastDesignOn = null;
 
   function $(s, r){ return (r||document).querySelector(s); }
   function $all(s, r){ return Array.from((r||document).querySelectorAll(s)); }
-  function typeOf(v){ if (Array.isArray(v)) return 'array'; return v===null ? 'null' : typeof v==='object' ? 'object' : typeof v; }
+  function typeOf(v){ if (Array.isArray(v)) return 'array'; return v===null?'null':(typeof v==='object'?'object':typeof v); }
   function esc(s){ return String(s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 
-  // Mostrar solo en modo diseño
   function shouldShow(){
     if (!CONFIG.showOnlyInDesignMode) return true;
     const root = document.getElementById('fd-root');
     return !!(root && root.classList.contains('design-mode'));
   }
 
-  // Crear panel y botón solo al entrar a modo diseño
+  // Carga JSON si no viene embebido
+  async function ensureJsonLoaded(){
+    if (window.formularioJsonOriginal && Object.keys(window.formularioJsonOriginal).length) return window.formularioJsonOriginal;
+    const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || 'formulariogenerico2.json';
+    const url = 'json/' + archivo;
+    const r = await fetch(url, { cache:'no-store' });
+    if (!r.ok) throw new Error('No se pudo cargar '+url+' ('+r.status+')');
+    const txt = await r.text();
+    let data;
+    try { data = JSON.parse(txt); }
+    catch {
+      const noComments = txt.replace(/\/\/.*$/mg,'').replace(/\/\*[\s\S]*?\*\//g,'')
+      const noTrailing = noComments.replace(/,\s*([}\]])/g, '$1');
+      data = JSON.parse(noTrailing);
+    }
+    window.formularioJsonOriginal = data || {};
+    return window.formularioJsonOriginal;
+  }
+
   function ensurePanel(){
     let panel = $('#json-tree-panel');
     if (panel) return panel;
@@ -38,7 +56,7 @@
     `;
     document.body.appendChild(panel);
     $('#jsonTreeClose').addEventListener('click', ()=> panel.style.display='none');
-    $('#jsonTreeRefresh').addEventListener('click', buildTree);
+    $('#jsonTreeRefresh').addEventListener('click', ()=> buildTree());
     $('#jsonTreeFilter').addEventListener('input', filterTree);
     $('#jsonTreeInit').addEventListener('click', ensureBaseStructureInteractive);
     return panel;
@@ -56,7 +74,7 @@
       if (isHidden) buildTree();
     });
     document.body.appendChild(btn);
-    btn.style.display = shouldShow() ? 'inline-flex' : 'none';
+    btn.style.display = 'none'; // oculto por defecto
   }
 
   // Construcción del árbol (solo si estamos en diseño y existe data)
@@ -96,13 +114,9 @@
     </div>`;
 
     if (t === 'object') {
-      Object.keys(val||{}).forEach(k=>{
-        html += renderNode(k, val[k], path.concat(k), level+1);
-      });
+      Object.keys(val||{}).forEach(k=>{ html += renderNode(k, val[k], path.concat(k), level+1); });
     } else if (t === 'array') {
-      (val||[]).forEach((item, idx)=>{
-        html += renderNode(`[${idx}]`, item, path.concat(idx), level+1);
-      });
+      (val||[]).forEach((item, idx)=>{ html += renderNode(`[${idx}]`, item, path.concat(idx), level+1); });
     }
     return html;
   }
@@ -147,9 +161,12 @@
   }
   // ...existing code (editNodeByPath, duplicateAtPath, deleteAtPath, renameAtPath, DnD helpers)...
 
-  // Solo crear/mostrar en modo diseño
-  function onDesignModeChanged(e){
+  // Reacciona SOLO a transiciones (false->true / true->false)
+  async function onDesignModeChanged(e){
     const on = !!(e && e.detail && e.detail.on);
+    if (on === lastDesignOn) return;
+    lastDesignOn = on;
+
     let panel = $('#json-tree-panel');
     let btn = $('#fd-tree-toggle-btn');
 
@@ -158,45 +175,41 @@
       if (!btn) ensureToggleButton();
       panel.style.display = '';
       btn.style.display = 'inline-flex';
-      // Usa el JSON ya embebido por PHP; si no existe, no hace fetch
-      if (!window.formularioJsonOriginal) {
-        // fallback opcional si no fue embebido
-        const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || '';
-        if (archivo) fetch('json/' + archivo, { cache:'no-store' })
-          .then(r=>r.ok?r.text():Promise.reject(r.status))
-          .then(txt=> JSON.parse(txt))
-          .then(j=> { window.formularioJsonOriginal = j; buildTree(); })
-          .catch(console.error);
-      } else {
-        buildTree();
-      }
+      try { await ensureJsonLoaded(); buildTree(); } catch(err){ console.error(err); }
     } else {
       if (panel) panel.style.display = 'none';
       if (btn) btn.style.display = 'none';
     }
   }
 
-  // Observa cambios de modo diseño y sincroniza estado inicial sin crear el panel fuera de diseño
-  function watchDesignMode(){
-    function bind(root){
-      const emit = ()=> window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: root.classList.contains('design-mode') } }));
-      new MutationObserver(emit).observe(root, { attributes:true, attributeFilter:['class'] });
-      emit(); // estado inicial
-    }
-    const rootNow = document.getElementById('fd-root');
-    if (rootNow) return bind(rootNow);
-    // Espera a que aparezca #fd-root si se renderiza tarde
+  // Espera y observa #fd-root
+  function whenRootReady(cb){
+    const root = document.getElementById('fd-root');
+    if (root) return cb(root);
     const mo = new MutationObserver(()=>{
       const r = document.getElementById('fd-root');
-      if (r){ mo.disconnect(); bind(r); }
+      if (r){ mo.disconnect(); cb(r); }
     });
     mo.observe(document.documentElement, { childList:true, subtree:true });
   }
 
-  // Boot mínimo: no crea panel ni carga JSON si no estás en diseño
+  function watchDesignMode(){
+    whenRootReady((root)=>{
+      const emit = ()=> window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: root.classList.contains('design-mode') } }));
+      new MutationObserver(emit).observe(root, { attributes:true, attributeFilter:['class'] });
+      // No forzar activación: sincroniza estado actual pero sin crear panel si está apagado
+      emit();
+    });
+  }
+
+  // Boot: limpiar cualquier panel/botón preexistente si no es diseño
   window.addEventListener('load', ()=>{
-    // Opcional: estilos (si tienes injectStyles definido, descomenta)
-    // injectStyles();
+    const panel = $('#json-tree-panel');
+    const btn = $('#fd-tree-toggle-btn');
+    if (!shouldShow()){
+      if (panel) panel.style.display = 'none';
+      if (btn) btn.style.display = 'none';
+    }
     watchDesignMode();
     window.addEventListener('design-mode-changed', onDesignModeChanged);
   });

@@ -29,22 +29,34 @@
     moClass.observe(root, { attributes:true, attributeFilter:['class'] });
     if (isDesign()) enableDesignDnD();
   });
-  function whenRootReady(cb){
-    const root = document.getElementById('fd-root');
-    if (root) return cb(root);
-    const mo = new MutationObserver(()=>{
-      const r = document.getElementById('fd-root');
-      if (r){ mo.disconnect(); cb(r); }
-    });
-    mo.observe(document.documentElement, { childList:true, subtree:true });
+
+  // NUEVO: también escucha el evento global del modo diseño
+  window.addEventListener('design-mode-changed', (e)=>{
+    const on = !!(e && e.detail && e.detail.on);
+    on ? enableDesignDnD() : disableDesignDnD();
+  });
+
+  // NUEVO: espera a que el DOM del formulario esté listo (tabs o campos presentes)
+  function waitForDesignDom(cb, timeout=3000, interval=100){
+    const start = Date.now();
+    (function tick(){
+      const root = document.getElementById('fd-root');
+      const ok = !!(root && (root.querySelector('.nav-tabs li') || root.querySelector('input, select, textarea, [data-name], [name]')));
+      if (ok){ cb(); return; }
+      if (Date.now() - start > timeout){ cb(); return; } // continúa aunque no detecte (no bloquea)
+      setTimeout(tick, interval);
+    })();
   }
 
   function enableDesignDnD(){
     destroyAllDnD();
-    setTimeout(()=>{
+
+    // NUEVO: espera a que el DOM del formulario esté listo (tabs o campos presentes)
+    waitForDesignDom(()=> {
       attachTabsDnD();
       attachFieldsDnD();       // reordenar y mover campos (incluye entre pestañas)
-      attachFieldsetsDnD();    // mover grupos/fieldsets (opcional)
+      attachFieldsetsDnD();    // mover grupos/fieldsets
+
       const root = document.getElementById('fd-root');
       if (root){
         const rescan = debounce(()=>{
@@ -56,7 +68,7 @@
         state.mo = new MutationObserver(rescan);
         state.mo.observe(root, { childList:true, subtree:true });
       }
-    }, 50);
+    });
   }
   function disableDesignDnD(){ destroyAllDnD(); }
   function destroyAllDnD(){
@@ -75,74 +87,74 @@
     $$('#fd-root [draggable="true"]').forEach(el=> el.removeAttribute('draggable'));
   }
 
-  // --------- Tabs DnD (solo UI; emite evento para que EL ÁRBOL guarde) ----------
+  // --------- Tabs DnD (JSON primero; DOM fallback) ----------
   function attachTabsDnD(){
-    const tabsJson = window.formularioJsonOriginal?.layout?.main?.tabs;
-    if (!Array.isArray(tabsJson) || tabsJson.length===0) return;
-
-    const titles = tabsJson.map(t=> String(t.title||'').trim()).filter(Boolean);
-    if (!titles.length) return;
+    const jsonTabs = window.formularioJsonOriginal?.layout?.main?.tabs;
+    const titlesFromJson = Array.isArray(jsonTabs) ? jsonTabs.map(t=> String(t.title||'').trim()).filter(Boolean) : [];
 
     const candidates = $$('#fd-root .nav-tabs');
     if (!candidates.length) return;
 
-    let best = null, bestScore = 0;
-    for (const ul of candidates){
-      const liTitles = Array.from(ul.children).map(li=>{
-        const link = getTabLink(li); return (link?.textContent || '').trim();
-      });
-      const score = liTitles.filter(t=> titles.includes(t)).length;
-      if (score > bestScore){ best = ul; bestScore = score; }
+    // Elegir UL por mayor coincidencia de títulos si hay JSON; si no, usa el de más LIs
+    let ul = candidates[0];
+    if (titlesFromJson.length){
+      let best = null, bestScore = -1;
+      for (const u of candidates){
+        const liTitles = Array.from(u.children).map(li=>{
+          const link = getTabLink(li);
+          return (link?.textContent || '').trim();
+        });
+        const score = liTitles.filter(t=> titlesFromJson.includes(t)).length;
+        if (score > bestScore){ best = u; bestScore = score; }
+      }
+      ul = best || candidates[0];
+    } else {
+      ul = candidates.sort((a,b)=> b.children.length - a.children.length)[0];
     }
-    const ul = best || candidates[0];
+
     if (!ul || state.attached.has(ul)) return;
     state.attached.add(ul);
 
-    Array.from(ul.children).forEach(li=>{
+    const oldTitles = Array.from(ul.children).map(li=>{
       const link = getTabLink(li);
       const title = (link?.textContent || '').trim();
-      li.dataset.tabTitle = title;
-      li.classList.add('fd-dnd-handle');
-      // Asegura data-bs-toggle y target correcto
-      if (link){
-        if (!link.getAttribute('data-bs-toggle')) link.setAttribute('data-bs-toggle', 'tab');
-      }
+      li.dataset.tabTitle = title || '';
+      if (link && !link.getAttribute('data-bs-toggle')) link.setAttribute('data-bs-toggle', 'tab');
       if (link && !link.querySelector('.fd-dnd-grip')){
-        // Grip como handle (evita interferir con click del tab)
         link.insertAdjacentHTML('afterbegin', '<i class="fas fa-grip-lines fd-dnd-grip" title="Arrastra para reordenar pestañas">⋮⋮</i>');
       }
+      return li.dataset.tabTitle;
     });
+    ul.dataset.fdOldTitles = JSON.stringify(oldTitles);
 
-    // Enlaza comportamiento de pestañas (Bootstrap o fallback manual)
+    // Asegurar comportamiento de pestañas
     wireBootstrapTabs(ul);
 
     if (hasSortable()){
       const s = new Sortable(ul, {
         animation: 150,
         draggable: 'li',
-        handle: '.fd-dnd-grip',          // usar solo grip como handle
+        handle: '.fd-dnd-grip',
         ghostClass: 'fd-dnd-ghost',
-        onEnd: (evt)=>{
-          if (!evt || evt.from !== evt.to) return;
-          // Reordenar panes visualmente según nuevo orden
+        onEnd: ()=>{
           reorderTabContentByUl(ul);
-          emitTabsReordered(ul, tabsJson);
+          emitTabsReordered(ul);
         }
       });
       state.sortables.push(s);
     } else {
       const off = initNativeListDnD(ul, ()=>{
         reorderTabContentByUl(ul);
-        emitTabsReordered(ul, tabsJson);
-      }, '.fd-dnd-grip'); // usar solo grip como handle
+        emitTabsReordered(ul);
+      }, '.fd-dnd-grip');
       state.native.push(off);
     }
   }
 
+  // Helpers de pestañas (faltaban)
   function getTabLink(li){
     return li?.querySelector('a[data-bs-toggle="tab"], button[data-bs-toggle="tab"], a, button') || null;
   }
-
   function getTabTargetId(link){
     if (!link) return null;
     let t = link.getAttribute('data-bs-target') || link.getAttribute('href') || '';
@@ -155,12 +167,9 @@
     if (!id) id = link.getAttribute('aria-controls') || '';
     return id || null;
   }
-
   function findTabContentContainer(ul){
-    // Prefer: siguiente hermano .tab-content
     const sib = ul.nextElementSibling;
     if (sib && sib.classList?.contains('tab-content')) return sib;
-    // Buscar un .tab-content dentro de fd-root que contenga al menos una tab-pane objetivo
     const all = $$('#fd-root .tab-content');
     if (!all.length) return null;
     const ids = Array.from(ul.children).map(li => getTabTargetId(getTabLink(li))).filter(Boolean);
@@ -170,241 +179,175 @@
     }
     return all[0] || null;
   }
-
   function reorderTabContentByUl(ul){
     const cont = findTabContentContainer(ul);
     if (!cont) return;
     const orderIds = Array.from(ul.children).map(li => getTabTargetId(getTabLink(li))).filter(Boolean);
-    const panes = orderIds
-      .map(id => cont.querySelector(`#${cssEscape(id)}`))
-      .filter(Boolean);
-    panes.forEach(p => cont.appendChild(p)); // reubica panes al nuevo orden
+    const panes = orderIds.map(id => cont.querySelector(`#${cssEscape(id)}`)).filter(Boolean);
+    panes.forEach(p => cont.appendChild(p));
   }
-
   function wireBootstrapTabs(ul){
     const cont = findTabContentContainer(ul);
     Array.from(ul.children).forEach(li=>{
       const link = getTabLink(li);
       if (!link) return;
-
-      // Asegura atributos
       if (!link.getAttribute('data-bs-toggle')) link.setAttribute('data-bs-toggle', 'tab');
-
-      // Bootstrap 5 si está disponible
       if (window.bootstrap && bootstrap.Tab){
-        try{
-          // Instancia sin guardar referencia (BS maneja internamente)
-          new bootstrap.Tab(link);
-        }catch{}
+        try{ new bootstrap.Tab(link); }catch{}
       } else {
-        // Fallback manual: activa pane por id
         link.addEventListener('click', (e)=>{
           e.preventDefault();
-          if (!cont) return;
           showTabManually(link, cont, ul);
         });
       }
     });
   }
-
   function showTabManually(link, tabContent, ul){
     const id = getTabTargetId(link);
-    if (!id) return;
-
-    // Quitar activos en pestañas
+    if (!id || !tabContent) return;
     Array.from(ul.children).forEach(li=>{
       li.classList.remove('active');
       const a = getTabLink(li);
-      if (a){
-        a.classList.remove('active');
-        a.setAttribute('aria-selected', 'false');
-      }
+      if (a){ a.classList.remove('active'); a.setAttribute('aria-selected','false'); } // FIX: if (a)
     });
-    // Activar pestaña clickeada
-    link.classList.add('active');
-    link.setAttribute('aria-selected', 'true');
+    link.classList.add('active'); link.setAttribute('aria-selected','true');
     link.closest('li')?.classList.add('active');
-
-    // Quitar activos en panes
-    Array.from(tabContent.children).forEach(p=>{
-      p.classList.remove('active','show');
-    });
-    // Activar pane objetivo
+    Array.from(tabContent.children).forEach(p=> p.classList.remove('active','show'));
     const pane = tabContent.querySelector(`#${cssEscape(id)}`);
-    if (pane){
-      pane.classList.add('active','show');
-      // Asegura visibilidad si el contenedor tiene estilos de altura
-      pane.style.display = '';
-    }
+    if (pane){ pane.classList.add('active','show'); pane.style.display=''; }
   }
 
-  function emitTabsReordered(ul, tabsJson){
-    const oldTitles = tabsJson.map(t=> String(t.title||'').trim());
-    const newOrderTitles = Array.from(ul.children).map(li => (li.dataset.tabTitle||'').trim());
-    const orderIndices = newOrderTitles.map(t => oldTitles.findIndex(x=> x === t));
-    window.dispatchEvent(new CustomEvent('form-dnd:tabs-reordered', {
-      detail: {
-        layoutPath: ['layout','main','tabs'],
-        oldTitles,
-        newOrderTitles,
-        orderIndices
-      }
-    }));
-  }
-
-  // --------- Fields DnD (reordenar y mover entre grupos/pestañas) ----------
+  // --------- Fields DnD (DOM-first; mueve entre contenedores/pestañas) ----------
   function attachFieldsDnD(){
     const json = window.formularioJsonOriginal;
     const fieldsets = json?.fieldsets;
-    if (!fieldsets || typeof fieldsets !== 'object') return;
+    let configured = false;
 
-    // 1) Detecta contenedores de campos por fieldset y márcalos
-    const containers = [];
-    Object.keys(fieldsets).forEach(fsName=>{
-      const campos = fieldsets[fsName]?.campos;
-      if (!Array.isArray(campos) || campos.length < 1) return;
+    if (fieldsets && typeof fieldsets === 'object' && Object.keys(fieldsets).length){
+      // Camino basado en JSON (si existe)
+      const containers = [];
+      Object.keys(fieldsets).forEach(fsName=>{
+        const campos = fieldsets[fsName]?.campos;
+        if (!Array.isArray(campos) || !campos.length) return;
 
-      // Encuentra wrappers DOM por nombre
-      const wrappers = [];
-      campos.forEach(c=>{
-        const name = c?.nombre || c?.name || c?.field || '';
-        if (!name) return;
-        const ctrl = findFieldControlInDOM(name);
-        if (!ctrl) return;
-        const wrap = closestFieldWrapper(ctrl);
-        if (wrap) wrappers.push({ name, wrap });
+        const wrappers = [];
+        campos.forEach(c=>{
+          const name = c?.nombre || c?.name || c?.field || '';
+          if (!name) return;
+          const ctrl = findFieldControlInDOM(name);
+          if (!ctrl) return;
+          const wrap = closestFieldWrapper(ctrl);
+          if (wrap) wrappers.push({ name, wrap });
+        });
+        if (!wrappers.length) return;
+
+        const container = commonParent(wrappers.map(w=> w.wrap));
+        if (!container) return;
+
+        container.dataset.fsContainer = fsName;
+        container.dataset.fdFieldsGroup = '1';
+        const pane = container.closest('.tab-pane');
+        if (pane?.id) container.dataset.tabPaneId = pane.id;
+
+        wrappers.forEach(({name, wrap})=>{
+          wrap.dataset.fdName = name;
+          if (!wrap.querySelector('.fd-dnd-handle')){
+            const h = document.createElement('div');
+            h.className = 'fd-dnd-handle';
+            h.title = 'Arrastra para reordenar o mover';
+            h.style.minWidth = '12px';
+            h.style.minHeight = '12px';
+            h.style.display = 'inline-block';
+            h.style.marginRight = '4px';
+            h.innerHTML = '<i class="fas fa-grip-vertical fd-dnd-grip">⋮⋮</i>';
+            wrap.insertBefore(h, wrap.firstChild);
+          }
+        });
+
+        containers.push({ fsName, container });
       });
-      if (!wrappers.length) return;
 
-      const container = commonParent(wrappers.map(w=> w.wrap));
-      if (!container) return;
+      configured = initFieldsSortables(containers);
+    }
 
-      // Marca el contenedor y los hijos
-      container.dataset.fsContainer = fsName;
-      container.dataset.fdFieldsGroup = '1'; // grupo cruzado
-      // Detectar pestaña (pane) en la que vive
-      const pane = container.closest('.tab-pane');
-      if (pane && pane.id) container.dataset.tabPaneId = pane.id;
+    // Fallback por DOM si no hay JSON o no se configuró nada
+    if (!configured){
+      attachFieldsDnDByDom();
+    }
+  }
 
-      wrappers.forEach(({name, wrap})=>{
-        wrap.dataset.fdName = name;
-        // Handle visible
-        if (!wrap.querySelector('.fd-dnd-handle')){
-          const h = document.createElement('div');
-          h.className = 'fd-dnd-handle';
-          h.title = 'Arrastra para reordenar o mover';
-          h.style.minWidth = '12px';
-          h.style.minHeight = '12px';
-          h.style.display = 'inline-block';
-          h.style.marginRight = '4px';
-          h.innerHTML = '<i class="fas fa-grip-vertical fd-dnd-grip">⋮⋮</i>';
-          wrap.insertBefore(h, wrap.firstChild);
-        }
-      });
+  function initFieldsSortables(containers){
+    if (!containers || !containers.length) return false;
 
-      containers.push({ fsName, container });
-    });
-
-    if (!containers.length) return;
-
-    // 2) Inicializa Sortable en cada contenedor con grupo cruzado
     containers.forEach(({ fsName, container })=>{
       if (state.attached.has(container)) return;
       state.attached.add(container);
 
       const draggableSel = directChildSelector(container, Array.from(container.children));
-
       if (hasSortable()){
         const s = new Sortable(container, {
           animation: 150,
           draggable: draggableSel,
           handle: '.fd-dnd-handle',
           ghostClass: 'fd-dnd-ghost',
-          group: { name: 'fd-fields', pull: true, put: true }, // mover entre contenedores
+          group: { name: 'fd-fields', pull: true, put: true },
           onAdd: (evt)=> handleFieldMove(evt),
-          onUpdate: (evt)=> handleFieldMove(evt) // reorden dentro del mismo
+          onUpdate: (evt)=> handleFieldMove(evt)
         });
         state.sortables.push(s);
       } else {
-        // Fallback: reorden local; no soporta cross-container
         const off = initNativeListDnD(container, ()=>{
-          emitFieldsReordered(container, container.dataset.fsContainer, /*campos*/null);
+          emitFieldsReordered(container, container.dataset.fsContainer || null);
         }, '.fd-dnd-handle');
         state.native.push(off);
       }
     });
+
+    return true;
   }
 
-  function handleFieldMove(evt){
-    // Fuente y destino
-    const toCont = evt.to;
-    const fromCont = evt.from;
-    const item = evt.item;
+  // Fallback: detecta contenedores de fields por el DOM (sin JSON)
+  function attachFieldsDnDByDom(){
+    // Candidatos: .tab-pane y contenedores comunes
+    const roots = [$(`#fd-root`), ...$$('#fd-root .tab-pane')].filter(Boolean);
+    const containers = [];
 
-    const toFs = toCont?.dataset?.fsContainer || null;
-    const fromFs = fromCont?.dataset?.fsContainer || null;
-    const toTab = toCont?.dataset?.tabPaneId || null;
-    const fromTab = fromCont?.dataset?.tabPaneId || null;
+    const isFieldWrapper = el => !!el.querySelector && !!el.querySelector('input, select, textarea, [data-name], [name]');
+    const candidatesSel = '.fd-fields-container, .card-body, form, .row, .col, .container, .container-fluid, .tab-pane, .fieldset, .panel-body';
 
-    const name = getFieldNameFromWrapper(item);
-    const toIndex = evt.newIndex;
-    const fromIndex = evt.oldIndex;
+    roots.forEach(r=>{
+      $$(candidatesSel, r).forEach(cont=>{
+        if (state.attached.has(cont)) return;
+        // Debe tener al menos 2 hijos que parezcan wrappers de field
+        const childEls = Array.from(cont.children).filter(ch => ch.tagName !== 'SCRIPT' && ch.tagName !== 'STYLE');
+        const wrappers = childEls.filter(isFieldWrapper);
+        if (wrappers.length >= 2){
+          // Marca metadatos básicos
+          cont.dataset.fdFieldsGroup = '1';
+          const pane = cont.closest('.tab-pane');
+          if (pane?.id) cont.dataset.tabPaneId = pane.id;
 
-    // Emite evento para persistir vía árbol u otro gestor
-    window.dispatchEvent(new CustomEvent('form-dnd:field-moved', {
-      detail: {
-        name,
-        fromFieldset: fromFs,
-        toFieldset: toFs,
-        fromTabId: fromTab,
-        toTabId: toTab,
-        fromIndex,
-        toIndex
-      }
-    }));
+          // Inserta handles a hijos
+          wrappers.forEach(w=>{
+            if (!w.querySelector('.fd-dnd-handle')){
+              const h = document.createElement('div');
+              h.className = 'fd-dnd-handle';
+              h.title = 'Arrastra para reordenar o mover';
+              h.style.minWidth = '12px';
+              h.style.minHeight = '12px';
+              h.style.display = 'inline-block';
+              h.style.marginRight = '4px';
+              h.innerHTML = '<i class="fas fa-grip-vertical fd-dnd-grip">⋮⋮</i>';
+              w.insertBefore(h, w.firstChild);
+            }
+          });
 
-    // Además, emite el reorder completo del contenedor destino
-    emitFieldsReordered(toCont, toFs, null);
+          containers.push({ fsName: cont.getAttribute('data-fs-name') || null, container: cont });
+        }
+      });
+    });
 
-    // Si reorden en el mismo contenedor, también emite por la fuente (opcional)
-    if (fromCont && fromCont !== toCont){
-      emitFieldsReordered(fromCont, fromFs, null);
-    }
-  }
-
-  function getFieldNameFromWrapper(wrap){
-    if (!wrap) return null;
-    const data = wrap.getAttribute('data-fd-name');
-    if (data) return data;
-    const byName = wrap.querySelector('[name]');
-    if (byName?.name) return byName.name;
-    const byDataName = wrap.querySelector('[data-name]');
-    if (byDataName?.getAttribute('data-name')) return byDataName.getAttribute('data-name');
-    const byId = wrap.querySelector('[id]');
-    if (byId?.id) return byId.id;
-    return null;
-  }
-
-  function emitFieldsReordered(container, fsName){
-    // Calcula nombres en DOM (orden actual)
-    const children = Array.from(container.children).filter(ch=> ch.querySelector('[name], [id], [data-fd-name]'));
-    const namesInDom = children.map(ch=>{
-      const d = ch.getAttribute('data-fd-name');
-      if (d) return d;
-      const ctrl = ch.querySelector('[name]');
-      if (ctrl?.name) return ctrl.name;
-      const byId = ch.querySelector('[id]');
-      if (byId?.id) return byId.id;
-      return null;
-    }).filter(Boolean);
-
-    window.dispatchEvent(new CustomEvent('form-dnd:fields-reordered', {
-      detail: {
-        fieldset: fsName || null,
-        jsonPath: fsName ? ['fieldsets', fsName, 'campos'] : null,
-        namesInDom
-      }
-    }));
+    initFieldsSortables(containers);
   }
 
   // --------- Fieldsets (grupo de fields) DnD: solo UI; emite evento ----------

@@ -105,12 +105,8 @@ require_once __DIR__ . '/formulariodinamicologica.php';
     #fd-root [data-action="edit-field"],
     #fd-root .btn-edit,
     #fd-root .icon-edit,
-    #fd-root i.fa-pencil,
-    #fd-root i.fa-pencil-alt,
     #fd-root .fa-pencil,
-    #fd-root .fa-pencil-alt {
-      display: none !important;
-    }
+    #fd-root .fa-pencil-alt { display:none !important; }
   </style>
 
   <script>
@@ -150,9 +146,6 @@ require_once __DIR__ . '/formulariodinamicologica.php';
       }
     })();
   </script>
-
-  <?php /* Mueve SortableJS antes del runtime DnD para usarlo si está disponible */ ?>
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 
   <?php /* Define variables GLOBALES antes de cargar el runtime DnD */ ?>
   <script>

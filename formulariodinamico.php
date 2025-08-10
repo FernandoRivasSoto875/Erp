@@ -54,7 +54,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 </style>
 </head>
 <body>
-  <div id="fd-root" class="<?php echo $modoDiseno ? 'design-mode' : '' ?>">
+  <div id="fd-root" class="<?php echo !empty($modoDiseno) ? 'design-mode' : '' ?>">
     <div class="container py-3">
       <h1 id="form-title"><?php echo htmlspecialchars($params['titulo'] ?? $titulo_formulario); ?></h1>
 
@@ -98,14 +98,58 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 
   <!-- Ocultar SIEMPRE el icono de lápiz en el formulario (no afecta al árbol) -->
   <style id="fd-hide-pencil-form">
+    /* Oculta cualquier botón/ícono de edición SOLO dentro del formulario */
     #fd-root .fd-edit-btn,
     #fd-root .fd-field-edit,
     #fd-root .field-edit-btn,
+    #fd-root [data-action="edit-field"],
     #fd-root .btn-edit,
-    #fd-root [data-action="edit-field"] {
+    #fd-root .icon-edit,
+    #fd-root i.fa-pencil,
+    #fd-root i.fa-pencil-alt,
+    #fd-root .fa-pencil,
+    #fd-root .fa-pencil-alt {
       display: none !important;
     }
   </style>
+
+  <script>
+    // Quita y bloquea la acción del "lápiz" dentro del formulario
+    (function(){
+      const SEL = '.fd-edit-btn, .fd-field-edit, .field-edit-btn, [data-action="edit-field"], .btn-edit, .icon-edit, .fa-pencil, .fa-pencil-alt';
+      function removePencils(root){
+        if (!root) return;
+        root.querySelectorAll(SEL).forEach(el => el.remove());
+      }
+      function init(){
+        const root = document.getElementById('fd-root');
+        if (!root) return;
+        removePencils(root);
+        // Evita clicks si algún botón se agrega dinámicamente
+        root.addEventListener('click', function(e){
+          if (e.target.closest(SEL)){
+            e.preventDefault(); e.stopPropagation();
+          }
+        }, true);
+        // Observa inyecciones dinámicas y las elimina
+        const mo = new MutationObserver(muts=>{
+          muts.forEach(m=>{
+            m.addedNodes.forEach(n=>{
+              if (n.nodeType !== 1) return;
+              if (n.matches && n.matches(SEL)) n.remove();
+              n.querySelectorAll && n.querySelectorAll(SEL).forEach(el=> el.remove());
+            });
+          });
+        });
+        mo.observe(root, { childList:true, subtree:true });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
+    })();
+  </script>
 
   <?php /* Mueve SortableJS antes del runtime DnD para usarlo si está disponible */ ?>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>

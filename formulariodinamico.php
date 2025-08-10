@@ -99,26 +99,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
     window.FORM_CONFIG = { archivo_json: <?php echo json_encode($archivo_base); ?> };
     // Embebe el JSON ya cargado (evita fetch)
     window.formularioJsonOriginal = <?php echo json_encode($json_data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
-
-    // Toggle: añade/quita clase y emite el evento que escucha el panel
-    (function(){
-      const toggle = document.getElementById('designModeToggle');
-      const root = document.getElementById('fd-root');
-      function emit(on){ window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } })); }
-      if (root) emit(root.classList.contains('design-mode'));
-      if (toggle && root){
-        toggle.addEventListener('change', function(){
-          root.classList.toggle('design-mode', this.checked);
-          const url = new URL(location.href);
-          url.searchParams.set('modoDiseno', this.checked ? '1' : '0');
-          history.replaceState(null, '', url.toString());
-          emit(this.checked);
-        });
-      }
-    })();
   </script>
-
-  <!-- Árbol (se activa solo en modo diseño) -->
   <script src="js/json-tree-panel.js"></script>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

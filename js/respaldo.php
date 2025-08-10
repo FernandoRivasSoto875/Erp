@@ -1,6 +1,0 @@
-<?php
-[formulariodinamico.php](http://_vscodecontentref_/0)// ...existing code in <style> ...
-#fd-root:not(.design-mode) .edit-icon,
-#fd-root:not(.design-mode) .edit-tab-icon { display: none !important; }
-#elementos-fuera-container { display: <?php echo $modoDiseno ? 'block' : 'none'; ?>; }
-// ...existing code...

@@ -28,22 +28,22 @@
     const root = document.getElementById('fd-root');
     return !!(root && root.classList.contains('design-mode'));
   }
+  function hasBootstrap(){
+    try {
+      if (window.bootstrap) return true;
+      const v = getComputedStyle(document.documentElement).getPropertyValue('--bs-body-font-family');
+      return !!(v && v.trim().length);
+    } catch { return false; }
+  }
+
+  // CSS mínimo (posicionamiento; el look lo da Bootstrap)
   function injectStyles(){
     if ($('#json-tree-panel-styles')) return;
     const css = `
-      .json-tree-panel{ position:fixed; top:60px; right:12px; width:460px; height:72vh; background:#fff; border:1px solid #dcdfe3; border-radius:8px; box-shadow:0 10px 24px rgba(16,24,40,.12); z-index:9999; display:flex; flex-direction:column; overflow:hidden; }
-      .json-tree-header{ padding:8px 10px; background:#f8f9fb; border-bottom:1px solid #e9ecef; display:flex; align-items:center; justify-content:space-between; }
-      .json-tree-title{ margin:0; font-size:13px; color:#344054; }
-      .json-tree-actions button{ background:none; border:0; cursor:pointer; padding:4px 6px; color:#475467; }
-      .json-tree-search{ padding:8px 10px; border-bottom:1px solid #f0f2f5; }
-      .json-tree-search input{ width:100%; border:1px solid #d0d5dd; border-radius:6px; padding:6px 10px; font-size:12px; }
-      .json-tree-body{ overflow:auto; padding:6px 8px 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size:12px; }
-      .json-tree-node{ padding:6px 8px; border-radius:6px; margin:2px 0; display:flex; align-items:center; gap:8px; transition:background .15s ease,border-color .15s ease; border:1px solid transparent; }
-      .json-tree-node:hover{ background:#f8fafc; border-color:#eef2f6; }
-      .json-node-key{ font-weight:600; color:#344054; }
-      .json-node-meta{ color:#667085; margin-left:auto; padding-left:6px; }
-      .json-node-actions button{ background:none; border:0; cursor:pointer; padding:2px 4px; color:#667085; }
-      #fd-tree-toggle-btn{ position:fixed; top:60px; right:486px; z-index:9999; display:inline-flex; gap:6px; align-items:center; background:#0d6efd; color:#fff; border:0; padding:7px 12px; border-radius:6px; font-size:12px; cursor:pointer; box-shadow:0 4px 10px rgba(13,110,253,.25); }
+      .json-tree-panel{ position:fixed; top:60px; right:12px; width:460px; height:72vh; z-index:1055; resize:both; }
+      .json-tree-panel .card-body.scroll{ overflow:auto; height:calc(100% - 94px); }
+      #fd-tree-toggle-btn{ position:fixed; top:60px; right:486px; z-index:1055; }
+      .json-node-key{ font-weight:600; }
     `;
     const st = document.createElement('style'); st.id='json-tree-panel-styles'; st.textContent = css;
     document.head.appendChild(st);
@@ -69,29 +69,38 @@
     return window.formularioJsonOriginal;
   }
 
-  // Panel y botón (solo se crean en modo diseño)
+  // Panel y botón (Bootstrap)
   function ensurePanel(){
     let panel = $('#json-tree-panel');
     if (panel) return panel;
     panel = document.createElement('div');
     panel.id = 'json-tree-panel';
-    panel.className = 'json-tree-panel';
+    panel.className = 'json-tree-panel card shadow';
     panel.innerHTML = `
-      <div class="json-tree-header">
-        <h6 class="json-tree-title"><i class="fas fa-sitemap"></i> Árbol del JSON</h6>
-        <div class="json-tree-actions">
-          <button id="jsonTreeInit" title="Inicializar estructura"><i class="fas fa-seedling"></i></button>
-          <button id="jsonTreeRefresh" title="Refrescar"><i class="fas fa-sync-alt"></i></button>
-          <button id="jsonTreeClose" title="Cerrar"><i class="fas fa-times"></i></button>
+      <div class="card-header d-flex align-items-center justify-content-between py-2">
+        <h6 class="mb-0 json-tree-title"><i class="fas fa-sitemap me-1"></i> Árbol del JSON</h6>
+        <div class="d-flex align-items-center gap-1">
+          <button id="jsonTreeInit" type="button" class="btn btn-link btn-sm text-secondary" title="Inicializar estructura"><i class="fas fa-seedling"></i></button>
+          <button id="jsonTreeRefresh" type="button" class="btn btn-link btn-sm text-secondary" title="Refrescar"><i class="fas fa-sync-alt"></i></button>
+          <button id="jsonTreeClose" type="button" class="btn btn-link btn-sm text-secondary" title="Cerrar"><i class="fas fa-times"></i></button>
         </div>
       </div>
-      <div class="json-tree-search"><input id="jsonTreeFilter" type="search" placeholder="Filtrar..."></div>
-      <div class="json-tree-body" id="jsonTreeBody"></div>
+      <div class="card-body py-2 border-bottom">
+        <div class="input-group input-group-sm">
+          <span class="input-group-text"><i class="fas fa-search"></i></span>
+          <input id="jsonTreeFilter" type="search" class="form-control" placeholder="Filtrar...">
+          <button id="jsonTreeFilterClear" class="btn btn-outline-secondary" type="button" title="Limpiar">×</button>
+        </div>
+      </div>
+      <div class="card-body p-0 scroll">
+        <div class="list-group list-group-flush" id="jsonTreeBody"></div>
+      </div>
     `;
     document.body.appendChild(panel);
     $('#jsonTreeClose').addEventListener('click', ()=> panel.style.display='none');
     $('#jsonTreeRefresh').addEventListener('click', buildTree);
     $('#jsonTreeFilter').addEventListener('input', filterTree);
+    $('#jsonTreeFilterClear').addEventListener('click', ()=>{ const i=$('#jsonTreeFilter'); if(i){ i.value=''; buildTree(); }});
     $('#jsonTreeInit').addEventListener('click', ensureBaseStructureInteractive);
     return panel;
   }
@@ -99,7 +108,13 @@
     if ($('#fd-tree-toggle-btn')) return;
     const btn = document.createElement('button');
     btn.id = 'fd-tree-toggle-btn';
-    btn.innerHTML = '<i class="fas fa-sitemap"></i> Árbol';
+    btn.type = 'button';
+    btn.className = 'btn btn-primary btn-sm shadow';
+    btn.style.top = '60px';
+    btn.style.right = '486px';
+    btn.innerHTML = '<i class="fas fa-sitemap me-1"></i> Árbol';
+    // Posicionado con utilidades + style (right/top ya arriba)
+    btn.classList.add('position-fixed');
     btn.addEventListener('click', ()=>{
       const p = ensurePanel();
       const hidden = getComputedStyle(p).display === 'none';
@@ -110,7 +125,7 @@
     btn.style.display = 'none';
   }
 
-  // Render
+  // Render (usa list-group de Bootstrap para los items)
   function buildTree(){
     if (!shouldShow()) return;
     const data = window.formularioJsonOriginal || {};
@@ -122,7 +137,7 @@
 
     body.innerHTML = keys.length
       ? keys.map(k => renderNode(k, data[k], [k], 0)).join('')
-      : '<div class="text-muted" style="padding:8px;">JSON vacío</div>';
+      : `<div class="list-group-item text-muted py-2">JSON vacío</div>`;
 
     bindEditActions(body);
     updatePanelTitle();
@@ -132,14 +147,14 @@
     const t = typeOf(val);
     const meta = (t==='object') ? 'object' : (t==='array') ? `array(${(val||[]).length})` : renderValue(val);
 
-    let html = `<div class="json-tree-node" data-path='${esc(JSON.stringify(path))}' draggable="true" style="margin-left:${pad}px;">
+    let html = `<div class="json-tree-node list-group-item d-flex align-items-center gap-2 py-1 px-2 border-0 border-bottom" data-path='${esc(JSON.stringify(path))}' draggable="true" style="margin-left:${pad}px;">
       <span class="json-node-key">${esc(String(key))}</span>
-      <span class="json-node-meta">${esc(meta)}</span>
-      <span class="json-node-actions">
-        <button class="btn-icon act-edit" title="Editar"><i class="fas fa-pencil-alt"></i></button>
-        <button class="btn-icon act-dup" title="Duplicar"><i class="fas fa-clone"></i></button>
-        <button class="btn-icon act-rename" title="Renombrar"><i class="fas fa-i-cursor"></i></button>
-        <button class="btn-icon act-del" title="Eliminar"><i class="fas fa-trash"></i></button>
+      <small class="text-secondary ms-auto">${esc(meta)}</small>
+      <span class="json-node-actions ms-2">
+        <button class="btn btn-link btn-sm text-secondary p-0 act-edit" title="Editar"><i class="fas fa-pencil-alt"></i></button>
+        <button class="btn btn-link btn-sm text-secondary p-0 act-dup" title="Duplicar"><i class="fas fa-clone"></i></button>
+        <button class="btn btn-link btn-sm text-secondary p-0 act-rename" title="Renombrar"><i class="fas fa-i-cursor"></i></button>
+        <button class="btn btn-link btn-sm text-danger p-0 act-del" title="Eliminar"><i class="fas fa-trash"></i></button>
       </span>
     </div>`;
 
@@ -285,6 +300,8 @@
     let btn = $('#fd-tree-toggle-btn');
 
     if (on) {
+      injectStyles();
+      if (!hasBootstrap()) console.warn('Bootstrap no detectado. El panel usa clases Bootstrap (card, btn, list-group).');
       if (!panel) panel = ensurePanel();
       if (!btn) ensureToggleButton();
       panel.style.display = '';
@@ -296,7 +313,7 @@
     }
   }
 
-  // Observa #fd-root y emite eventos
+  // Observa #fd-root y sincroniza estado
   function whenRootReady(cb){
     const root = document.getElementById('fd-root');
     if (root) return cb(root);
@@ -310,14 +327,17 @@
     whenRootReady((root)=>{
       const emit = ()=> window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: root.classList.contains('design-mode') } }));
       new MutationObserver(emit).observe(root, { attributes:true, attributeFilter:['class'] });
-      emit(); // estado actual (no crea panel si está apagado)
+      // Sincroniza estado inicial al cargar
+      emit();
     });
   }
 
-  // Boot: no crear nada si no es diseño
+  // Boot: no crea panel ni carga JSON si no es diseño
   window.addEventListener('load', ()=>{
     watchDesignMode();
     window.addEventListener('design-mode-changed', onDesignModeChanged);
+    // Disparo inicial para alinear estado
+    window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: shouldShow() } }));
   });
 
 })();

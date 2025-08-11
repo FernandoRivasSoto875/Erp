@@ -18,14 +18,14 @@
 
   injectStyles();
   function injectStyles(){
-    if ($('#fd-lite-dnd-css')) return;
+    if (document.getElementById('fd-lite-dnd-css')) return;
     const st = document.createElement('style');
     st.id = 'fd-lite-dnd-css';
     st.textContent = `
       /* Grip de pestañas (morado) */
       #fd-root.design-mode .fd-tab-grip{
         cursor:grab; user-select:none; touch-action:none;
-        display:inline-block; margin-right:6px;
+        display:inline-block; margin-right:6px;              /* corregido: inline-block */
         background:#6f42c1; color:#fff; border-radius:4px;
         padding:0 6px; font-weight:600; line-height:1.2;
         box-shadow:0 0 0 1px rgba(111,66,193,.25) inset;
@@ -33,7 +33,7 @@
       #fd-root.design-mode .fd-tab-grip:hover{ background:#5a36a1; }
       #fd-root.design-mode .fd-tab-grip:active{ cursor:grabbing; transform:scale(.98); }
 
-      /* Grip de grupos/fieldsets (azul) */
+      /* Grip de grupos (azul) */
       #fd-root.design-mode .fd-group-grip{
         cursor:grab; user-select:none; touch-action:none;
         display:inline-block; margin-right:6px;
@@ -56,32 +56,8 @@
       #fd-root.design-mode .fd-dnd-grip:hover{ background:#157347; }
       #fd-root.design-mode .fd-dnd-grip:active{ cursor:grabbing; transform:scale(.98); }
 
-      /* Resaltado de elementos arrastrables */
-      #fd-root.design-mode .fd-fs-draggable{ position:relative; outline:2px dashed rgba(13,110,253,.6); border-radius:6px; }
-      #fd-root.design-mode .fd-field-draggable{ position:relative; outline:1px dashed rgba(25,135,84,.6); border-radius:4px; }
-
-      /* Badges de tipo */
-      #fd-root.design-mode .fd-badge-group::after{
-        content:'Grupo'; position:absolute; top:-10px; right:-10px;
-        background:#0d6efd; color:#fff; border-radius:10px; padding:2px 8px; font-size:11px; font-weight:600;
-        box-shadow:0 0 0 1px rgba(13,110,253,.25) inset;
-      }
-      #fd-root.design-mode .fd-badge-field::after{
-        content:'Campo'; position:absolute; top:-10px; right:-10px;
-        background:#198754; color:#fff; border-radius:10px; padding:2px 8px; font-size:11px; font-weight:600;
-        box-shadow:0 0 0 1px rgba(25,135,84,.25) inset;
-      }
-
-      /* Resaltado del campo destino (drop target) */
-      #fd-root.design-mode .fd-drop-hover{
-        outline:2px solid #ffc107 !important;
-        box-shadow:0 0 0 2px rgba(255,193,7,.35) inset !important;
-      }
-
       /* Ghost */
       #fd-root.design-mode .fd-dnd-ghost{ opacity:.65; background:#eef2ff !important; }
-
-      .node-fields-list{ min-height: 14px; padding: 4px; border:1px dashed rgba(111,66,193,.25); border-radius:4px; }
     `;
     document.head.appendChild(st);
   }

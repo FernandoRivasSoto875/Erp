@@ -40,8 +40,8 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 <head>
   <meta charset="utf-8">
   <title>Formulario dinámico</title>
+  <!-- Estilos mínimos del árbol -->
   <style>
-    /* Estilo básico del árbol */
     #json-tree-panel ul{ list-style:none; margin:0; padding-left:16px; }
     #json-tree-panel [data-node="group"]{ margin:4px 0; }
     #json-tree-panel [data-node="group"] > .title{
@@ -61,7 +61,14 @@ require_once __DIR__ . '/formulariodinamicologica.php';
   </style>
 </head>
 <body>
-  <!-- Asegúrate de envolver tu formulario con #fd-root -->
+  <!-- Barra de herramientas -->
+  <div id="fd-design-toolbar" style="margin:8px 0;">
+    <label style="display:inline-flex;align-items:center;gap:6px;">
+      <input type="checkbox" id="designModeToggle"> Modo diseño
+    </label>
+  </div>
+
+  <!-- Asegura que tu formulario esté dentro de #fd-root -->
   <div id="fd-root">
     <div class="container py-3">
       <h1 id="form-title"><?php echo htmlspecialchars($params['titulo'] ?? $titulo_formulario); ?></h1>
@@ -99,22 +106,47 @@ require_once __DIR__ . '/formulariodinamicologica.php';
     </div>
   </div>
 
-  <!-- Panel del árbol -->
+  <!-- Panel para el árbol -->
   <div id="json-tree-panel"></div>
 
-  <!-- Scripts -->
+  <!-- Scripts (solo una vez, en este orden) -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-  <script src="js/fd-tree-config.js"></script>
-  <script src="js/fd-dnd-lite.js"></script>
-  <script src="js/fd-tree-render.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', function(){
-      window.renderJsonTreeFromForm && window.renderJsonTreeFromForm();
-    });
+  // Toggle de modo diseño + evento para fd-dnd-lite
+  (function(){
+    const root = document.getElementById('fd-root');
+    const toggle = document.getElementById('designModeToggle');
+    function emit(on){
+      window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } }));
+    }
+    function refresh(){
+      const on = root && root.classList.contains('design-mode');
+      window.fdDndLiteRefresh && window.fdDndLiteRefresh();
+    }
+    if (toggle){
+      toggle.addEventListener('change', function(){
+        if (!root) return;
+        root.classList.toggle('design-mode', this.checked);
+        emit(this.checked); refresh();
+      });
+    }
+    // iniciar según estado inicial
+    if (toggle && toggle.checked){ root && root.classList.add('design-mode'); emit(true); }
     document.addEventListener('click', function(e){
       const t = e.target.closest('#json-tree-panel [data-node="group"] > .title');
       if (t) t.parentElement.classList.toggle('collapsed');
     });
+  })();
+  </script>
+  <script src="js/fd-tree-config.js"></script>
+  <script src="js/fd-dnd-lite.js"></script>
+  <script src="js/fd-tree-render.js"></script>
+
+  <!-- Re-render del árbol al cargar -->
+  <script>
+  document.addEventListener('DOMContentLoaded', function(){
+    window.renderJsonTreeFromForm && window.renderJsonTreeFromForm();
+  });
   </script>
 </body>
 </html>

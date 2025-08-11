@@ -158,7 +158,8 @@ require_once __DIR__ . '/formulariodinamicologica.php';
   <script src="js/form-bootstrap-enhancer.js"></script>
 
   <!-- Runtime DnD (tabs, fields, fieldsets) -->
-  <script src="js/form-runtime-dnd.js"></script>
+  <!-- Opcional: si este runtime interfiere, puedes comentarlo -->
+  <!-- <script src="js/form-runtime-dnd.js"></script> -->
 
   <script>
     (function(){
@@ -185,83 +186,196 @@ require_once __DIR__ . '/formulariodinamicologica.php';
       // Init completo: intenta runtime; si no, usa fallback (con o sin Sortable)
       function initDnd(){
         if (!inDesign()) return;
-        // 1) Runtime si está expuesto
         if (window.formRuntimeDndRefresh){
           try { window.formRuntimeDndRefresh(); } catch(e){}
         }
-        // 2) Asegura grips y DnD aunque falte Sortable o el runtime
         setTimeout(()=> initFallbackDnd(), 80);
       }
 
-      // Fallback DnD: Tabs + Fields. Usa Sortable si está; si no, usa HTML5 nativo.
       function initFallbackDnd(){
         if (!inDesign()) return;
         initTabsFallback();
-        initFieldsFallback();
+        // Primero JSON -> luego DOM si no se encontró nada
+        const configured = initFieldsDnDJson();
+        if (!configured) initFieldsFallback();
       }
 
-      // ---------- Tabs ----------
-      function initTabsFallback(){
-        document.querySelectorAll('#fd-root .nav-tabs').forEach(ul=>{
-          if (ul.dataset.fdTabsInit === '1') return;
-          ul.dataset.fdTabsInit = '1';
+      // ---------- Fields por JSON (robusto) ----------
+      function initFieldsDnDJson(){
+        const json = window.formularioJsonOriginal || {};
+        const fieldsets = json.fieldsets && typeof json.fieldsets === 'object' ? json.fieldsets : null;
+        if (!fieldsets) return 0;
 
-          // Grip en cada tab
-          Array.from(ul.children).forEach(li=>{
-            const link = li.querySelector('a,button');
-            if (!link) return;
-            if (!link.getAttribute('data-bs-toggle')) link.setAttribute('data-bs-toggle','tab');
-            if (!link.querySelector('.fd-dnd-grip')){
-              const g = document.createElement('span');
-              g.className = 'fd-dnd-grip';
-              g.title = 'Arrastra para reordenar pestañas';
-              g.textContent = '⋮⋮';
-              link.prepend(g);
-            }
+        let configured = 0;
+
+        Object.keys(fieldsets).forEach(fsName=>{
+          const campos = Array.isArray(fieldsets[fsName]?.campos) ? fieldsets[fsName].campos : [];
+          if (!campos.length) return;
+
+          // Encuentra wrappers reales por cada campo
+          const wrappers = [];
+          campos.forEach(c=>{
+            const fname = c?.nombre || c?.name || c?.field || '';
+            if (!fname) return;
+            const ctrl = findControlByName(fname);
+            if (!ctrl) return;
+            const wrap = closestFieldWrapper(ctrl);
+            if (!wrap) return;
+            // marcar wrapper
+            wrap.setAttribute('data-fd-wrapper','1');
+            wrap.setAttribute('data-fd-name', fname);
+            ensureGrip(wrap);
+            wrappers.push(wrap);
           });
+          if (wrappers.length < 2) return;
 
-          // Usar Sortable si está, si no, nativo
-          if (window.Sortable){
-            new Sortable(ul, {
-              animation: 150,
-              draggable: 'li',
-              handle: '.fd-dnd-grip',
-              ghostClass: 'fd-dnd-ghost',
-              onEnd: ()=> reorderTabContentByUl(ul)
-            });
-          } else {
-            initNativeListDnD(ul, { handleSel: '.fd-dnd-grip', onDrop: ()=> reorderTabContentByUl(ul), childSel: 'li' });
+          // Contenedor común
+          const container = commonParent(wrappers);
+          if (!container) return;
+
+          // Evitar reinicializar
+          if (container.dataset.fdFieldsInit === '1') return;
+          container.dataset.fdFieldsInit = '1';
+          // Marcar pane
+          const pane = container.closest('.tab-pane');
+          if (pane?.id) container.dataset.tabPaneId = pane.id;
+
+          // Asegura que sean hijos directos, si no, promueve el nivel
+          const directWraps = wrappers.filter(w => w.parentElement === container);
+          if (directWraps.length < 2){
+            // Sube un nivel al contenedor hasta que los wrappers sean directos o cambia a padre inmediato común
+            let alt = container;
+            while (alt && directWraps.filter(w => w.parentElement === alt).length < 2) {
+              alt = alt.parentElement;
+              if (!alt || alt === root) break;
+            }
+            if (alt && alt !== container){
+              container.dataset.fdFieldsInit = '';
+              container.removeAttribute('data-fd-fields-init');
+              container.removeAttribute('data-tab-pane-id');
+              alt.dataset.fdFieldsInit = '1';
+              const p = alt.closest('.tab-pane');
+              if (p?.id) alt.dataset.tabPaneId = p.id;
+              initSortableOnFieldsContainer(alt);
+              configured++;
+              return;
+            }
           }
+
+          initSortableOnFieldsContainer(container);
+          configured++;
         });
+
+        if (inDesign()) console.info('[FD] JSON fields containers configurados:', configured);
+        return configured;
       }
 
-      function findTabContentContainer(ul){
-        const sib = ul.nextElementSibling;
-        if (sib && sib.classList?.contains('tab-content')) return sib;
-        return document.querySelector('#fd-root .tab-content');
-      }
-      function getTabTargetId(link){
-        if (!link) return null;
-        let t = link.getAttribute('data-bs-target') || link.getAttribute('href') || '';
-        if (!t) return null;
-        t = t.trim();
-        if (t.startsWith('#')) return t.slice(1);
-        const pos = t.indexOf('#');
-        return pos>=0 ? t.substring(pos+1) : null;
-      }
-      function reorderTabContentByUl(ul){
-        const cont = findTabContentContainer(ul);
-        if (!cont) return;
-        Array.from(ul.children).forEach(li=>{
-          const link = li.querySelector('a,button');
-          const id = getTabTargetId(link);
-          if (!id) return;
-          const pane = cont.querySelector('#'+CSS.escape(id));
-          if (pane) cont.appendChild(pane);
+      function initSortableOnFieldsContainer(container){
+        // Asegura grip en wrappers directos
+        Array.from(container.children).forEach(ch=>{
+          if (ch.getAttribute && ch.getAttribute('data-fd-wrapper') === '1') ensureGrip(ch);
         });
+
+        if (window.Sortable){
+          new Sortable(container, {
+            animation: 150,
+            draggable: ':scope > [data-fd-wrapper="1"]',
+            handle: '.fd-dnd-grip',
+            ghostClass: 'fd-dnd-ghost',
+            group: { name: 'fd-fields', pull: true, put: true }
+          });
+        } else {
+          initNativeListDnD(container, {
+            handleSel: '.fd-dnd-grip',
+            childSel: ':scope > [data-fd-wrapper="1"]',
+            crossGroup: true
+          });
+        }
       }
 
-      // ---------- Fields (dentro y entre contenedores/pestañas) ----------
+      // ---------- Helpers JSON/DOM ----------
+      function findControlByName(name){
+        const esc = cssEscape(name);
+        // name exacto
+        let el = root.querySelector(`[name="${esc}"]`);
+        if (el) return el;
+        // data-name
+        el = root.querySelector(`[data-name="${esc}"]`);
+        if (el) return el;
+        // id
+        el = root.querySelector(`#${esc}`);
+        if (el) return el;
+        // name bracket (foo[bar]) o dot (foo.bar) – búsqueda laxa
+        const candidates = root.querySelectorAll('input,select,textarea,[name],[data-name]');
+        for (const c of candidates){
+          const n = c.getAttribute('name') || c.getAttribute('data-name') || c.id || '';
+          if (!n) continue;
+          if (n === name) return c;
+          if (n.endsWith(`[${name}]`)) return c;
+          if (n.split('.').pop() === name) return c;
+        }
+        return null;
+      }
+
+      function closestFieldWrapper(ctrl){
+        if (!ctrl || !ctrl.closest) return ctrl?.parentElement || null;
+        const sels = [
+          '.form-group','.mb-3','.form-floating','.input-group',
+          '.fd-field','.list-group-item','.card','.card-body',
+          'li','tr','.col','.row'
+        ];
+        for (const s of sels){
+          const w = ctrl.closest(s);
+          if (w) return w;
+        }
+        // Subir hasta un contenedor con otros controles
+        let p = ctrl.parentElement;
+        while (p && p !== root){
+          if (p.querySelector && p.querySelector('input,select,textarea,[name],[data-name]')) return p;
+          p = p.parentElement;
+        }
+        return ctrl.parentElement || null;
+      }
+
+      function commonParent(nodes){
+        if (!nodes || nodes.length === 0) return null;
+        if (nodes.length === 1) return nodes[0].parentElement;
+        const paths = nodes.map(n => {
+          const arr = [];
+          let p = n;
+          while (p){ arr.unshift(p); p = p.parentElement; }
+          return arr;
+        });
+        let cp = null;
+        const shortest = Math.min(...paths.map(a => a.length));
+        for (let i=0; i<shortest; i++){
+          const cand = paths[0][i];
+          if (paths.every(a => a[i] === cand)) cp = cand; else break;
+        }
+        return cp && cp !== document && cp !== document.documentElement ? cp : nodes[0].parentElement;
+      }
+
+      function ensureGrip(w){
+        if (w.querySelector('.fd-dnd-grip')) return;
+        const grip = document.createElement('span');
+        grip.className = 'fd-dnd-grip';
+        grip.title = 'Arrastra para mover';
+        grip.textContent = '⋮⋮';
+        if (w.matches('tr')){
+          const cell = w.querySelector(':scope > th, :scope > td') || w;
+          cell.insertBefore(grip, cell.firstChild);
+        } else if (w.matches('li')) {
+          w.insertBefore(grip, w.firstChild);
+        } else {
+          const header = w.querySelector(':scope > .card-header, :scope > legend, :scope > label, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6');
+          if (header) header.insertBefore(grip, header.firstChild);
+          else w.insertBefore(grip, w.firstChild);
+        }
+      }
+
+      function cssEscape(s){ return String(s).replace(/(["\\.#\[\]:])/g, '\\$1'); }
+
+      // ---------- Fallback DOM (se mantiene) ----------
       function initFieldsFallback(){
         const containerSel = [
           '#fd-root .tab-pane .card-body',
@@ -465,15 +579,11 @@ require_once __DIR__ . '/formulariodinamicologica.php';
       // Estado inicial + onload
       emit(inDesign());
       window.addEventListener('load', initDnd);
-
-      // Toggle modo diseño
       toggle?.addEventListener('change', function(){
         root?.classList.toggle('design-mode', this.checked);
         emit(this.checked);
         initDnd();
       });
-
-      // Re-render en tiempo de ejecución
       if (container){
         const mo = new MutationObserver(()=> initDnd());
         mo.observe(container, { childList:true, subtree:true });

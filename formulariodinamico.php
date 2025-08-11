@@ -275,6 +275,28 @@ function fd_render_layout_fallback($layout, $fieldsets) {
     #fd-tree .ico{width:16px;text-align:center;color:#6c757d;font-size:.7rem;}
     #fd-tree .fd-tree-field .ico{color:#845ef7;}
     #fd-tree .fd-tree-group .ico{color:#0d6efd;}
+    #fd-tree-side .nav-link{padding:.25rem .5rem;}
+    #fd-tree-side .nav-link.active{background:#fff;}
+    /* JSON tree */
+    #fd-json-tree{max-height:60vh;overflow:auto;font-size:.72rem;font-family:ui-monospace,monospace;line-height:1.25;}
+    .fd-json-tree ul{list-style:none;margin:0;padding-left:16px;}
+    .fd-json-tree li{margin:1px 0;position:relative;}
+    .fd-json-node{display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:3px;}
+    .fd-json-node:hover{background:#eef5ff;}
+    .fd-json-node.selected{background:#ffe9b5;}
+    .fd-json-toggle{cursor:pointer;color:#0d6efd;font-weight:600;width:12px;text-align:center;}
+    .fd-json-toggle.empty{color:#ccc;cursor:default;}
+    .fd-json-key{color:#7c4d00;font-weight:600;}
+    .fd-json-type-object>.fd-json-key:after{content:" (obj)";color:#999;font-weight:400;font-size:.6rem;}
+    .fd-json-type-array>.fd-json-key:after{content:" (arr)";color:#999;font-weight:400;font-size:.6rem;}
+    .fd-json-value{color:#1d4e89;flex:1;min-width:40px;cursor:pointer;}
+    .fd-json-value.fd-type-string:before{content:'"';color:#999;}
+    .fd-json-value.fd-type-string:after{content:'"';color:#999;}
+    .fd-json-value.fd-editing{background:#fff3cd;border:1px solid #ffec99;padding:0 2px;border-radius:2px;}
+    .fd-json-actions button{border:none;background:transparent;color:#666;padding:0 3px;font-size:.65rem;cursor:pointer;}
+    .fd-json-actions button:hover{color:#000;}
+    .fd-json-badge{background:#dee2e6;color:#555;font-size:.55rem;padding:1px 4px;border-radius:10px;}
+    .fd-json-dirty:after{content:"*";color:#d6336c;margin-left:2px;font-weight:700;}
   </style>
 </head>
 <body>
@@ -318,17 +340,32 @@ function fd_render_layout_fallback($layout, $fieldsets) {
         </form>
       </div>
       <div id="fd-tree-side" class="<?php echo $modoDiseno ? '' : 'hidden'; ?>">
-        <h6 class="d-flex justify-content-between align-items-center">
-          Estructura
+        <h6 class="d-flex justify-content-between align-items-center mb-2">
+          Diseñador
           <button type="button" id="closeTree" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:.6rem;">×</button>
         </h6>
-        <div id="fd-tree-toolbar">
-          <button class="btn btn-light btn-sm" data-act="add-group">+ Grupo</button>
-          <button class="btn btn-light btn-sm" data-act="add-field">+ Campo</button>
-          <button class="btn btn-light btn-sm" data-act="rename">Renombrar</button>
-          <button class="btn btn-light btn-sm" data-act="delete">Borrar</button>
+        <ul class="nav nav-tabs nav-sm mb-2" id="fd-side-tabs" style="font-size:.7rem;">
+          <li class="nav-item"><button class="nav-link active" data-tab="form">Formulario</button></li>
+          <li class="nav-item"><button class="nav-link" data-tab="json">JSON</button></li>
+        </ul>
+        <div class="mb-2">
+          <input type="text" id="fd-tree-filter" class="form-control form-control-sm" placeholder="Filtrar...">
         </div>
-        <div id="fd-tree"></div>
+
+        <!-- Contenido Formulario (estructura visual) -->
+        <div id="fd-tree-wrapper-form">
+          <div id="fd-tree"></div>
+        </div>
+
+        <!-- Contenido JSON -->
+        <div id="fd-tree-wrapper-json" class="d-none">
+          <div class="d-flex gap-2 mb-2">
+            <button id="fd-json-expand" class="btn btn-light btn-sm">Expandir</button>
+            <button id="fd-json-collapse" class="btn btn-light btn-sm">Colapsar</button>
+            <button id="fd-json-save" class="btn btn-primary btn-sm" disabled>Guardar JSON</button>
+          </div>
+          <div id="fd-json-tree" class="fd-json-tree"></div>
+        </div>
       </div>
     </div>
   </div>

@@ -229,51 +229,74 @@
 
   // ---------- Fields dentro y entre fieldsets ----------
   function attachFieldsDnD(){
-    const containers = getFieldContainers(); // contenedores finales donde van los wrappers directos
+    const containers = getFieldContainers();
 
     containers.forEach(cont=>{
       if (!cont || cont.nodeType!==1) return;
       if (cont.dataset.fdSortableField === '1') return;
-      cont.dataset.fdSortableField = '1';
-
-      // Wrappers directos movibles (hijos directos del contenedor)
-      const wrappers = Array.from(cont.children).filter(isFieldWrapperDirect);
-
-      // Marca grip/clase si hay wrappers; si no, igual inicializamos para permitir drop
-      wrappers.forEach(w=> { markFieldWrapper(w); ensureFieldGrip(w); });
-
-      // Evita navegación si se hace click en el grip
-      cont.addEventListener('click', (e)=>{
-        if (isDesign() && e.target.closest('.fd-dnd-grip')) e.preventDefault();
-      });
-
-      const s = new Sortable(cont, {
-        animation: 150,
-        draggable: '.fd-field-draggable',
-        handle: '.fd-dnd-grip',
-        ghostClass: 'fd-dnd-ghost',
-        group: { name: 'fd-fields', pull: true, put: true }, // mover entre fieldsets/columnas
-        forceFallback: true,
-        fallbackOnBody: true,
-        onAdd: (evt)=> rebindMovedField(evt.item),
-        onUpdate: (evt)=> rebindMovedField(evt.item),
-        onEnd: (evt)=> rebindMovedField(evt.item)
-      });
-      sortables.push(s);
+      createFieldSortable(cont);
     });
+  }
+
+  function createFieldSortable(cont){
+    cont.dataset.fdSortableField = '1';
+
+    // Wrappers directos movibles (hijos directos del contenedor)
+    const wrappers = Array.from(cont.children).filter(isFieldWrapperDirect);
+    wrappers.forEach(w=> { markFieldWrapper(w); ensureFieldGrip(w); });
+
+    // Evita navegación si se hace click en el grip
+    cont.addEventListener('click', (e)=>{
+      if (isDesign() && e.target.closest('.fd-dnd-grip')) e.preventDefault();
+    });
+
+    const s = new Sortable(cont, {
+      animation: 150,
+      draggable: '.fd-field-draggable',
+      handle: '.fd-dnd-grip',
+      ghostClass: 'fd-dnd-ghost',
+      group: { name: 'fd-fields', pull: true, put: true }, // mover entre fieldsets/columnas
+      direction: 'vertical',
+      swapThreshold: 0.5,
+      emptyInsertThreshold: 8,
+      filter: 'input,select,textarea,button,[contenteditable],a[href]',
+      preventOnFilter: false,
+      scroll: true,
+      scrollSensitivity: 30,
+      scrollSpeed: 10,
+      forceFallback: true,
+      fallbackOnBody: true,
+      onAdd: (evt)=> rebindMovedField(evt.item),
+      onUpdate: (evt)=> rebindMovedField(evt.item),
+      onEnd: (evt)=> rebindMovedField(evt.item)
+    });
+    sortables.push(s);
+    return s;
+  }
+
+  function rebindMovedField(item){
+    if (!item) return;
+    // Asegura clases y grip en el ítem
+    markFieldWrapper(item);
+    ensureFieldGrip(item);
+
+    // Asegura que el contenedor destino tenga Sortable activo
+    const parent = item.parentElement;
+    if (parent && parent.nodeType===1 && parent.dataset.fdSortableField !== '1'){
+      createFieldSortable(parent);
+    }
   }
 
   // Devuelve contenedores donde los campos son hijos directos (body de card/fieldset o columnas)
   function getFieldContainers(){
-    const bases = $$('#fd-root fieldset, #fd-root .card, #fd-root .panel, #fd-root [data-fd-fields-group], #fd-root .fd-fields-container, #fd-root table');
+    const bases = $$('#fd-root fieldset, #fd-root .card, #fd-root .panel, #fd-root [data-fd-fields-group], #fd-root .fd-fields-container, #fd-root table, #fd-root .fd-fieldset');
     const out = [];
 
     bases.forEach(base=>{
-      const body = pickFieldsContainer(base); // card-body / panel-body / tbody / fallback
+      const body = pickFieldsContainer(base);
       if (!body) return;
 
       if (body.matches('table')) {
-        // Ya resuelto en pickFieldsContainer a tbody
         out.push(body);
         return;
       }
@@ -287,7 +310,6 @@
         }
       }
 
-      // Si no es fila, usa el propio body como contenedor
       out.push(body);
     });
 
@@ -300,7 +322,9 @@
     if (base.matches('table')) return (base.tBodies && base.tBodies[0]) || base;
 
     // Preferir cuerpos típicos del grupo
-    const body = base.querySelector(':scope > .card-body, :scope > .panel-body, :scope > .fd-fields-container, :scope > .list-group, :scope > .container, :scope > .row');
+    const body = base.querySelector(
+      ':scope > .card-body, :scope > .panel-body, :scope > .accordion-body, :scope > .fd-fields-container, :scope > .list-group, :scope > .container, :scope > .row'
+    );
     return body || base;
   }
 
@@ -308,35 +332,13 @@
     if (!el || el.tagName==='SCRIPT' || el.tagName==='STYLE') return false;
     // No considerar grupos completos ni contenedores de grid como wrappers
     if (el.matches('fieldset, .card, .panel, .accordion-item, [data-fieldset-name], .fd-fieldset')) return false;
-    if (el.matches('.row')) return false;
-    // En columnas sí permitimos si contienen controles (para layouts simples)
-    if (el.matches('[class*="col-"], .col')){
-      return hasControl(el);
-    }
+    if (el.matches('.row, [class*="col-"], .col')) return false;
     // Debe contener un control
     return hasControl(el);
   }
 
-  // Helpers de campos (añadir si no existen)
-  function hasControl(el){
-    return !!el.querySelector?.('input,select,textarea,[name],[data-name]');
-  }
-  function isGroupEl(el){
-    return !!el && el.matches && el.matches('fieldset, .card, .panel, .accordion-item, [data-fieldset-name], .fd-fieldset');
-  }
-  function ensureFieldGrip(w){
-    if (w.querySelector('.fd-dnd-grip')) return;
-    const grip = document.createElement('span');
-    grip.className = 'fd-dnd-grip';
-    grip.title = 'Arrastra para mover';
-    grip.textContent = '⋮⋮';
-    if (w.matches('tr')){
-      const cell = w.querySelector(':scope > th, :scope > td') || w;
-      cell.insertBefore(grip, cell.firstChild);
-    } else {
-      const header = w.querySelector(':scope > .card-header, :scope > legend, :scope > label, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6');
-      if (header) header.insertBefore(grip, header.firstChild);
-      else w.insertBefore(grip, w.firstChild);
-    }
+  function markFieldWrapper(el){
+    if (!el || el.nodeType!==1) return;
+    el.classList.add('fd-field-draggable', 'fd-badge-field');
   }
 })();

@@ -231,48 +231,30 @@
 
   // ---------- Fields dentro y entre fieldsets ----------
   function attachFieldsDnD(){
-    const candidates = Array.from(document.querySelectorAll('#fd-root ' + [
-      '.form-group',
-      '.mb-3',
-      '.form-floating',
-      '.input-group',
-      '.fd-field',
-      'li',
-      'tr',
-      '[data-field-wrapper]'
-    ].join(', ')))
-      .filter(el => !isGroupEl(el))
-      .filter(el => hasControl(el));
+    const containers = getFieldContainers(); // contenedores finales donde van los wrappers directos
 
-    const parentsMap = new Map();
-    candidates.forEach(w => {
-      const p = w.parentElement;
-      if (!p) return;
-      if (!parentsMap.has(p)) parentsMap.set(p, new Set());
-      parentsMap.get(p).add(w);
-    });
+    containers.forEach(cont=>{
+      if (!cont || cont.nodeType!==1) return;
+      if (cont.dataset.fdSortableField === '1') return;
+      cont.dataset.fdSortableField = '1';
 
-    parentsMap.forEach((set, parent) => {
-      if (!parent || parent.nodeType !== 1) return;
-      if (parent.dataset.fdSortableField === '1') return;
-      parent.dataset.fdSortableField = '1';
+      // Wrappers directos movibles (hijos directos del contenedor)
+      const wrappers = Array.from(cont.children).filter(isFieldWrapperDirect);
 
-      const wrappers = Array.from(set);
-      wrappers.forEach(w => {
-        markFieldWrapper(w);
-        ensureFieldGrip(w);
-      });
+      // Marca grip/clase si hay wrappers; si no, igual inicializamos para permitir drop
+      wrappers.forEach(w=> { markFieldWrapper(w); ensureFieldGrip(w); });
 
-      parent.addEventListener('click', (e)=>{
+      // Evita navegación si se hace click en el grip
+      cont.addEventListener('click', (e)=>{
         if (isDesign() && e.target.closest('.fd-dnd-grip')) e.preventDefault();
       });
 
-      const s = new Sortable(parent, {
+      const s = new Sortable(cont, {
         animation: 150,
         draggable: '.fd-field-draggable',
         handle: '.fd-dnd-grip',
         ghostClass: 'fd-dnd-ghost',
-        group: { name: 'fd-fields', pull: true, put: true },
+        group: { name: 'fd-fields', pull: true, put: true }, // mover entre fieldsets/columnas
         forceFallback: true,
         fallbackOnBody: true,
         onAdd: (evt)=> rebindMovedField(evt.item),
@@ -283,34 +265,58 @@
     });
   }
 
-  function rebindMovedField(item){
-    if (!item) return;
-    if (!item.classList.contains('fd-field-draggable')) item.classList.add('fd-field-draggable');
-    markFieldWrapper(item);
-    ensureFieldGrip(item);
-    const parent = item.parentElement;
-    if (parent && parent.nodeType===1 && parent.dataset.fdSortableField !== '1'){
-      parent.dataset.fdSortableField = '1';
-      const s = new Sortable(parent, {
-        animation: 150,
-        draggable: '.fd-field-draggable',
-        handle: '.fd-dnd-grip',
-        ghostClass: 'fd-dnd-ghost',
-        group: { name: 'fd-fields', pull: true, put: true },
-        forceFallback: true,
-        fallbackOnBody: true,
-        onAdd: (evt)=> rebindMovedField(evt.item),
-        onUpdate: (evt)=> rebindMovedField(evt.item),
-        onEnd: (evt)=> rebindMovedField(evt.item)
-      });
-      sortables.push(s);
-    }
+  // Devuelve contenedores donde los campos son hijos directos (body de card/fieldset o columnas)
+  function getFieldContainers(){
+    const bases = $$('#fd-root fieldset, #fd-root .card, #fd-root .panel, #fd-root [data-fd-fields-group], #fd-root .fd-fields-container, #fd-root table');
+    const out = [];
+
+    bases.forEach(base=>{
+      const body = pickFieldsContainer(base); // card-body / panel-body / tbody / fallback
+      if (!body) return;
+
+      if (body.matches('table')) {
+        // Ya resuelto en pickFieldsContainer a tbody
+        out.push(body);
+        return;
+      }
+
+      // Si el body es una fila, usa cada columna como contenedor final
+      if (body.matches('.row')){
+        const cols = Array.from(body.children).filter(el=> el.matches('[class*="col-"], .col'));
+        if (cols.length){
+          cols.forEach(col=> out.push(col));
+          return;
+        }
+      }
+
+      // Si no es fila, usa el propio body como contenedor
+      out.push(body);
+    });
+
+    // Evita duplicados
+    return Array.from(new Set(out));
   }
 
-  // Marca y prepara un wrapper de campo
-  function markFieldWrapper(el){
-    if (!el || el.nodeType!==1) return;
-    el.classList.add('fd-field-draggable', 'fd-badge-field');
+  function pickFieldsContainer(base){
+    if (!base || base.nodeType!==1) return null;
+    if (base.matches('table')) return (base.tBodies && base.tBodies[0]) || base;
+
+    // Preferir cuerpos típicos del grupo
+    const body = base.querySelector(':scope > .card-body, :scope > .panel-body, :scope > .fd-fields-container, :scope > .list-group, :scope > .container, :scope > .row');
+    return body || base;
+  }
+
+  function isFieldWrapperDirect(el){
+    if (!el || el.tagName==='SCRIPT' || el.tagName==='STYLE') return false;
+    // No considerar grupos completos ni contenedores de grid como wrappers
+    if (el.matches('fieldset, .card, .panel, .accordion-item, [data-fieldset-name], .fd-fieldset')) return false;
+    if (el.matches('.row')) return false;
+    // En columnas sí permitimos si contienen controles (para layouts simples)
+    if (el.matches('[class*="col-"], .col')){
+      return hasControl(el);
+    }
+    // Debe contener un control
+    return hasControl(el);
   }
 
   // Helpers de campos (añadir si no existen)

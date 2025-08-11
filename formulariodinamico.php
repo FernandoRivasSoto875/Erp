@@ -247,93 +247,124 @@ function fd_render_layout_fallback($layout, $fieldsets) {
     fieldset.draggable-fieldset{cursor:move;}
   </style>
 </head>
-<body id="fd-root" class="<?php echo $modoDiseno?'design-mode':''; ?>">
-<div class="container-fluid py-2">
-  <div class="d-flex justify-content-between align-items-center mb-3 design-toolbar">
-    <div>
-      <h4 class="m-0" id="fd-form-title" data-editable="titulo-form"><?php echo htmlspecialchars($titulo_formulario); ?></h4>
-      <?php if ($descripcion_formulario): ?>
-        <small class="text-muted" id="fd-form-desc" data-editable="descripcion-form"><?php echo htmlspecialchars($descripcion_formulario); ?></small>
-      <?php endif; ?>
-    </div>
-    <div>
-      <label class="form-check form-switch">
-        <input type="checkbox" class="form-check-input" id="designModeToggle" <?php echo $modoDiseno?'checked':''; ?>>
-        <span class="form-check-label">Diseño</span>
+<body>
+  <div id="fd-root" class="<?php echo $modoDiseno?'design-mode':''; ?>">
+    <!-- TODO: aquí todo tu formulario / layout -->
+    <div class="d-flex align-items-center mb-2">
+      <label class="form-check-label" style="display:inline-flex;gap:6px;">
+        <input type="checkbox" id="designModeToggle" <?php echo $modoDiseno?'checked':''; ?>> Modo diseño
       </label>
-      <button type="button" class="btn btn-sm btn-primary ms-2" id="saveLayoutBtn" <?php echo $modoDiseno?'':'disabled'; ?>>Guardar diseño</button>
     </div>
+    <!-- ... resto ... -->
   </div>
 
-  <form id="formulariodinamico" data-layout-container class="mb-4">
-    <?php echo fd_render_layout_fallback($layout, $fieldsets); ?>
-    <div class="mt-3">
-      <?php foreach ($botones_config as $b): 
-        $txt = htmlspecialchars($b['texto'] ?? 'Botón');
-        $acc = $b['accion'] ?? 'submit';
-        $cls = htmlspecialchars($b['clase'] ?? 'btn-secondary');
-        $type = ($acc === 'reset' ? 'reset' : 'submit');
-      ?>
-        <button type="<?php echo $type; ?>" class="btn <?php echo $cls; ?>"><?php echo $txt; ?></button>
-      <?php endforeach; ?>
+  <!-- Botón/árbol aparecerán aquí -->
+  <div class="container-fluid py-2">
+    <div class="d-flex justify-content-between align-items-center mb-3 design-toolbar">
+      <div>
+        <h4 class="m-0" id="fd-form-title" data-editable="titulo-form"><?php echo htmlspecialchars($titulo_formulario); ?></h4>
+        <?php if ($descripcion_formulario): ?>
+          <small class="text-muted" id="fd-form-desc" data-editable="descripcion-form"><?php echo htmlspecialchars($descripcion_formulario); ?></small>
+        <?php endif; ?>
+      </div>
+      <div>
+        <label class="form-check form-switch">
+          <input type="checkbox" class="form-check-input" id="designModeToggle" <?php echo $modoDiseno?'checked':''; ?>>
+          <span class="form-check-label">Diseño</span>
+        </label>
+        <button type="button" class="btn btn-sm btn-primary ms-2" id="saveLayoutBtn" <?php echo $modoDiseno?'':'disabled'; ?>>Guardar diseño</button>
+      </div>
     </div>
-  </form>
 
-  <?php if ($modoDiseno): ?>
-    <div id="elementos-fuera-container" class="border p-2 mb-5">
-      <strong>Elementos fuera del formulario</strong>
-      <div class="fd-out-items small text-muted">Arrastra fieldsets aquí</div>
-    </div>
-  <?php endif; ?>
-</div>
+    <form id="formulariodinamico" data-layout-container class="mb-4">
+      <?php echo fd_render_layout_fallback($layout, $fieldsets); ?>
+      <div class="mt-3">
+        <?php foreach ($botones_config as $b): 
+          $txt = htmlspecialchars($b['texto'] ?? 'Botón');
+          $acc = $b['accion'] ?? 'submit';
+          $cls = htmlspecialchars($b['clase'] ?? 'btn-secondary');
+          $type = ($acc === 'reset' ? 'reset' : 'submit');
+        ?>
+          <button type="<?php echo $type; ?>" class="btn <?php echo $cls; ?>"><?php echo $txt; ?></button>
+        <?php endforeach; ?>
+      </div>
+    </form>
 
+    <?php if ($modoDiseno): ?>
+      <div id="elementos-fuera-container" class="border p-2 mb-5">
+        <strong>Elementos fuera del formulario</strong>
+        <div class="fd-out-items small text-muted">Arrastra fieldsets aquí</div>
+      </div>
+    <?php endif; ?>
+  </div>
+
+  <link rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+  integrity="sha512-DTOQO9RWCH3ppGqcWaEA1B4..."
+  crossorigin="anonymous" referrerpolicy="no-referrer">
 <script>
-document.getElementById('designModeToggle')?.addEventListener('change', function(){
-  const url = new URL(window.location.href);
-  url.searchParams.set('modoDiseno', this.checked ? '1' : '0');
-  window.location.href = url.toString();
+  window.FORM_CONFIG = { archivo_json: 'formulariogenerico2.json' };
+</script>
+<script src="js/json-tree-panel.js"></script>
+  <script>
+  document.getElementById('designModeToggle')?.addEventListener('change', function(){
+    const url = new URL(window.location.href);
+    url.searchParams.set('modoDiseno', this.checked ? '1' : '0');
+    window.location.href = url.toString();
+  });
+  </script>
+  <script>
+document.addEventListener('DOMContentLoaded', ()=>{
+  const root = document.getElementById('fd-root');
+  const chk  = document.getElementById('designModeToggle');
+  if (!root || !chk) return;
+  chk.addEventListener('change', ()=>{
+    root.classList.toggle('design-mode', chk.checked);
+    // (json-tree-panel escucha la mutación; adicionalmente emitimos)
+    window.dispatchEvent(new CustomEvent('design-mode-changed',{detail:{on:chk.checked}}));
+  });
 });
 </script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-<script src="js/fd-dnd-lite-min.js"></script>
-<script>
-(function(){
-  const form = document.getElementById('formulariodinamico');
-  if (!form) return;
-  form.addEventListener('submit', function(e){
-    if (!form.checkValidity()){
-      e.preventDefault();
-      e.stopPropagation();
-      form.querySelectorAll(':invalid').forEach(inp=>{
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <script src="js/fd-dnd-lite-min.js"></script>
+  <script>
+  (function(){
+    const form = document.getElementById('formulariodinamico');
+    if (!form) return;
+    form.addEventListener('submit', function(e){
+      if (!form.checkValidity()){
+        e.preventDefault();
+        e.stopPropagation();
+        form.querySelectorAll(':invalid').forEach(inp=>{
+          const wrap = inp.closest('.fd-field-wrapper');
+          if (wrap){
+            wrap.classList.add('was-validated');
+            const fb = wrap.querySelector('.invalid-feedback');
+            if (fb && !fb.textContent.trim()) {
+              fb.textContent = inp.validationMessage;
+            }
+          }
+        });
+      }
+    });
+    // Mostrar feedback en blur
+    form.addEventListener('blur', function(e){
+      const inp = e.target;
+      if (inp.matches('input,select,textarea')){
         const wrap = inp.closest('.fd-field-wrapper');
         if (wrap){
-          wrap.classList.add('was-validated');
           const fb = wrap.querySelector('.invalid-feedback');
-          if (fb && !fb.textContent.trim()) {
-            fb.textContent = inp.validationMessage;
+          if (!inp.checkValidity()){
+            wrap.classList.add('was-validated');
+            if (fb) fb.textContent = inp.validationMessage;
+          } else {
+            if (fb) fb.textContent = '';
           }
         }
-      });
-    }
-  });
-  // Mostrar feedback en blur
-  form.addEventListener('blur', function(e){
-    const inp = e.target;
-    if (inp.matches('input,select,textarea')){
-      const wrap = inp.closest('.fd-field-wrapper');
-      if (wrap){
-        const fb = wrap.querySelector('.invalid-feedback');
-        if (!inp.checkValidity()){
-          wrap.classList.add('was-validated');
-          if (fb) fb.textContent = inp.validationMessage;
-        } else {
-          if (fb) fb.textContent = '';
-        }
       }
-    }
-  }, true);
-})();
-</script>
+    }, true);
+  })();
+  </script>
 </body>
 </html>

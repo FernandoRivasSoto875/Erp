@@ -16,6 +16,7 @@
       #fd-root.design-mode .fd-dnd-grip,
       #fd-root.design-mode .fd-group-grip{ cursor:grab; user-select:none; touch-action:none; display:inline-block; margin-right:6px; opacity:.9; }
       #fd-root.design-mode .fd-dnd-ghost{ opacity:.6; background:#eef2ff !important; }
+      #fd-root.design-mode{ outline: 1px dashed #0d6efd; outline-offset: 4px; }
     `;
     document.head.appendChild(st);
   }
@@ -37,22 +38,24 @@
     else cb();
   }
   function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
+
   function destroyAll(){
     sortables.forEach(s=> { try{ s && s.destroy && s.destroy(); }catch{} });
     sortables = [];
-    $$('#fd-root .fd-dnd-grip, #fd-root .fd-group-grip').forEach(n=> n.remove());
+    // no removemos grips para no parpadear; se regeneran en cada init
   }
 
   function initAll(){
     if (!isDesign()) { destroyAll(); return; }
     if (!hasSortable()){
-      console.warn('[FD Lite] Falta SortableJS.');
+      console.warn('[FD Lite] Falta SortableJS. No se puede activar DnD.');
       return;
     }
     destroyAll();
     attachTabsDnD();
     attachFieldsetsDnD();
     attachFieldsDnD();
+    console.info('[FD Lite] DnD listo.');
   }
 
   // Tabs

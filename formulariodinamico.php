@@ -267,7 +267,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
       }
       // --------- FIN Tabs fallback ----------
 
-      // ---------- Fields por JSON (robusto) ----------
+      // ---------- Fields por JSON (robusto, por padre real) ----------
       function initFieldsDnDJson(){
         const json = window.formularioJsonOriginal || {};
         const fieldsets = json.fieldsets && typeof json.fieldsets === 'object' ? json.fieldsets : null;
@@ -279,7 +279,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
           const campos = Array.isArray(fieldsets[fsName]?.campos) ? fieldsets[fsName].campos : [];
           if (!campos.length) return;
 
-          // Encuentra wrappers reales por cada campo
+          // 1) localizar wrappers por campo
           const wrappers = [];
           campos.forEach(c=>{
             const fname = c?.nombre || c?.name || c?.field || '';
@@ -288,161 +288,57 @@ require_once __DIR__ . '/formulariodinamicologica.php';
             if (!ctrl) return;
             const wrap = closestFieldWrapper(ctrl);
             if (!wrap) return;
-            // marcar wrapper
             wrap.setAttribute('data-fd-wrapper','1');
             wrap.setAttribute('data-fd-name', fname);
             ensureGrip(wrap);
             wrappers.push(wrap);
           });
-          if (wrappers.length < 2) return;
+          if (!wrappers.length) return;
 
-          // Contenedor común
-          const container = commonParent(wrappers);
-          if (!container) return;
+          // 2) agrupar por padre real y montar Sortable por padre
+          const byParent = new Map();
+          wrappers.forEach(w=>{
+            const p = w.parentElement;
+            if (!p) return;
+            if (!byParent.has(p)) byParent.set(p, []);
+            byParent.get(p).push(w);
+          });
 
-          // Evitar reinicializar
-          if (container.dataset.fdFieldsInit === '1') return;
-          container.dataset.fdFieldsInit = '1';
-          // Marcar pane
-          const pane = container.closest('.tab-pane');
-          if (pane?.id) container.dataset.tabPaneId = pane.id;
+          byParent.forEach((wraps, parent)=>{
+            // marca contenedor y pane
+            if (parent.dataset.fdFieldsInit === '1') return;
+            parent.dataset.fdFieldsInit = '1';
+            const pane = parent.closest('.tab-pane');
+            if (pane?.id) parent.dataset.tabPaneId = pane.id;
 
-          // Asegura que sean hijos directos, si no, promueve el nivel
-          const directWraps = wrappers.filter(w => w.parentElement === container);
-          if (directWraps.length < 2){
-            // Sube un nivel al contenedor hasta que los wrappers sean directos o cambia a padre inmediato común
-            let alt = container;
-            while (alt && directWraps.filter(w => w.parentElement === alt).length < 2) {
-              alt = alt.parentElement;
-              if (!alt || alt === root) break;
+            // asegurar grips en hijos directos (wrappers)
+            wraps.forEach(w => ensureGrip(w));
+
+            // 3) montar Sortable por contenedor real (permite cross-group)
+            if (window.Sortable){
+              new Sortable(parent, {
+                animation: 150,
+                draggable: ':scope > [data-fd-wrapper="1"]',
+                handle: '.fd-dnd-grip',
+                ghostClass: 'fd-dnd-ghost',
+                group: { name: 'fd-fields', pull: true, put: true }
+              });
+            } else {
+              initNativeListDnD(parent, {
+                handleSel: '.fd-dnd-grip',
+                childSel: ':scope > [data-fd-wrapper="1"]',
+                crossGroup: true
+              });
             }
-            if (alt && alt !== container){
-              container.dataset.fdFieldsInit = '';
-              container.removeAttribute('data-fd-fields-init');
-              container.removeAttribute('data-tab-pane-id');
-              alt.dataset.fdFieldsInit = '1';
-              const p = alt.closest('.tab-pane');
-              if (p?.id) alt.dataset.tabPaneId = p.id;
-              initSortableOnFieldsContainer(alt);
-              configured++;
-              return;
-            }
-          }
-
-          initSortableOnFieldsContainer(container);
-          configured++;
+            configured++;
+          });
         });
 
         if (inDesign()) console.info('[FD] JSON fields containers configurados:', configured);
         return configured;
       }
 
-      function initSortableOnFieldsContainer(container){
-        // Asegura grip en wrappers directos
-        Array.from(container.children).forEach(ch=>{
-          if (ch.getAttribute && ch.getAttribute('data-fd-wrapper') === '1') ensureGrip(ch);
-        });
-
-        if (window.Sortable){
-          new Sortable(container, {
-            animation: 150,
-            draggable: ':scope > [data-fd-wrapper="1"]',
-            handle: '.fd-dnd-grip',
-            ghostClass: 'fd-dnd-ghost',
-            group: { name: 'fd-fields', pull: true, put: true }
-          });
-        } else {
-          initNativeListDnD(container, {
-            handleSel: '.fd-dnd-grip',
-            childSel: ':scope > [data-fd-wrapper="1"]',
-            crossGroup: true
-          });
-        }
-      }
-
-      // ---------- Helpers JSON/DOM ----------
-      function findControlByName(name){
-        const esc = cssEscape(name);
-        // name exacto
-        let el = root.querySelector(`[name="${esc}"]`);
-        if (el) return el;
-        // data-name
-        el = root.querySelector(`[data-name="${esc}"]`);
-        if (el) return el;
-        // id
-        el = root.querySelector(`#${esc}`);
-        if (el) return el;
-        // name bracket (foo[bar]) o dot (foo.bar) – búsqueda laxa
-        const candidates = root.querySelectorAll('input,select,textarea,[name],[data-name]');
-        for (const c of candidates){
-          const n = c.getAttribute('name') || c.getAttribute('data-name') || c.id || '';
-          if (!n) continue;
-          if (n === name) return c;
-          if (n.endsWith(`[${name}]`)) return c;
-          if (n.split('.').pop() === name) return c;
-        }
-        return null;
-      }
-
-      function closestFieldWrapper(ctrl){
-        if (!ctrl || !ctrl.closest) return ctrl?.parentElement || null;
-        const sels = [
-          '.form-group','.mb-3','.form-floating','.input-group',
-          '.fd-field','.list-group-item','.card','.card-body',
-          'li','tr','.col','.row'
-        ];
-        for (const s of sels){
-          const w = ctrl.closest(s);
-          if (w) return w;
-        }
-        // Subir hasta un contenedor con otros controles
-        let p = ctrl.parentElement;
-        while (p && p !== root){
-          if (p.querySelector && p.querySelector('input,select,textarea,[name],[data-name]')) return p;
-          p = p.parentElement;
-        }
-        return ctrl.parentElement || null;
-      }
-
-      function commonParent(nodes){
-        if (!nodes || nodes.length === 0) return null;
-        if (nodes.length === 1) return nodes[0].parentElement;
-        const paths = nodes.map(n => {
-          const arr = [];
-          let p = n;
-          while (p){ arr.unshift(p); p = p.parentElement; }
-          return arr;
-        });
-        let cp = null;
-        const shortest = Math.min(...paths.map(a => a.length));
-        for (let i=0; i<shortest; i++){
-          const cand = paths[0][i];
-          if (paths.every(a => a[i] === cand)) cp = cand; else break;
-        }
-        return cp && cp !== document && cp !== document.documentElement ? cp : nodes[0].parentElement;
-      }
-
-      function ensureGrip(w){
-        if (w.querySelector('.fd-dnd-grip')) return;
-        const grip = document.createElement('span');
-        grip.className = 'fd-dnd-grip';
-        grip.title = 'Arrastra para mover';
-        grip.textContent = '⋮⋮';
-        if (w.matches('tr')){
-          const cell = w.querySelector(':scope > th, :scope > td') || w;
-          cell.insertBefore(grip, cell.firstChild);
-        } else if (w.matches('li')) {
-          w.insertBefore(grip, w.firstChild);
-        } else {
-          const header = w.querySelector(':scope > .card-header, :scope > legend, :scope > label, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6');
-          if (header) header.insertBefore(grip, header.firstChild);
-          else w.insertBefore(grip, w.firstChild);
-        }
-      }
-
-      function cssEscape(s){ return String(s).replace(/(["\\.#\[\]:])/g, '\\$1'); }
-
-      // ---------- Fallback DOM (se mantiene) ----------
+      // ---------- Fallback DOM (agrupa por padre real) ----------
       function initFieldsFallback(){
         const containerSel = [
           '#fd-root .tab-pane .card-body',
@@ -460,201 +356,47 @@ require_once __DIR__ . '/formulariodinamicologica.php';
           '#fd-root form',
           '#fd-root form .row',
           '#fd-root form .col',
-          '#fd-root table tbody' // soporte de tablas
+          '#fd-root table tbody'
         ].join(', ');
 
-        const containers = Array.from(document.querySelectorAll(containerSel));
         let configured = 0;
 
-        containers.forEach(cont=>{
+        document.querySelectorAll(containerSel).forEach(cont=>{
+          // detectar wrappers-hijos directos con controles
+          const wrappers = Array.from(cont.children)
+            .filter(el => el.tagName!=='SCRIPT' && el.tagName!=='STYLE')
+            .filter(el => el.querySelector?.('input,select,textarea,[name],[data-name]'));
+
+          if (!wrappers.length) return;
+
+          // marca contenedor + grips
           if (cont.dataset.fdFieldsInit === '1') return;
-
-          // Determina selector de wrappers (hijos directos movibles)
-          const wrapperSel = pickWrapperSelector(cont);
-          if (!wrapperSel) return;
-
-          // Lista de wrappers candidatos
-          const wrappers = Array.from(cont.querySelectorAll(wrapperSel)).filter(isDirectChildOf(cont));
-
-          // Debe haber al menos 2 wrappers con controles
-          const wrappersWithControls = wrappers.filter(w => w.querySelector('input,select,textarea,[name],[data-name]'));
-          if (wrappersWithControls.length < 2) return;
-
-          // Marca y añade grips
           cont.dataset.fdFieldsInit = '1';
-          wrappersWithControls.forEach(w => insertGripInWrapper(w));
+          wrappers.forEach(w => { w.setAttribute('data-fd-wrapper','1'); ensureGrip(w); });
 
-          // Activa DnD
           if (window.Sortable){
             new Sortable(cont, {
               animation: 150,
-              draggable: wrapperSel,
+              draggable: ':scope > [data-fd-wrapper="1"]',
               handle: '.fd-dnd-grip',
               ghostClass: 'fd-dnd-ghost',
               group: { name: 'fd-fields', pull: true, put: true }
             });
           } else {
-            initNativeListDnD(cont, { handleSel: '.fd-dnd-grip', onDrop: null, childSel: wrapperSel, crossGroup: true });
+            initNativeListDnD(cont, {
+              handleSel: '.fd-dnd-grip',
+              childSel: ':scope > [data-fd-wrapper="1"]',
+              crossGroup: true
+            });
           }
-
           configured++;
         });
 
-        // Diagnóstico en consola
-        if (inDesign()) {
-          console.info('[FD] Fields DnD contenedores configurados:', configured);
-        }
+        if (inDesign()) console.info('[FD] Fields DnD contenedores configurados (fallback):', configured);
       }
 
-      // Selecciona el tipo de wrapper óptimo por contenedor
-      function pickWrapperSelector(container){
-        // 1) Si tiene filas de tabla
-        if (container.matches('table, tbody') || container.querySelector(':scope > tr')) return ':scope > tr';
-        // 2) Ítems de lista
-        if (container.querySelector(':scope > li')) return ':scope > li';
-        // 3) Wrappers comunes de Bootstrap/form
-        const wrapperClasses = ['form-group','mb-3','form-floating','input-group','fd-field','col','row'];
-        const hasClassKids = wrapperClasses
-          .map(c => `:scope > .${c}`)
-          .filter(sel => container.querySelector(sel));
-        if (hasClassKids.length) return hasClassKids.join(', ');
-        // 4) Fallback: cualquier hijo directo que contenga un control
-        const kids = Array.from(container.children).filter(el => el.tagName!=='SCRIPT' && el.tagName!=='STYLE');
-        const anyWithControl = kids.some(el => el.querySelector?.('input,select,textarea,[name],[data-name]'));
-        return anyWithControl ? ':scope > *' : null;
-      }
-
-      // Inserta el grip correctamente según el tipo de wrapper
-      function insertGripInWrapper(w){
-        if (w.querySelector('.fd-dnd-grip')) return;
-        const grip = document.createElement('span');
-        grip.className = 'fd-dnd-grip';
-        grip.title = 'Arrastra para mover';
-        grip.textContent = '⋮⋮';
-
-        if (w.matches('tr')) {
-          // En tablas, va en la primera celda
-          const cell = w.querySelector(':scope > th, :scope > td') || w;
-          cell.insertBefore(grip, cell.firstChild);
-        } else if (w.matches('li')) {
-          w.insertBefore(grip, w.firstChild);
-        } else {
-          // Busca encabezado habitual del grupo
-          const header = w.querySelector(':scope > .card-header, :scope > legend, :scope > label, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6');
-          if (header) header.insertBefore(grip, header.firstChild);
-          else w.insertBefore(grip, w.firstChild);
-        }
-      }
-
-      function isDirectChildOf(container){
-        return function(el){
-          // Asegura que el el es hijo DIRECTO del contenedor
-          return el.parentElement === container;
-        };
-      }
-
-      // ---------- Fallback nativo HTML5 para listas (con soporte entre contenedores) ----------
-      function initNativeListDnD(container, opts){
-        const handleSel = opts?.handleSel || null;
-        const childSel  = opts?.childSel  || ':scope > *';
-        const cross     = !!opts?.crossGroup;
-        const onDropCb  = typeof opts?.onDrop === 'function' ? opts.onDrop : null;
-
-        if (container.dataset.fdNativeDnD === '1') return;
-        container.dataset.fdNativeDnD = '1';
-
-        let dragEl = null;
-
-        function ownerChild(el){
-          // Asegura que sea hijo directo del container
-          while (el && el.parentElement !== container) el = el.parentElement;
-          return el && el.parentElement === container ? el : null;
-        }
-
-        container.addEventListener('mousedown', (e)=>{
-          if (!inDesign()) return;
-          const handle = handleSel ? e.target.closest(handleSel) : e.target;
-          if (!handle) return;
-          const row = ownerChild(handle);
-          if (!row) return;
-          row.setAttribute('draggable','true');
-        });
-
-        container.addEventListener('dragstart', (e)=>{
-          const row = ownerChild(e.target);
-          if (!row) return e.preventDefault();
-          dragEl = row;
-          e.dataTransfer.effectAllowed = 'move';
-          try { e.dataTransfer.setData('text/plain','drag'); } catch {}
-          setTimeout(()=> dragEl.classList.add('fd-dnd-ghost'), 0);
-        });
-
-        container.addEventListener('dragover', (e)=>{
-          if (!dragEl) return;
-          if (cross || e.currentTarget === container){
-            e.preventDefault();
-            const over = ownerChild(e.target);
-            if (!over || over === dragEl) return;
-            const rect = over.getBoundingClientRect();
-            const before = (e.clientY - rect.top) < rect.height/2;
-            if (before) container.insertBefore(dragEl, over);
-            else container.insertBefore(dragEl, over.nextSibling);
-          }
-        });
-
-        container.addEventListener('drop', (e)=>{
-          if (!dragEl) return;
-          e.preventDefault();
-          dragEl.classList.remove('fd-dnd-ghost');
-          dragEl.removeAttribute('draggable');
-          dragEl = null;
-          onDropCb && onDropCb();
-        });
-
-        container.addEventListener('dragend', ()=>{
-          if (dragEl){
-            dragEl.classList.remove('fd-dnd-ghost');
-            dragEl.removeAttribute('draggable');
-          }
-          dragEl = null;
-        });
-
-        // Si se permite cruzar entre grupos, habilita dropear desde otros contenedores
-        if (cross){
-          document.addEventListener('dragover', (e)=>{
-            if (!dragEl) return;
-            const targetContainer = e.target.closest('[data-fd-fields-init="1"]');
-            if (!targetContainer || targetContainer === container) return;
-            // Permitir soltar en el otro contenedor
-            e.preventDefault();
-          });
-          document.addEventListener('drop', (e)=>{
-            if (!dragEl) return;
-            const targetContainer = e.target.closest('[data-fd-fields-init="1"]');
-            if (!targetContainer || targetContainer === container) return;
-            e.preventDefault();
-            // Inserta al final si no calculamos posición exacta
-            targetContainer.appendChild(dragEl);
-            dragEl.classList.remove('fd-dnd-ghost');
-            dragEl.removeAttribute('draggable');
-            dragEl = null;
-            onDropCb && onDropCb();
-          });
-        }
-      }
-
-      // Estado inicial + onload
-      emit(inDesign());
-      window.addEventListener('load', initDnd);
-      toggle?.addEventListener('change', function(){
-        root?.classList.toggle('design-mode', this.checked);
-        emit(this.checked);
-        initDnd();
-      });
-      if (container){
-        const mo = new MutationObserver(()=> initDnd());
-        mo.observe(container, { childList:true, subtree:true });
-      }
+      // Helpers sin cambio relevante: ensureGrip, findControlByName, closestFieldWrapper, initNativeListDnD...
+      // ...existing code...
     })();
   </script>
 

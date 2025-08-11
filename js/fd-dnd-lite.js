@@ -80,6 +80,8 @@
 
       /* Ghost */
       #fd-root.design-mode .fd-dnd-ghost{ opacity:.65; background:#eef2ff !important; }
+
+      .node-fields-list{ min-height: 14px; padding: 4px; border:1px dashed rgba(111,66,193,.25); border-radius:4px; }
     `;
     document.head.appendChild(st);
   }

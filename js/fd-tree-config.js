@@ -1,9 +1,22 @@
 window.fdTreeConfig = {
-  root: '#json-tree-panel',            // contenedor raíz del árbol
-  fieldsContainer: '.node-fields',     // nodo “Campos”
-  fieldItem: '.node-field',            // cada nodo “Campo”
-  fieldHandle: '.handle',              // handle en el árbol (si existe)
-  groupItem: '.node-group',            // nodo “Grupo”
-  fieldIdAttr: 'data-id',              // atributo con id de campo en el árbol
-  groupIdAttr: 'data-id'               // atributo con id de grupo en el árbol
+  // raíz del árbol
+  root: '#json-tree-panel',
+
+  // el nodo contenedor “Campos” (el bloque que agrupa los campos)
+  fieldsContainer: '[data-node="fields"]',
+
+  // la lista real donde van los hijos “Campo”
+  fieldsList: 'ul',            // ajusta si usas .children/.nodes/etc.
+  fieldsListClass: 'node-fields-list',
+
+  // cada ítem “Campo” del árbol
+  fieldItem: '[data-node="field"]',
+  fieldHandle: '.handle', // o deja vacío si no hay handle
+
+  // cada “Grupo” del árbol (padre de “Campos”)
+  groupItem: '[data-node="group"]',
+
+  // atributos con los ids reales
+  fieldIdAttr: 'data-id',      // en el nodo “Campo”
+  groupIdAttr: 'data-id'       // en el nodo “Campos” o su UL
 };

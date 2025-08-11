@@ -170,7 +170,23 @@ $modoDiseno = isset($modoDiseno) ? (bool)$modoDiseno : (isset($_GET['design']) &
   })();
 </script>
 
-<script src="js/json-tree-panel.js"></script>
+<div id="json-tree-panel">
+  <ul>
+    <li data-node="group" data-id="grupoY">
+      <div class="title">Grupo Y</div>
+      <div data-node="fields" data-id="grupoY">
+        <ul>
+          <li data-node="field" data-id="campo1"><span class="handle">⋮⋮</span> Campo 1</li>
+          <li data-node="field" data-id="campo2"><span class="handle">⋮⋮</span> Campo 2</li>
+        </ul>
+      </div>
+    </li>
+  </ul>
+</div>
+<!-- Incluye luego Sortable, config y fd-dnd-lite.js -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="js/fd-tree-config.js"></script>
+<script src="js/fd-dnd-lite.js"></script>
 
 <!-- Eliminar duplicados: NO vuelvas a renderizar #fd-root ni el estilo del lápiz más abajo -->
 </body>

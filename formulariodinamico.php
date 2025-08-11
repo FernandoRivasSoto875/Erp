@@ -145,37 +145,21 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 </div>
 
 <!-- SCRIPTS ORDEN CORRECTO -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-        crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-<script src="js/fd-tree-config.js"></script>
-<script src="js/fd-dnd-lite.js"></script>
-<script src="js/fd-tree-render.js"></script>
+<script src="js/fd-dnd-lite-min.js"></script>
 <script>
-  (function(){
-    const root = document.getElementById('fd-root');
-    const toggle = document.getElementById('designModeToggle');
-    function emit(on){ window.dispatchEvent(new CustomEvent('design-mode-changed',{detail:{on}})); }
-    function refresh(){ window.fdDndLiteRefresh && window.fdDndLiteRefresh(); }
-
-    if (toggle){
-      toggle.addEventListener('change', function(){
-        root.classList.toggle('design-mode', this.checked);
-        emit(this.checked); refresh();
-        window.renderJsonTreeFromForm && window.renderJsonTreeFromForm();
-      });
+  // Toggle simple
+  document.getElementById('designModeToggle')?.addEventListener('change', function(){
+    document.getElementById('fd-root').classList.toggle('design-mode', this.checked);
+    window.dispatchEvent(new CustomEvent('design-mode-changed',{detail:{on:this.checked}}));
+    window.fdDndLiteRefresh && window.fdDndLiteRefresh();
+  });
+  document.addEventListener('DOMContentLoaded', ()=> {
+    if (document.getElementById('designModeToggle')?.checked){
+      window.dispatchEvent(new CustomEvent('design-mode-changed',{detail:{on:true}}));
     }
-    document.addEventListener('click', e=>{
-      const t = e.target.closest('#json-tree-panel [data-node="group"] > .title');
-      if (t) t.parentElement.classList.toggle('collapsed');
-    });
-    document.addEventListener('DOMContentLoaded', ()=>{
-      window.renderJsonTreeFromForm && window.renderJsonTreeFromForm();
-      console.log('[TEST] Bootstrap:', !!document.querySelector('.nav.nav-tabs'),
-                  'Grupos form:', document.querySelectorAll('#fd-root fieldset').length);
-    });
-  })();
+  });
 </script>
 </body>
 </html>

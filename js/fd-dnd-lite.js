@@ -30,6 +30,7 @@
         background:#0d6efd; color:#fff; border-radius:4px;
         padding:0 6px; font-weight:600; line-height:1.2;
         box-shadow:0 0 0 1px rgba(13,110,253,.25) inset;
+        position:relative; z-index:3;  /* nuevo */
       }
       #fd-root.design-mode .fd-group-grip:hover{ background:#0b5ed7; }
       #fd-root.design-mode .fd-group-grip:active{ cursor:grabbing; transform:scale(.98); }
@@ -137,8 +138,8 @@
       if (!picked) return;
       const { container, groups } = picked;
       if (!container || container.nodeType!==1) return;
-      if (initedContainers.has(container)) return;
-      initedContainers.add(container);
+      if (container.dataset.fdSortableFs === '1') return;
+      container.dataset.fdSortableFs = '1';
 
       groups.forEach(g=> ensureGroupGrip(g));
 
@@ -146,52 +147,43 @@
         animation: 150,
         group: { name: 'fd-fieldsets', pull: true, put: true },
         draggable: '.fd-fs-draggable',
-        handle: '.fd-group-grip',
-        ghostClass: 'fd-dnd-ghost'
+        handle: '.fd-group-grip, legend, .card-header, [data-fieldset-title]',
+        ghostClass: 'fd-dnd-ghost',
+        forceFallback: true,
+        fallbackOnBody: true,
+        onAdd: (evt)=> rebindMovedGroup(evt.item),
+        onUpdate: (evt)=> rebindMovedGroup(evt.item),
+        onEnd: (evt)=> rebindMovedGroup(evt.item)
       });
       sortables.push(s);
     });
   }
-  function pickFsContainer(col){
-    if (!col || col.nodeType!==1) return null;
-    // Grupos directos en la columna
-    let direct = Array.from(col.children).filter(isGroupElementDirect);
-    if (direct.length){
-      direct.forEach(el => markFieldsetGroup(el));
-      return { container: col, groups: direct };
+
+  function rebindMovedGroup(item){
+    if (!item) return;
+    markFieldsetGroup(item);
+    ensureGroupGrip(item);
+    const parent = item.parentElement;
+    if (parent && parent.nodeType===1 && parent.dataset.fdSortableFs !== '1'){
+      parent.dataset.fdSortableFs = '1';
+      const s = new Sortable(parent, {
+        animation: 150,
+        group: { name: 'fd-fieldsets', pull: true, put: true },
+        draggable: '.fd-fs-draggable',
+        handle: '.fd-group-grip, legend, .card-header, [data-fieldset-title]',
+        ghostClass: 'fd-dnd-ghost',
+        forceFallback: true,
+        fallbackOnBody: true,
+        onAdd: (evt)=> rebindMovedGroup(evt.item),
+        onUpdate: (evt)=> rebindMovedGroup(evt.item),
+        onEnd: (evt)=> rebindMovedGroup(evt.item)
+      });
+      sortables.push(s);
     }
-    // Un hijo directo que contenga grupos
-    for (const ch of Array.from(col.children)){
-      const inner = Array.from(ch.children).filter(isGroupElementDirect);
-      if (inner.length){
-        inner.forEach(el => markFieldsetGroup(el));
-        return { container: ch, groups: inner };
-      }
-    }
-    // No hay grupos aún: usa la columna como dropzone
-    return { container: col, groups: [] };
-  }
-  function isGroupElementDirect(el){
-    if (!el || el.tagName==='SCRIPT' || el.tagName==='STYLE') return false;
-    return el.matches('fieldset, .card, .panel, .accordion-item, [data-fieldset-name], .fd-fieldset');
-  }
-  function markFieldsetGroup(el){
-    if (!el.classList.contains('fd-fs-draggable')) el.classList.add('fd-fs-draggable');
-  }
-  function ensureGroupGrip(group){
-    if (group.querySelector('.fd-group-grip')) return;
-    const grip = document.createElement('span');
-    grip.className = 'fd-group-grip';
-    grip.title = 'Arrastra para mover el grupo';
-    grip.textContent = '⋮⋮';
-    const header = group.querySelector(':scope > .card-header, :scope > legend, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6');
-    if (header) header.insertBefore(grip, header.firstChild);
-    else group.insertBefore(grip, group.firstChild);
   }
 
   // ---------- Fields dentro y entre fieldsets ----------
   function attachFieldsDnD(){
-    // Busca candidatos de wrappers de campo en todo el #fd-root
     const candidates = Array.from(document.querySelectorAll('#fd-root ' + [
       '.form-group',
       '.mb-3',
@@ -202,10 +194,9 @@
       'tr',
       '[data-field-wrapper]'
     ].join(', ')))
-      .filter(el => !isGroupEl(el))   // que no sean grupos (fieldset/card/panel)
-      .filter(el => hasControl(el));  // que contengan controles
+      .filter(el => !isGroupEl(el))
+      .filter(el => hasControl(el));
 
-    // Agrupa los wrappers por su padre real
     const parentsMap = new Map();
     candidates.forEach(w => {
       const p = w.parentElement;
@@ -214,11 +205,10 @@
       parentsMap.get(p).add(w);
     });
 
-    // Monta Sortable en cada padre con >=1 wrapper (también si luego queda vacío, para permitir drops)
     parentsMap.forEach((set, parent) => {
       if (!parent || parent.nodeType !== 1) return;
-      if (initedContainers.has(parent)) return;
-      initedContainers.add(parent);
+      if (parent.dataset.fdSortableField === '1') return;
+      parent.dataset.fdSortableField = '1';
 
       const wrappers = Array.from(set);
       wrappers.forEach(w => {
@@ -226,7 +216,6 @@
         ensureFieldGrip(w);
       });
 
-      // Evita navegación si se hace click en el grip
       parent.addEventListener('click', (e)=>{
         if (isDesign() && e.target.closest('.fd-dnd-grip')) e.preventDefault();
       });
@@ -236,10 +225,38 @@
         draggable: '.fd-field-draggable',
         handle: '.fd-dnd-grip',
         ghostClass: 'fd-dnd-ghost',
-        group: { name: 'fd-fields', pull: true, put: true } // mover entre fieldsets/columnas
+        group: { name: 'fd-fields', pull: true, put: true },
+        forceFallback: true,
+        fallbackOnBody: true,
+        onAdd: (evt)=> rebindMovedField(evt.item),
+        onUpdate: (evt)=> rebindMovedField(evt.item),
+        onEnd: (evt)=> rebindMovedField(evt.item)
       });
       sortables.push(s);
     });
+  }
+
+  function rebindMovedField(item){
+    if (!item) return;
+    if (!item.classList.contains('fd-field-draggable')) item.classList.add('fd-field-draggable');
+    ensureFieldGrip(item);
+    const parent = item.parentElement;
+    if (parent && parent.nodeType===1 && parent.dataset.fdSortableField !== '1'){
+      parent.dataset.fdSortableField = '1';
+      const s = new Sortable(parent, {
+        animation: 150,
+        draggable: '.fd-field-draggable',
+        handle: '.fd-dnd-grip',
+        ghostClass: 'fd-dnd-ghost',
+        group: { name: 'fd-fields', pull: true, put: true },
+        forceFallback: true,
+        fallbackOnBody: true,
+        onAdd: (evt)=> rebindMovedField(evt.item),
+        onUpdate: (evt)=> rebindMovedField(evt.item),
+        onEnd: (evt)=> rebindMovedField(evt.item)
+      });
+      sortables.push(s);
+    }
   }
 
   // Helpers de campos (añadir si no existen)

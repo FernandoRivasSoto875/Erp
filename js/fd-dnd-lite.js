@@ -9,8 +9,8 @@
   };
   const hasSortable = ()=> typeof window.Sortable === 'function';
 
-  let obs = null;
   let sortables = [];
+  const initedContainers = new Set();
 
   injectStyles();
   function injectStyles(){
@@ -21,7 +21,6 @@
       #fd-root.design-mode .fd-dnd-grip,
       #fd-root.design-mode .fd-group-grip{ cursor:grab; user-select:none; touch-action:none; display:inline-block; margin-right:6px; opacity:.9; }
       #fd-root.design-mode .fd-dnd-ghost{ opacity:.6; background:#eef2ff !important; }
-      #fd-root.design-mode{ outline: 1px dashed #0d6efd; outline-offset: 4px; }
     `;
     document.head.appendChild(st);
   }
@@ -30,13 +29,6 @@
 
   whenReady(()=> {
     window.addEventListener('design-mode-changed', ()=> initAll());
-    const root = document.getElementById('fd-root');
-    if (root){
-      obs = new MutationObserver(debounce(()=> isDesign() && initAll(), 120));
-      obs.observe(root, { childList:true, subtree:true });
-    } else {
-      console.warn('[FD Lite] #fd-root no existe al iniciar.');
-    }
     initAll();
   });
 
@@ -44,22 +36,18 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', cb);
     else cb();
   }
-  function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
 
   function destroyAll(){
     sortables.forEach(s=> { try{ s && s.destroy && s.destroy(); }catch{} });
     sortables = [];
+    initedContainers.clear();
   }
 
   function initAll(){
     const root = document.getElementById('fd-root');
     if (!root){ console.warn('[FD Lite] Falta #fd-root.'); return; }
-
     if (!isDesign()) { destroyAll(); return; }
-    if (!hasSortable()){
-      console.warn('[FD Lite] Falta SortableJS. No se puede activar DnD.');
-      return;
-    }
+    if (!hasSortable()){ console.warn('[FD Lite] Falta SortableJS.'); return; }
 
     console.info('[FD Lite] initAll: design ON, Sortable OK');
     destroyAll();
@@ -68,10 +56,11 @@
     attachFieldsDnD();
   }
 
-  // Tabs (prevenir navegación al usar el grip)
+  // ---------- Tabs ----------
   function attachTabsDnD(){
     const uls = $$('#fd-root .nav-tabs');
     uls.forEach(ul=>{
+      if (!ul || ul.nodeType!==1) return;
       Array.from(ul.children).forEach(li=>{
         const link = li.querySelector('a,button');
         if (!link) return;
@@ -83,11 +72,9 @@
           link.prepend(g);
         }
       });
-
       ul.addEventListener('click', (e)=>{
         if (isDesign() && e.target.closest('.fd-dnd-grip')) e.preventDefault();
       });
-
       const s = new Sortable(ul, {
         animation: 150,
         draggable: 'li',
@@ -127,11 +114,17 @@
     });
   }
 
-  // Fieldsets entre columnas (siempre inicializa y usa el contenedor real)
+  // ---------- Fieldsets entre columnas ----------
   function attachFieldsetsDnD(){
     const colCandidates = $$('#fd-root .row > [class*="col-"], #fd-root .row > .col, #fd-root [data-col-width]');
     colCandidates.forEach(col=>{
-      const { container, groups } = pickFsContainer(col);
+      const picked = pickFsContainer(col);
+      if (!picked) return;
+      const { container, groups } = picked;
+      if (!container || container.nodeType!==1) return;
+      if (initedContainers.has(container)) return;
+      initedContainers.add(container);
+
       groups.forEach(g=> ensureGroupGrip(g));
 
       const s = new Sortable(container, {
@@ -145,31 +138,30 @@
     });
   }
   function pickFsContainer(col){
+    if (!col || col.nodeType!==1) return null;
+    // Grupos directos en la columna
     let direct = Array.from(col.children).filter(isGroupElementDirect);
     if (direct.length){
-      direct.forEach(el => isFieldsetGroup(el));
+      direct.forEach(el => markFieldsetGroup(el));
       return { container: col, groups: direct };
     }
+    // Un hijo directo que contenga grupos
     for (const ch of Array.from(col.children)){
       const inner = Array.from(ch.children).filter(isGroupElementDirect);
       if (inner.length){
-        inner.forEach(el => isFieldsetGroup(el));
+        inner.forEach(el => markFieldsetGroup(el));
         return { container: ch, groups: inner };
       }
     }
+    // No hay grupos aún: usa la columna como dropzone
     return { container: col, groups: [] };
   }
   function isGroupElementDirect(el){
     if (!el || el.tagName==='SCRIPT' || el.tagName==='STYLE') return false;
     return el.matches('fieldset, .card, .panel, .accordion-item, [data-fieldset-name], .fd-fieldset');
   }
-  function isFieldsetGroup(el){
-    if (!el || el.tagName==='SCRIPT' || el.tagName==='STYLE') return false;
-    if (el.matches('fieldset, .card, .panel, .accordion-item, [data-fieldset-name], .fd-fieldset')) {
-      el.classList.add('fd-fs-draggable');
-      return true;
-    }
-    return false;
+  function markFieldsetGroup(el){
+    if (!el.classList.contains('fd-fs-draggable')) el.classList.add('fd-fs-draggable');
   }
   function ensureGroupGrip(group){
     if (group.querySelector('.fd-group-grip')) return;
@@ -177,23 +169,25 @@
     grip.className = 'fd-group-grip';
     grip.title = 'Arrastra para mover el grupo';
     grip.textContent = '⋮⋮';
-    const header = group.querySelector(':scope > .card-header, :scope > legend, :scope > h1, :scope > h2, :scope > h3, :scope > h5, :scope > h6');
+    const header = group.querySelector(':scope > .card-header, :scope > legend, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6');
     if (header) header.insertBefore(grip, header.firstChild);
     else group.insertBefore(grip, group.firstChild);
   }
 
-  // Fields dentro y entre fieldsets (siempre inicializa en el body real)
+  // ---------- Fields dentro y entre fieldsets ----------
   function attachFieldsDnD(){
     const bases = $$('#fd-root fieldset, #fd-root .card, #fd-root .panel, #fd-root [data-fd-fields-group], #fd-root .fd-fields-container, #fd-root table');
-    const inited = new Set();
+    const seen = new Set();
 
     bases.forEach(base=>{
       const cont = pickFieldsContainer(base);
-      if (!cont || inited.has(cont)) return;
-      inited.add(cont);
+      if (!cont || cont.nodeType!==1) return;
+      if (seen.has(cont) || initedContainers.has(cont)) return;
+      seen.add(cont);
+      initedContainers.add(cont);
 
       const wrappers = Array.from(cont.children).filter(isFieldWrapperDirect);
-      wrappers.forEach(w=> { w.classList.add('fd-field-draggable'); ensureFieldGrip(w); });
+      wrappers.forEach(w=> { if (!w.classList.contains('fd-field-draggable')) w.classList.add('fd-field-draggable'); ensureFieldGrip(w); });
 
       const s = new Sortable(cont, {
         animation: 150,
@@ -206,10 +200,10 @@
     });
   }
   function pickFieldsContainer(base){
+    if (!base || base.nodeType!==1) return null;
     if (base.matches('table')) return (base.tBodies && base.tBodies[0]) || base;
     const body = base.querySelector(':scope > .card-body, :scope > .panel-body, :scope > .fd-fields-container, :scope > .list-group, :scope > .container, :scope > .row');
-    if (body) return body;
-    return base;
+    return body || base;
   }
   function isFieldWrapperDirect(el){
     if (!el || el.tagName==='SCRIPT' || el.tagName==='STYLE') return false;
@@ -217,5 +211,20 @@
     if (el.matches('.row, [class*="col-"], .col')) return false;
     const hasCtrl = !!el.querySelector?.('input,select,textarea,[name],[data-name]');
     return hasCtrl;
+  }
+  function ensureFieldGrip(w){
+    if (w.querySelector('.fd-dnd-grip')) return;
+    const grip = document.createElement('span');
+    grip.className = 'fd-dnd-grip';
+    grip.title = 'Arrastra para mover';
+    grip.textContent = '⋮⋮';
+    if (w.matches('tr')){
+      const cell = w.querySelector(':scope > th, :scope > td') || w;
+      cell.insertBefore(grip, cell.firstChild);
+    } else {
+      const header = w.querySelector(':scope > .card-header, :scope > legend, :scope > label, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6');
+      if (header) header.insertBefore(grip, header.firstChild);
+      else w.insertBefore(grip, w.firstChild);
+    }
   }
 })();

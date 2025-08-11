@@ -482,5 +482,8 @@ function fd_render_layout_fallback($layout, $fieldsets) {
     }, true);
   })();
   </script>
+<script>
+window.FORM_JSON = <?php echo json_encode($json_data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
+</script>
 </body>
 </html>

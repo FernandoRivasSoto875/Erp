@@ -18,9 +18,24 @@
     const st = document.createElement('style');
     st.id = 'fd-lite-dnd-css';
     st.textContent = `
-      #fd-root.design-mode .fd-dnd-grip,
-      #fd-root.design-mode .fd-group-grip{ cursor:grab; user-select:none; touch-action:none; display:inline-block; margin-right:6px; opacity:.9; }
-      #fd-root.design-mode .fd-dnd-ghost{ opacity:.6; background:#eef2ff !important; }
+      /* Grip de campos (normal) */
+      #fd-root.design-mode .fd-dnd-grip{
+        cursor:grab; user-select:none; touch-action:none;
+        display:inline-block; margin-right:6px;
+      }
+      /* Grip de grupos/fieldsets (destacado) */
+      #fd-root.design-mode .fd-group-grip{
+        cursor:grab; user-select:none; touch-action:none;
+        display:inline-block; margin-right:6px;
+        background:#0d6efd; color:#fff; border-radius:4px;
+        padding:0 6px; font-weight:600; line-height:1.2;
+        box-shadow:0 0 0 1px rgba(13,110,253,.25) inset;
+      }
+      #fd-root.design-mode .fd-group-grip:hover{ background:#0b5ed7; }
+      #fd-root.design-mode .fd-group-grip:active{ cursor:grabbing; transform:scale(.98); }
+
+      /* Ghost al arrastrar */
+      #fd-root.design-mode .fd-dnd-ghost{ opacity:.65; background:#eef2ff !important; }
     `;
     document.head.appendChild(st);
   }

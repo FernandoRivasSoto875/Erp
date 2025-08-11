@@ -166,46 +166,62 @@ require_once __DIR__ . '/formulariodinamicologica.php';
       const toggle = document.getElementById('designModeToggle');
       const container = document.getElementById('form-container');
 
-      function emit(on){
-        window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } }));
+      // Estilos mínimos para el grip/ghost
+      injectDndStyles();
+      function injectDndStyles(){
+        if (document.getElementById('fd-inline-dnd-css')) return;
+        const st = document.createElement('style');
+        st.id = 'fd-inline-dnd-css';
+        st.textContent = `
+          #fd-root.design-mode .fd-dnd-grip{ cursor:grab; user-select:none; display:inline-block; margin-right:6px; opacity:.9; }
+          #fd-root.design-mode .fd-dnd-ghost{ opacity:.6; background:#eef2ff !important; }
+        `;
+        document.head.appendChild(st);
       }
 
-      function dndReady(){
-        return !!document.querySelector('#fd-root .fd-dnd-grip');
-      }
+      function inDesign(){ return !!root?.classList.contains('design-mode'); }
+      function emit(on){ window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } })); }
 
-      function ensureDnDReady(){
-        if (!root?.classList.contains('design-mode')) return;
-        // 1) intenta con el runtime
-        if (window.Sortable && window.formRuntimeDndRefresh){
-          window.formRuntimeDndRefresh();
-          // 2) si no aparecen grips, usa DnD mínimo de respaldo
-          setTimeout(()=>{
-            if (!dndReady() && window.Sortable){
-              initMinimalDnD();
-              console.info('[FD] Fallback DnD activado.');
-            }
-          }, 150);
+      // Init completo: intenta runtime; si no, usa fallback (con o sin Sortable)
+      function initDnd(){
+        if (!inDesign()) return;
+        // 1) Runtime si está expuesto
+        if (window.formRuntimeDndRefresh){
+          try { window.formRuntimeDndRefresh(); } catch(e){}
         }
+        // 2) Asegura grips y DnD aunque falte Sortable o el runtime
+        setTimeout(()=> initFallbackDnd(), 80);
       }
 
-      // DnD mínimo de respaldo (tabs y fields básicos)
-      function initMinimalDnD(){
-        try{
-          // Tabs: reordenar ul.nav-tabs y sincronizar .tab-content hermano
-          document.querySelectorAll('#fd-root .nav-tabs').forEach(ul=>{
-            if (ul.dataset.fdMiniDnD === '1') return;
-            ul.dataset.fdMiniDnD = '1';
-            // grip simple en cada tab
-            ul.querySelectorAll('li > a, li > button').forEach(a=>{
-              if (!a.querySelector('.fd-dnd-grip')){
-                const g = document.createElement('span');
-                g.className = 'fd-dnd-grip';
-                g.title = 'Arrastra para reordenar pestañas';
-                g.textContent = '⋮⋮';
-                a.prepend(g);
-              }
-            });
+      // Fallback DnD: Tabs + Fields. Usa Sortable si está; si no, usa HTML5 nativo.
+      function initFallbackDnd(){
+        if (!inDesign()) return;
+        initTabsFallback();
+        initFieldsFallback();
+      }
+
+      // ---------- Tabs ----------
+      function initTabsFallback(){
+        document.querySelectorAll('#fd-root .nav-tabs').forEach(ul=>{
+          if (ul.dataset.fdTabsInit === '1') return;
+          ul.dataset.fdTabsInit = '1';
+
+          // Grip en cada tab
+          Array.from(ul.children).forEach(li=>{
+            const link = li.querySelector('a,button');
+            if (!link) return;
+            if (!link.getAttribute('data-bs-toggle')) link.setAttribute('data-bs-toggle','tab');
+            if (!link.querySelector('.fd-dnd-grip')){
+              const g = document.createElement('span');
+              g.className = 'fd-dnd-grip';
+              g.title = 'Arrastra para reordenar pestañas';
+              g.textContent = '⋮⋮';
+              link.prepend(g);
+            }
+          });
+
+          // Usar Sortable si está, si no, nativo
+          if (window.Sortable){
             new Sortable(ul, {
               animation: 150,
               draggable: 'li',
@@ -213,32 +229,72 @@ require_once __DIR__ . '/formulariodinamicologica.php';
               ghostClass: 'fd-dnd-ghost',
               onEnd: ()=> reorderTabContentByUl(ul)
             });
+          } else {
+            initNativeListDnD(ul, { handleSel: '.fd-dnd-grip', onDrop: ()=> reorderTabContentByUl(ul), childSel: 'li' });
+          }
+        });
+      }
+
+      function findTabContentContainer(ul){
+        const sib = ul.nextElementSibling;
+        if (sib && sib.classList?.contains('tab-content')) return sib;
+        return document.querySelector('#fd-root .tab-content');
+      }
+      function getTabTargetId(link){
+        if (!link) return null;
+        let t = link.getAttribute('data-bs-target') || link.getAttribute('href') || '';
+        if (!t) return null;
+        t = t.trim();
+        if (t.startsWith('#')) return t.slice(1);
+        const pos = t.indexOf('#');
+        return pos>=0 ? t.substring(pos+1) : null;
+      }
+      function reorderTabContentByUl(ul){
+        const cont = findTabContentContainer(ul);
+        if (!cont) return;
+        Array.from(ul.children).forEach(li=>{
+          const link = li.querySelector('a,button');
+          const id = getTabTargetId(link);
+          if (!id) return;
+          const pane = cont.querySelector('#'+CSS.escape(id));
+          if (pane) cont.appendChild(pane);
+        });
+      }
+
+      // ---------- Fields (dentro y entre contenedores/pestañas) ----------
+      function initFieldsFallback(){
+        const guessContainers = [
+          '#fd-root .tab-pane .row',
+          '#fd-root .tab-pane .col',
+          '#fd-root .card-body',
+          '#fd-root form .row',
+          '#fd-root form .col',
+          '#fd-root form'
+        ];
+        document.querySelectorAll(guessContainers.join(',')).forEach(cont=>{
+          if (cont.dataset.fdFieldsInit === '1') return;
+
+          // Hijos que parezcan wrapper de field
+          const children = Array.from(cont.children)
+            .filter(ch=> ch.tagName!=='SCRIPT' && ch.tagName!=='STYLE')
+            .filter(ch=> ch.querySelector?.('input,select,textarea,[name],[data-name]'));
+          if (children.length < 2) return;
+
+          cont.dataset.fdFieldsInit = '1';
+
+          // Grip en cada wrapper
+          children.forEach(w=>{
+            if (!w.querySelector('.fd-dnd-grip')){
+              const g = document.createElement('span');
+              g.className = 'fd-dnd-grip';
+              g.title = 'Arrastra para mover';
+              g.textContent = '⋮⋮';
+              w.prepend(g);
+            }
           });
 
-          // Fields: contenedores comunes dentro del formulario
-          const guessContainers = [
-            '#fd-root .tab-pane .row',
-            '#fd-root .tab-pane .col',
-            '#fd-root .card-body',
-            '#fd-root form .row',
-            '#fd-root form .col',
-            '#fd-root form'
-          ];
-          document.querySelectorAll(guessContainers.join(',')).forEach(cont=>{
-            if (cont.dataset.fdMiniDnD === '1') return;
-            // hijos con controles
-            const children = Array.from(cont.children).filter(ch=> ch.querySelector?.('input,select,textarea,[name],[data-name]'));
-            if (children.length < 2) return;
-            cont.dataset.fdMiniDnD = '1';
-            children.forEach(w=>{
-              if (!w.querySelector('.fd-dnd-grip')){
-                const g = document.createElement('span');
-                g.className = 'fd-dnd-grip';
-                g.title = 'Arrastra para mover';
-                g.textContent = '⋮⋮';
-                w.prepend(g);
-              }
-            });
+          // Sortable si está, si no, nativo. Grupo cruzado por defecto.
+          if (window.Sortable){
             new Sortable(cont, {
               animation: 150,
               draggable: ':scope > *',
@@ -246,49 +302,116 @@ require_once __DIR__ . '/formulariodinamicologica.php';
               ghostClass: 'fd-dnd-ghost',
               group: { name: 'fd-fields', pull: true, put: true }
             });
-          });
+          } else {
+            initNativeListDnD(cont, { handleSel: '.fd-dnd-grip', onDrop: null, childSel: ':scope > *', crossGroup: true });
+          }
+        });
+      }
 
-          // Helpers locales
-          function getTabLink(li){
-            return li?.querySelector('a[data-bs-toggle="tab"], button[data-bs-toggle="tab"], a, button') || null;
+      // ---------- Fallback nativo HTML5 para listas (con soporte entre contenedores) ----------
+      function initNativeListDnD(container, opts){
+        const handleSel = opts?.handleSel || null;
+        const childSel  = opts?.childSel  || ':scope > *';
+        const cross     = !!opts?.crossGroup;
+        const onDropCb  = typeof opts?.onDrop === 'function' ? opts.onDrop : null;
+
+        if (container.dataset.fdNativeDnD === '1') return;
+        container.dataset.fdNativeDnD = '1';
+
+        let dragEl = null;
+
+        function ownerChild(el){
+          // Asegura que sea hijo directo del container
+          while (el && el.parentElement !== container) el = el.parentElement;
+          return el && el.parentElement === container ? el : null;
+        }
+
+        container.addEventListener('mousedown', (e)=>{
+          if (!inDesign()) return;
+          const handle = handleSel ? e.target.closest(handleSel) : e.target;
+          if (!handle) return;
+          const row = ownerChild(handle);
+          if (!row) return;
+          row.setAttribute('draggable','true');
+        });
+
+        container.addEventListener('dragstart', (e)=>{
+          const row = ownerChild(e.target);
+          if (!row) return e.preventDefault();
+          dragEl = row;
+          e.dataTransfer.effectAllowed = 'move';
+          try { e.dataTransfer.setData('text/plain','drag'); } catch {}
+          setTimeout(()=> dragEl.classList.add('fd-dnd-ghost'), 0);
+        });
+
+        container.addEventListener('dragover', (e)=>{
+          if (!dragEl) return;
+          if (cross || e.currentTarget === container){
+            e.preventDefault();
+            const over = ownerChild(e.target);
+            if (!over || over === dragEl) return;
+            const rect = over.getBoundingClientRect();
+            const before = (e.clientY - rect.top) < rect.height/2;
+            if (before) container.insertBefore(dragEl, over);
+            else container.insertBefore(dragEl, over.nextSibling);
           }
-          function getTabTargetId(link){
-            if (!link) return null;
-            let t = link.getAttribute('data-bs-target') || link.getAttribute('href') || '';
-            if (!t) return null;
-            t = t.trim();
-            if (t.startsWith('#')) return t.slice(1);
-            const pos = t.indexOf('#'); return pos>=0 ? t.substring(pos+1) : null;
+        });
+
+        container.addEventListener('drop', (e)=>{
+          if (!dragEl) return;
+          e.preventDefault();
+          dragEl.classList.remove('fd-dnd-ghost');
+          dragEl.removeAttribute('draggable');
+          dragEl = null;
+          onDropCb && onDropCb();
+        });
+
+        container.addEventListener('dragend', ()=>{
+          if (dragEl){
+            dragEl.classList.remove('fd-dnd-ghost');
+            dragEl.removeAttribute('draggable');
           }
-          function reorderTabContentByUl(ul){
-            const cont = (ul.nextElementSibling && ul.nextElementSibling.classList.contains('tab-content')) ? ul.nextElementSibling : document.querySelector('#fd-root .tab-content');
-            if (!cont) return;
-            Array.from(ul.children).forEach(li=>{
-              const id = getTabTargetId(getTabLink(li));
-              if (!id) return;
-              const pane = cont.querySelector('#'+CSS.escape(id));
-              if (pane) cont.appendChild(pane);
-            });
-          }
-        }catch(e){
-          console.warn('[FD] Fallback DnD error:', e);
+          dragEl = null;
+        });
+
+        // Si se permite cruzar entre grupos, habilita dropear desde otros contenedores
+        if (cross){
+          document.addEventListener('dragover', (e)=>{
+            if (!dragEl) return;
+            const targetContainer = e.target.closest('[data-fd-fields-init="1"]');
+            if (!targetContainer || targetContainer === container) return;
+            // Permitir soltar en el otro contenedor
+            e.preventDefault();
+          });
+          document.addEventListener('drop', (e)=>{
+            if (!dragEl) return;
+            const targetContainer = e.target.closest('[data-fd-fields-init="1"]');
+            if (!targetContainer || targetContainer === container) return;
+            e.preventDefault();
+            // Inserta al final si no calculamos posición exacta
+            targetContainer.appendChild(dragEl);
+            dragEl.classList.remove('fd-dnd-ghost');
+            dragEl.removeAttribute('draggable');
+            dragEl = null;
+            onDropCb && onDropCb();
+          });
         }
       }
 
       // Estado inicial + onload
-      emit(root?.classList.contains('design-mode'));
-      window.addEventListener('load', ensureDnDReady);
+      emit(inDesign());
+      window.addEventListener('load', initDnd);
 
       // Toggle modo diseño
       toggle?.addEventListener('change', function(){
         root?.classList.toggle('design-mode', this.checked);
         emit(this.checked);
-        ensureDnDReady();
+        initDnd();
       });
 
       // Re-render en tiempo de ejecución
       if (container){
-        const mo = new MutationObserver(()=> ensureDnDReady());
+        const mo = new MutationObserver(()=> initDnd());
         mo.observe(container, { childList:true, subtree:true });
       }
     })();

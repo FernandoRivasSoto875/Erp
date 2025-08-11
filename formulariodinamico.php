@@ -51,6 +51,32 @@ require_once __DIR__ . '/formulariodinamicologica.php';
   #fd-root:not(.design-mode) .fd-design-only,
   #fd-root:not(.design-mode) [data-design-only="true"],
   #fd-root:not(.design-mode) .fd-dnd-handle { display:none !important; }
+  /* Estilo básico de árbol */
+  #json-tree-panel ul{ list-style:none; margin:0; padding-left:16px; }
+  #json-tree-panel [data-node="group"]{ margin:4px 0; }
+  #json-tree-panel [data-node="group"] > .title{
+    cursor:pointer; user-select:none; padding:2px 4px; border-radius:4px;
+  }
+  #json-tree-panel [data-node="group"] > .title:hover{ background:#f3f4f6; }
+  /* Caret ▾/▸ */
+  #json-tree-panel [data-node="group"] > .title::before{
+    content:"▾"; margin-right:6px; color:#6b7280;
+  }
+  #json-tree-panel [data-node="group"].collapsed > .title::before{ content:"▸"; }
+  #json-tree-panel [data-node="group"].collapsed > [data-node="fields"]{ display:none; }
+
+  /* Ítems de campo */
+  #json-tree-panel [data-node="field"]{
+    padding:2px 4px; border-radius:4px; margin:2px 0;
+  }
+  #json-tree-panel [data-node="field"]:hover{ background:#f8fafc; }
+  /* Grip en el árbol si usas .handle */
+  #json-tree-panel .handle{
+    display:inline-block; margin-right:6px; background:#6f42c1; color:#fff;
+    border-radius:4px; padding:0 6px; font-weight:600; line-height:1.2;
+  }
+  /* Lista donde caen los campos (admite drop cuando está vacía) */
+  #json-tree-panel .node-fields-list{ min-height:14px; padding:4px; border:1px dashed rgba(111,66,193,.25); border-radius:4px; }
 </style>
 </head>
 <body>
@@ -171,19 +197,18 @@ $modoDiseno = isset($modoDiseno) ? (bool)$modoDiseno : (isset($_GET['design']) &
 </script>
 
 <div id="json-tree-panel">
-  <ul>
-    <li data-node="group" data-id="grupoY">
-      <div class="title">Grupo Y</div>
-      <div data-node="fields" data-id="grupoY">
-        <ul>
-          <li data-node="field" data-id="campo1"><span class="handle">⋮⋮</span> Campo 1</li>
-          <li data-node="field" data-id="campo2"><span class="handle">⋮⋮</span> Campo 2</li>
-        </ul>
-      </div>
-    </li>
-  </ul>
+  <!-- tu árbol se renderiza aquí -->
 </div>
-<!-- Incluye luego Sortable, config y fd-dnd-lite.js -->
+
+<script>
+  // Toggle básico: colapsa/expande los grupos al hacer click en .title
+  document.addEventListener('click', function(e){
+    const t = e.target.closest('#json-tree-panel [data-node="group"] > .title');
+    if (!t) return;
+    t.parentElement.classList.toggle('collapsed');
+  });
+</script>
+<!-- Sortable + config del árbol + DnD -->
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script src="js/fd-tree-config.js"></script>
 <script src="js/fd-dnd-lite.js"></script>

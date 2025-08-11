@@ -170,21 +170,113 @@ require_once __DIR__ . '/formulariodinamicologica.php';
         window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } }));
       }
 
-      function ensureDnDReady(){
-        if (!root?.classList.contains('design-mode')) return;
-        let tries = 0;
-        (function wait(){
-          if (window.Sortable && window.formRuntimeDndRefresh) {
-            window.formRuntimeDndRefresh();
-          } else if (tries++ < 80) {
-            setTimeout(wait, 75); // ~6s de reintentos mientras se pinta el DOM
-          }
-        })();
+      function dndReady(){
+        return !!document.querySelector('#fd-root .fd-dnd-grip');
       }
 
-      // Estado inicial
+      function ensureDnDReady(){
+        if (!root?.classList.contains('design-mode')) return;
+        // 1) intenta con el runtime
+        if (window.Sortable && window.formRuntimeDndRefresh){
+          window.formRuntimeDndRefresh();
+          // 2) si no aparecen grips, usa DnD mínimo de respaldo
+          setTimeout(()=>{
+            if (!dndReady() && window.Sortable){
+              initMinimalDnD();
+              console.info('[FD] Fallback DnD activado.');
+            }
+          }, 150);
+        }
+      }
+
+      // DnD mínimo de respaldo (tabs y fields básicos)
+      function initMinimalDnD(){
+        try{
+          // Tabs: reordenar ul.nav-tabs y sincronizar .tab-content hermano
+          document.querySelectorAll('#fd-root .nav-tabs').forEach(ul=>{
+            if (ul.dataset.fdMiniDnD === '1') return;
+            ul.dataset.fdMiniDnD = '1';
+            // grip simple en cada tab
+            ul.querySelectorAll('li > a, li > button').forEach(a=>{
+              if (!a.querySelector('.fd-dnd-grip')){
+                const g = document.createElement('span');
+                g.className = 'fd-dnd-grip';
+                g.title = 'Arrastra para reordenar pestañas';
+                g.textContent = '⋮⋮';
+                a.prepend(g);
+              }
+            });
+            new Sortable(ul, {
+              animation: 150,
+              draggable: 'li',
+              handle: '.fd-dnd-grip',
+              ghostClass: 'fd-dnd-ghost',
+              onEnd: ()=> reorderTabContentByUl(ul)
+            });
+          });
+
+          // Fields: contenedores comunes dentro del formulario
+          const guessContainers = [
+            '#fd-root .tab-pane .row',
+            '#fd-root .tab-pane .col',
+            '#fd-root .card-body',
+            '#fd-root form .row',
+            '#fd-root form .col',
+            '#fd-root form'
+          ];
+          document.querySelectorAll(guessContainers.join(',')).forEach(cont=>{
+            if (cont.dataset.fdMiniDnD === '1') return;
+            // hijos con controles
+            const children = Array.from(cont.children).filter(ch=> ch.querySelector?.('input,select,textarea,[name],[data-name]'));
+            if (children.length < 2) return;
+            cont.dataset.fdMiniDnD = '1';
+            children.forEach(w=>{
+              if (!w.querySelector('.fd-dnd-grip')){
+                const g = document.createElement('span');
+                g.className = 'fd-dnd-grip';
+                g.title = 'Arrastra para mover';
+                g.textContent = '⋮⋮';
+                w.prepend(g);
+              }
+            });
+            new Sortable(cont, {
+              animation: 150,
+              draggable: ':scope > *',
+              handle: '.fd-dnd-grip',
+              ghostClass: 'fd-dnd-ghost',
+              group: { name: 'fd-fields', pull: true, put: true }
+            });
+          });
+
+          // Helpers locales
+          function getTabLink(li){
+            return li?.querySelector('a[data-bs-toggle="tab"], button[data-bs-toggle="tab"], a, button') || null;
+          }
+          function getTabTargetId(link){
+            if (!link) return null;
+            let t = link.getAttribute('data-bs-target') || link.getAttribute('href') || '';
+            if (!t) return null;
+            t = t.trim();
+            if (t.startsWith('#')) return t.slice(1);
+            const pos = t.indexOf('#'); return pos>=0 ? t.substring(pos+1) : null;
+          }
+          function reorderTabContentByUl(ul){
+            const cont = (ul.nextElementSibling && ul.nextElementSibling.classList.contains('tab-content')) ? ul.nextElementSibling : document.querySelector('#fd-root .tab-content');
+            if (!cont) return;
+            Array.from(ul.children).forEach(li=>{
+              const id = getTabTargetId(getTabLink(li));
+              if (!id) return;
+              const pane = cont.querySelector('#'+CSS.escape(id));
+              if (pane) cont.appendChild(pane);
+            });
+          }
+        }catch(e){
+          console.warn('[FD] Fallback DnD error:', e);
+        }
+      }
+
+      // Estado inicial + onload
       emit(root?.classList.contains('design-mode'));
-      // Al terminar de cargar todo, intenta inicializar DnD
       window.addEventListener('load', ensureDnDReady);
 
       // Toggle modo diseño
@@ -194,11 +286,9 @@ require_once __DIR__ . '/formulariodinamicologica.php';
         ensureDnDReady();
       });
 
-      // Re-render en tiempo de ejecución: reintenta DnD
+      // Re-render en tiempo de ejecución
       if (container){
-        const mo = new MutationObserver(()=>{
-          ensureDnDReady();
-        });
+        const mo = new MutationObserver(()=> ensureDnDReady());
         mo.observe(container, { childList:true, subtree:true });
       }
     })();

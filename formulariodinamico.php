@@ -54,7 +54,8 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 </style>
 </head>
 <body>
-  <div id="fd-root" class="<?php echo !empty($modoDiseno) ? 'design-mode' : '' ?>">
+  <!-- Wrapper único del formulario dinámico -->
+  <div id="fd-root" class="<?php echo $modoDiseno ? 'design-mode' : '' ?>">
     <div class="container py-3">
       <h1 id="form-title"><?php echo htmlspecialchars($params['titulo'] ?? $titulo_formulario); ?></h1>
 
@@ -91,8 +92,8 @@ require_once __DIR__ . '/formulariodinamicologica.php';
     </div>
   </div>
 
-  <!-- Toggle modo diseño (opcional) -->
-  <div style="position:fixed;bottom:12px;right:12px;z-index:1055;">
+  <!-- Toggle modo diseño (debug visible) -->
+  <div id="fd-design-toggle" style="position:fixed;bottom:12px;right:12px;z-index:1050;background:#fff;padding:6px 10px;border:1px solid #ddd;border-radius:6px;">
     <label><input type="checkbox" id="designModeToggle" <?php echo $modoDiseno ? 'checked' : ''; ?>> Modo diseño</label>
   </div>
 
@@ -161,35 +162,46 @@ require_once __DIR__ . '/formulariodinamicologica.php';
   <script src="js/fd-dnd-lite.js"></script>
 
   <script>
-    // Toggle de modo diseño + emitir evento para el árbol
+    // Activación de modo diseño + diagnóstico
     (function(){
-      const root = document.getElementById('fd-root');
+      const root   = document.getElementById('fd-root');
       const toggle = document.getElementById('designModeToggle');
 
       function emit(on){
+        console.info('[FD] design-mode-changed =>', on);
         window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } }));
       }
       function refresh(){
-        if (window.fdDndLiteRefresh && root?.classList.contains('design-mode')) {
-          window.fdDndLiteRefresh();
+        console.info('[FD] refresh. design?', root?.classList.contains('design-mode'), 'Sortable?', typeof window.Sortable);
+        if (root?.classList.contains('design-mode')) {
+          window.fdDndLiteRefresh && window.fdDndLiteRefresh();
         }
       }
 
-      // Estado inicial
+      // Chequeos básicos
+      (function basicChecks(){
+        const dups = document.querySelectorAll('#fd-root').length;
+        if (dups !== 1) console.error('[FD] #fd-root duplicado o ausente. count=', dups);
+        if (!toggle) console.warn('[FD] Falta #designModeToggle');
+        if (!root) console.error('[FD] Falta #fd-root');
+      })();
+
+      // Estado inicial + evento
       emit(root?.classList.contains('design-mode'));
       window.addEventListener('load', refresh);
 
       // Toggle
       toggle?.addEventListener('change', function(){
-        root?.classList.toggle('design-mode', this.checked);
+        if (!root) return;
+        root.classList.toggle('design-mode', this.checked);
         emit(this.checked);
         refresh();
       });
 
-      // Si el HTML del formulario cambia en tiempo de ejecución, reengancha
-      const formContainer = document.getElementById('form-container');
-      if (formContainer){
-        new MutationObserver(()=> refresh()).observe(formContainer, { childList:true, subtree:true });
+      // Reenganchar si cambia el DOM del formulario en runtime
+      const cont = document.getElementById('form-container');
+      if (cont){
+        new MutationObserver(()=> refresh()).observe(cont, { childList:true, subtree:true });
       }
     })();
   </script>

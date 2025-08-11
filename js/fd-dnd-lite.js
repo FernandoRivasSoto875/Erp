@@ -7,7 +7,6 @@
   let obs = null;
   let sortables = [];
 
-  // Estilos mínimos
   injectStyles();
   function injectStyles(){
     if ($('#fd-lite-dnd-css')) return;
@@ -21,14 +20,10 @@
     document.head.appendChild(st);
   }
 
-  // API
   window.fdDndLiteRefresh = initAll;
 
-  // Arranque
   whenReady(()=> {
-    // escuchar cambio de modo
     window.addEventListener('design-mode-changed', ()=> initAll());
-    // observar cambios del DOM del formulario
     const root = $('#fd-root');
     if (root){
       obs = new MutationObserver(debounce(()=> isDesign() && initAll(), 120));
@@ -57,15 +52,14 @@
     }
     destroyAll();
     attachTabsDnD();
-    attachFieldsetsDnD(); // mueve grupos entre columnas (no filas)
-    attachFieldsDnD();    // mueve fields dentro de cada grupo
+    attachFieldsetsDnD();
+    attachFieldsDnD();
   }
 
-  // ---------- Tabs ----------
+  // Tabs
   function attachTabsDnD(){
     const uls = $$('#fd-root .nav-tabs');
     uls.forEach(ul=>{
-      // grip en links
       Array.from(ul.children).forEach(li=>{
         const link = li.querySelector('a,button');
         if (!link) return;
@@ -77,7 +71,6 @@
           link.prepend(g);
         }
       });
-
       const s = new Sortable(ul, {
         animation: 150,
         draggable: 'li',
@@ -113,9 +106,8 @@
     });
   }
 
-  // ---------- Fieldsets (grupos) por columna ----------
+  // Fieldsets entre columnas
   function attachFieldsetsDnD(){
-    // Columnas del layout, no filas
     const colSel = [
       '#fd-root .row > [class*="col-"]',
       '#fd-root .row > .col',
@@ -124,10 +116,8 @@
     const cols = $$(colSel);
     cols.forEach(col=>{
       const groups = Array.from(col.children).filter(isFieldsetGroup);
-      if (groups.length < 2) return;
-
+      if (groups.length < 1) return;
       groups.forEach(g=> ensureGroupGrip(g));
-
       const s = new Sortable(col, {
         animation: 150,
         group: { name: 'fd-fieldsets', pull: true, put: true },
@@ -157,27 +147,24 @@
     else group.insertBefore(grip, group.firstChild);
   }
 
-  // ---------- Fields dentro de cada grupo ----------
+  // Fields dentro de cada grupo
   function attachFieldsDnD(){
     const groupBodiesSel = [
       '#fd-root fieldset .card-body',
       '#fd-root fieldset > .card-body',
-      '#fd-root fieldset',              // si no tiene card-body
+      '#fd-root fieldset',
       '#fd-root .card > .card-body',
       '#fd-root .panel > .panel-body',
       '#fd-root [data-fd-fields-group]',
       '#fd-root .fd-fields-container',
-      '#fd-root table tbody'            // soporte en tablas
+      '#fd-root table tbody'
     ].join(', ');
 
     const containers = $$(groupBodiesSel);
     containers.forEach(cont=>{
-      // wrappers directos que contengan controles y no sean grupos
       const wrappers = Array.from(cont.children).filter(isFieldWrapper);
       if (wrappers.length < 2) return;
-
       wrappers.forEach(w=> ensureFieldGrip(w));
-
       const s = new Sortable(cont, {
         animation: 150,
         draggable: '.fd-field-draggable',
@@ -190,7 +177,7 @@
   }
   function isFieldWrapper(el){
     if (!el || el.tagName==='SCRIPT' || el.tagName==='STYLE') return false;
-    if (el.matches('fieldset, .card, .panel, .accordion-item, [data-fieldset-name], .fd-fieldset')) return false; // no grupos
+    if (el.matches('fieldset, .card, .panel, .accordion-item, [data-fieldset-name], .fd-fieldset')) return false;
     const hasCtrl = !!el.querySelector?.('input,select,textarea,[name],[data-name]');
     if (!hasCtrl) return false;
     el.classList.add('fd-field-draggable');
@@ -206,7 +193,7 @@
       const cell = w.querySelector(':scope > th, :scope > td') || w;
       cell.insertBefore(grip, cell.firstChild);
     } else {
-      const header = w.querySelector(':scope > .card-header, :scope > legend, :scope > label, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6');
+      const header = w.querySelector(':scope > .card-header, :scope > legend, :scope > label, :scope > h1, :scope > h2, :scope > h3, :scope > h5, :scope > h6');
       if (header) header.insertBefore(grip, header.firstChild);
       else w.insertBefore(grip, w.firstChild);
     }

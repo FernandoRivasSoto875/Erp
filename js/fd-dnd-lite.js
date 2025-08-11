@@ -90,13 +90,14 @@
     window.addEventListener('design-mode-changed', ()=> initAll());
     initAll();
 
-    // NUEVO: observa cambios de DOM y reengancha en caliente
+    // observa cambios de DOM y reengancha en caliente
     const root = document.getElementById('fd-root');
     if (root && !window.__fdLiteObs){
       window.__fdLiteObs = new MutationObserver(debounce(()=>{
         if (isDesign()){
           attachFieldsetsDnD();
           attachFieldsDnD();
+          attachTreeFieldsDnD(); // <-- NUEVO
         }
       }, 120));
       window.__fdLiteObs.observe(root, { childList:true, subtree:true });
@@ -128,6 +129,7 @@
     attachTabsDnD();
     attachFieldsetsDnD();
     attachFieldsDnD();
+    attachTreeFieldsDnD(); // <-- NUEVO: DnD en árbol
   }
 
   // ---------- Tabs ----------
@@ -452,5 +454,117 @@
 
     // Evita duplicados
     return Array.from(new Set(out));
+  }
+
+  // ---------- DnD en Árbol: nodo "Campos" acepta drop ----------
+  // Configurable vía window.fdTreeConfig si tus selectores difieren
+  function attachTreeFieldsDnD(){
+    const cfg = window.fdTreeConfig || {};
+    const treeRoots = $$(cfg.root || '.json-tree-panel, .fd-tree, #fd-tree');
+    if (!treeRoots.length) return;
+
+    // contenedores "Campos" en el árbol
+    const containers = $$(cfg.fieldsContainer || '[data-node="fields"], .node-fields, .fields-container, [data-tree="fields"]')
+      .filter(el => treeRoots.some(r => r.contains(el)));
+
+    containers.forEach(cont => {
+      if (!cont || cont.nodeType!==1) return;
+      if (cont.dataset.fdSortableTreeFields === '1') return;
+      cont.dataset.fdSortableTreeFields = '1';
+
+      const s = new Sortable(cont, {
+        animation: 150,
+        group: { name: 'fd-fields', pull: true, put: true }, // mismo grupo que en el formulario
+        draggable: cfg.fieldItem || '[data-node="field"], .node-field, li',
+        handle: cfg.fieldHandle || '.fd-dnd-grip, .handle, .drag-handle',
+        ghostClass: 'fd-dnd-ghost',
+        emptyInsertThreshold: 8,
+        onAdd: (evt) => {
+          // IDs desde el árbol
+          const fieldId = getTreeFieldId(evt.item, cfg);
+          const targetGroupId = getTreeGroupId(cont, cfg);
+          const prev = evt.item.previousElementSibling;
+          const afterFieldId = prev ? getTreeFieldId(prev, cfg) : null;
+
+          if (!fieldId || !targetGroupId){
+            console.warn('[FD Lite][Tree] Falta fieldId/groupId en drop.', { fieldId, targetGroupId });
+            return;
+          }
+          moveLiveField(fieldId, targetGroupId, afterFieldId); // mueve en DOM real (#fd-root)
+        }
+      });
+      sortables.push(s);
+    });
+  }
+
+  function getTreeFieldId(node, cfg){
+    return node?.getAttribute?.(cfg.fieldIdAttr || 'data-field-id') || null;
+  }
+  function getTreeGroupId(node, cfg){
+    // Primero intenta en el contenedor; si no, busca el grupo ancestro
+    return node?.getAttribute?.(cfg.groupIdAttr || 'data-group-id') ||
+           node?.closest?.(cfg.groupItem || '[data-node="group"], .node-group')?.getAttribute?.(cfg.groupIdAttr || 'data-group-id') || null;
+  }
+
+  // Mueve el wrapper real del campo al body del grupo destino (en #fd-root)
+  function moveLiveField(fieldId, groupId, afterFieldId){
+    const wrap = findLiveFieldWrapper(fieldId);
+    const body = findLiveGroupBody(groupId);
+    if (!wrap || !body){
+      console.warn('[FD Lite][Tree] No se encontró wrapper/body en #fd-root', { fieldId, groupId, wrap, body });
+      return;
+    }
+    markFieldWrapper(wrap);
+    ensureFieldGrip(wrap);
+
+    // Asegura Sortable en el contenedor destino (por si estaba vacío)
+    if (body.dataset.fdSortableField !== '1'){
+      ensureFieldContainerSortable(body, []);
+    }
+
+    if (afterFieldId){
+      const ref = findLiveFieldWrapper(afterFieldId);
+      if (ref && ref.parentElement === body){
+        body.insertBefore(wrap, ref.nextSibling);
+      } else {
+        body.appendChild(wrap);
+      }
+    } else {
+      body.appendChild(wrap);
+    }
+    rebindMovedField(wrap);
+  }
+
+  // Busca el wrapper de campo en el formulario vivo (#fd-root)
+  function findLiveFieldWrapper(fieldId){
+    if (!fieldId) return null;
+    // 1) data-field-id exacto
+    let el = $('#fd-root [data-field-id="'+cssEscape(fieldId)+'"]');
+    if (el) return el;
+
+    // 2) por control name o id, sube al wrapper típico
+    const ctrl = $('#fd-root [name="'+cssEscape(fieldId)+'"], #fd-root #'+cssEscape(fieldId));
+    if (ctrl){
+      el = ctrl.closest('.form-group, .mb-3, .form-floating, .input-group, .fd-field, [data-field-wrapper], tr, li');
+      if (el) return el;
+    }
+    return null;
+  }
+
+  // Encuentra el body real del grupo/fieldset destino
+  function findLiveGroupBody(groupId){
+    if (!groupId) return null;
+    // grupo por data-group-id o por data-fieldset-name/id
+    let group = $('#fd-root [data-group-id="'+cssEscape(groupId)+'"], #fd-root [data-fieldset-name="'+cssEscape(groupId)+'"], #fd-root #'+cssEscape(groupId));
+    if (!group) return null;
+    return pickFieldsContainer(group) || group;
+  }
+
+  // Asegura que exista esta utilidad (se usa también arriba)
+  function pickFieldsContainer(base){
+    if (!base || base.nodeType!==1) return null;
+    if (base.matches('table')) return (base.tBodies && base.tBodies[0]) || base;
+    const body = base.querySelector(':scope > .card-body, :scope > .panel-body, :scope > .accordion-body, :scope > .fd-fields-container, :scope > .list-group, :scope > .container, :scope > .row');
+    return body || base;
   }
 })();

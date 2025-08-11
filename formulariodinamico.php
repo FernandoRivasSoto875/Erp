@@ -140,14 +140,43 @@ require_once __DIR__ . '/formulariodinamicologica.php';
   </script>
 
   <!-- Dependencias para tabs y DnD (después de renderizar el formulario) -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <!-- Bootstrap (con fallback local opcional) -->
+  <script>
+    (function(){
+      var s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js';
+      s.defer = true;
+      s.onerror = function(){
+        var b = document.createElement('script');
+        b.src = 'js/lib/bootstrap.bundle.min.js'; // coloca aquí una copia local
+        b.defer = true;
+        document.head.appendChild(b);
+      };
+      document.head.appendChild(s);
+    })();
+  </script>
 
-  <!-- Opcional: aplicar estilos Bootstrap al HTML generado -->
-  <script src="js/form-bootstrap-enhancer.js"></script>
+  <!-- SortableJS con fallback local (NECESARIO para DnD de fields/tabs) -->
+  <script>
+    (function(){
+      var s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js';
+      s.defer = true;
+      s.onerror = function(){
+        var s2 = document.createElement('script');
+        s2.src = 'js/lib/Sortable.min.js'; // coloca aquí una copia local
+        s2.defer = true;
+        document.head.appendChild(s2);
+      };
+      document.head.appendChild(s);
+    })();
+  </script>
 
-  <!-- DnD del formulario: tabs, fields, fieldsets (solo en modo diseño) -->
-  <script src="js/form-runtime-dnd.js"></script>
+  <!-- Opcional: estilos Bootstrap al HTML generado -->
+  <script src="js/form-bootstrap-enhancer.js" defer></script>
+
+  <!-- DnD del formulario -->
+  <script src="js/form-runtime-dnd.js" defer></script>
 
   <script>
     (function(){
@@ -159,29 +188,35 @@ require_once __DIR__ . '/formulariodinamicologica.php';
         window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } }));
       }
       function refreshIfDesign(){
-        if (root?.classList.contains('design-mode') && window.formRuntimeDndRefresh){
-          setTimeout(()=> window.formRuntimeDndRefresh(), 0);
-        }
+        if (!root?.classList.contains('design-mode')) return;
+        // Espera a que Sortable y el runtime estén listos
+        let tries = 0;
+        (function wait(){
+          if (window.Sortable && window.formRuntimeDndRefresh){
+            window.formRuntimeDndRefresh();
+          } else if (tries++ < 50) {
+            setTimeout(wait, 100);
+          } else {
+            console.warn('[FD] Falta Sortable o form-runtime-dnd.js');
+          }
+        })();
       }
 
-      // Estado inicial
+      // Estado inicial + refresh
       emit(root?.classList.contains('design-mode'));
       refreshIfDesign();
 
-      // Toggle modo diseño
       toggle?.addEventListener('change', function(){
         root?.classList.toggle('design-mode', this.checked);
         emit(this.checked);
         refreshIfDesign();
       });
 
-      // Cuando el HTML del formulario se genere/actualice en runtime, refresca DnD
+      // Re-render runtime: vuelve a inicializar DnD
       if (container){
-        const mo = new MutationObserver(debounce(()=> refreshIfDesign(), 120));
+        const mo = new MutationObserver(()=> refreshIfDesign());
         mo.observe(container, { childList:true, subtree:true });
       }
-
-      function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
     })();
   </script>
 

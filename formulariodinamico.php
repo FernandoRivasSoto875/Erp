@@ -55,173 +55,132 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 </head>
 <body>
   <!-- Wrapper único del formulario dinámico -->
-  <div id="fd-root" class="<?php echo $modoDiseno ? 'design-mode' : '' ?>">
-    <div class="container py-3">
-      <h1 id="form-title"><?php echo htmlspecialchars($params['titulo'] ?? $titulo_formulario); ?></h1>
+  <?php
+$modoDiseno = isset($modoDiseno) ? (bool)$modoDiseno : (isset($_GET['design']) && $_GET['design']=='1');
+?>
+<div id="fd-root" class="<?php echo $modoDiseno ? 'design-mode' : '' ?>">
+  <div class="container py-3">
+    <h1 id="form-title"><?php echo htmlspecialchars($params['titulo'] ?? $titulo_formulario); ?></h1>
 
-      <?php if ($json_error): ?>
-        <div class="alert alert-danger">
-          JSON inválido: <?php echo htmlspecialchars($json_error); ?>.
-          Corrige el archivo <?php echo htmlspecialchars($archivo_base); ?> (posibles comas finales).
-        </div>
-      <?php endif; ?>
+    <?php if ($json_error): ?>
+      <div class="alert alert-danger">
+        JSON inválido: <?php echo htmlspecialchars($json_error); ?>.
+        Corrige el archivo <?php echo htmlspecialchars($archivo_base); ?> (posibles comas finales).
+      </div>
+    <?php endif; ?>
 
-      <?php if (!empty($descripcion_formulario)): ?>
-        <p class="text-muted"><?php echo htmlspecialchars($descripcion_formulario); ?></p>
-      <?php endif; ?>
+    <?php if (!empty($descripcion_formulario)): ?>
+      <p class="text-muted"><?php echo htmlspecialchars($descripcion_formulario); ?></p>
+    <?php endif; ?>
 
-      <div id="form-container">
+    <div id="form-container">
+      <?php
+      if (function_exists('generarLayout')) {
+          echo generarLayout($layout, $fieldsets, $json_data['valores'] ?? [], false);
+      } else {
+          echo '<div class="alert alert-warning">Falta la función generarLayout().</div>';
+      }
+      ?>
+    </div>
+
+    <?php if ($modoDiseno): ?>
+      <div id="elementos-fuera-container" class="mt-3">
         <?php
-        if (function_exists('generarLayout')) {
-            echo generarLayout($layout, $fieldsets, $json_data['valores'] ?? [], false);
-        } else {
-            echo '<div class="alert alert-warning">Falta la función generarLayout().</div>';
+        if (function_exists('generarContenedorFueraDelFormulario')) {
+            echo generarContenedorFueraDelFormulario($elementos_fuera, $fieldsets, [], false);
         }
         ?>
       </div>
-
-      <?php if ($modoDiseno): ?>
-        <div id="elementos-fuera-container" class="mt-3">
-          <?php
-          if (function_exists('generarContenedorFueraDelFormulario')) {
-              echo generarContenedorFueraDelFormulario($elementos_fuera, $fieldsets, [], false);
-          }
-          ?>
-        </div>
-      <?php endif; ?>
-    </div>
+    <?php endif; ?>
   </div>
+</div>
 
-  <!-- Toggle visible (debug) -->
-  <div id="fd-design-toggle" style="position:fixed;bottom:12px;right:12px;z-index:1050;background:#fff;padding:6px 10px;border:1px solid #ddd;border-radius:6px;">
-    <label><input type="checkbox" id="designModeToggle" <?php echo $modoDiseno ? 'checked' : ''; ?>> Modo diseño</label>
-  </div>
+<div id="fd-design-toggle" style="position:fixed;bottom:12px;right:12px;z-index:1050;background:#fff;padding:6px 10px;border:1px solid #ddd;border-radius:6px;">
+  <label><input type="checkbox" id="designModeToggle" <?php echo $modoDiseno ? 'checked' : ''; ?>> Modo diseño</label>
+</div>
 
-  <!-- Ocultar SIEMPRE el icono de lápiz en el formulario (no afecta al árbol) -->
-  <style id="fd-hide-pencil-form">
-    #fd-root .fd-edit-btn,
-    #fd-root .fd-field-edit,
-    #fd-root .field-edit-btn,
-    #fd-root [data-action="edit-field"],
-    #fd-root .btn-edit,
-    #fd-root .icon-edit,
-    #fd-root .fa-pencil,
-    #fd-root .fa-pencil-alt { display:none !important; }
-  </style>
+<!-- Ocultar SIEMPRE el icono de lápiz en el formulario (no afecta al árbol) -->
+<style id="fd-hide-pencil-form">
+  #fd-root .fd-edit-btn,
+  #fd-root .fd-field-edit,
+  #fd-root .field-edit-btn,
+  #fd-root [data-action="edit-field"],
+  #fd-root .btn-edit,
+  #fd-root .icon-edit,
+  #fd-root .fa-pencil,
+  #fd-root .fa-pencil-alt { display:none !important; }
+</style>
 
-  <script>
-    // Bloquea cualquier “lápiz” que se inyecte dinámicamente
-    (function(){
-      const SEL = '.fd-edit-btn, .fd-field-edit, .field-edit-btn, [data-action="edit-field"], .btn-edit, .icon-edit, .fa-pencil, .fa-pencil-alt';
-      function init(){
-        const root = document.getElementById('fd-root');
-        if (!root) return;
-        root.querySelectorAll(SEL).forEach(el => el.remove());
-        root.addEventListener('click', e=>{
-          if (e.target.closest(SEL)){ e.preventDefault(); e.stopPropagation(); }
-        }, true);
-        new MutationObserver(muts=>{
-          muts.forEach(m=>{
-            m.addedNodes.forEach(n=>{
-              if (n.nodeType!==1) return;
-              if (n.matches?.(SEL)) n.remove();
-              n.querySelectorAll?.(SEL).forEach(el=> el.remove());
-            });
+<script>
+  // Bloquea cualquier “lápiz” que se inyecte dinámicamente
+  (function(){
+    const SEL = '.fd-edit-btn, .fd-field-edit, .field-edit-btn, [data-action="edit-field"], .btn-edit, .icon-edit, .fa-pencil, .fa-pencil-alt';
+    function init(){
+      const root = document.getElementById('fd-root');
+      if (!root) return;
+      root.querySelectorAll(SEL).forEach(el => el.remove());
+      root.addEventListener('click', e=>{
+        if (e.target.closest(SEL)){ e.preventDefault(); e.stopPropagation(); }
+      }, true);
+      new MutationObserver(muts=>{
+        muts.forEach(m=>{
+          m.addedNodes.forEach(n=>{
+            if (n.nodeType!==1) return;
+            if (n.matches?.(SEL)) n.remove();
+            n.querySelectorAll?.(SEL).forEach(el=> el.remove());
           });
-        }).observe(root, { childList:true, subtree:true });
-      }
-      if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
-    })();
-  </script>
-
-  <?php /* Variables globales del formulario */ ?>
-  <script>
-    window.FORM_CONFIG = { archivo_json: <?php echo json_encode($archivo_base ?? 'formulariogenerico2.json'); ?> };
-    window.formularioJsonOriginal = <?php echo json_encode($json_data ?? [], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
-  </script>
-
-  <!-- Dependencias (cargar ANTES del runtime DnD y de forma síncrona) -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    if (!window.bootstrap) {
-      document.write('<script src="js/lib/bootstrap.bundle.min.js"><\/script>');
-    }
-  </script>
-
-  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-  <script>
-    if (typeof window.Sortable !== 'function') {
-      document.write('<script src="js/lib/Sortable.min.js"><\/script>');
-    }
-  </script>
-
-  <!-- Quitar estos si estaban: form-bootstrap-enhancer.js (opcional puedes dejarlo), form-runtime-dnd.js y el bloque inline de DnD -->
-  <!-- <script src="js/form-runtime-dnd.js"></script> -->
-
-  <!-- Nuevo runtime ligero -->
-  <script src="js/fd-dnd-lite.js"></script>
-
-  <script>
-    // Activación de modo diseño + diagnóstico
-    (function(){
-      const root   = document.getElementById('fd-root');
-      const toggle = document.getElementById('designModeToggle');
-
-      function emit(on){
-        console.info('[FD] design-mode-changed =>', on);
-        window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } }));
-      }
-      function refresh(){
-        const on = root?.classList.contains('design-mode');
-        console.info('[FD] refresh. design?', on, 'Sortable?', typeof window.Sortable, 'lite?', typeof window.fdDndLiteRefresh);
-        if (on) { window.fdDndLiteRefresh && window.fdDndLiteRefresh(); }
-      }
-
-      // Chequeos básicos
-      (function(){
-        const count = document.querySelectorAll('#fd-root').length;
-        if (count !== 1) console.error('[FD] #fd-root duplicado/ausente. count =', count);
-        if (!root) console.error('[FD] Falta #fd-root');
-        if (!toggle) console.warn('[FD] Falta #designModeToggle');
-      })();
-
-      // Estado inicial
-      emit(root?.classList.contains('design-mode'));
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', refresh);
-      } else {
-        refresh();
-      }
-      window.addEventListener('load', refresh);
-
-      // Toggle
-      toggle?.addEventListener('change', function(){
-        if (!root) return;
-        root.classList.toggle('design-mode', this.checked);
-        emit(this.checked);
-        refresh();
-      });
-
-      // Reenganchar en render dinámico
-      const formContainer = document.getElementById('form-container');
-      if (formContainer){
-        new MutationObserver(()=> refresh()).observe(formContainer, { childList:true, subtree:true });
-      }
-
-      // Comando de consola para verificar en runtime
-      window.fdDebug = function(){
-        console.log('[FD] debug:', {
-          rootExists: !!root,
-          design: root?.classList.contains('design-mode'),
-          sortable: typeof window.Sortable,
-          lite: typeof window.fdDndLiteRefresh
         });
-      };
-    })();
-  </script>
+      }).observe(root, { childList:true, subtree:true });
+    }
+    if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', init); else init();
+  })();
+</script>
 
-  <script src="js/json-tree-panel.js"></script>
+<?php /* Variables globales del formulario */ ?>
+<script>
+  window.FORM_CONFIG = { archivo_json: <?php echo json_encode($archivo_base ?? 'formulariogenerico2.json'); ?> };
+  window.formularioJsonOriginal = <?php echo json_encode($json_data ?? [], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
+</script>
 
-  <!-- Eliminar duplicados: NO vuelvas a renderizar #fd-root ni el estilo del lápiz más abajo -->
+<!-- Dependencias (cargar ANTES del runtime DnD y de forma síncrona) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  if (!window.bootstrap) {
+    document.write('<script src="js/lib/bootstrap.bundle.min.js"><\/script>');
+  }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script>
+  if (typeof window.Sortable !== 'function') {
+    document.write('<script src="js/lib/Sortable.min.js"><\/script>');
+  }
+</script>
+
+<!-- Quitar estos si estaban: form-bootstrap-enhancer.js (opcional puedes dejarlo), form-runtime-dnd.js y el bloque inline de DnD -->
+<!-- <script src="js/form-runtime-dnd.js"></script> -->
+
+<!-- Nuevo runtime ligero -->
+<script src="js/fd-dnd-lite.js"></script>
+
+<script>
+  (function(){
+    const root = document.getElementById('fd-root');
+    const toggle = document.getElementById('designModeToggle');
+    function emit(on){ window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } })); }
+    function refresh(){ if (root?.classList.contains('design-mode')) { window.fdDndLiteRefresh && window.fdDndLiteRefresh(); } }
+    emit(root?.classList.contains('design-mode'));
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refresh); else refresh();
+    window.addEventListener('load', refresh);
+    toggle?.addEventListener('change', function(){
+      root?.classList.toggle('design-mode', this.checked);
+      emit(this.checked); refresh();
+    });
+  })();
+</script>
+
+<script src="js/json-tree-panel.js"></script>
+
+<!-- Eliminar duplicados: NO vuelvas a renderizar #fd-root ni el estilo del lápiz más abajo -->
 </body>
 </html>

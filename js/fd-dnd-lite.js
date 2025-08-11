@@ -176,41 +176,63 @@
 
   // ---------- Fields dentro y entre fieldsets ----------
   function attachFieldsDnD(){
-    const bases = $$('#fd-root fieldset, #fd-root .card, #fd-root .panel, #fd-root [data-fd-fields-group], #fd-root .fd-fields-container, #fd-root table');
-    const seen = new Set();
+    // Busca candidatos de wrappers de campo en todo el #fd-root
+    const candidates = Array.from(document.querySelectorAll('#fd-root ' + [
+      '.form-group',
+      '.mb-3',
+      '.form-floating',
+      '.input-group',
+      '.fd-field',
+      'li',
+      'tr',
+      '[data-field-wrapper]'
+    ].join(', ')))
+      .filter(el => !isGroupEl(el))   // que no sean grupos (fieldset/card/panel)
+      .filter(el => hasControl(el));  // que contengan controles
 
-    bases.forEach(base=>{
-      const cont = pickFieldsContainer(base);
-      if (!cont || cont.nodeType!==1) return;
-      if (seen.has(cont) || initedContainers.has(cont)) return;
-      seen.add(cont);
-      initedContainers.add(cont);
+    // Agrupa los wrappers por su padre real
+    const parentsMap = new Map();
+    candidates.forEach(w => {
+      const p = w.parentElement;
+      if (!p) return;
+      if (!parentsMap.has(p)) parentsMap.set(p, new Set());
+      parentsMap.get(p).add(w);
+    });
 
-      const wrappers = Array.from(cont.children).filter(isFieldWrapperDirect);
-      wrappers.forEach(w=> { if (!w.classList.contains('fd-field-draggable')) w.classList.add('fd-field-draggable'); ensureFieldGrip(w); });
+    // Monta Sortable en cada padre con >=1 wrapper (también si luego queda vacío, para permitir drops)
+    parentsMap.forEach((set, parent) => {
+      if (!parent || parent.nodeType !== 1) return;
+      if (initedContainers.has(parent)) return;
+      initedContainers.add(parent);
 
-      const s = new Sortable(cont, {
+      const wrappers = Array.from(set);
+      wrappers.forEach(w => {
+        if (!w.classList.contains('fd-field-draggable')) w.classList.add('fd-field-draggable');
+        ensureFieldGrip(w);
+      });
+
+      // Evita navegación si se hace click en el grip
+      parent.addEventListener('click', (e)=>{
+        if (isDesign() && e.target.closest('.fd-dnd-grip')) e.preventDefault();
+      });
+
+      const s = new Sortable(parent, {
         animation: 150,
         draggable: '.fd-field-draggable',
         handle: '.fd-dnd-grip',
         ghostClass: 'fd-dnd-ghost',
-        group: { name: 'fd-fields', pull: true, put: true }
+        group: { name: 'fd-fields', pull: true, put: true } // mover entre fieldsets/columnas
       });
       sortables.push(s);
     });
   }
-  function pickFieldsContainer(base){
-    if (!base || base.nodeType!==1) return null;
-    if (base.matches('table')) return (base.tBodies && base.tBodies[0]) || base;
-    const body = base.querySelector(':scope > .card-body, :scope > .panel-body, :scope > .fd-fields-container, :scope > .list-group, :scope > .container, :scope > .row');
-    return body || base;
+
+  // Helpers de campos (añadir si no existen)
+  function hasControl(el){
+    return !!el.querySelector?.('input,select,textarea,[name],[data-name]');
   }
-  function isFieldWrapperDirect(el){
-    if (!el || el.tagName==='SCRIPT' || el.tagName==='STYLE') return false;
-    if (el.matches('fieldset, .card, .panel, .accordion-item, [data-fieldset-name], .fd-fieldset')) return false;
-    if (el.matches('.row, [class*="col-"], .col')) return false;
-    const hasCtrl = !!el.querySelector?.('input,select,textarea,[name],[data-name]');
-    return hasCtrl;
+  function isGroupEl(el){
+    return !!el && el.matches && el.matches('fieldset, .card, .panel, .accordion-item, [data-fieldset-name], .fd-fieldset');
   }
   function ensureFieldGrip(w){
     if (w.querySelector('.fd-dnd-grip')) return;

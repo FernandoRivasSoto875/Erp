@@ -178,7 +178,8 @@ require_once __DIR__ . '/formulariodinamicologica.php';
         const st = document.createElement('style');
         st.id = 'fd-inline-dnd-css';
         st.textContent = `
-          #fd-root.design-mode .fd-dnd-grip{ cursor:grab; user-select:none; display:inline-block; margin-right:6px; opacity:.9; }
+          #fd-root.design-mode .fd-dnd-grip,
+          #fd-root.design-mode .fd-group-grip{ cursor:grab; user-select:none; touch-action:none; display:inline-block; margin-right:6px; opacity:.9; }
           #fd-root.design-mode .fd-dnd-ghost{ opacity:.6; background:#eef2ff !important; }
         `;
         document.head.appendChild(st);
@@ -197,11 +198,12 @@ require_once __DIR__ . '/formulariodinamicologica.php';
       function initFallbackDnd(){
         if (!inDesign()) return;
         initTabsFallback();
+        initFieldsetsDnD();  // NUEVO: DnD de grupos/fieldsets
         const configured = initFieldsDnDJson();
         if (!configured) initFieldsFallback();
       }
 
-      // --------- Tabs fallback + helpers ----------
+      // ---------- Tabs fallback (sin bloquear mousedown de Sortable) ----------
       function initTabsFallback(){
         document.querySelectorAll('#fd-root .nav-tabs').forEach(ul=>{
           if (ul.dataset.fdTabsInit === '1') return;
@@ -218,6 +220,12 @@ require_once __DIR__ . '/formulariodinamicologica.php';
               g.textContent = '⋮⋮';
               link.prepend(g);
             }
+          });
+
+          // Evita solo la navegación cuando se hace click en el grip
+          ul.addEventListener('click', (e)=>{
+            if (!inDesign()) return;
+            if (e.target.closest('.fd-dnd-grip')) e.preventDefault();
           });
 
           if (window.Sortable){
@@ -239,34 +247,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
         });
       }
 
-      function findTabContentContainer(ul){
-        const sib = ul.nextElementSibling;
-        if (sib && sib.classList?.contains('tab-content')) return sib;
-        return document.querySelector('#fd-root .tab-content');
-      }
-      function getTabTargetId(link){
-        if (!link) return null;
-        let t = link.getAttribute('data-bs-target') || link.getAttribute('href') || '';
-        if (!t) return null;
-        t = t.trim();
-        if (t.startsWith('#')) return t.slice(1);
-        const pos = t.indexOf('#');
-        return pos>=0 ? t.substring(pos+1) : null;
-      }
-      function reorderTabContentByUl(ul){
-        const cont = findTabContentContainer(ul);
-        if (!cont) return;
-        Array.from(ul.children).forEach(li=>{
-          const link = li.querySelector('a,button');
-          const id = getTabTargetId(link);
-          if (!id) return;
-          const pane = cont.querySelector('#'+cssEscape(id));
-          if (pane) cont.appendChild(pane);
-        });
-      }
-      // --------- FIN Tabs ----------
-
-      // ---------- Fields por JSON (por padre real) ----------
+      // ---------- Fields por JSON (usa clase .fd-draggable) ----------
       function initFieldsDnDJson(){
         const json = window.formularioJsonOriginal || {};
         const fieldsets = json.fieldsets && typeof json.fieldsets === 'object' ? json.fieldsets : null;
@@ -287,6 +268,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
             const wrap = closestFieldWrapper(ctrl);
             if (!wrap) return;
             wrap.setAttribute('data-fd-wrapper','1');
+            wrap.classList.add('fd-draggable'); // NUEVO
             wrap.setAttribute('data-fd-name', fname);
             ensureGrip(wrap);
             wrappers.push(wrap);
@@ -309,10 +291,16 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 
             wraps.forEach(w => ensureGrip(w));
 
+            // Evita navegación solo en click del grip (no capturar ni stopPropagation)
+            parent.addEventListener('click', (e)=>{
+              if (!inDesign()) return;
+              if (e.target.closest('.fd-dnd-grip')) e.preventDefault();
+            });
+
             if (window.Sortable){
               new Sortable(parent, {
                 animation: 150,
-                draggable: ':scope > [data-fd-wrapper="1"]',
+                draggable: '.fd-draggable',     // NUEVO
                 handle: '.fd-dnd-grip',
                 ghostClass: 'fd-dnd-ghost',
                 group: { name: 'fd-fields', pull: true, put: true }
@@ -320,7 +308,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
             } else {
               initNativeListDnD(parent, {
                 handleSel: '.fd-dnd-grip',
-                childSel: ':scope > [data-fd-wrapper="1"]',
+                childSel: '.fd-draggable',
                 crossGroup: true
               });
             }
@@ -332,7 +320,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
         return configured;
       }
 
-      // ---------- Fallback DOM (por padre real) ----------
+      // ---------- Fields fallback DOM (usa .fd-draggable) ----------
       function initFieldsFallback(){
         const containerSel = [
           '#fd-root .tab-pane .card-body',
@@ -364,12 +352,21 @@ require_once __DIR__ . '/formulariodinamicologica.php';
           if (cont.dataset.fdFieldsInit === '1') return;
 
           cont.dataset.fdFieldsInit = '1';
-          wrappers.forEach(w => { w.setAttribute('data-fd-wrapper','1'); ensureGrip(w); });
+          wrappers.forEach(w => {
+            w.setAttribute('data-fd-wrapper','1');
+            w.classList.add('fd-draggable'); // NUEVO
+            ensureGrip(w);
+          });
+
+          cont.addEventListener('click', (e)=>{
+            if (!inDesign()) return;
+            if (e.target.closest('.fd-dnd-grip')) e.preventDefault();
+          });
 
           if (window.Sortable){
             new Sortable(cont, {
               animation: 150,
-              draggable: ':scope > [data-fd-wrapper="1"]',
+              draggable: '.fd-draggable',  // NUEVO
               handle: '.fd-dnd-grip',
               ghostClass: 'fd-dnd-ghost',
               group: { name: 'fd-fields', pull: true, put: true }
@@ -377,7 +374,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
           } else {
             initNativeListDnD(cont, {
               handleSel: '.fd-dnd-grip',
-              childSel: ':scope > [data-fd-wrapper="1"]',
+              childSel: '.fd-draggable',
               crossGroup: true
             });
           }
@@ -387,12 +384,73 @@ require_once __DIR__ . '/formulariodinamicologica.php';
         if (inDesign()) console.info('[FD] Fields DnD contenedores configurados (fallback):', configured);
       }
 
-      // ---------- Helpers requeridos (FALTABAN) ----------
-      function cssEscape(s){
-        if (window.CSS && typeof CSS.escape === 'function') return CSS.escape(String(s));
-        return String(s).replace(/(["\\.#\[\]:])/g, '\\$1');
+      // ---------- Grupos/Fieldsets DnD ----------
+      function initFieldsetsDnD(){
+        const containerSel = [
+          '#fd-root .tab-pane',
+          '#fd-root .container',
+          '#fd-root .container-fluid',
+          '#fd-root .card-body',
+          '#fd-root form'
+        ].join(', ');
+
+        document.querySelectorAll(containerSel).forEach(container=>{
+          if (container.dataset.fdGroupsInit === '1') return;
+
+          // Candidatos de grupo: hijos que parezcan “grupo”
+          const groups = Array.from(container.children).filter(ch=>{
+            if (ch.tagName==='SCRIPT' || ch.tagName==='STYLE') return false;
+            if (ch.matches('.card, fieldset, .panel, .accordion-item')) return true;
+            // o que contenga al menos 2 wrappers de campos
+            const fieldsInside = ch.querySelectorAll('[data-fd-wrapper="1"], input,select,textarea,[name],[data-name]').length;
+            return fieldsInside >= 2;
+          });
+          if (groups.length < 2) return;
+
+          container.dataset.fdGroupsInit = '1';
+
+          groups.forEach(g=>{
+            g.classList.add('fd-fieldset-group');
+            ensureGroupGrip(g);
+          });
+
+          // Evitar solo clicks del grip
+          container.addEventListener('click', (e)=>{
+            if (!inDesign()) return;
+            if (e.target.closest('.fd-group-grip')) e.preventDefault();
+          });
+
+          if (window.Sortable){
+            new Sortable(container, {
+              animation: 150,
+              draggable: '.fd-fieldset-group',
+              handle: '.fd-group-grip',
+              ghostClass: 'fd-dnd-ghost',
+              onEnd: ()=> {}
+            });
+          } else {
+            initNativeListDnD(container, {
+              handleSel: '.fd-group-grip',
+              childSel: '.fd-fieldset-group',
+              crossGroup: false
+            });
+          }
+        });
       }
 
+      function ensureGroupGrip(group){
+        if (group.querySelector('.fd-group-grip')) return;
+        const grip = document.createElement('span');
+        grip.className = 'fd-group-grip';
+        grip.title = 'Arrastra para mover el grupo';
+        grip.textContent = '⋮⋮';
+
+        const header = group.querySelector(':scope > .card-header, :scope > legend, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6');
+        if (header) header.insertBefore(grip, header.firstChild);
+        else group.insertBefore(grip, group.firstChild);
+      }
+
+      // ensureGrip no cambia (deja el grip de fields)
       function ensureGrip(w){
         if (w.querySelector('.fd-dnd-grip')) return;
         const grip = document.createElement('span');
@@ -411,42 +469,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
         }
       }
 
-      function findControlByName(name){
-        const esc = cssEscape(name);
-        let el = root.querySelector(`[name="${esc}"]`); if (el) return el;
-        el = root.querySelector(`[data-name="${esc}"]`); if (el) return el;
-        el = root.querySelector(`#${esc}`); if (el) return el;
-        const candidates = root.querySelectorAll('input,select,textarea,[name],[data-name]');
-        for (const c of candidates){
-          const n = c.getAttribute('name') || c.getAttribute('data-name') || c.id || '';
-          if (!n) continue;
-          if (n === name) return c;
-          if (n.endsWith(`[${name}]`)) return c;
-          if (n.split('.').pop() === name) return c;
-        }
-        return null;
-      }
-
-      function closestFieldWrapper(ctrl){
-        if (!ctrl || !ctrl.closest) return ctrl?.parentElement || null;
-        const sels = [
-          '.form-group','.mb-3','.form-floating','.input-group',
-          '.fd-field','.list-group-item','.card','.card-body',
-          'li','tr','.col','.row'
-        ];
-        for (const s of sels){
-          const w = ctrl.closest(s);
-          if (w) return w;
-        }
-        let p = ctrl.parentElement;
-        while (p && p !== root){
-          if (p.querySelector && p.querySelector('input,select,textarea,[name],[data-name]')) return p;
-          p = p.parentElement;
-        }
-        return ctrl.parentElement || null;
-      }
-
-      // Fallback nativo HTML5 (entre contenedores)
+      // initNativeListDnD: no cambies; ya funciona con childSel '.fd-draggable' / '.fd-fieldset-group'
       function initNativeListDnD(container, opts){
         const handleSel = opts?.handleSel || null;
         const childSel  = opts?.childSel  || ':scope > *';
@@ -459,16 +482,26 @@ require_once __DIR__ . '/formulariodinamicologica.php';
         let dragEl = null;
 
         function ownerChild(el){
+          // limitar a hijos directos que cumplen childSel
           while (el && el.parentElement !== container) el = el.parentElement;
-          return el && el.parentElement === container ? el : null;
+          if (!el || el.parentElement !== container) return null;
+          if (childSel && childSel !== ':scope > *'){
+            // verifica que el hijo cumpla el selector
+            try { if (!el.matches(childSel)) return null; } catch {}
+          }
+          return el;
         }
 
         container.addEventListener('mousedown', (e)=>{
           if (!inDesign()) return;
           const handle = handleSel ? e.target.closest(handleSel) : e.target;
-          const row = handle && ownerChild(handle);
-          row && row.setAttribute('draggable','true');
-        });
+          if (!handle) return;
+          // Evita que clicks de labels/links anulen el drag
+          e.preventDefault();
+          e.stopPropagation();
+          const row = ownerChild(handle);
+          if (row) row.setAttribute('draggable','true');
+        }, true);
 
         container.addEventListener('dragstart', (e)=>{
           const row = ownerChild(e.target);
@@ -508,15 +541,16 @@ require_once __DIR__ . '/formulariodinamicologica.php';
         });
 
         if (cross){
+          // FIX: selector correcto del atributo del contenedor
           document.addEventListener('dragover', (e)=>{
             if (!dragEl) return;
-            const targetContainer = e.target.closest('[data-fd_fields_init="1"]');
+            const targetContainer = e.target.closest('[data-fd-fields-init="1"]');
             if (!targetContainer) return;
             e.preventDefault();
           });
           document.addEventListener('drop', (e)=>{
             if (!dragEl) return;
-            const targetContainer = e.target.closest('[data-fd_fields_init="1"]');
+            const targetContainer = e.target.closest('[data-fd-fields-init="1"]');
             if (!targetContainer) return;
             e.preventDefault();
             targetContainer.appendChild(dragEl);

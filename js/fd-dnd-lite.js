@@ -225,9 +225,8 @@
   }
 
   function markFieldsetGroup(el){
-    if (el && el.nodeType===1 && !el.classList.contains('fd-fs-draggable')) {
-      el.classList.add('fd-fs-draggable');
-    }
+    if (!el || el.nodeType!==1) return;
+    el.classList.add('fd-fs-draggable', 'fd-badge-group');
   }
 
   // ---------- Fields dentro y entre fieldsets ----------
@@ -260,7 +259,7 @@
 
       const wrappers = Array.from(set);
       wrappers.forEach(w => {
-        if (!w.classList.contains('fd-field-draggable')) w.classList.add('fd-field-draggable');
+        markFieldWrapper(w);
         ensureFieldGrip(w);
       });
 
@@ -287,6 +286,7 @@
   function rebindMovedField(item){
     if (!item) return;
     if (!item.classList.contains('fd-field-draggable')) item.classList.add('fd-field-draggable');
+    markFieldWrapper(item);
     ensureFieldGrip(item);
     const parent = item.parentElement;
     if (parent && parent.nodeType===1 && parent.dataset.fdSortableField !== '1'){
@@ -305,6 +305,12 @@
       });
       sortables.push(s);
     }
+  }
+
+  // Marca y prepara un wrapper de campo
+  function markFieldWrapper(el){
+    if (!el || el.nodeType!==1) return;
+    el.classList.add('fd-field-draggable', 'fd-badge-field');
   }
 
   // Helpers de campos (añadir si no existen)

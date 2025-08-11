@@ -139,44 +139,26 @@ require_once __DIR__ . '/formulariodinamicologica.php';
     window.formularioJsonOriginal = <?php echo json_encode($json_data ?? [], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
   </script>
 
-  <!-- Dependencias para tabs y DnD (después de renderizar el formulario) -->
-  <!-- Bootstrap (con fallback local opcional) -->
+  <!-- Dependencias (cargar ANTES del runtime DnD y de forma síncrona) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    (function(){
-      var s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js';
-      s.defer = true;
-      s.onerror = function(){
-        var b = document.createElement('script');
-        b.src = 'js/lib/bootstrap.bundle.min.js'; // coloca aquí una copia local
-        b.defer = true;
-        document.head.appendChild(b);
-      };
-      document.head.appendChild(s);
-    })();
+    if (!window.bootstrap) {
+      document.write('<script src="js/lib/bootstrap.bundle.min.js"><\/script>');
+    }
   </script>
 
-  <!-- SortableJS con fallback local (NECESARIO para DnD de fields/tabs) -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script>
-    (function(){
-      var s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js';
-      s.defer = true;
-      s.onerror = function(){
-        var s2 = document.createElement('script');
-        s2.src = 'js/lib/Sortable.min.js'; // coloca aquí una copia local
-        s2.defer = true;
-        document.head.appendChild(s2);
-      };
-      document.head.appendChild(s);
-    })();
+    if (typeof window.Sortable !== 'function') {
+      document.write('<script src="js/lib/Sortable.min.js"><\/script>');
+    }
   </script>
 
-  <!-- Opcional: estilos Bootstrap al HTML generado -->
-  <script src="js/form-bootstrap-enhancer.js" defer></script>
+  <!-- Opcional: aplicar estilos Bootstrap al HTML generado -->
+  <script src="js/form-bootstrap-enhancer.js"></script>
 
-  <!-- DnD del formulario -->
-  <script src="js/form-runtime-dnd.js" defer></script>
+  <!-- Runtime DnD (tabs, fields, fieldsets) -->
+  <script src="js/form-runtime-dnd.js"></script>
 
   <script>
     (function(){
@@ -187,34 +169,36 @@ require_once __DIR__ . '/formulariodinamicologica.php';
       function emit(on){
         window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } }));
       }
-      function refreshIfDesign(){
+
+      function ensureDnDReady(){
         if (!root?.classList.contains('design-mode')) return;
-        // Espera a que Sortable y el runtime estén listos
         let tries = 0;
         (function wait(){
-          if (window.Sortable && window.formRuntimeDndRefresh){
+          if (window.Sortable && window.formRuntimeDndRefresh) {
             window.formRuntimeDndRefresh();
-          } else if (tries++ < 50) {
-            setTimeout(wait, 100);
-          } else {
-            console.warn('[FD] Falta Sortable o form-runtime-dnd.js');
+          } else if (tries++ < 80) {
+            setTimeout(wait, 75); // ~6s de reintentos mientras se pinta el DOM
           }
         })();
       }
 
-      // Estado inicial + refresh
+      // Estado inicial
       emit(root?.classList.contains('design-mode'));
-      refreshIfDesign();
+      // Al terminar de cargar todo, intenta inicializar DnD
+      window.addEventListener('load', ensureDnDReady);
 
+      // Toggle modo diseño
       toggle?.addEventListener('change', function(){
         root?.classList.toggle('design-mode', this.checked);
         emit(this.checked);
-        refreshIfDesign();
+        ensureDnDReady();
       });
 
-      // Re-render runtime: vuelve a inicializar DnD
+      // Re-render en tiempo de ejecución: reintenta DnD
       if (container){
-        const mo = new MutationObserver(()=> refreshIfDesign());
+        const mo = new MutationObserver(()=>{
+          ensureDnDReady();
+        });
         mo.observe(container, { childList:true, subtree:true });
       }
     })();

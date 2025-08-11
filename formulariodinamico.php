@@ -179,39 +179,14 @@ $modoDiseno = isset($modoDiseno) ? (bool)$modoDiseno : (isset($_GET['design']) &
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script src="js/fd-tree-config.js"></script>
 <script src="js/fd-dnd-lite.js"></script>
-
+<script src="js/fd-tree-render.js"></script>
 <script>
-  (function(){
-    const root = document.getElementById('fd-root');
-    const toggle = document.getElementById('designModeToggle');
-    function emit(on){ window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } })); }
-    function refresh(){ if (root?.classList.contains('design-mode')) { window.fdDndLiteRefresh && window.fdDndLiteRefresh(); } }
-    emit(root?.classList.contains('design-mode'));
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refresh); else refresh();
-    window.addEventListener('load', refresh);
-    toggle?.addEventListener('change', function(){
-      root?.classList.toggle('design-mode', this.checked);
-      emit(this.checked); refresh();
-    });
-  })();
+  // Render inicial y tras activar modo diseño
+  document.addEventListener('DOMContentLoaded', ()=> window.renderJsonTreeFromForm && window.renderJsonTreeFromForm());
+  window.addEventListener('design-mode-changed', ()=> window.renderJsonTreeFromForm && window.renderJsonTreeFromForm());
 </script>
 
-<div id="json-tree-panel">
-  <!-- tu árbol se renderiza aquí -->
-</div>
-
-<script>
-  // Toggle básico: colapsa/expande los grupos al hacer click en .title
-  document.addEventListener('click', function(e){
-    const t = e.target.closest('#json-tree-panel [data-node="group"] > .title');
-    if (!t) return;
-    t.parentElement.classList.toggle('collapsed');
-  });
-</script>
-<!-- Sortable + config del árbol + DnD -->
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-<script src="js/fd-tree-config.js"></script>
-<script src="js/fd-dnd-lite.js"></script>
+<div id="json-tree-panel"><!-- aquí se pinta el árbol --></div>
 
 <!-- Eliminar duplicados: NO vuelvas a renderizar #fd-root ni el estilo del lápiz más abajo -->
 </body>

@@ -460,37 +460,79 @@
   // Configurable vía window.fdTreeConfig si tus selectores difieren
   function attachTreeFieldsDnD(){
     const cfg = window.fdTreeConfig || {};
-    const treeRoots = $$(cfg.root || '.json-tree-panel, .fd-tree, #fd-tree');
-    if (!treeRoots.length) return;
+    const roots = $$(cfg.root || '.json-tree-panel, .fd-tree, #fd-tree');
+    if (!roots.length) return;
 
-    // contenedores "Campos" en el árbol
-    const containers = $$(cfg.fieldsContainer || '[data-node="fields"], .node-fields, .fields-container, [data-tree="fields"]')
-      .filter(el => treeRoots.some(r => r.contains(el)));
+    // Encuentra TODAS las listas bajo el árbol que contienen nodos "Campo"
+    const lists = [];
+    roots.forEach(root=>{
+      // 1) Contenedores "Campos"
+      const camposNodes = $$(cfg.fieldsContainer || '[data-node="fields"], .node-fields, [data-tree="fields"]', root);
 
-    containers.forEach(cont => {
-      if (!cont || cont.nodeType!==1) return;
-      if (cont.dataset.fdSortableTreeFields === '1') return;
-      cont.dataset.fdSortableTreeFields = '1';
+      camposNodes.forEach(campos=>{
+        // Lista real donde van los "Campo"
+        let list = campos.querySelector(cfg.fieldsList || 'ul, ol, .children, .nodes, .list');
+        if (!list){
+          // Si no existe, créala para aceptar drops en contenedores vacíos
+          list = document.createElement('ul');
+          list.className = (cfg.fieldsListClass || 'node-fields-list');
+          // Propaga el id del grupo al UL para leerlo en onAdd
+          const gid = getTreeGroupId(campos, cfg);
+          if (gid) list.setAttribute(cfg.groupIdAttr || 'data-id', gid);
+          campos.appendChild(list);
+        }
+        lists.push(list);
+      });
 
-      const s = new Sortable(cont, {
+      // 2) También listas ya existentes que contienen nodos "Campo"
+      const moreLists = $$(cfg.fieldsList || 'ul, ol, .children, .nodes, .list', root)
+        .filter(ul => ul.querySelector(cfg.fieldItem || '[data-node="field"], .node-field, li'));
+      moreLists.forEach(ul=>{
+        // Asegura que la lista tenga el group-id (hereda del contenedor "Campos" si aplica)
+        if (!ul.getAttribute(cfg.groupIdAttr || 'data-id')){
+          const ownerCampos = ul.closest(cfg.fieldsContainer || '[data-node="fields"], .node-fields, [data-tree="fields"]');
+          const gid = getTreeGroupId(ownerCampos || ul, cfg);
+          if (gid) ul.setAttribute(cfg.groupIdAttr || 'data-id', gid);
+        }
+        lists.push(ul);
+      });
+    });
+
+    // Dedup
+    const uniq = Array.from(new Set(lists)).filter(Boolean);
+
+    // Inicializa Sortable en cada lista de “Campos”
+    uniq.forEach(list=>{
+      if (list.dataset.fdSortableTreeFields === '1') return;
+      list.dataset.fdSortableTreeFields = '1';
+
+      const s = new Sortable(list, {
         animation: 150,
-        group: { name: 'fd-fields', pull: true, put: true }, // mismo grupo que en el formulario
+        group: { name: 'fd-tree-fields', pull: true, put: true }, // DnD solo dentro del árbol
         draggable: cfg.fieldItem || '[data-node="field"], .node-field, li',
-        handle: cfg.fieldHandle || '.fd-dnd-grip, .handle, .drag-handle',
+        handle: cfg.fieldHandle || '.fd-tab-grip, .fd-group-grip, .fd-dnd-grip, .handle, .drag-handle',
         ghostClass: 'fd-dnd-ghost',
+        swapThreshold: 0.5,
         emptyInsertThreshold: 8,
-        onAdd: (evt) => {
-          // IDs desde el árbol
-          const fieldId = getTreeFieldId(evt.item, cfg);
-          const targetGroupId = getTreeGroupId(cont, cfg);
-          const prev = evt.item.previousElementSibling;
+        forceFallback: true,
+        fallbackOnBody: true,
+        onAdd: (evt)=>{
+          const item = evt.item;
+          const fieldId = getTreeFieldId(item, cfg);
+          const targetGroupId = getTreeGroupId(evt.to, cfg);
+          const prev = item.previousElementSibling;
           const afterFieldId = prev ? getTreeFieldId(prev, cfg) : null;
 
           if (!fieldId || !targetGroupId){
             console.warn('[FD Lite][Tree] Falta fieldId/groupId en drop.', { fieldId, targetGroupId });
-            return;
+          } else {
+            moveLiveField(fieldId, targetGroupId, afterFieldId);
           }
-          moveLiveField(fieldId, targetGroupId, afterFieldId); // mueve en DOM real (#fd-root)
+
+          // No mantenemos el DOM insertado por Sortable (lo gestiona el árbol)
+          try { item.remove(); } catch {}
+          // Si tienes un refresco del árbol, invócalo aquí:
+          // window.refreshTree && window.refreshTree();
         }
       });
       sortables.push(s);
@@ -501,9 +543,12 @@
     return node?.getAttribute?.(cfg.fieldIdAttr || 'data-field-id') || null;
   }
   function getTreeGroupId(node, cfg){
-    // Primero intenta en el contenedor; si no, busca el grupo ancestro
-    return node?.getAttribute?.(cfg.groupIdAttr || 'data-group-id') ||
-           node?.closest?.(cfg.groupItem || '[data-node="group"], .node-group')?.getAttribute?.(cfg.groupIdAttr || 'data-group-id') || null;
+    if (!node) return null;
+    // Busca el atributo en el propio nodo o en su "Campos" más cercano
+    const attr = cfg.groupIdAttr || 'data-group-id';
+    return node.getAttribute?.(attr) ||
+           node.closest?.(cfg.fieldsContainer || '[data-node="fields"], .node-fields, [data-tree="fields"]')?.getAttribute?.(attr) ||
+           null;
   }
 
   // Mueve el wrapper real del campo al body del grupo destino (en #fd-root)
@@ -569,4 +614,3 @@
   }
 })();
 
- 

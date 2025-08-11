@@ -92,7 +92,7 @@ require_once __DIR__ . '/formulariodinamicologica.php';
     </div>
   </div>
 
-  <!-- Toggle modo diseño (debug visible) -->
+  <!-- Toggle visible (debug) -->
   <div id="fd-design-toggle" style="position:fixed;bottom:12px;right:12px;z-index:1050;background:#fff;padding:6px 10px;border:1px solid #ddd;border-radius:6px;">
     <label><input type="checkbox" id="designModeToggle" <?php echo $modoDiseno ? 'checked' : ''; ?>> Modo diseño</label>
   </div>
@@ -172,22 +172,26 @@ require_once __DIR__ . '/formulariodinamicologica.php';
         window.dispatchEvent(new CustomEvent('design-mode-changed', { detail:{ on: !!on } }));
       }
       function refresh(){
-        console.info('[FD] refresh. design?', root?.classList.contains('design-mode'), 'Sortable?', typeof window.Sortable);
-        if (root?.classList.contains('design-mode')) {
-          window.fdDndLiteRefresh && window.fdDndLiteRefresh();
-        }
+        const on = root?.classList.contains('design-mode');
+        console.info('[FD] refresh. design?', on, 'Sortable?', typeof window.Sortable, 'lite?', typeof window.fdDndLiteRefresh);
+        if (on) { window.fdDndLiteRefresh && window.fdDndLiteRefresh(); }
       }
 
       // Chequeos básicos
-      (function basicChecks(){
-        const dups = document.querySelectorAll('#fd-root').length;
-        if (dups !== 1) console.error('[FD] #fd-root duplicado o ausente. count=', dups);
-        if (!toggle) console.warn('[FD] Falta #designModeToggle');
+      (function(){
+        const count = document.querySelectorAll('#fd-root').length;
+        if (count !== 1) console.error('[FD] #fd-root duplicado/ausente. count =', count);
         if (!root) console.error('[FD] Falta #fd-root');
+        if (!toggle) console.warn('[FD] Falta #designModeToggle');
       })();
 
-      // Estado inicial + evento
+      // Estado inicial
       emit(root?.classList.contains('design-mode'));
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', refresh);
+      } else {
+        refresh();
+      }
       window.addEventListener('load', refresh);
 
       // Toggle
@@ -198,11 +202,21 @@ require_once __DIR__ . '/formulariodinamicologica.php';
         refresh();
       });
 
-      // Reenganchar si cambia el DOM del formulario en runtime
-      const cont = document.getElementById('form-container');
-      if (cont){
-        new MutationObserver(()=> refresh()).observe(cont, { childList:true, subtree:true });
+      // Reenganchar en render dinámico
+      const formContainer = document.getElementById('form-container');
+      if (formContainer){
+        new MutationObserver(()=> refresh()).observe(formContainer, { childList:true, subtree:true });
       }
+
+      // Comando de consola para verificar en runtime
+      window.fdDebug = function(){
+        console.log('[FD] debug:', {
+          rootExists: !!root,
+          design: root?.classList.contains('design-mode'),
+          sortable: typeof window.Sortable,
+          lite: typeof window.fdDndLiteRefresh
+        });
+      };
     })();
   </script>
 

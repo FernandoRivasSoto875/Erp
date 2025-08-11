@@ -37,7 +37,6 @@
     else cb();
   }
   function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
-
   function destroyAll(){
     sortables.forEach(s=> { try{ s && s.destroy && s.destroy(); }catch{} });
     sortables = [];
@@ -47,7 +46,7 @@
   function initAll(){
     if (!isDesign()) { destroyAll(); return; }
     if (!hasSortable()){
-      console.warn('[FD Lite] Falta SortableJS. No se puede activar DnD.');
+      console.warn('[FD Lite] Falta SortableJS.');
       return;
     }
     destroyAll();
@@ -94,6 +93,10 @@
     if (t.startsWith('#')) return t.slice(1);
     const pos = t.indexOf('#'); return pos>=0 ? t.substring(pos+1) : null;
   }
+  function cssEscape(s){
+    if (window.CSS && typeof CSS.escape === 'function') return CSS.escape(String(s));
+    return String(s).replace(/(["\\.#\[\]:])/g, '\\$1');
+  }
   function syncTabContent(ul){
     const cont = findTabContentContainer(ul);
     if (!cont) return;
@@ -108,12 +111,7 @@
 
   // Fieldsets entre columnas
   function attachFieldsetsDnD(){
-    const colSel = [
-      '#fd-root .row > [class*="col-"]',
-      '#fd-root .row > .col',
-      '#fd-root [data-col-width]'
-    ].join(', ');
-    const cols = $$(colSel);
+    const cols = $$('#fd-root .row > [class*="col-"], #fd-root .row > .col, #fd-root [data-col-width]');
     cols.forEach(col=>{
       const groups = Array.from(col.children).filter(isFieldsetGroup);
       if (groups.length < 1) return;
@@ -142,25 +140,14 @@
     grip.className = 'fd-group-grip';
     grip.title = 'Arrastra para mover el grupo';
     grip.textContent = '⋮⋮';
-    const header = group.querySelector(':scope > .card-header, :scope > legend, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6');
+    const header = group.querySelector(':scope > .card-header, :scope > legend, :scope > h1, :scope > h2, :scope > h3, :scope > h5, :scope > h6');
     if (header) header.insertBefore(grip, header.firstChild);
     else group.insertBefore(grip, group.firstChild);
   }
 
   // Fields dentro de cada grupo
   function attachFieldsDnD(){
-    const groupBodiesSel = [
-      '#fd-root fieldset .card-body',
-      '#fd-root fieldset > .card-body',
-      '#fd-root fieldset',
-      '#fd-root .card > .card-body',
-      '#fd-root .panel > .panel-body',
-      '#fd-root [data-fd-fields-group]',
-      '#fd-root .fd-fields-container',
-      '#fd-root table tbody'
-    ].join(', ');
-
-    const containers = $$(groupBodiesSel);
+    const containers = $$('#fd-root fieldset .card-body, #fd-root fieldset > .card-body, #fd-root fieldset, #fd-root .card > .card-body, #fd-root .panel > .panel-body, #fd-root [data-fd-fields-group], #fd-root .fd-fields-container, #fd-root table tbody');
     containers.forEach(cont=>{
       const wrappers = Array.from(cont.children).filter(isFieldWrapper);
       if (wrappers.length < 2) return;
@@ -197,10 +184,5 @@
       if (header) header.insertBefore(grip, header.firstChild);
       else w.insertBefore(grip, w.firstChild);
     }
-  }
-
-  function cssEscape(s){
-    if (window.CSS && typeof CSS.escape === 'function') return CSS.escape(String(s));
-    return String(s).replace(/(["\\.#\[\]:])/g, '\\$1');
   }
 })();

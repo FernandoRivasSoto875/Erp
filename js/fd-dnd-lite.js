@@ -52,31 +52,29 @@
       #fd-root.design-mode .fd-dnd-grip:hover{ background:#157347; }
       #fd-root.design-mode .fd-dnd-grip:active{ cursor:grabbing; transform:scale(.98); }
 
-      /* Resaltado de elementos arrastrables en modo diseño */
-      #fd-root.design-mode .fd-fs-draggable{
-        position:relative; outline:2px dashed rgba(13,110,253,.6); border-radius:6px;
-      }
-      #fd-root.design-mode .fd-field-draggable{
-        position:relative; outline:1px dashed rgba(25,135,84,.6); border-radius:4px;
-      }
+      /* Resaltado de elementos arrastrables */
+      #fd-root.design-mode .fd-fs-draggable{ position:relative; outline:2px dashed rgba(13,110,253,.6); border-radius:6px; }
+      #fd-root.design-mode .fd-field-draggable{ position:relative; outline:1px dashed rgba(25,135,84,.6); border-radius:4px; }
 
-      /* Badges de tipo (Grupo/Campo) */
+      /* Badges de tipo */
       #fd-root.design-mode .fd-badge-group::after{
-        content:'Grupo';
-        position:absolute; top:-10px; right:-10px;
-        background:#0d6efd; color:#fff; border-radius:10px;
-        padding:2px 8px; font-size:11px; font-weight:600;
+        content:'Grupo'; position:absolute; top:-10px; right:-10px;
+        background:#0d6efd; color:#fff; border-radius:10px; padding:2px 8px; font-size:11px; font-weight:600;
         box-shadow:0 0 0 1px rgba(13,110,253,.25) inset;
       }
       #fd-root.design-mode .fd-badge-field::after{
-        content:'Campo';
-        position:absolute; top:-10px; right:-10px;
-        background:#198754; color:#fff; border-radius:10px;
-        padding:2px 8px; font-size:11px; font-weight:600;
+        content:'Campo'; position:absolute; top:-10px; right:-10px;
+        background:#198754; color:#fff; border-radius:10px; padding:2px 8px; font-size:11px; font-weight:600;
         box-shadow:0 0 0 1px rgba(25,135,84,.25) inset;
       }
 
-      /* Ghost al arrastrar */
+      /* Resaltado del campo destino (drop target) */
+      #fd-root.design-mode .fd-drop-hover{
+        outline:2px solid #ffc107 !important;
+        box-shadow:0 0 0 2px rgba(255,193,7,.35) inset !important;
+      }
+
+      /* Ghost */
       #fd-root.design-mode .fd-dnd-ghost{ opacity:.65; background:#eef2ff !important; }
     `;
     document.head.appendChild(st);

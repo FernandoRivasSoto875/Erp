@@ -1,23 +1,34 @@
 (function(){
-  const $ = (s,r=document)=>r.querySelector(s);
-  const $$= (s,r=document)=>Array.from(r.querySelectorAll(s));
-  const root   = $('#fd-root');
-  const panel  = $('#fd-tree-side');
-  const treeEl = $('#fd-tree');
-  const filterInput = $('#fd-tree-filter');
-  const form = $('#formulariodinamico');
-  if(!root || !panel || !treeEl || !form) return;
-
+  // NUEVO: arranque diferido robusto
   let TYPE_META = { field_types:{}, fieldset_types:{} };
+  let root, panel, treeEl, filterInput, form;
+  let observer = null;
 
-  fetch('json/form-types.json')
-    .then(r=>r.ok?r.json():null)
-    .then(j=>{ if(j) TYPE_META=j; buildTree(); })
-    .catch(()=> buildTree());
+  function qs(){ // refresca referencias (por si el DOM cambia)
+    root   = document.getElementById('fd-root');
+    panel  = document.getElementById('fd-tree-side');
+    treeEl = document.getElementById('fd-tree');
+    filterInput = document.getElementById('fd-tree-filter');
+    form   = document.getElementById('formulariodinamico');
+  }
 
-  // ---- Helpers ----
+  function waitForDom(maxMs=6000){
+    const t0 = Date.now();
+    return new Promise(res=>{
+      (function loop(){
+        qs();
+        if (root && panel && treeEl && form){
+          return res(true);
+        }
+        if (Date.now()-t0 > maxMs) return res(false);
+        requestAnimationFrame(loop);
+      })();
+    });
+  }
+
+  // ---- Helpers (migrados del cuerpo original) ----
   function pickBody(g){
-    return g.querySelector(':scope > .card-body, :scope > .fd-fields-container') || g;
+    return g.querySelector(':scope > .card-body, :scope > .fd-fields-container, :scope > .tab-pane > .fd-fields-container') || g;
   }
   function isGroup(el){
     return !!el && el.matches('fieldset,.fd-fieldset,.card,.panel');
@@ -29,7 +40,8 @@
     return !!el.querySelector?.('input,select,textarea,[name],[data-name]');
   }
   function getTopGroups(){
-    // Todos los grupos que NO están contenidos dentro de otro grupo
+    if(!form) return [];
+    // fieldsets (u otros grupos) en cualquier profundidad pero filtrando los anidados
     const all = Array.from(form.querySelectorAll('fieldset,.fd-fieldset,.card,.panel'));
     return all.filter(g=> !g.parentElement.closest('fieldset,.fd-fieldset,.card,.panel'));
   }
@@ -57,7 +69,6 @@
   }
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-  // ---- Iconos ----
   function getFieldIcon(tipo){
     if(!tipo) return 'far fa-square';
     return (TYPE_META.field_types?.[tipo]?.icon) || iconFallbackField(tipo);
@@ -71,7 +82,7 @@
     if(['date','datetime','time'].includes(t)) return 'fas fa-calendar';
     if(['email'].includes(t)) return 'fas fa-envelope';
     if(['password'].includes(t)) return 'fas fa-key';
-    if(['select','multiselect','select2','select_remote','select2_remote'].includes(t)) return 'fas fa-list';
+    if(['select','multiselect','select_remote','select2','select2_remote'].includes(t)) return 'fas fa-list';
     if(['checkbox','switch'].includes(t)) return 'far fa-check-square';
     if(['radio'].includes(t)) return 'far fa-dot-circle';
     if(['file','image','multifile'].includes(t)) return 'fas fa-file-upload';
@@ -88,21 +99,28 @@
     return 'fas fa-layer-group';
   }
 
-  // ---- Build Tree ----
-  function buildTree(){
-    if(panel.classList.contains('hidden')) return;
-    treeEl.innerHTML='';
-    const topGroups = getTopGroups();
-    if(!topGroups.length){
-      treeEl.innerHTML = '<div class="text-muted small">Sin grupos</div>';
-      return;
-    }
-    const ul = document.createElement('ul');
-    ul.className='fd-tree-root';
-    topGroups.forEach(g=> ul.appendChild(buildGroupNode(g)));
-    treeEl.appendChild(ul);
-    enableDnD();
-    applyFilter();
+  function buildFieldNode(w){
+    ensureFieldId(w);
+    const fid = w.getAttribute('data-field-id');
+    const tipo = (w.getAttribute('data-field-type') || w.getAttribute('data-field-tipo') ||
+                  w.querySelector('input,select,textarea')?.type || 'text').toLowerCase();
+    const icon = getFieldIcon(tipo);
+    const label = (w.querySelector('label')?.textContent || fid).trim();
+    const li = document.createElement('li');
+    li.dataset.node='field';
+    li.dataset.id=fid;
+    li.className='fd-tree-field';
+    li.innerHTML = `
+      <div class="f-item">
+        <span class="handle">⋮⋮</span>
+        <i class="ico ${icon}" title="${escapeHtml(tipo)}"></i>
+        <span class="txt">${escapeHtml(label)}</span>
+        <span class="actions ms-auto">
+          <button data-act="rename" title="Renombrar">✎</button>
+          <button data-act="delete" title="Borrar">🗑</button>
+        </span>
+      </div>`;
+    return li;
   }
 
   function buildGroupNode(g){
@@ -142,31 +160,25 @@
     return li;
   }
 
-  function buildFieldNode(w){
-    ensureFieldId(w);
-    const fid = w.getAttribute('data-field-id');
-    const tipo = (w.getAttribute('data-field-type') || w.getAttribute('data-field-tipo') ||
-                  w.querySelector('input,select,textarea')?.type || 'text').toLowerCase();
-    const icon = getFieldIcon(tipo);
-    const label = (w.querySelector('label')?.textContent || fid).trim();
-    const li = document.createElement('li');
-    li.dataset.node='field';
-    li.dataset.id=fid;
-    li.className='fd-tree-field';
-    li.innerHTML = `
-      <div class="f-item">
-        <span class="handle">⋮⋮</span>
-        <i class="ico ${icon}" title="${escapeHtml(tipo)}"></i>
-        <span class="txt">${escapeHtml(label)}</span>
-        <span class="actions ms-auto">
-          <button data-act="rename" title="Renombrar">✎</button>
-          <button data-act="delete" title="Borrar">🗑</button>
-        </span>
-      </div>`;
-    return li;
+  function buildTree(){
+    qs();
+    if(!panel || panel.classList.contains('hidden') || !treeEl || !form) return;
+    treeEl.innerHTML='';
+    const topGroups = getTopGroups();
+    if(!topGroups.length){
+      treeEl.innerHTML = '<div class="text-muted small">Sin grupos</div>';
+      return;
+    }
+    const ul = document.createElement('ul');
+    ul.className='fd-tree-root';
+    topGroups.forEach(g=> ul.appendChild(buildGroupNode(g)));
+    treeEl.appendChild(ul);
+    enableDnD();
+    applyFilter();
   }
+  window.fdTreeRebuild = buildTree;
 
-  // ---- CRUD ----
+  // CRUD (idéntico a versión original) -----------------
   function addGroup(parentLi){
     let container;
     if(parentLi){
@@ -220,8 +232,9 @@
     buildTree();
   }
 
-  // ---- Filtro ----
+  // Filtro
   function applyFilter(){
+    if(!treeEl) return;
     const term = (filterInput?.value||'').toLowerCase().trim();
     if(!term){
       treeEl.querySelectorAll('li').forEach(li=> li.classList.remove('fd-filter-hide','fd-filter-hit'));
@@ -238,14 +251,13 @@
       li.classList.toggle('fd-filter-hide', !descHit);
     });
   }
-  filterInput?.addEventListener('input', applyFilter);
 
-  // ---- DnD ----
+  // DnD (fix: paréntesis incorrecto en original)
   function enableDnD(){
-    if(!window.Sortable) return;
+    if(!window.Sortable || !treeEl) return;
     treeEl.querySelectorAll('ul').forEach(u=>{
       if(u._fdSortable) return;
-      u._fdSortable = new Sortable(u({
+      u._fdSortable = new Sortable(u, {
         group:'fd-tree-nested',
         handle:'.handle',
         animation:150,
@@ -304,58 +316,95 @@
       });
   }
 
-  // ---- Eventos panel ----
-  treeEl.addEventListener('click', e=>{
-    const btn = e.target.closest('button[data-act]');
-    if(btn){
-      const li = e.target.closest('li[data-node]');
-      const act = btn.dataset.act;
-      if(act==='add-group') addGroup(li);
-      else if(act==='add-field') addField(li);
-      else if(act==='rename') renameNode(li);
-      else if(act==='delete') deleteNode(li);
-      return;
-    }
-    const tgl = e.target.closest('.toggle');
-    if(tgl){
-      const li=e.target.closest('li[data-node="group"]');
-      if(li){
-        li.classList.toggle('collapsed');
-        tgl.textContent = li.classList.contains('collapsed') ? '▸':'▾';
+  // Eventos panel
+  function bindPanelEvents(){
+    if(!treeEl) return;
+    treeEl.addEventListener('click', e=>{
+      const btn = e.target.closest('button[data-act]');
+      if(btn){
+        const li = e.target.closest('li[data-node]');
+        const act = btn.dataset.act;
+        if(act==='add-group') addGroup(li);
+        else if(act==='add-field') addField(li);
+        else if(act==='rename') renameNode(li);
+        else if(act==='delete') deleteNode(li);
+        return;
       }
-    }
-    const li = e.target.closest('li[data-node]');
-    if(li && !e.target.closest('.actions')){
-      treeEl.querySelectorAll('.selected').forEach(s=>s.classList.remove('selected'));
-      li.classList.add('selected');
-      scrollToLive(li);
-    }
-  });
+      const tgl = e.target.closest('.toggle');
+      if(tgl){
+        const li=e.target.closest('li[data-node="group"]');
+        if(li){
+          li.classList.toggle('collapsed');
+          tgl.textContent = li.classList.contains('collapsed') ? '▸':'▾';
+        }
+      }
+      const li = e.target.closest('li[data-node]');
+      if(li && !e.target.closest('.actions')){
+        treeEl.querySelectorAll('.selected').forEach(s=>s.classList.remove('selected'));
+        li.classList.add('selected');
+        scrollToLive(li);
+      }
+    });
+
+    filterInput?.addEventListener('input', applyFilter);
+
+    document.getElementById('toggleTreeBtn')?.addEventListener('click', ()=>{
+      panel.classList.toggle('hidden');
+      if(!panel.classList.contains('hidden')) buildTree();
+    });
+    document.getElementById('closeTree')?.addEventListener('click', ()=> panel.classList.add('hidden'));
+
+    document.getElementById('designModeToggle')?.addEventListener('change', e=>{
+      const on = e.target.checked;
+      root.classList.toggle('design-mode', on);
+      if(on){ panel.classList.remove('hidden'); buildTree(); }
+      else panel.classList.add('hidden');
+      window.dispatchEvent(new CustomEvent('design-mode-changed',{detail:{on}}));
+    });
+  }
 
   function scrollToLive(li){
+    if(!form) return;
     if(li.dataset.node==='group')
       form.querySelector('[data-group-id="'+CSS.escape(li.dataset.id)+'"]')?.scrollIntoView({behavior:'smooth',block:'center'});
     else
       form.querySelector('[data-field-id="'+CSS.escape(li.dataset.id)+'"]')?.scrollIntoView({behavior:'smooth',block:'center'});
   }
 
-  $('#toggleTreeBtn')?.addEventListener('click', ()=>{
-    panel.classList.toggle('hidden');
-    if(!panel.classList.contains('hidden')) buildTree();
-  });
-  $('#closeTree')?.addEventListener('click', ()=> panel.classList.add('hidden'));
+  function startObserver(){
+    if(observer){ observer.disconnect(); observer=null; }
+    if(!form) return;
+    observer = new MutationObserver(()=>{
+      // reconstruye si se agregan/eliminan grupos o campos
+      buildTree();
+    });
+    observer.observe(form, { childList:true, subtree:true });
+  }
 
-  $('#designModeToggle')?.addEventListener('change', e=>{
-    const on = e.target.checked;
-    root.classList.toggle('design-mode', on);
-    if(on){ panel.classList.remove('hidden'); buildTree(); }
-    else panel.classList.add('hidden');
-    window.dispatchEvent(new CustomEvent('design-mode-changed',{detail:{on}}));
-  });
+  async function init(){
+    const ok = await waitForDom();
+    if(!ok){
+      console.warn('[fd-tree-side] No se encontraron elementos requeridos.');
+      return;
+    }
+    // Cargar metadatos de tipos
+    try{
+      const r = await fetch('json/form-types.json');
+      if(r.ok){
+        TYPE_META = await r.json();
+      }
+    }catch(e){}
+    bindPanelEvents();
+    if(root.classList.contains('design-mode')){
+      panel.classList.remove('hidden');
+    } else panel.classList.add('hidden');
+    startObserver();
+    buildTree();
+  }
 
-  if(root.classList.contains('design-mode')){
-    panel.classList.remove('hidden');
-  } else panel.classList.add('hidden');
-
-  window.fdTreeRebuild = buildTree;
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 })();

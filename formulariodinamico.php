@@ -385,43 +385,65 @@ require_once __DIR__ . '/formulariodinamicologica.php';
       }
 
       // ---------- Grupos/Fieldsets DnD ----------
-      // REEMPLAZAR implementación para usar columnas/tabs/outside (no filas)
+      // Usa columnas como contenedores (no filas)
       function initFieldsetsDnD(){
-        // Asegura que cada pane de tab sea zona droppable
         setupTabDropzones();
 
-        const containerSel = [
-          '#fd-root [data-col-width]',                 // columnas del layout
-          '#fd-root [data-dropzone="tab-pane"]',       // panes de pestañas
-          '#elementos-fuera-container .fd-out-items'   // elementos fuera del formulario
+        const colSel = [
+          '#fd-root .row > [class*="col-"]',
+          '#fd-root .row > .col',
+          '#fd-root [data-col-width]',
+          '#fd-root [data-dropzone="tab-pane"] .row > [class*="col-"]',
+          '#fd-root [data-dropzone="tab-pane"] .row > .col',
+          '#elementos-fuera-container .fd-out-items' // fuera del formulario
         ].join(', ');
 
-        document.querySelectorAll(containerSel).forEach(container=>{
-          if (container.dataset.fdFsInit === '1') return;
-          container.dataset.fdFsInit = '1';
+        document.querySelectorAll(colSel).forEach(col=>{
+          if (col.dataset.fdFsInit === '1') return;
 
-          // Evita clicks del handle que naveguen
-          container.addEventListener('click', (e)=>{
+          // Hijos directos que sean grupos (fieldset, card, panel, etc.)
+          const groups = Array.from(col.children).filter(ch=> isFieldsetGroup(ch));
+          if (groups.length < 2 && !col.matches('#elementos-fuera-container .fd-out-items')) return;
+
+          col.dataset.fdFsInit = '1';
+
+          groups.forEach(g=>{
+            g.classList.add('fd-fs-draggable');
+            ensureGroupGrip(g);
+          });
+
+          // Evitar solo la navegación cuando se hace click en el handle
+          col.addEventListener('click', (e)=>{
             if (!inDesign()) return;
-            if (e.target.closest('legend, .card-header, [data-fieldset-title]')) e.preventDefault();
+            if (e.target.closest('legend, .card-header, [data-fieldset-title], .fd-group-grip')) e.preventDefault();
           });
 
           if (window.Sortable){
-            new Sortable(container, {
+            new Sortable(col, {
               animation: 150,
               group: { name: 'fd-fieldsets', pull: true, put: true },
-              draggable: ':scope > fieldset.draggable-fieldset, :scope > [data-fieldset-name]',
-              handle: 'legend, .card-header, [data-fieldset-title]',
+              draggable: '.fd-fs-draggable',
+              handle: '.fd-group-grip, legend, .card-header, [data-fieldset-title]',
               ghostClass: 'fd-dnd-ghost'
             });
           } else {
-            initNativeListDnD(container, {
-              handleSel: 'legend, .card-header, [data-fieldset-title]',
-              childSel: ':scope > fieldset.draggable-fieldset, :scope > [data-fieldset-name]',
+            initNativeListDnD(col, {
+              handleSel: '.fd-group-grip, legend, .card-header, [data-fieldset-title]',
+              childSel: '.fd-fs-draggable',
               crossGroup: true
             });
           }
         });
+
+        console.info('[FD] Fieldsets DnD columnas configuradas:', document.querySelectorAll('[data-fd-fs-init="1"]').length);
+      }
+
+      function isFieldsetGroup(el){
+        if (!el || el.tagName==='SCRIPT' || el.tagName==='STYLE') return false;
+        if (el.matches('fieldset, .card, .panel, .accordion-item, [data-fieldset-name], .fd-fieldset')) return true;
+        // Heurística: contenedor con múltiples controls
+        const cnt = el.querySelectorAll('input,select,textarea,[name],[data-name]').length;
+        return cnt >= 2;
       }
 
       // Marca panes de tabs como dropzones (si el backend no lo hizo)
@@ -537,13 +559,13 @@ require_once __DIR__ . '/formulariodinamicologica.php';
           // FIX: selector correcto del atributo del contenedor
           document.addEventListener('dragover', (e)=>{
             if (!dragEl) return;
-            const targetContainer = e.target.closest('[data-fd_fields_init="1"]');
+            const targetContainer = e.target.closest('[data-fd-fields-init="1"], [data-fd-fs-init="1"], [data-fs-init="1"]');
             if (!targetContainer) return;
             e.preventDefault();
           });
           document.addEventListener('drop', (e)=>{
             if (!dragEl) return;
-            const targetContainer = e.target.closest('[data-fd_fields_init="1"]');
+            const targetContainer = e.target.closest('[data-fd_fields_init="1"], [data-fd-fs-init="1"], [data-fs-init="1"]');
             if (!targetContainer) return;
             e.preventDefault();
             targetContainer.appendChild(dragEl);

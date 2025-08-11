@@ -159,7 +159,8 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 
   <!-- Runtime DnD (tabs, fields, fieldsets) -->
   <!-- Opcional: si este runtime interfiere, puedes comentarlo -->
-  <!-- <script src="js/form-runtime-dnd.js"></script> -->
+  <script src="js/form-runtime-dnd.js"></script>
+  <!-- ^^^ ANTES estaba comentado; esto impedía el DnD del runtime -->
 
   <script>
     (function(){
@@ -194,11 +195,77 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 
       function initFallbackDnd(){
         if (!inDesign()) return;
-        initTabsFallback();
-        // Primero JSON -> luego DOM si no se encontró nada
+        initTabsFallback();           // <- ahora existe
         const configured = initFieldsDnDJson();
         if (!configured) initFieldsFallback();
       }
+
+      // --------- NUEVO: Tabs fallback + helpers ----------
+      function initTabsFallback(){
+        document.querySelectorAll('#fd-root .nav-tabs').forEach(ul=>{
+          if (ul.dataset.fdTabsInit === '1') return;
+          ul.dataset.fdTabsInit = '1';
+
+          Array.from(ul.children).forEach(li=>{
+            const link = li.querySelector('a,button');
+            if (!link) return;
+            if (!link.getAttribute('data-bs-toggle')) link.setAttribute('data-bs-toggle','tab');
+            if (!link.querySelector('.fd-dnd-grip')){
+              const g = document.createElement('span');
+              g.className = 'fd-dnd-grip';
+              g.title = 'Arrastra para reordenar pestañas';
+              g.textContent = '⋮⋮';
+              link.prepend(g);
+            }
+          });
+
+          if (window.Sortable){
+            new Sortable(ul, {
+              animation: 150,
+              draggable: 'li',
+              handle: '.fd-dnd-grip',
+              ghostClass: 'fd-dnd-ghost',
+              onEnd: ()=> reorderTabContentByUl(ul)
+            });
+          } else {
+            initNativeListDnD(ul, {
+              handleSel: '.fd-dnd-grip',
+              childSel: 'li',
+              crossGroup: false,
+              onDrop: ()=> reorderTabContentByUl(ul)
+            });
+          }
+        });
+      }
+
+      function findTabContentContainer(ul){
+        const sib = ul.nextElementSibling;
+        if (sib && sib.classList?.contains('tab-content')) return sib;
+        return document.querySelector('#fd-root .tab-content');
+      }
+
+      function getTabTargetId(link){
+        if (!link) return null;
+        let t = link.getAttribute('data-bs-target') || link.getAttribute('href') || '';
+        if (!t) return null;
+        t = t.trim();
+        if (t.startsWith('#')) return t.slice(1);
+        const pos = t.indexOf('#');
+        return pos>=0 ? t.substring(pos+1) : null;
+      }
+
+      function reorderTabContentByUl(ul){
+        const cont = findTabContentContainer(ul);
+        if (!cont) return;
+        Array.from(ul.children).forEach(li=>{
+          const link = li.querySelector('a,button');
+          const id = getTabTargetId(link);
+          if (!id) return;
+          const pane = cont.querySelector('#'+cssEscape(id));
+          if (pane) cont.appendChild(pane);
+        });
+      }
+      // --------- FIN Tabs fallback ----------
 
       // ---------- Fields por JSON (robusto) ----------
       function initFieldsDnDJson(){

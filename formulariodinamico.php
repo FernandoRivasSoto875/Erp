@@ -267,12 +267,12 @@ function fd_render_layout_fallback($layout, $fieldsets) {
           <small class="text-muted" id="fd-form-desc" data-editable="descripcion-form"><?php echo htmlspecialchars($descripcion_formulario); ?></small>
         <?php endif; ?>
       </div>
-      <div>
-        <label class="form-check form-switch">
+      <div class="d-flex align-items-center gap-3">
+        <label class="form-check form-switch m-0">
           <input type="checkbox" class="form-check-input" id="designModeToggle" <?php echo $modoDiseno?'checked':''; ?>>
-          <span class="form-check-label">Diseño</span>
+          <span class="form-check-label">Modo diseño</span>
         </label>
-        <button type="button" class="btn btn-sm btn-primary ms-2" id="saveLayoutBtn" <?php echo $modoDiseno?'':'disabled'; ?>>Guardar diseño</button>
+        <button type="button" class="btn btn-sm btn-primary" id="saveLayoutBtn" <?php echo $modoDiseno?'':'disabled'; ?>>Guardar diseño</button>
       </div>
     </div>
 
@@ -291,10 +291,9 @@ function fd_render_layout_fallback($layout, $fieldsets) {
     </form>
 
     <?php if ($modoDiseno): ?>
-      <div id="elementos-fuera-container" class="border p-2 mb-5">
-        <strong>Elementos fuera del formulario</strong>
-        <div class="fd-out-items small text-muted">Arrastra fieldsets aquí</div>
-      </div>
+      <hr>
+      <h6 class="mt-3 mb-2">Árbol (estructura)</h6>
+      <div id="json-tree-panel"></div>
     <?php endif; ?>
   </div>
 
@@ -307,23 +306,104 @@ function fd_render_layout_fallback($layout, $fieldsets) {
 </script>
 <script src="js/json-tree-panel.js"></script>
   <script>
-  document.getElementById('designModeToggle')?.addEventListener('change', function(){
-    const url = new URL(window.location.href);
-    url.searchParams.set('modoDiseno', this.checked ? '1' : '0');
-    window.location.href = url.toString();
+(function(){
+  const root  = document.getElementById('fd-root');
+  const toggle= document.getElementById('designModeToggle');
+  const saveBtn = document.getElementById('saveLayoutBtn');
+
+  function ensureTreePanel(){
+    if (!document.getElementById('json-tree-panel') && root.classList.contains('design-mode')){
+      const div = document.createElement('div');
+      div.id = 'json-tree-panel';
+      root.appendChild(div);
+    }
+  }
+
+  // Builder simple si no existe renderJsonTreeFromForm (fallback)
+  if (!window.renderJsonTreeFromForm){
+    window.renderJsonTreeFromForm = function(){
+      const panel = document.getElementById('json-tree-panel');
+      if (!panel) return;
+      panel.innerHTML = '';
+      const groups = root.querySelectorAll('fieldset, .card, .panel, .fd-fieldset');
+      if (!groups.length){ panel.innerHTML = '<div class="text-muted small">Sin grupos</div>'; return; }
+      const ul = document.createElement('ul');
+      groups.forEach(g=>{
+        const gid = g.getAttribute('data-group-id') || g.id || 'g_'+Math.random().toString(36).slice(2,8);
+        if (!g.getAttribute('data-group-id')) g.setAttribute('data-group-id', gid);
+        const liG = document.createElement('li');
+        liG.setAttribute('data-node','group');
+        liG.setAttribute('data-id', gid);
+        const title = document.createElement('div');
+        title.className='title';
+        title.textContent = (g.querySelector(':scope > legend, :scope > .card-header')?.textContent||gid).trim();
+        liG.appendChild(title);
+        const fieldsWrap = document.createElement('div');
+        fieldsWrap.setAttribute('data-node','fields');
+        fieldsWrap.setAttribute('data-id', gid);
+        const list = document.createElement('ul');
+        list.className='node-fields-list';
+        list.setAttribute('data-id', gid);
+        Array.from((g.querySelector(':scope > .card-body, :scope > .fd-fields-container')||g).children)
+          .filter(ch=> !!ch.querySelector?.('input,select,textarea,[name],[data-name]') &&
+                        !ch.matches('fieldset,.card,.panel,.fd-fieldset'))
+          .forEach(w=>{
+            const fid = w.getAttribute('data-field-id') ||
+              w.querySelector('[name]')?.getAttribute('name') ||
+              w.querySelector('[id]')?.getAttribute('id') ||
+              'f_'+Math.random().toString(36).slice(2,8);
+            if (!w.getAttribute('data-field-id')) w.setAttribute('data-field-id', fid);
+            const liF = document.createElement('li');
+            liF.setAttribute('data-node','field');
+            liF.setAttribute('data-id', fid);
+            const h = document.createElement('span');
+            h.className='handle';
+            h.textContent='⋮⋮';
+            liF.appendChild(h);
+            const lbl = w.querySelector('label')?.textContent || fid;
+            liF.appendChild(document.createTextNode(' '+lbl.trim()));
+            list.appendChild(liF);
+          });
+        fieldsWrap.appendChild(list);
+        liG.appendChild(fieldsWrap);
+        ul.appendChild(liG);
+      });
+      panel.appendChild(ul);
+      // Re-engancha DnD del árbol si fd-dnd-lite lo soporta
+      window.fdDndLiteRefresh && window.fdDndLiteRefresh();
+    };
+  }
+
+  function enterDesign(on){
+    root.classList.toggle('design-mode', on);
+    saveBtn && (saveBtn.disabled = !on);
+    ensureTreePanel();
+    window.dispatchEvent(new CustomEvent('design-mode-changed',{detail:{on}}));
+    if (on){
+      window.fdDndLiteRefresh && window.fdDndLiteRefresh();
+      window.renderJsonTreeFromForm && window.renderJsonTreeFromForm();
+    } else {
+      // Limpio grips visuales si quieres (opcional)
+    }
+  }
+
+  if (toggle){
+    toggle.addEventListener('change', ()=> enterDesign(toggle.checked));
+    // Sin recargar por querystring
+  }
+
+  // Estado inicial
+  if (toggle?.checked){
+    enterDesign(true);
+  }
+
+  // Click títulos del árbol para colapsar
+  document.addEventListener('click', e=>{
+    const t = e.target.closest('#json-tree-panel [data-node="group"] > .title');
+    if (t) t.parentElement.classList.toggle('collapsed');
   });
-  </script>
-  <script>
-document.addEventListener('DOMContentLoaded', ()=>{
-  const root = document.getElementById('fd-root');
-  const chk  = document.getElementById('designModeToggle');
-  if (!root || !chk) return;
-  chk.addEventListener('change', ()=>{
-    root.classList.toggle('design-mode', chk.checked);
-    // (json-tree-panel escucha la mutación; adicionalmente emitimos)
-    window.dispatchEvent(new CustomEvent('design-mode-changed',{detail:{on:chk.checked}}));
-  });
-});
+
+})();
 </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>

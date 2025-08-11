@@ -69,6 +69,7 @@ function fd_render_field($f){
     $dataAttrs = [
         'data-field-name'=>$nombre,
         'data-field-tipo'=>$tipo,
+        'data-field-type'=>$tipo,   // <-- añadido
         'data-required'=>$req?'1':'0',
         'data-mask'=>$mask ?: null
     ];
@@ -167,7 +168,8 @@ function fd_render_fieldset_simple($nombre, $fs){
     foreach ($campos as $c){
         $htmlCampos .= fd_render_field($c);
     }
-    return "<fieldset class='mb-3 p-2 border rounded draggable-fieldset' data-group-id='".htmlspecialchars($nombre,ENT_QUOTES)."' data-fieldset-name='".htmlspecialchars($nombre,ENT_QUOTES)."'>"
+    $typeFs = htmlspecialchars($fs['tipo'] ?? $fs['type'] ?? 'group', ENT_QUOTES);
+    return "<fieldset class='mb-3 p-2 border rounded draggable-fieldset' data-group-id='".htmlspecialchars($nombre,ENT_QUOTES)."' data-fieldset-name='".htmlspecialchars($nombre,ENT_QUOTES)."' data-fieldset-type='{$typeFs}'>"
           . "<legend class='small m-0 px-1'>".$titulo."</legend>"
           . $htmlCampos
           . "</fieldset>";
@@ -270,6 +272,9 @@ function fd_render_layout_fallback($layout, $fieldsets) {
     #fd-root.design-mode .fd-dnd-grip,#fd-root.design-mode .fd-group-grip,#fd-root.design-mode .fd-tab-grip{
       cursor:grab;display:inline-block;margin-right:6px;background:#198754;color:#fff;border-radius:4px;padding:0 6px;font-weight:600;line-height:1.2;
     }
+    #fd-tree .ico{width:16px;text-align:center;color:#6c757d;font-size:.7rem;}
+    #fd-tree .fd-tree-field .ico{color:#845ef7;}
+    #fd-tree .fd-tree-group .ico{color:#0d6efd;}
   </style>
 </head>
 <body>

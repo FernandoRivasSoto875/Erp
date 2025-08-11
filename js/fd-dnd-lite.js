@@ -12,6 +12,10 @@
   let sortables = [];
   const initedContainers = new Set();
 
+  // NUEVO: estado para drop preciso de campos
+  const lastFieldDrop = new WeakMap();
+  const fieldHighlight = new WeakMap();
+
   injectStyles();
   function injectStyles(){
     if ($('#fd-lite-dnd-css')) return;
@@ -85,12 +89,27 @@
   whenReady(()=> {
     window.addEventListener('design-mode-changed', ()=> initAll());
     initAll();
+
+    // NUEVO: observa cambios de DOM y reengancha en caliente
+    const root = document.getElementById('fd-root');
+    if (root && !window.__fdLiteObs){
+      window.__fdLiteObs = new MutationObserver(debounce(()=>{
+        if (isDesign()){
+          attachFieldsetsDnD();
+          attachFieldsDnD();
+        }
+      }, 120));
+      window.__fdLiteObs.observe(root, { childList:true, subtree:true });
+    }
   });
 
   function whenReady(cb){
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', cb);
     else cb();
   }
+
+  // NUEVO: debounce utilitario
+  function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
 
   function destroyAll(){
     sortables.forEach(s=> { try{ s && s.destroy && s.destroy(); }catch{} });
@@ -241,11 +260,9 @@
   function createFieldSortable(cont){
     cont.dataset.fdSortableField = '1';
 
-    // Wrappers directos movibles (hijos directos del contenedor)
     const wrappers = Array.from(cont.children).filter(isFieldWrapperDirect);
     wrappers.forEach(w=> { markFieldWrapper(w); ensureFieldGrip(w); });
 
-    // Evita navegación si se hace click en el grip
     cont.addEventListener('click', (e)=>{
       if (isDesign() && e.target.closest('.fd-dnd-grip')) e.preventDefault();
     });
@@ -255,7 +272,7 @@
       draggable: '.fd-field-draggable',
       handle: '.fd-dnd-grip',
       ghostClass: 'fd-dnd-ghost',
-      group: { name: 'fd-fields', pull: true, put: true }, // mover entre fieldsets/columnas
+      group: { name: 'fd-fields', pull: true, put: true },
       direction: 'vertical',
       swapThreshold: 0.5,
       emptyInsertThreshold: 8,
@@ -266,9 +283,34 @@
       scrollSpeed: 10,
       forceFallback: true,
       fallbackOnBody: true,
-      onAdd: (evt)=> rebindMovedField(evt.item),
-      onUpdate: (evt)=> rebindMovedField(evt.item),
-      onEnd: (evt)=> rebindMovedField(evt.item)
+
+      // NUEVO: posicionamiento exacto sobre el campo objetivo
+      onMove: (evt)=>{
+        const rel = evt.related && evt.related.matches('.fd-field-draggable') ? evt.related : null;
+        lastFieldDrop.set(evt.to, { related: rel, after: !!evt.willInsertAfter });
+        highlightRelated(evt.to, rel);
+        return true;
+      },
+      onAdd: (evt)=>{
+        try{
+          const ctx = lastFieldDrop.get(evt.to);
+          if (ctx && ctx.related && ctx.related.parentElement === evt.to){
+            const ref = ctx.after ? ctx.related.nextSibling : ctx.related;
+            evt.to.insertBefore(evt.item, ref);
+          }
+        } finally {
+          rebindMovedField(evt.item);
+          clearHighlight(evt.to);
+        }
+      },
+      onUpdate: (evt)=>{
+        rebindMovedField(evt.item);
+        clearHighlight(evt.to);
+      },
+      onEnd: (evt)=>{
+        clearHighlight(evt.to || evt.from);
+        rebindMovedField(evt.item);
+      }
     });
     sortables.push(s);
     return s;
@@ -287,7 +329,13 @@
     }
   }
 
-  // Devuelve contenedores donde los campos son hijos directos (body de card/fieldset o columnas)
+  // ¿Este contenedor tiene grupos (fieldsets/cards) como hijos directos?
+  function hasDirectGroup(el){
+    if (!el || el.nodeType!==1) return false;
+    return Array.from(el.children).some(isGroupElementDirect);
+  }
+
+  // Devuelve contenedores finales donde van los campos (evita los que contienen grupos)
   function getFieldContainers(){
     const bases = $$('#fd-root fieldset, #fd-root .card, #fd-root .panel, #fd-root [data-fd-fields-group], #fd-root .fd-fields-container, #fd-root table, #fd-root .fd-fieldset');
     const out = [];
@@ -296,21 +344,21 @@
       const body = pickFieldsContainer(base);
       if (!body) return;
 
-      if (body.matches('table')) {
+      // Tablas: tbody
+      if (body.matches('table')){
         out.push(body);
         return;
       }
 
-      // Si el body es una fila, usa cada columna como contenedor final
+      // Si el body es una fila, usa cada columna que NO tenga grupos directos
       if (body.matches('.row')){
         const cols = Array.from(body.children).filter(el=> el.matches('[class*="col-"], .col'));
-        if (cols.length){
-          cols.forEach(col=> out.push(col));
-          return;
-        }
+        cols.forEach(col=> { if (!hasDirectGroup(col)) out.push(col); });
+        return;
       }
 
-      out.push(body);
+      // Si el body tiene grupos directos, no es contenedor de campos
+      if (!hasDirectGroup(body)) out.push(body);
     });
 
     // Evita duplicados
@@ -340,5 +388,55 @@
   function markFieldWrapper(el){
     if (!el || el.nodeType!==1) return;
     el.classList.add('fd-field-draggable', 'fd-badge-field');
+  }
+
+  // NUEVO: resaltado del destino y helpers de selección
+  function highlightRelated(container, related){
+    const prev = fieldHighlight.get(container);
+    if (prev && prev !== related) prev.classList.remove('fd-drop-hover');
+    if (related && related.nodeType===1){
+      related.classList.add('fd-drop-hover');
+      fieldHighlight.set(container, related);
+    }
+  }
+  function clearHighlight(container){
+    const prev = fieldHighlight.get(container);
+    if (prev) prev.classList.remove('fd-drop-hover');
+    fieldHighlight.delete(container);
+    lastFieldDrop.delete(container);
+  }
+
+  // NUEVO: helpers faltantes
+  function isGroupElementDirect(el){
+    if (!el || el.tagName==='SCRIPT' || el.tagName==='STYLE') return false;
+    return el.matches('fieldset, .card, .panel, .accordion-item, [data-fieldset-name], .fd-fieldset');
+  }
+  function hasControl(el){
+    return !!el.querySelector?.('input,select,textarea,[name],[data-name]');
+  }
+  function ensureGroupGrip(group){
+    if (group.querySelector('.fd-group-grip')) return;
+    const grip = document.createElement('span');
+    grip.className = 'fd-group-grip';
+    grip.title = 'Arrastra para mover el grupo';
+    grip.textContent = '⋮⋮';
+    const header = group.querySelector(':scope > .card-header, :scope > legend, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6');
+    if (header) header.insertBefore(grip, header.firstChild);
+    else group.insertBefore(grip, group.firstChild);
+  }
+  function ensureFieldGrip(w){
+    if (w.querySelector('.fd-dnd-grip')) return;
+    const grip = document.createElement('span');
+    grip.className = 'fd-dnd-grip';
+    grip.title = 'Arrastra para mover';
+    grip.textContent = '⋮⋮';
+    if (w.matches('tr')){
+      const cell = w.querySelector(':scope > th, :scope > td') || w;
+      cell.insertBefore(grip, cell.firstChild);
+    } else {
+      const header = w.querySelector(':scope > .card-header, :scope > legend, :scope > label, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6');
+      if (header) header.insertBefore(grip, header.firstChild);
+      else w.insertBefore(grip, w.firstChild);
+    }
   }
 })();

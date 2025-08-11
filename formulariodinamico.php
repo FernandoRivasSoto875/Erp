@@ -151,16 +151,7 @@ $modoDiseno = isset($modoDiseno) ? (bool)$modoDiseno : (isset($_GET['design']) &
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-<script>
-  if (typeof window.Sortable !== 'function') {
-    document.write('<script src="js/lib/Sortable.min.js"><\/script>');
-  }
-</script>
-
-<!-- Quitar estos si estaban: form-bootstrap-enhancer.js (opcional puedes dejarlo), form-runtime-dnd.js y el bloque inline de DnD -->
-<!-- <script src="js/form-runtime-dnd.js"></script> -->
-
-<!-- Nuevo runtime ligero -->
+<script src="js/fd-tree-config.js"></script>
 <script src="js/fd-dnd-lite.js"></script>
 
 <script>

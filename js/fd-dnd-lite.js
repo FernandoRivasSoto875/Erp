@@ -326,16 +326,18 @@
           }
         } finally {
           rebindMovedField(evt.item);
+          window.fdLayoutChanged && window.fdLayoutChanged();
           clearHighlight(evt.to);
         }
       },
       onUpdate: (evt)=>{
         rebindMovedField(evt.item);
+        window.fdLayoutChanged && window.fdLayoutChanged();
         clearHighlight(evt.to);
       },
       onEnd: (evt)=>{
-        clearHighlight(evt.to || evt.from);
         rebindMovedField(evt.item);
+        window.fdLayoutChanged && window.fdLayoutChanged();
       }
     });
     sortables.push(s);
@@ -556,6 +558,7 @@
       body.appendChild(wrap);
     }
     rebindMovedField(wrap);
+    window.fdLayoutChanged && window.fdLayoutChanged();
   }
 
   // Busca el wrapper de campo en el formulario vivo (#fd-root)
@@ -590,5 +593,130 @@
     const body = base.querySelector(':scope > .card-body, :scope > .panel-body, :scope > .accordion-body, :scope > .fd-fields-container, :scope > .list-group, :scope > .container, :scope > .row');
     return body || base;
   }
+})();
+
+// ---- SERIALIZACIÓN Y GUARDADO DEL LAYOUT ----
+(function(){
+  const SAVE_URL = 'save-layout.php';          // endpoint PHP
+  const BASE_JSON = 'formulariogenerico2.json';// nombre del archivo base (en /json/)
+  let saveTimer = null;
+  let lastPayload = '';
+
+  function serializeLayout(){
+    const root = document.getElementById('fd-root');
+    if (!root) return {};
+
+    // Tabs (si existen)
+    const tabs = [];
+    const tabList = root.querySelector('ul.nav.nav-tabs');
+    if (tabList){
+      tabList.querySelectorAll(':scope > li > button[data-bs-target]').forEach(btn=>{
+        const paneId = btn.getAttribute('data-bs-target')?.replace('#','') || '';
+        tabs.push({
+          id: paneId || slug(btn.textContent),
+          title: (btn.textContent||'').trim(),
+          pane: paneId
+        });
+      });
+    }
+
+    // Grupos (fieldsets/cards) dentro de cada tab-pane (o sin tabs)
+    const groups = [];
+    const groupEls = root.querySelectorAll('#fd-root fieldset, #fd-root .card, #fd-root .panel, #fd-root .fd-fieldset');
+    groupEls.forEach(g=>{
+      const gid = g.getAttribute('data-group-id') || g.getAttribute('data-fieldset-name') || g.id || slug(getGroupTitle(g));
+      if (!g.getAttribute('data-group-id')) g.setAttribute('data-group-id', gid);
+
+      const parentPane = g.closest('.tab-pane');
+      const tabRef = parentPane ? parentPane.id : null;
+
+      const body = pickFieldsContainer(g) || g;
+      // Wrappers directos de campos
+      const fieldWrappers = Array.from(body.children).filter(isFieldWrapperDirect);
+      const fields = fieldWrappers.map(w=>{
+        const fid = w.getAttribute('data-field-id') ||
+          w.querySelector('[name]')?.getAttribute('name') ||
+          w.querySelector('[id]')?.getAttribute('id') ||
+          slug(w.textContent||'campo');
+        if (!w.getAttribute('data-field-id')) w.setAttribute('data-field-id', fid);
+        return {
+          id: fid,
+          label: (w.querySelector('label')?.textContent||fid||'').trim()
+        };
+      });
+
+      groups.push({
+        id: gid,
+        title: getGroupTitle(g),
+        tab: tabRef,
+        fields: fields
+      });
+    });
+
+    return {
+      archivo: BASE_JSON,
+      tabs: tabs,
+      groups: groups,
+      timestamp: Date.now()
+    };
+  }
+
+  function slug(s){ return String(s||'').trim().toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-_.]+/g,''); }
+  function getGroupTitle(g){
+    const t = g.querySelector(':scope > legend, :scope > .card-header, :scope > [data-fieldset-title]');
+    if (t) return (t.textContent||'').trim() || 'Grupo';
+    return g.getAttribute('data-fieldset-name') || g.id || 'Grupo';
+  }
+  // Reutilizamos pickFieldsContainer y isFieldWrapperDirect si ya existen; si no, define fallback
+  if (typeof pickFieldsContainer !== 'function'){
+    window.pickFieldsContainer = function(base){
+      if (!base) return null;
+      if (base.matches('table')) return base.tBodies[0] || base;
+      return base.querySelector(':scope > .card-body, :scope > .panel-body, :scope > .accordion-body, :scope > .fd-fields-container, :scope > .list-group, :scope > .container, :scope > .row') || base;
+    };
+  }
+  if (typeof isFieldWrapperDirect !== 'function'){
+    window.isFieldWrapperDirect = function(el){
+      if (!el || /^(SCRIPT|STYLE)$/.test(el.tagName)) return false;
+      if (el.matches('fieldset, .card, .panel, .accordion-item, [data-fieldset-name], .fd-fieldset')) return false;
+      if (el.matches('.row,[class*="col-"],.col')) return false;
+      return !!el.querySelector?.('input,select,textarea,[name],[data-name]');
+    };
+  }
+
+  function queueSave(){
+    const data = serializeLayout();
+    const payload = JSON.stringify(data);
+    if (payload === lastPayload) return; // sin cambios reales
+    lastPayload = payload;
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(()=> doSave(payload), 600); // debounce 600ms
+  }
+
+  function doSave(payload){
+    fetch(SAVE_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json' },
+      body: payload
+    })
+    .then(r=>r.json().catch(()=>null))
+    .then(res=>{
+      console.log('[Layout] Guardado', res);
+    })
+    .catch(err=>{
+      console.warn('[Layout] Error guardando', err);
+    });
+  }
+
+  // Exponer para pruebas
+  window.fdSerializeLayout = serializeLayout;
+  window.fdQueueSaveLayout = queueSave;
+
+  // Hook central que llamaremos tras cada cambio DnD
+  window.fdLayoutChanged = function(){
+    queueSave();
+    // Opcional: volver a pintar árbol si quieres reflejar orden
+    window.renderJsonTreeFromForm && window.renderJsonTreeFromForm();
+  };
 })();
 

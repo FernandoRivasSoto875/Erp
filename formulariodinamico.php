@@ -56,69 +56,95 @@ require_once __DIR__ . '/formulariodinamicologica.php';
     /* Espacio para grips en modo diseño (opcional) */
     #fd-root.design-mode fieldset, 
     #fd-root.design-mode .card{ scroll-margin-top:60px; }
+
+    /* Árbol */
+    #json-tree-panel ul{list-style:none;margin:0;padding-left:16px;}
+    #json-tree-panel [data-node="group"]{margin:4px 0;}
+    #json-tree-panel [data-node="group"]>.title{cursor:pointer;user-select:none;padding:2px 4px;border-radius:4px;}
+    #json-tree-panel [data-node="group"]>.title:hover{background:#f3f4f6;}
+    #json-tree-panel [data-node="group"]>.title:before{content:"▾";margin-right:6px;color:#6b7280;}
+    #json-tree-panel [data-node="group"].collapsed>.title:before{content:"▸";}
+    #json-tree-panel [data-node="group"].collapsed>[data-node="fields"]{display:none;}
+    #json-tree-panel [data-node="field"]{padding:2px 4px;border-radius:4px;margin:2px 0;}
+    #json-tree-panel [data-node="field"]:hover{background:#f8fafc;}
+    #json-tree-panel .handle{display:inline-block;margin-right:6px;background:#6f42c1;color:#fff;border-radius:4px;padding:0 6px;font-weight:600;line-height:1.2;}
+    #json-tree-panel .node-fields-list{min-height:14px;padding:4px;border:1px dashed rgba(111,66,193,.35);border-radius:4px;}
+    /* Colores DnD (aseguramos) */
+    #fd-root.design-mode .fd-tab-grip{cursor:grab;display:inline-block;margin-right:6px;background:#6f42c1;color:#fff;border-radius:4px;padding:0 6px;font-weight:600;line-height:1.2;}
+    #fd-root.design-mode .fd-group-grip{cursor:grab;display:inline-block;margin-right:6px;background:#0d6efd;color:#fff;border-radius:4px;padding:0 6px;font-weight:600;line-height:1.2;}
+    #fd-root.design-mode .fd-dnd-grip{cursor:grab;display:inline-block;margin-right:6px;background:#198754;color:#fff;border-radius:4px;padding:0 6px;font-weight:600;line-height:1.2;}
   </style>
 </head>
 <body>
 
 <div class="container-fluid py-2">
-  <div class="d-flex justify-content-between align-items-center">
-    <h5 class="mb-0"><?= htmlspecialchars($titulo_formulario) ?></h5>
-    <div id="fd-design-toolbar">
+  <div class="d-flex justify-content-between align-items-center mb-2">
+    <h5 class="mb-0">Formulario Dinámico (Reset)</h5>
+    <div>
       <label class="form-check-label" style="display:inline-flex;align-items:center;gap:6px;">
         <input type="checkbox" id="designModeToggle" class="form-check-input" <?= $modoDiseno?'checked':''; ?>> Modo diseño
       </label>
-      <a href="?<?= http_build_query(array_merge($_GET,['modoDiseno'=>$modoDiseno?0:1])) ?>" class="btn btn-sm btn-outline-secondary ms-2">
-        <?= $modoDiseno?'Salir diseño':'Entrar diseño' ?>
+      <a class="btn btn-sm btn-outline-secondary ms-2"
+         href="?<?= http_build_query(array_merge($_GET,['modoDiseno'=>$modoDiseno?0:1])) ?>">
+         <?= $modoDiseno?'Salir diseño':'Entrar diseño' ?>
       </a>
     </div>
   </div>
-  <?php if ($descripcion_formulario): ?>
-    <p class="text-muted small mb-2"><?= htmlspecialchars($descripcion_formulario) ?></p>
-  <?php endif; ?>
 
+  <!-- FORM ROOT -->
   <div id="fd-root" class="<?= $modoDiseno?'design-mode':'' ?>">
+    <!-- EJEMPLO MÍNIMO (reemplaza luego con tu render dinámico) -->
     <ul class="nav nav-tabs" id="mainTabs" role="tablist">
       <li class="nav-item" role="presentation">
-        <button class="nav-link active"
-                id="tabA-tab"
-                data-bs-toggle="tab"
-                data-bs-target="#tabA"
-                type="button"
-                role="tab"
-                aria-controls="tabA"
-                aria-selected="true">Tab A</button>
+        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tabGeneral" type="button" role="tab">General</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link"
-                id="tabB-tab"
-                data-bs-toggle="tab"
-                data-bs-target="#tabB"
-                type="button"
-                role="tab"
-                aria-controls="tabB"
-                aria-selected="false">Tab B</button>
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tabExtra" type="button" role="tab">Extra</button>
       </li>
     </ul>
     <div class="tab-content">
-      <div class="tab-pane fade show active p-3" id="tabA" role="tabpanel" aria-labelledby="tabA-tab">
-        <fieldset id="fsCliente"><legend>Cliente</legend>
-          <div class="mb-3"><label class="form-label">Nombre</label><input class="form-control" name="nombre"></div>
+      <div class="tab-pane fade show active p-3" id="tabGeneral" role="tabpanel">
+        <fieldset id="fsCliente">
+          <legend>Cliente</legend>
+          <div class="mb-3">
+            <label class="form-label">Nombre</label>
+            <input class="form-control" name="nombre">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Correo</label>
+            <input class="form-control" name="correo">
+          </div>
+        </fieldset>
+        <fieldset id="fsDireccion">
+          <legend>Dirección</legend>
+          <div class="mb-3">
+            <label class="form-label">Ciudad</label>
+            <input class="form-control" name="ciudad">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">País</label>
+            <input class="form-control" name="pais">
+          </div>
         </fieldset>
       </div>
-      <div class="tab-pane fade p-3" id="tabB" role="tabpanel" aria-labelledby="tabB-tab">
-        <fieldset id="fsDireccion"><legend>Dirección</legend>
-          <div class="mb-3"><label class="form-label">Ciudad</label><input class="form-control" name="ciudad"></div>
+      <div class="tab-pane fade p-3" id="tabExtra" role="tabpanel">
+        <fieldset id="fsExtra">
+          <legend>Extra</legend>
+          <div class="mb-3">
+            <label class="form-label">Nota</label>
+            <input class="form-control" name="nota">
+          </div>
         </fieldset>
       </div>
     </div>
   </div>
 
   <hr>
-  <h6 class="mt-3">Árbol (estructura)</h6>
+  <h6 class="mt-3">Árbol</h6>
   <div id="json-tree-panel"></div>
 </div>
 
-<!-- Scripts -->
+<!-- SCRIPTS ORDEN CORRECTO -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
         crossorigin="anonymous"></script>
@@ -127,23 +153,27 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 <script src="js/fd-dnd-lite.js"></script>
 <script src="js/fd-tree-render.js"></script>
 <script>
-  // Toggle modo diseño
   (function(){
     const root = document.getElementById('fd-root');
     const toggle = document.getElementById('designModeToggle');
     function emit(on){ window.dispatchEvent(new CustomEvent('design-mode-changed',{detail:{on}})); }
     function refresh(){ window.fdDndLiteRefresh && window.fdDndLiteRefresh(); }
+
     if (toggle){
       toggle.addEventListener('change', function(){
         root.classList.toggle('design-mode', this.checked);
         emit(this.checked); refresh();
+        window.renderJsonTreeFromForm && window.renderJsonTreeFromForm();
       });
     }
+    document.addEventListener('click', e=>{
+      const t = e.target.closest('#json-tree-panel [data-node="group"] > .title');
+      if (t) t.parentElement.classList.toggle('collapsed');
+    });
     document.addEventListener('DOMContentLoaded', ()=>{
       window.renderJsonTreeFromForm && window.renderJsonTreeFromForm();
-      // Verificación Bootstrap:
-      console.log('[Bootstrap test] nav-tabs:', !!document.querySelector('.nav.nav-tabs'),
-                  ' Version JS:', bootstrap?.Tooltip ? 'OK' : 'NO');
+      console.log('[TEST] Bootstrap:', !!document.querySelector('.nav.nav-tabs'),
+                  'Grupos form:', document.querySelectorAll('#fd-root fieldset').length);
     });
   })();
 </script>

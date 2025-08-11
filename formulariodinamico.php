@@ -245,17 +245,36 @@ function fd_render_layout_fallback($layout, $fieldsets) {
     body.design-mode .fd-json-tree-panel{display:block;}
     .design-toolbar{gap:.5rem;}
     fieldset.draggable-fieldset{cursor:move;}
+    .fd-shell{display:flex;align-items:flex-start;gap:1rem;}
+    .fd-form-area{flex:1 1 auto;min-width:0;}
+    #fd-tree-side{
+      width:320px;max-width:320px;background:#f8f9fa;border:1px solid #dee2e6;
+      border-radius:6px;padding:8px;display:flex;flex-direction:column;
+    }
+    #fd-tree-side.hidden{display:none!important;}
+    #fd-tree-side h6{font-size:.85rem;text-transform:uppercase;letter-spacing:.5px;margin:0 0 .5rem;}
+    #fd-tree-toolbar{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;}
+    #fd-tree-toolbar button{font-size:.7rem;}
+    #fd-tree{flex:1 1 auto;overflow:auto;font-size:.78rem;line-height:1.2;}
+    #fd-tree ul{list-style:none;margin:0;padding-left:14px;}
+    #fd-tree li{margin:2px 0;}
+    #fd-tree .g-title{display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:4px;cursor:pointer;background:#fff;}
+    #fd-tree .g-title:hover{background:#eef2ff;}
+    #fd-tree .f-item{display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:4px;cursor:grab;}
+    #fd-tree .f-item:hover{background:#f1f3fb;}
+    #fd-tree .handle{background:#6f42c1;color:#fff;border-radius:4px;padding:0 5px;font-weight:600;cursor:grab;line-height:1.1;}
+    #fd-tree .actions button{border:none;background:transparent;color:#666;padding:0 2px;font-size:.75rem;cursor:pointer;}
+    #fd-tree .actions button:hover{color:#000;}
+    #fd-tree .collapsed > ul{display:none;}
+    /* Grips form (ya en modo diseño) */
+    #fd-root.design-mode .fd-dnd-grip,#fd-root.design-mode .fd-group-grip,#fd-root.design-mode .fd-tab-grip{
+      cursor:grab;display:inline-block;margin-right:6px;background:#198754;color:#fff;border-radius:4px;padding:0 6px;font-weight:600;line-height:1.2;
+    }
   </style>
 </head>
 <body>
   <div id="fd-root" class="<?php echo $modoDiseno?'design-mode':''; ?>">
-    <!-- TODO: aquí todo tu formulario / layout -->
-    <div class="d-flex align-items-center mb-2">
-      <label class="form-check-label" style="display:inline-flex;gap:6px;">
-        <input type="checkbox" id="designModeToggle" <?php echo $modoDiseno?'checked':''; ?>> Modo diseño
-      </label>
-    </div>
-    <!-- ... resto ... -->
+    <!-- (elimina aquí el label/checkbox duplicado) -->
   </div>
 
   <!-- Botón/árbol aparecerán aquí -->
@@ -272,29 +291,41 @@ function fd_render_layout_fallback($layout, $fieldsets) {
           <input type="checkbox" class="form-check-input" id="designModeToggle" <?php echo $modoDiseno?'checked':''; ?>>
           <span class="form-check-label">Modo diseño</span>
         </label>
-        <button type="button" class="btn btn-sm btn-primary" id="saveLayoutBtn" <?php echo $modoDiseno?'':'disabled'; ?>>Guardar diseño</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleTreeBtn">Árbol</button>
+        <button type="button" class="btn btn-sm btn-primary" id="saveLayoutBtn" <?php echo $modoDiseno?'':'disabled'; ?>>Guardar</button>
       </div>
     </div>
 
-    <form id="formulariodinamico" data-layout-container class="mb-4">
-      <?php echo fd_render_layout_fallback($layout, $fieldsets); ?>
-      <div class="mt-3">
-        <?php foreach ($botones_config as $b): 
-          $txt = htmlspecialchars($b['texto'] ?? 'Botón');
-          $acc = $b['accion'] ?? 'submit';
-          $cls = htmlspecialchars($b['clase'] ?? 'btn-secondary');
-          $type = ($acc === 'reset' ? 'reset' : 'submit');
-        ?>
-          <button type="<?php echo $type; ?>" class="btn <?php echo $cls; ?>"><?php echo $txt; ?></button>
-        <?php endforeach; ?>
+    <div class="fd-shell">
+      <div class="fd-form-area">
+        <form id="formulariodinamico" data-layout-container class="mb-4">
+          <?php echo fd_render_layout_fallback($layout, $fieldsets); ?>
+          <div class="mt-3">
+            <?php foreach ($botones_config as $b):
+              $txt = htmlspecialchars($b['texto'] ?? 'Botón');
+              $acc = $b['accion'] ?? 'submit';
+              $cls = htmlspecialchars($b['clase'] ?? 'btn-secondary');
+              $type = ($acc === 'reset' ? 'reset' : 'submit');
+            ?>
+              <button type="<?php echo $type; ?>" class="btn <?php echo $cls; ?>"><?php echo $txt; ?></button>
+            <?php endforeach; ?>
+          </div>
+        </form>
       </div>
-    </form>
-
-    <?php if ($modoDiseno): ?>
-      <hr>
-      <h6 class="mt-3 mb-2">Árbol (estructura)</h6>
-      <div id="json-tree-panel"></div>
-    <?php endif; ?>
+      <div id="fd-tree-side" class="<?php echo $modoDiseno ? '' : 'hidden'; ?>">
+        <h6 class="d-flex justify-content-between align-items-center">
+          Estructura
+          <button type="button" id="closeTree" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:.6rem;">×</button>
+        </h6>
+        <div id="fd-tree-toolbar">
+          <button class="btn btn-light btn-sm" data-act="add-group">+ Grupo</button>
+          <button class="btn btn-light btn-sm" data-act="add-field">+ Campo</button>
+          <button class="btn btn-light btn-sm" data-act="rename">Renombrar</button>
+          <button class="btn btn-light btn-sm" data-act="delete">Borrar</button>
+        </div>
+        <div id="fd-tree"></div>
+      </div>
+    </div>
   </div>
 
   <link rel="stylesheet"
@@ -304,7 +335,6 @@ function fd_render_layout_fallback($layout, $fieldsets) {
 <script>
   window.FORM_CONFIG = { archivo_json: 'formulariogenerico2.json' };
 </script>
-<script src="js/json-tree-panel.js"></script>
   <script>
 (function(){
   const root  = document.getElementById('fd-root');
@@ -408,6 +438,7 @@ function fd_render_layout_fallback($layout, $fieldsets) {
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script src="js/fd-dnd-lite-min.js"></script>
+  <script src="js/fd-tree-side.js"></script>
   <script>
   (function(){
     const form = document.getElementById('formulariodinamico');

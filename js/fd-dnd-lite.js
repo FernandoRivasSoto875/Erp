@@ -417,4 +417,40 @@
       else w.insertBefore(grip, w.firstChild);
     }
   }
+
+  // ¿Este contenedor tiene grupos (fieldsets/cards) como hijos directos?
+  function hasDirectGroup(el){
+    if (!el || el.nodeType!==1) return false;
+    return Array.from(el.children).some(isGroupElementDirect);
+  }
+
+  // Devuelve contenedores finales donde van los campos (evita los que contienen grupos)
+  function getFieldContainers(){
+    const bases = $$('#fd-root fieldset, #fd-root .card, #fd-root .panel, #fd-root [data-fd-fields-group], #fd-root .fd-fields-container, #fd-root table, #fd-root .fd-fieldset');
+    const out = [];
+
+    bases.forEach(base=>{
+      const body = pickFieldsContainer(base);
+      if (!body) return;
+
+      // Tablas: tbody
+      if (body.matches('table')){
+        out.push(body);
+        return;
+      }
+
+      // Si el body es una fila, usa cada columna que NO tenga grupos directos
+      if (body.matches('.row')){
+        const cols = Array.from(body.children).filter(el=> el.matches('[class*="col-"], .col'));
+        cols.forEach(col=> { if (!hasDirectGroup(col)) out.push(col); });
+        return;
+      }
+
+      // Si el body tiene grupos directos, no es contenedor de campos
+      if (!hasDirectGroup(body)) out.push(body);
+    });
+
+    // Evita duplicados
+    return Array.from(new Set(out));
+  }
 })();

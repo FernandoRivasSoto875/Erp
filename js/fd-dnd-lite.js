@@ -247,20 +247,68 @@
   }
 
   // ---------- Fields dentro y entre fieldsets ----------
+  // REEMPLAZAR COMPLETO
   function attachFieldsDnD(){
-    const containers = getFieldContainers();
+    const bases = $$('#fd-root fieldset, #fd-root .card, #fd-root .panel, #fd-root [data-fd-fields-group], #fd-root .fd-fields-container, #fd-root table, #fd-root .fd-fieldset');
 
-    containers.forEach(cont=>{
-      if (!cont || cont.nodeType!==1) return;
-      if (cont.dataset.fdSortableField === '1') return;
-      createFieldSortable(cont);
+    // Mapa: parentElement -> Set<wrapper>
+    const parentsMap = new Map();
+    const emptyBodies = new Set();
+
+    bases.forEach(base=>{
+      const scope = pickFieldsContainer(base) || base;
+
+      // 1) Detecta wrappers típicos dentro del scope
+      let wrappers = Array.from(scope.querySelectorAll(
+        '.form-group, .mb-3, .form-floating, .input-group, .fd-field, [data-field-wrapper], tr, li'
+      )).filter(w => !isGroupElementDirect(w) && isFieldWrapperCandidate(w));
+
+      // 2) Fallback: si no encontró ninguno, arma wrappers desde los controles
+      if (wrappers.length === 0){
+        const ctrls = Array.from(scope.querySelectorAll('input,select,textarea,[name],[data-name]'));
+        ctrls.forEach(ct=>{
+          let w = ct.closest('.form-group, .mb-3, .form-floating, .input-group, .fd-field, [data-field-wrapper], tr, li');
+          if (!w) w = ct.closest('tr, li, td, div, span') || ct.parentElement;
+          if (!w) return;
+          if (!scope.contains(w)) return;
+          if (isGroupElementDirect(w)) return;
+          if (!isFieldWrapperCandidate(w)) return;
+          wrappers.push(w);
+        });
+        // dedup
+        wrappers = Array.from(new Set(wrappers));
+      }
+
+      if (wrappers.length){
+        wrappers.forEach(w=>{
+          const p = w.parentElement;
+          if (!p) return;
+          if (!parentsMap.has(p)) parentsMap.set(p, new Set());
+          parentsMap.get(p).add(w);
+        });
+      } else {
+        // No hay wrappers aún: habilita drop en el body vacío
+        emptyBodies.add(scope);
+      }
+    });
+
+    // Inicializa Sortable por cada padre real
+    parentsMap.forEach((set, parent)=>{
+      ensureFieldContainerSortable(parent, Array.from(set));
+    });
+
+    // También habilita los bodies vacíos
+    emptyBodies.forEach(body=>{
+      ensureFieldContainerSortable(body, []);
     });
   }
 
-  function createFieldSortable(cont){
+  // Crea Sortable en un contenedor de campos si no existe y marca wrappers
+  function ensureFieldContainerSortable(cont, wrappers){
+    if (!cont || cont.nodeType!==1) return;
+    if (cont.dataset.fdSortableField === '1') return;
     cont.dataset.fdSortableField = '1';
 
-    const wrappers = Array.from(cont.children).filter(isFieldWrapperDirect);
     wrappers.forEach(w=> { markFieldWrapper(w); ensureFieldGrip(w); });
 
     cont.addEventListener('click', (e)=>{
@@ -272,7 +320,7 @@
       draggable: '.fd-field-draggable',
       handle: '.fd-dnd-grip',
       ghostClass: 'fd-dnd-ghost',
-      group: { name: 'fd-fields', pull: true, put: true },
+      group: { name: 'fd-fields', pull: true, put: true }, // mover entre grupos
       direction: 'vertical',
       swapThreshold: 0.5,
       emptyInsertThreshold: 8,
@@ -283,8 +331,6 @@
       scrollSpeed: 10,
       forceFallback: true,
       fallbackOnBody: true,
-
-      // NUEVO: posicionamiento exacto sobre el campo objetivo
       onMove: (evt)=>{
         const rel = evt.related && evt.related.matches('.fd-field-draggable') ? evt.related : null;
         lastFieldDrop.set(evt.to, { related: rel, after: !!evt.willInsertAfter });
@@ -313,81 +359,13 @@
       }
     });
     sortables.push(s);
-    return s;
   }
 
-  function rebindMovedField(item){
-    if (!item) return;
-    // Asegura clases y grip en el ítem
-    markFieldWrapper(item);
-    ensureFieldGrip(item);
-
-    // Asegura que el contenedor destino tenga Sortable activo
-    const parent = item.parentElement;
-    if (parent && parent.nodeType===1 && parent.dataset.fdSortableField !== '1'){
-      createFieldSortable(parent);
-    }
-  }
-
-  // ¿Este contenedor tiene grupos (fieldsets/cards) como hijos directos?
-  function hasDirectGroup(el){
-    if (!el || el.nodeType!==1) return false;
-    return Array.from(el.children).some(isGroupElementDirect);
-  }
-
-  // Devuelve contenedores finales donde van los campos (evita los que contienen grupos)
-  function getFieldContainers(){
-    const bases = $$('#fd-root fieldset, #fd-root .card, #fd-root .panel, #fd-root [data-fd-fields-group], #fd-root .fd-fields-container, #fd-root table, #fd-root .fd-fieldset');
-    const out = [];
-
-    bases.forEach(base=>{
-      const body = pickFieldsContainer(base);
-      if (!body) return;
-
-      // Tablas: tbody
-      if (body.matches('table')){
-        out.push(body);
-        return;
-      }
-
-      // Si el body es una fila, usa cada columna que NO tenga grupos directos
-      if (body.matches('.row')){
-        const cols = Array.from(body.children).filter(el=> el.matches('[class*="col-"], .col'));
-        cols.forEach(col=> { if (!hasDirectGroup(col)) out.push(col); });
-        return;
-      }
-
-      // Si el body tiene grupos directos, no es contenedor de campos
-      if (!hasDirectGroup(body)) out.push(body);
-    });
-
-    // Evita duplicados
-    return Array.from(new Set(out));
-  }
-
-  function pickFieldsContainer(base){
-    if (!base || base.nodeType!==1) return null;
-    if (base.matches('table')) return (base.tBodies && base.tBodies[0]) || base;
-
-    // Preferir cuerpos típicos del grupo
-    const body = base.querySelector(
-      ':scope > .card-body, :scope > .panel-body, :scope > .accordion-body, :scope > .fd-fields-container, :scope > .list-group, :scope > .container, :scope > .row'
-    );
-    return body || base;
-  }
-
-  function isFieldWrapperDirect(el){
+  // Un wrapper de campo válido debe contener controles
+  function isFieldWrapperCandidate(el){
     if (!el || el.tagName==='SCRIPT' || el.tagName==='STYLE') return false;
-    // No considerar grupos completos ni contenedores de grid como wrappers
-    if (el.matches('fieldset, .card, .panel, .accordion-item, [data-fieldset-name], .fd-fieldset')) return false;
     if (el.matches('.row, [class*="col-"], .col')) return false;
-    // Debe contener un control
     return hasControl(el);
-  }
-
-  function markFieldWrapper(el){
-    if (!el || el.nodeType!==1) return;
-    el.classList.add('fd-field-draggable', 'fd-badge-field');
   }
 
   // NUEVO: resaltado del destino y helpers de selección

@@ -9,13 +9,55 @@
   if(!root || !panel || !treeEl || !form) return;
 
   let TYPE_META = { field_types:{}, fieldset_types:{} };
-  let typesLoaded = false;
 
   fetch('json/form-types.json')
     .then(r=>r.ok?r.json():null)
-    .then(j=>{ if(j) TYPE_META=j; typesLoaded=true; buildTree(); })
-    .catch(()=>{ typesLoaded=true; buildTree(); });
+    .then(j=>{ if(j) TYPE_META=j; buildTree(); })
+    .catch(()=> buildTree());
 
+  // ---- Helpers ----
+  function pickBody(g){
+    return g.querySelector(':scope > .card-body, :scope > .fd-fields-container') || g;
+  }
+  function isGroup(el){
+    return !!el && el.matches('fieldset,.fd-fieldset,.card,.panel');
+  }
+  function isFieldWrapper(el){
+    if(!el || /^(SCRIPT|STYLE)$/.test(el.tagName)) return false;
+    if(isGroup(el)) return false;
+    if(el.matches('.row,[class*="col-"],.col')) return false;
+    return !!el.querySelector?.('input,select,textarea,[name],[data-name]');
+  }
+  function getTopGroups(){
+    // Todos los grupos que NO están contenidos dentro de otro grupo
+    const all = Array.from(form.querySelectorAll('fieldset,.fd-fieldset,.card,.panel'));
+    return all.filter(g=> !g.parentElement.closest('fieldset,.fd-fieldset,.card,.panel'));
+  }
+  function groupTitle(g){
+    return (g.querySelector(':scope > legend, :scope > .card-header')?.textContent ||
+            g.getAttribute('data-fieldset-name') || g.id || 'Grupo').trim();
+  }
+  function ensureGroupId(g){
+    let id = g.getAttribute('data-group-id') || g.id;
+    if(!id){
+      id = 'g_'+Math.random().toString(36).slice(2,8);
+      g.setAttribute('data-group-id', id);
+    } else g.setAttribute('data-group-id', id);
+    return id;
+  }
+  function ensureFieldId(w){
+    let id = w.getAttribute('data-field-id') ||
+      w.querySelector('[name]')?.name ||
+      w.id;
+    if(!id){
+      id = 'f_'+Math.random().toString(36).slice(2,8);
+      w.setAttribute('data-field-id', id);
+    } else w.setAttribute('data-field-id', id);
+    return id;
+  }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  // ---- Iconos ----
   function getFieldIcon(tipo){
     if(!tipo) return 'far fa-square';
     return (TYPE_META.field_types?.[tipo]?.icon) || iconFallbackField(tipo);
@@ -46,50 +88,15 @@
     return 'fas fa-layer-group';
   }
 
-  function pickBody(g){
-    return g.querySelector(':scope > .card-body, :scope > .fd-fields-container') || g;
-  }
-  function isGroup(el){
-    return el && el.matches('fieldset,.fd-fieldset,.card,.panel');
-  }
-  function isFieldWrapper(el){
-    if(!el || /^(SCRIPT|STYLE)$/.test(el.tagName)) return false;
-    if(isGroup(el)) return false;
-    if(el.matches('.row,[class*="col-"],.col')) return false;
-    return !!el.querySelector?.('input,select,textarea,[name],[data-name]');
-  }
-  function groupTitle(g){
-    return (g.querySelector(':scope > legend, :scope > .card-header')?.textContent ||
-            g.getAttribute('data-fieldset-name') || g.id || 'Grupo').trim();
-  }
-  function ensureGroupId(g){
-    let id = g.getAttribute('data-group-id') || g.id;
-    if(!id){
-      id = 'g_'+Math.random().toString(36).slice(2,8);
-      g.setAttribute('data-group-id', id);
-    } else {
-      g.setAttribute('data-group-id', id);
-    }
-    return id;
-  }
-  function ensureFieldId(w){
-    let id = w.getAttribute('data-field-id') ||
-      w.querySelector('[name]')?.name ||
-      w.id;
-    if(!id){
-      id = 'f_'+Math.random().toString(36).slice(2,8);
-      w.setAttribute('data-field-id', id);
-    } else {
-      w.setAttribute('data-field-id', id);
-    }
-    return id;
-  }
-  function escapeHtml(s){ return s.replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
+  // ---- Build Tree ----
   function buildTree(){
     if(panel.classList.contains('hidden')) return;
     treeEl.innerHTML='';
-    const topGroups = Array.from(form.children).filter(isGroup);
+    const topGroups = getTopGroups();
+    if(!topGroups.length){
+      treeEl.innerHTML = '<div class="text-muted small">Sin grupos</div>';
+      return;
+    }
     const ul = document.createElement('ul');
     ul.className='fd-tree-root';
     topGroups.forEach(g=> ul.appendChild(buildGroupNode(g)));
@@ -107,7 +114,6 @@
     li.dataset.node='group';
     li.dataset.id = gid;
     li.className='fd-tree-group';
-
     const titleDiv = document.createElement('div');
     titleDiv.className='g-title';
     titleDiv.innerHTML = `
@@ -120,18 +126,16 @@
         <button data-act="add-field" title="Nuevo campo">＋C</button>
         <button data-act="rename" title="Renombrar">✎</button>
         <button data-act="delete" title="Borrar">🗑</button>
-      </span>
-    `;
+      </span>`;
     li.appendChild(titleDiv);
 
     const body = pickBody(g);
-    const childrenGroups = Array.from(body.children).filter(isGroup);
+    const childGroups = Array.from(body.children).filter(isGroup);
     const fields = Array.from(body.children).filter(isFieldWrapper);
-
-    if(childrenGroups.length || fields.length){
+    if(childGroups.length || fields.length){
       const cu = document.createElement('ul');
       cu.className='fd-tree-children';
-      childrenGroups.forEach(ch=> cu.appendChild(buildGroupNode(ch)));
+      childGroups.forEach(ch=> cu.appendChild(buildGroupNode(ch)));
       fields.forEach(f=> cu.appendChild(buildFieldNode(f)));
       li.appendChild(cu);
     }
@@ -158,12 +162,11 @@
           <button data-act="rename" title="Renombrar">✎</button>
           <button data-act="delete" title="Borrar">🗑</button>
         </span>
-      </div>
-    `;
+      </div>`;
     return li;
   }
 
-  // CRUD / filter / DnD (igual que versión anterior adaptado)
+  // ---- CRUD ----
   function addGroup(parentLi){
     let container;
     if(parentLi){
@@ -217,6 +220,7 @@
     buildTree();
   }
 
+  // ---- Filtro ----
   function applyFilter(){
     const term = (filterInput?.value||'').toLowerCase().trim();
     if(!term){
@@ -236,6 +240,7 @@
   }
   filterInput?.addEventListener('input', applyFilter);
 
+  // ---- DnD ----
   function enableDnD(){
     if(!window.Sortable) return;
     treeEl.querySelectorAll('ul').forEach(u=>{
@@ -267,9 +272,8 @@
       container.appendChild(liveGroup);
       reorderSiblings(parentUl);
     } else {
-      const groupLi = parentGroupLi;
-      const body = groupLi
-        ? pickBody(form.querySelector('[data-group-id="'+CSS.escape(groupLi.dataset.id)+'"]'))
+      const body = parentGroupLi
+        ? pickBody(form.querySelector('[data-group-id="'+CSS.escape(parentGroupLi.dataset.id)+'"]'))
         : form;
       reorderFields(parentUl, body);
     }
@@ -300,7 +304,7 @@
       });
   }
 
-  // Eventos panel
+  // ---- Eventos panel ----
   treeEl.addEventListener('click', e=>{
     const btn = e.target.closest('button[data-act]');
     if(btn){
@@ -351,9 +355,7 @@
 
   if(root.classList.contains('design-mode')){
     panel.classList.remove('hidden');
-  } else {
-    panel.classList.add('hidden');
-  }
-  // Build initial after types load (done in fetch then)
+  } else panel.classList.add('hidden');
+
   window.fdTreeRebuild = buildTree;
 })();

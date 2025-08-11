@@ -18,22 +18,39 @@
     const st = document.createElement('style');
     st.id = 'fd-lite-dnd-css';
     st.textContent = `
-      /* Grip de campos (normal) */
-      #fd-root.design-mode .fd-dnd-grip{
+      /* Grip de pestañas (morado) */
+      #fd-root.design-mode .fd-tab-grip{
         cursor:grab; user-select:none; touch-action:none;
         display:inline-block; margin-right:6px;
+        background:#6f42c1; color:#fff; border-radius:4px;
+        padding:0 6px; font-weight:600; line-height:1.2;
+        box-shadow:0 0 0 1px rgba(111,66,193,.25) inset;
       }
-      /* Grip de grupos/fieldsets (destacado) */
+      #fd-root.design-mode .fd-tab-grip:hover{ background:#5a36a1; }
+      #fd-root.design-mode .fd-tab-grip:active{ cursor:grabbing; transform:scale(.98); }
+
+      /* Grip de grupos/fieldsets (azul) */
       #fd-root.design-mode .fd-group-grip{
         cursor:grab; user-select:none; touch-action:none;
         display:inline-block; margin-right:6px;
         background:#0d6efd; color:#fff; border-radius:4px;
         padding:0 6px; font-weight:600; line-height:1.2;
         box-shadow:0 0 0 1px rgba(13,110,253,.25) inset;
-        position:relative; z-index:3;  /* nuevo */
+        position:relative; z-index:3;
       }
       #fd-root.design-mode .fd-group-grip:hover{ background:#0b5ed7; }
       #fd-root.design-mode .fd-group-grip:active{ cursor:grabbing; transform:scale(.98); }
+
+      /* Grip de campos (verde) */
+      #fd-root.design-mode .fd-dnd-grip{
+        cursor:grab; user-select:none; touch-action:none;
+        display:inline-block; margin-right:6px;
+        background:#198754; color:#fff; border-radius:4px;
+        padding:0 6px; font-weight:600; line-height:1.2;
+        box-shadow:0 0 0 1px rgba(25,135,84,.25) inset;
+      }
+      #fd-root.design-mode .fd-dnd-grip:hover{ background:#157347; }
+      #fd-root.design-mode .fd-dnd-grip:active{ cursor:grabbing; transform:scale(.98); }
 
       /* Ghost al arrastrar */
       #fd-root.design-mode .fd-dnd-ghost{ opacity:.65; background:#eef2ff !important; }
@@ -80,21 +97,21 @@
       Array.from(ul.children).forEach(li=>{
         const link = li.querySelector('a,button');
         if (!link) return;
-        if (!link.querySelector('.fd-dnd-grip')) {
+        if (!link.querySelector('.fd-tab-grip')) {
           const g = document.createElement('span');
-          g.className = 'fd-dnd-grip';
+          g.className = 'fd-tab-grip';
           g.title = 'Arrastra para reordenar pestañas';
           g.textContent = '⋮⋮';
           link.prepend(g);
         }
       });
       ul.addEventListener('click', (e)=>{
-        if (isDesign() && e.target.closest('.fd-dnd-grip')) e.preventDefault();
+        if (isDesign() && e.target.closest('.fd-tab-grip')) e.preventDefault();
       });
       const s = new Sortable(ul, {
         animation: 150,
         draggable: 'li',
-        handle: '.fd-dnd-grip',
+        handle: '.fd-tab-grip',
         ghostClass: 'fd-dnd-ghost',
         onEnd: ()=> syncTabContent(ul)
       });
@@ -141,7 +158,8 @@
       if (container.dataset.fdSortableFs === '1') return;
       container.dataset.fdSortableFs = '1';
 
-      groups.forEach(g=> ensureGroupGrip(g));
+      // marcar como draggable + grip visible
+      groups.forEach(g=> { markFieldsetGroup(g); ensureGroupGrip(g); });
 
       const s = new Sortable(container, {
         animation: 150,
@@ -179,6 +197,12 @@
         onEnd: (evt)=> rebindMovedGroup(evt.item)
       });
       sortables.push(s);
+    }
+  }
+
+  function markFieldsetGroup(el){
+    if (el && el.nodeType===1 && !el.classList.contains('fd-fs-draggable')) {
+      el.classList.add('fd-fs-draggable');
     }
   }
 

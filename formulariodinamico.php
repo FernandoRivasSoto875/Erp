@@ -21,26 +21,156 @@ require_once __DIR__ . '/formulariodinamicofunciones.php';
 require_once __DIR__ . '/formulariodinamicologica.php';
 
 // Helper mínimo para fallback (si no existe motor de render)
-function fd_render_field_simple($f) {
-    $tipo = htmlspecialchars($f['tipo'] ?? $f['type'] ?? 'text');
-    $name = htmlspecialchars($f['nombre'] ?? $f['name'] ?? '');
-    $label= htmlspecialchars($f['etiqueta'] ?? $f['label'] ?? $name);
-    $ph   = htmlspecialchars($f['placeholder'] ?? '');
-    if ($tipo === 'hidden') {
-        $val = htmlspecialchars($f['valor_predeterminado'] ?? $f['value'] ?? '');
-        return "<input type='hidden' name='{$name}' value='{$val}'>";
+function fd_build_attr(array $attrs){
+    $out = [];
+    foreach ($attrs as $k=>$v){
+        if ($v === null || $v === false || $v === '') continue;
+        if ($v === true) { $out[] = $k; continue; }
+        $out[] = $k . "='" . htmlspecialchars($v, ENT_QUOTES) . "'";
     }
-    $ctrl = "<input class='form-control' type='{$tipo}' name='{$name}' placeholder='{$ph}'>";
-    if ($tipo === 'textarea') $ctrl = "<textarea class='form-control' name='{$name}' placeholder='{$ph}'></textarea>";
-    return "<div class='mb-2 fd-field-wrapper' data-field-name='{$name}'>{$label}<br>{$ctrl}</div>";
+    return $out ? ' '.implode(' ', $out) : '';
 }
-function fd_render_fieldset_simple($nombre, $fs) {
-    $titulo = htmlspecialchars($fs['titulo'] ?? $fs['legend'] ?? $nombre);
-    $htmlCampos = '';
-    foreach (($fs['campos'] ?? $fs['fields'] ?? []) as $c) {
-        $htmlCampos .= fd_render_field_simple($c);
+function fd_mask_to_pattern($mask){
+    if (!$mask) return '';
+    // Convierte # -> \d, A -> [A-Za-z], * -> .
+    $p = '';
+    for ($i=0;$i<strlen($mask);$i++){
+        $c = $mask[$i];
+        if ($c === '#') $p .= '\\d';
+        elseif ($c === 'A') $p .= '[A-Za-z]';
+        elseif ($c === '*') $p .= '.';
+        else $p .= preg_quote($c,'/');
     }
-    return "<fieldset class='mb-3 p-2 border rounded draggable-fieldset' data-fieldset-name='{$nombre}'><legend class='small m-0 px-1'>{$titulo}</legend>{$htmlCampos}</fieldset>";
+    return '^'.$p.'$';
+}
+function fd_render_field($f){
+    // Normaliza claves
+    $tipo   = strtolower($f['tipo'] ?? $f['type'] ?? 'text');
+    $nombre = $f['nombre'] ?? $f['name'] ?? '';
+    $etiqueta = $f['etiqueta'] ?? $f['label'] ?? $nombre;
+    $valorDef = $f['valor_predeterminado'] ?? $f['default'] ?? $f['value'] ?? '';
+    $ph    = $f['placeholder'] ?? '';
+    $ayuda = $f['ayuda'] ?? $f['help'] ?? '';
+    $req   = !empty($f['obligatorio']) || !empty($f['required']);
+    $ro    = !empty($f['readonly']);
+    $dis   = !empty($f['disabled']);
+    $min   = $f['min'] ?? null;
+    $max   = $f['max'] ?? null;
+    $step  = $f['step'] ?? null;
+    $maxlen= $f['longitud'] ?? $f['maxlength'] ?? null;
+    $mask  = $f['mascara'] ?? $f['mask'] ?? '';
+    $pattern = fd_mask_to_pattern($mask);
+    $opcs  = $f['opciones'] ?? $f['options'] ?? [];
+    $id    = $f['id'] ?? ($nombre ? 'fld_'.$nombre : 'fld_'.uniqid());
+    $classes = ['form-control'];
+    if (in_array($tipo, ['checkbox','radio'])) $classes = ['form-check-input'];
+    $wrapperClasses = ['mb-3','fd-field-wrapper','fd-field-tipo-'.$tipo];
+    if ($req) $wrapperClasses[] = 'fd-required';
+    $dataAttrs = [
+        'data-field-name'=>$nombre,
+        'data-field-tipo'=>$tipo,
+        'data-required'=>$req?'1':'0',
+        'data-mask'=>$mask ?: null
+    ];
+    $attr = [
+        'type'=> in_array($tipo,['text','password','email','number','date','datetime','hidden']) ? ($tipo==='datetime'?'datetime-local':$tipo) : 'text',
+        'name'=>$nombre,
+        'id'=>$id,
+        'class'=>implode(' ',$classes),
+        'placeholder'=>$ph ?: null,
+        'value'=>!in_array($tipo,['textarea','select','radio']) ? $valorDef : null,
+        'required'=>$req,
+        'readonly'=>$ro,
+        'disabled'=>$dis,
+        'min'=>$min,
+        'max'=>$max,
+        'step'=>$step,
+        'maxlength'=>$maxlen,
+        'pattern'=>$pattern ?: null,
+        'autocomplete'=>'off'
+    ];
+    // Campo hidden directo
+    if ($tipo === 'hidden'){
+        return "<input ".fd_build_attr($attr).">";
+    }
+    // Label
+    $labelHtml = "<label for='".htmlspecialchars($id,ENT_QUOTES)."' class='form-label mb-1'>"
+                .htmlspecialchars($etiqueta)
+                .($req?" <span class='text-danger'>*</span>":'')
+                ."</label>";
+    $controlHtml = '';
+    if ($tipo === 'textarea'){
+        $controlHtml = "<textarea ".fd_build_attr(array_diff_key($attr,['type'=>1,'value'=>1])).">".htmlspecialchars($valorDef)."</textarea>";
+    } elseif ($tipo === 'select'){
+        $optionsHtml = '';
+        // Opciones: puede ser lista de strings o array key=>label
+        if ($opcs && is_array($opcs)){
+            foreach ($opcs as $k=>$v){
+                if (is_array($v) && isset($v['valor'])) { // caso [{valor:.., texto:..}]
+                    $val = $v['valor']; $txt = $v['texto'] ?? $v['label'] ?? $val;
+                } else {
+                    $val = is_int($k)? $v : $k;
+                    $txt = is_int($k)? $v : $v;
+                }
+                $sel = ((string)$val === (string)$valorDef) ? " selected" : "";
+                $optionsHtml .= "<option value='".htmlspecialchars($val,ENT_QUOTES)."'{$sel}>".htmlspecialchars($txt)."</option>";
+            }
+        }
+        $controlHtml = "<select ".fd_build_attr(array_diff_key($attr,['type'=>1,'value'=>1])).">{$optionsHtml}</select>";
+    } elseif ($tipo === 'checkbox'){
+        // Para checkbox ponemos el label al lado
+        $attr['class'] = 'form-check-input';
+        $attr['value'] = $valorDef ?: '1';
+        if (!empty($f['checked']) || (string)$valorDef==='1') $attr['checked']=true;
+        $controlHtml = "<div class='form-check'>"
+                      ."<input ".fd_build_attr($attr)."> "
+                      ."<label class='form-check-label' for='".htmlspecialchars($id,ENT_QUOTES)."'>".htmlspecialchars($etiqueta).($req?" *":"")."</label>"
+                      ."</div>";
+        $labelHtml = ''; // ya incluido
+    } elseif ($tipo === 'radio'){
+        // Radio group: opciones obligatorias
+        $groupHtml = '';
+        if ($opcs && is_array($opcs)){
+            foreach ($opcs as $k=>$v){
+                $val = is_int($k)? $v : $k;
+                $txt = is_int($k)? $v : $v;
+                $rid = $id.'_'.$val;
+                $ra = [
+                  'type'=>'radio',
+                  'name'=>$nombre,
+                  'id'=>$rid,
+                  'class'=>'form-check-input',
+                  'value'=>$val,
+                  'required'=>$req && empty($groupHtml)
+                ];
+                if ((string)$val === (string)$valorDef) $ra['checked']=true;
+                $groupHtml .= "<div class='form-check form-check-inline'>"
+                             ."<input ".fd_build_attr($ra).">"
+                             ."<label for='".htmlspecialchars($rid,ENT_QUOTES)."' class='form-check-label ms-1'>".htmlspecialchars($txt)."</label>"
+                             ."</div>";
+            }
+        }
+        $controlHtml = $groupHtml;
+    } else {
+        // input estándar
+        $controlHtml = "<input ".fd_build_attr($attr).">";
+    }
+    $helpHtml = $ayuda ? "<div class='form-text'>".htmlspecialchars($ayuda)."</div>" : '';
+    $errorSlot = "<div class='invalid-feedback'></div>";
+    $wrapperAttr = fd_build_attr($dataAttrs);
+    return "<div class='".implode(' ',$wrapperClasses)."' {$wrapperAttr}>{$labelHtml}{$controlHtml}{$helpHtml}{$errorSlot}</div>";
+}
+function fd_render_fieldset_simple($nombre, $fs){
+    $titulo = htmlspecialchars($fs['titulo'] ?? $fs['legend'] ?? $nombre);
+    $campos = $fs['campos'] ?? $fs['fields'] ?? [];
+    $htmlCampos = '';
+    foreach ($campos as $c){
+        $htmlCampos .= fd_render_field($c);
+    }
+    return "<fieldset class='mb-3 p-2 border rounded draggable-fieldset' data-group-id='".htmlspecialchars($nombre,ENT_QUOTES)."' data-fieldset-name='".htmlspecialchars($nombre,ENT_QUOTES)."'>"
+          . "<legend class='small m-0 px-1'>".$titulo."</legend>"
+          . $htmlCampos
+          . "</fieldset>";
 }
 
 // Fallback layout: si hay layout estructurado, idealmente usar funciones existentes del motor (no mostrado aquí).
@@ -167,5 +297,43 @@ document.getElementById('designModeToggle')?.addEventListener('change', function
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <script src="js/fd-dnd-lite-min.js"></script>
+<script>
+(function(){
+  const form = document.getElementById('formulariodinamico');
+  if (!form) return;
+  form.addEventListener('submit', function(e){
+    if (!form.checkValidity()){
+      e.preventDefault();
+      e.stopPropagation();
+      form.querySelectorAll(':invalid').forEach(inp=>{
+        const wrap = inp.closest('.fd-field-wrapper');
+        if (wrap){
+          wrap.classList.add('was-validated');
+          const fb = wrap.querySelector('.invalid-feedback');
+          if (fb && !fb.textContent.trim()) {
+            fb.textContent = inp.validationMessage;
+          }
+        }
+      });
+    }
+  });
+  // Mostrar feedback en blur
+  form.addEventListener('blur', function(e){
+    const inp = e.target;
+    if (inp.matches('input,select,textarea')){
+      const wrap = inp.closest('.fd-field-wrapper');
+      if (wrap){
+        const fb = wrap.querySelector('.invalid-feedback');
+        if (!inp.checkValidity()){
+          wrap.classList.add('was-validated');
+          if (fb) fb.textContent = inp.validationMessage;
+        } else {
+          if (fb) fb.textContent = '';
+        }
+      }
+    }
+  }, true);
+})();
+</script>
 </body>
 </html>

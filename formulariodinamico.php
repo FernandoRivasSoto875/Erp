@@ -188,6 +188,17 @@ $modoDiseno = isset($modoDiseno) ? (bool)$modoDiseno : (isset($_GET['design']) &
 
 <div id="json-tree-panel"><!-- aquí se pinta el árbol --></div>
 
+<!-- Cargas (una sola vez) -->
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<script src="js/fd-tree-config.js"></script>
+<script src="js/fd-dnd-lite.js"></script>
+<script src="js/fd-tree-render.js"></script>
+<script>
+  // Render inicial y tras activar modo diseño
+  document.addEventListener('DOMContentLoaded', ()=> window.renderJsonTreeFromForm && window.renderJsonTreeFromForm());
+  window.addEventListener('design-mode-changed', ()=> window.renderJsonTreeFromForm && window.renderJsonTreeFromForm());
+</script>
+
 <!-- Eliminar duplicados: NO vuelvas a renderizar #fd-root ni el estilo del lápiz más abajo -->
 </body>
 </html>

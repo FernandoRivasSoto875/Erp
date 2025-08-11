@@ -24,6 +24,7 @@
 
   async function init(){
     qs();
+    injectFilterStyles(); // <-- NUEVO
     if(!panel) return;
     // Copia editable del JSON cargado por PHP
     FORM_JSON_LOCAL = window.FORM_JSON ? JSON.parse(JSON.stringify(window.FORM_JSON)) : { parametros:{}, fieldsets:{}, layout:{} };
@@ -39,6 +40,20 @@
       jsonBuildTree();
     }
     observeFormMutations();
+  }
+
+  // NUEVO: asegura estilos para el filtrado
+  function injectFilterStyles(){
+    if (document.getElementById('fd-tree-filter-styles')) return;
+    const st = document.createElement('style');
+    st.id='fd-tree-filter-styles';
+    st.textContent = `
+      #fd-tree-side .fd-filter-hide{ display:none !important; }
+      #fd-tree-side .fd-filter-hit > .g-title,
+      #fd-tree-side .fd-filter-hit > .f-item,
+      #fd-tree-side .fd-filter-hit > .fd-json-node{ background: #fff3cd; }
+    `;
+    document.head.appendChild(st);
   }
 
   // -------------------- FORM STRUCTURE TREE (YA EXISTENTE / REFACTORED) --------------------
@@ -457,37 +472,76 @@
   // -------------------- FILTER (aplica a ambas vistas) --------------------
   function applyFilterAll(){
     const term = (filterInput?.value||'').toLowerCase().trim();
-    // Form tree
+
+    // Helpers NUEVOS para expandir ancestros
+    function expandAncestors(li, stop){
+      let cur = li;
+      while(cur && cur !== stop){
+        if(cur.classList.contains('collapsed')){
+          cur.classList.remove('collapsed');
+          const tgl = cur.querySelector(':scope > .g-title .toggle, :scope > .fd-json-node .fd-json-toggle');
+          if(tgl) tgl.textContent = '▾';
+        }
+        cur = cur.parentElement.closest('li');
+      }
+    }
+
+    // ---- FORM TREE ----
     if(formTreeEl){
       formTreeEl.querySelectorAll('li').forEach(li=> li.classList.remove('fd-filter-hide','fd-filter-hit'));
       if(term){
+        // Marcar hits
         formTreeEl.querySelectorAll('li').forEach(li=>{
           const txt=li.querySelector('.txt')?.textContent.toLowerCase()||'';
-          const hit=txt.includes(term);
-          li.classList.toggle('fd-filter-hit', hit);
+          if(txt.includes(term)){
+            li.classList.add('fd-filter-hit');
+          }
         });
+        // Mantener visibles ancestros y expandirlos
+        formTreeEl.querySelectorAll('.fd-filter-hit').forEach(li=> expandAncestors(li, formTreeEl));
+        // Ocultar los que no son hit ni contienen hit
         formTreeEl.querySelectorAll('li').forEach(li=>{
           if(li.classList.contains('fd-filter-hit')) return;
-            const descHit=li.querySelector('.fd-filter-hit');
-            if(!descHit) li.classList.add('fd-filter-hide');
+          if(li.querySelector('.fd-filter-hit')) return;
+          li.classList.add('fd-filter-hide');
+        });
+      } else {
+        // Restablecer toggles a estado expandido por defecto después de limpiar
+        formTreeEl.querySelectorAll('li[data-node="group"]').forEach(li=>{
+          li.classList.remove('collapsed');
+          const t=li.querySelector(':scope > .g-title .toggle');
+          if(t) t.textContent='▾';
         });
       }
     }
-    // JSON tree
+
+    // ---- JSON TREE ----
     if(jsonTreeEl){
       jsonTreeEl.querySelectorAll('li').forEach(li=> li.classList.remove('fd-filter-hide','fd-filter-hit'));
       if(term){
         jsonTreeEl.querySelectorAll('.fd-json-node').forEach(nd=>{
           const txt = nd.querySelector('.fd-json-key')?.textContent.toLowerCase() || '';
           const vtxt = nd.querySelector('.fd-json-value')?.textContent.toLowerCase() || '';
-          const li=nd.closest('li');
+          const li = nd.closest('li');
           const hit = txt.includes(term) || vtxt.includes(term);
-          if(hit) li.classList.add('fd-filter-hit');
+            if(hit){
+              li.classList.add('fd-filter-hit');
+            }
         });
+        // Expandir ancestros de hits
+        jsonTreeEl.querySelectorAll('.fd-filter-hit').forEach(li=> expandAncestors(li, jsonTreeEl));
+        // Ocultar no relevantes
         jsonTreeEl.querySelectorAll('li').forEach(li=>{
           if(li.classList.contains('fd-filter-hit')) return;
           if(li.querySelector('.fd-filter-hit')) return;
           li.classList.add('fd-filter-hide');
+        });
+      } else {
+        // Reset: expandir solo primer nivel
+        jsonTreeEl.querySelectorAll('li').forEach(li=>{
+          li.classList.remove('collapsed');
+          const tg = li.querySelector(':scope > .fd-json-node .fd-json-toggle');
+          if(tg && !tg.classList.contains('empty')) tg.textContent='▾';
         });
       }
     }

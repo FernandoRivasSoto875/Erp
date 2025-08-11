@@ -385,56 +385,49 @@ require_once __DIR__ . '/formulariodinamicologica.php';
       }
 
       // ---------- Grupos/Fieldsets DnD ----------
+      // REEMPLAZAR implementación para usar columnas/tabs/outside (no filas)
       function initFieldsetsDnD(){
+        // Asegura que cada pane de tab sea zona droppable
+        setupTabDropzones();
+
         const containerSel = [
-          '#fd-root .tab-pane',
-          '#fd-root .container',
-          '#fd-root .container-fluid',
-          '#fd-root .card-body',
-          '#fd-root form'
+          '#fd-root [data-col-width]',                 // columnas del layout
+          '#fd-root [data-dropzone="tab-pane"]',       // panes de pestañas
+          '#elementos-fuera-container .fd-out-items'   // elementos fuera del formulario
         ].join(', ');
 
         document.querySelectorAll(containerSel).forEach(container=>{
-          if (container.dataset.fdGroupsInit === '1') return;
+          if (container.dataset.fdFsInit === '1') return;
+          container.dataset.fdFsInit = '1';
 
-          // Candidatos de grupo: hijos que parezcan “grupo”
-          const groups = Array.from(container.children).filter(ch=>{
-            if (ch.tagName==='SCRIPT' || ch.tagName==='STYLE') return false;
-            if (ch.matches('.card, fieldset, .panel, .accordion-item')) return true;
-            // o que contenga al menos 2 wrappers de campos
-            const fieldsInside = ch.querySelectorAll('[data-fd-wrapper="1"], input,select,textarea,[name],[data-name]').length;
-            return fieldsInside >= 2;
-          });
-          if (groups.length < 2) return;
-
-          container.dataset.fdGroupsInit = '1';
-
-          groups.forEach(g=>{
-            g.classList.add('fd-fieldset-group');
-            ensureGroupGrip(g);
-          });
-
-          // Evitar solo clicks del grip
+          // Evita clicks del handle que naveguen
           container.addEventListener('click', (e)=>{
             if (!inDesign()) return;
-            if (e.target.closest('.fd-group-grip')) e.preventDefault();
+            if (e.target.closest('legend, .card-header, [data-fieldset-title]')) e.preventDefault();
           });
 
           if (window.Sortable){
             new Sortable(container, {
               animation: 150,
-              draggable: '.fd-fieldset-group',
-              handle: '.fd-group-grip',
-              ghostClass: 'fd-dnd-ghost',
-              onEnd: ()=> {}
+              group: { name: 'fd-fieldsets', pull: true, put: true },
+              draggable: ':scope > fieldset.draggable-fieldset, :scope > [data-fieldset-name]',
+              handle: 'legend, .card-header, [data-fieldset-title]',
+              ghostClass: 'fd-dnd-ghost'
             });
           } else {
             initNativeListDnD(container, {
-              handleSel: '.fd-group-grip',
-              childSel: '.fd-fieldset-group',
-              crossGroup: false
+              handleSel: 'legend, .card-header, [data-fieldset-title]',
+              childSel: ':scope > fieldset.draggable-fieldset, :scope > [data-fieldset-name]',
+              crossGroup: true
             });
           }
+        });
+      }
+
+      // Marca panes de tabs como dropzones (si el backend no lo hizo)
+      function setupTabDropzones(){
+        document.querySelectorAll('#fd-root .tab-content .tab-pane').forEach(p=>{
+          if (!p.hasAttribute('data-dropzone')) p.setAttribute('data-dropzone','tab-pane');
         });
       }
 
@@ -544,13 +537,13 @@ require_once __DIR__ . '/formulariodinamicologica.php';
           // FIX: selector correcto del atributo del contenedor
           document.addEventListener('dragover', (e)=>{
             if (!dragEl) return;
-            const targetContainer = e.target.closest('[data-fd-fields-init="1"]');
+            const targetContainer = e.target.closest('[data-fd_fields_init="1"]');
             if (!targetContainer) return;
             e.preventDefault();
           });
           document.addEventListener('drop', (e)=>{
             if (!dragEl) return;
-            const targetContainer = e.target.closest('[data-fd-fields-init="1"]');
+            const targetContainer = e.target.closest('[data-fd_fields_init="1"]');
             if (!targetContainer) return;
             e.preventDefault();
             targetContainer.appendChild(dragEl);

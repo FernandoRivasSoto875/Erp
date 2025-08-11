@@ -263,49 +263,113 @@ require_once __DIR__ . '/formulariodinamicologica.php';
 
       // ---------- Fields (dentro y entre contenedores/pestañas) ----------
       function initFieldsFallback(){
-        const guessContainers = [
+        const containerSel = [
+          '#fd-root .tab-pane .card-body',
+          '#fd-root .tab-pane .container',
+          '#fd-root .tab-pane .container-fluid',
           '#fd-root .tab-pane .row',
           '#fd-root .tab-pane .col',
+          '#fd-root .tab-pane',
           '#fd-root .card-body',
+          '#fd-root .panel-body',
+          '#fd-root .fieldset',
+          '#fd-root .fields-container',
+          '#fd-root [data-fs-container]',
+          '#fd-root [data-fd-fields-group]',
+          '#fd-root form',
           '#fd-root form .row',
           '#fd-root form .col',
-          '#fd-root form'
-        ];
-        document.querySelectorAll(guessContainers.join(',')).forEach(cont=>{
+          '#fd-root table tbody' // soporte de tablas
+        ].join(', ');
+
+        const containers = Array.from(document.querySelectorAll(containerSel));
+        let configured = 0;
+
+        containers.forEach(cont=>{
           if (cont.dataset.fdFieldsInit === '1') return;
 
-          // Hijos que parezcan wrapper de field
-          const children = Array.from(cont.children)
-            .filter(ch=> ch.tagName!=='SCRIPT' && ch.tagName!=='STYLE')
-            .filter(ch=> ch.querySelector?.('input,select,textarea,[name],[data-name]'));
-          if (children.length < 2) return;
+          // Determina selector de wrappers (hijos directos movibles)
+          const wrapperSel = pickWrapperSelector(cont);
+          if (!wrapperSel) return;
 
+          // Lista de wrappers candidatos
+          const wrappers = Array.from(cont.querySelectorAll(wrapperSel)).filter(isDirectChildOf(cont));
+
+          // Debe haber al menos 2 wrappers con controles
+          const wrappersWithControls = wrappers.filter(w => w.querySelector('input,select,textarea,[name],[data-name]'));
+          if (wrappersWithControls.length < 2) return;
+
+          // Marca y añade grips
           cont.dataset.fdFieldsInit = '1';
+          wrappersWithControls.forEach(w => insertGripInWrapper(w));
 
-          // Grip en cada wrapper
-          children.forEach(w=>{
-            if (!w.querySelector('.fd-dnd-grip')){
-              const g = document.createElement('span');
-              g.className = 'fd-dnd-grip';
-              g.title = 'Arrastra para mover';
-              g.textContent = '⋮⋮';
-              w.prepend(g);
-            }
-          });
-
-          // Sortable si está, si no, nativo. Grupo cruzado por defecto.
+          // Activa DnD
           if (window.Sortable){
             new Sortable(cont, {
               animation: 150,
-              draggable: ':scope > *',
+              draggable: wrapperSel,
               handle: '.fd-dnd-grip',
               ghostClass: 'fd-dnd-ghost',
               group: { name: 'fd-fields', pull: true, put: true }
             });
           } else {
-            initNativeListDnD(cont, { handleSel: '.fd-dnd-grip', onDrop: null, childSel: ':scope > *', crossGroup: true });
+            initNativeListDnD(cont, { handleSel: '.fd-dnd-grip', onDrop: null, childSel: wrapperSel, crossGroup: true });
           }
+
+          configured++;
         });
+
+        // Diagnóstico en consola
+        if (inDesign()) {
+          console.info('[FD] Fields DnD contenedores configurados:', configured);
+        }
+      }
+
+      // Selecciona el tipo de wrapper óptimo por contenedor
+      function pickWrapperSelector(container){
+        // 1) Si tiene filas de tabla
+        if (container.matches('table, tbody') || container.querySelector(':scope > tr')) return ':scope > tr';
+        // 2) Ítems de lista
+        if (container.querySelector(':scope > li')) return ':scope > li';
+        // 3) Wrappers comunes de Bootstrap/form
+        const wrapperClasses = ['form-group','mb-3','form-floating','input-group','fd-field','col','row'];
+        const hasClassKids = wrapperClasses
+          .map(c => `:scope > .${c}`)
+          .filter(sel => container.querySelector(sel));
+        if (hasClassKids.length) return hasClassKids.join(', ');
+        // 4) Fallback: cualquier hijo directo que contenga un control
+        const kids = Array.from(container.children).filter(el => el.tagName!=='SCRIPT' && el.tagName!=='STYLE');
+        const anyWithControl = kids.some(el => el.querySelector?.('input,select,textarea,[name],[data-name]'));
+        return anyWithControl ? ':scope > *' : null;
+      }
+
+      // Inserta el grip correctamente según el tipo de wrapper
+      function insertGripInWrapper(w){
+        if (w.querySelector('.fd-dnd-grip')) return;
+        const grip = document.createElement('span');
+        grip.className = 'fd-dnd-grip';
+        grip.title = 'Arrastra para mover';
+        grip.textContent = '⋮⋮';
+
+        if (w.matches('tr')) {
+          // En tablas, va en la primera celda
+          const cell = w.querySelector(':scope > th, :scope > td') || w;
+          cell.insertBefore(grip, cell.firstChild);
+        } else if (w.matches('li')) {
+          w.insertBefore(grip, w.firstChild);
+        } else {
+          // Busca encabezado habitual del grupo
+          const header = w.querySelector(':scope > .card-header, :scope > legend, :scope > label, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6');
+          if (header) header.insertBefore(grip, header.firstChild);
+          else w.insertBefore(grip, w.firstChild);
+        }
+      }
+
+      function isDirectChildOf(container){
+        return function(el){
+          // Asegura que el el es hijo DIRECTO del contenedor
+          return el.parentElement === container;
+        };
       }
 
       // ---------- Fallback nativo HTML5 para listas (con soporte entre contenedores) ----------

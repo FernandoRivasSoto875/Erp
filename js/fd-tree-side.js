@@ -23,6 +23,10 @@
     FORM_JSON_LOCAL = await loadFormJson();
     try{ const r=await fetch('json/form-types.json'); if(r.ok) TYPE_META=await r.json(); }catch{}
     bindUI();
+
+    // NUEVO: materializa todas las estructuras del JSON en el DOM antes del Encabezado
+    materializeMissingStructures();
+
     if(root?.classList.contains('design-mode')) panel.classList.remove('hidden');
     observeFormMutations();
     formBuildTree();
@@ -425,5 +429,282 @@
     if(!form) return;
     const mo=new MutationObserver(()=> formBuildTree());
     mo.observe(form, {childList:true, subtree:true});
+  }
+
+  // ================== NUEVO: Materializar JSON en el DOM ==================
+  function materializeMissingStructures(){
+    if(!form || !FORM_JSON_LOCAL) return;
+
+    // Evitar duplicar en re-ejecuciones
+    const prev = form.querySelector('#fd-materialized');
+    if(prev) prev.remove();
+
+    const anchor = findEncabezadoAnchor() || form.firstElementChild;
+    const container = document.createElement('div');
+    container.id = 'fd-materialized';
+    container.className = 'fd-materialized-block';
+
+    // 1) Parametros como editor visible
+    buildParametrosBlock(container, FORM_JSON_LOCAL.parametros || {});
+
+    // 2) Fieldsets + campos (aunque no estén en layout)
+    const fsObj = FORM_JSON_LOCAL.fieldsets || {};
+    Object.keys(fsObj).forEach((fsKey, idx)=>{
+      const fsEl = buildFieldsetFromJson(fsKey, fsObj[fsKey], idx);
+      container.appendChild(fsEl);
+    });
+
+    // Inserta antes del encabezado si existe
+    if(anchor) form.insertBefore(container, anchor);
+    else form.prepend(container);
+
+    // Delegación: guarda cambios en JSON cuando editas cualquier input de este bloque
+    container.addEventListener('change', onMaterializedChange);
+    container.addEventListener('input', onMaterializedInput);
+  }
+
+  function findEncabezadoAnchor(){
+    // Busca un ancla “Encabezado” para insertar antes
+    // Legend con texto “Encabezado”, sección con id/cls “encabezado”, o primer fieldset/card
+    let el = form.querySelector('legend');
+    if(el && /encabezado/i.test(el.textContent)) return el.closest('fieldset') || el;
+    el = form.querySelector('#encabezado, .encabezado, [data-section="encabezado"]');
+    if(el) return el;
+    return form.querySelector('fieldset, .card, .panel');
+  }
+
+  // ---------- Parametros ----------
+  function buildParametrosBlock(wrapper, obj){
+    const fs = document.createElement('fieldset');
+    fs.className = 'mb-3';
+    fs.setAttribute('data-fieldset-type', 'group');
+    fs.setAttribute('data-group-id', 'g_parametros');
+    fs.innerHTML = `<legend>Parametros</legend>`;
+    const body = document.createElement('div');
+    body.className = 'fd-fields-container';
+
+    addParamEditors(body, obj, 'parametros');
+    fs.appendChild(body);
+    wrapper.appendChild(fs);
+  }
+
+  function addParamEditors(parent, obj, basePath){
+    Object.keys(obj || {}).forEach(key=>{
+      const val = obj[key];
+      const path = `${basePath}.${key}`;
+      if(val !== null && typeof val === 'object' && !Array.isArray(val)){
+        // Sub-objeto → sub fieldset
+        const subFs = document.createElement('fieldset');
+        subFs.className = 'mb-2';
+        subFs.setAttribute('data-fieldset-type', 'group');
+        subFs.setAttribute('data-group-id', 'g_'+path.replace(/[^\w]+/g,'_'));
+        subFs.innerHTML = `<legend>${key}</legend>`;
+        const subBody = document.createElement('div');
+        subBody.className = 'fd-fields-container';
+        addParamEditors(subBody, val, path);
+        subFs.appendChild(subBody);
+        parent.appendChild(subFs);
+      } else if(Array.isArray(val)){
+        // Array → textarea JSON
+        const wrap = document.createElement('div');
+        wrap.className = 'mb-2 fd-field-wrapper';
+        wrap.setAttribute('data-field-id', 'f_'+path.replace(/[^\w]+/g,'_'));
+        wrap.setAttribute('data-field-type', 'textarea');
+        wrap.innerHTML = `
+          <label class="form-label">${key}</label>
+          <textarea class="form-control" data-json-path="${path}" rows="3">${escapeHtml(JSON.stringify(val))}</textarea>
+          <small class="text-muted">Formato JSON</small>
+        `;
+        parent.appendChild(wrap);
+      } else {
+        // Primitivo → input adecuado
+        parent.appendChild(createPrimitiveEditor(path, key, val));
+      }
+    });
+  }
+
+  function createPrimitiveEditor(path, key, val){
+    const t = typeof val;
+    const wrap = document.createElement('div');
+    wrap.className = 'mb-2 fd-field-wrapper';
+    wrap.setAttribute('data-field-id', 'f_'+path.replace(/[^\w]+/g,'_'));
+    wrap.innerHTML = `<label class="form-label">${key}</label>`;
+    let inputHtml = '';
+    if(t === 'boolean'){
+      inputHtml = `
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" data-json-path="${path}" ${val?'checked':''}>
+          <label class="form-check-label">Activo</label>
+        </div>`;
+      wrap.setAttribute('data-field-type','checkbox');
+    } else if(t === 'number'){
+      inputHtml = `<input class="form-control" type="number" step="any" data-json-path="${path}" value="${escapeHtml(val)}">`;
+      wrap.setAttribute('data-field-type','number');
+    } else {
+      // string/null
+      const v = (val===null)?'':String(val);
+      const asTextarea = v.length > 120 || /\n/.test(v);
+      if(asTextarea){
+        inputHtml = `<textarea class="form-control" data-json-path="${path}" rows="3">${escapeHtml(v)}</textarea>`;
+        wrap.setAttribute('data-field-type','textarea');
+      }else{
+        inputHtml = `<input class="form-control" type="text" data-json-path="${path}" value="${escapeHtml(v)}">`;
+        wrap.setAttribute('data-field-type','text');
+      }
+    }
+    wrap.insertAdjacentHTML('beforeend', inputHtml);
+    return wrap;
+  }
+
+  // ---------- Fieldsets/campos ----------
+  function buildFieldsetFromJson(fsKey, fsObj, idx){
+    const fs = document.createElement('fieldset');
+    fs.className = 'mb-3 fd-fieldset';
+    fs.setAttribute('data-fieldset-type', fsObj?.tipo || 'group');
+    fs.setAttribute('data-group-id', 'fs_'+fsKey);
+    fs.setAttribute('data-fieldset-key', fsKey);
+    fs.innerHTML = `<legend>${escapeHtml(fsObj?.titulo || fsObj?.legend || fsKey)}</legend>`;
+    const body = document.createElement('div');
+    body.className = 'fd-fields-container';
+
+    const campos = Array.isArray(fsObj?.campos) ? fsObj.campos : [];
+    campos.forEach((campo, i)=>{
+      const fieldEl = buildFieldFromJson(fsKey, campo, i);
+      body.appendChild(fieldEl);
+    });
+
+    fs.appendChild(body);
+    return fs;
+  }
+
+  function buildFieldFromJson(fsKey, campo, idx){
+    const tipo = String(campo?.tipo || campo?.type || 'text').toLowerCase();
+    const nombre = campo?.nombre || campo?.name || ('campo_'+(idx+1));
+    const etiqueta = campo?.etiqueta || campo?.label || nombre;
+    const requerido = !!(campo?.requerido || campo?.required);
+    const placeholder = campo?.placeholder || '';
+    const value = (campo?.valor ?? campo?.value ?? '');
+    const opciones = campo?.opciones || campo?.options || [];
+
+    const wrap = document.createElement('div');
+    wrap.className = 'mb-3 fd-field-wrapper';
+    wrap.setAttribute('data-field-id', nombre);
+    wrap.setAttribute('data-field-type', tipo);
+    wrap.setAttribute('data-fs-key', fsKey);
+    wrap.setAttribute('data-field-index', String(idx));
+
+    // Campo visual
+    const labelHtml = `<label class="form-label mb-1">${escapeHtml(etiqueta)}${requerido?'<span class="text-danger">*</span>':''}</label>`;
+    let controlHtml = '';
+    if(['textarea'].includes(tipo)){
+      controlHtml = `<textarea name="${escapeHtml(nombre)}" class="form-control" placeholder="${escapeHtml(placeholder)}">${escapeHtml(String(value??''))}</textarea>`;
+    } else if(['select','selectdata','select2','select_remote','select2_remote','multiselect'].includes(tipo)){
+      const opts = Array.isArray(opciones) ? opciones : String(opciones||'').split(',').map(s=>s.trim()).filter(Boolean);
+      const multiple = (tipo==='multiselect') ? ' multiple' : '';
+      const optsHtml = opts.map(o=>{
+        const ov = (typeof o==='object') ? (o.value ?? o.id ?? o.text ?? String(o)) : String(o);
+        const ot = (typeof o==='object') ? (o.text ?? o.label ?? ov) : String(o);
+        const sel = Array.isArray(value) ? (value.includes(ov)?' selected':'') : (String(value)===String(ov)?' selected':'');
+        return `<option value="${escapeHtml(ov)}"${sel}>${escapeHtml(ot)}</option>`;
+      }).join('');
+      controlHtml = `<select name="${escapeHtml(nombre)}" class="form-select"${multiple}>${optsHtml}</select>`;
+    } else if(['checkbox'].includes(tipo)){
+      const checked = (value===true || value==='true') ? 'checked':'';
+      controlHtml = `
+        <div class="form-check">
+          <input type="checkbox" class="form-check-input" name="${escapeHtml(nombre)}" ${checked}>
+          <label class="form-check-label">${escapeHtml(placeholder || 'Seleccionar')}</label>
+        </div>`;
+    } else if(['radio'].includes(tipo)){
+      const opts = Array.isArray(opciones) ? opciones : String(opciones||'').split(',').map(s=>s.trim()).filter(Boolean);
+      controlHtml = opts.map((o,i)=>{
+        const ov = (typeof o==='object') ? (o.value ?? o.id ?? o.text ?? String(o)) : String(o);
+        const ot = (typeof o==='object') ? (o.text ?? o.label ?? ov) : String(o);
+        const checked = String(value)===String(ov) ? 'checked':'';
+        return `
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="${escapeHtml(nombre)}" value="${escapeHtml(ov)}" id="${escapeHtml(nombre)}_${i}" ${checked}>
+            <label class="form-check-label" for="${escapeHtml(nombre)}_${i}">${escapeHtml(ot)}</label>
+          </div>`;
+      }).join('');
+    } else if(['date','datetime','time','email','number','password','file','url','color','tel','range'].includes(tipo)){
+      const typeAttr = (tipo==='datetime')?'datetime-local':tipo;
+      const valAttr = (value!==undefined && value!==null) ? ` value="${escapeHtml(String(value))}"` : '';
+      controlHtml = `<input name="${escapeHtml(nombre)}" class="form-control" type="${typeAttr}" placeholder="${escapeHtml(placeholder)}"${valAttr}${tipo==='number'?' step="any"':''}>`;
+    } else {
+      // text y otros
+      controlHtml = `<input name="${escapeHtml(nombre)}" class="form-control" type="text" placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(String(value??''))}">`;
+    }
+
+    // Editor de propiedades del campo (para editar todas sus propiedades)
+    const propsHtml = `
+      <details class="mt-1">
+        <summary>Propiedades</summary>
+        <div class="row g-2 mt-1">
+          <div class="col-6"><label class="form-label">nombre</label><input class="form-control" data-prop-path="fieldsets.${fsKey}.campos[${idx}].nombre" value="${escapeHtml(nombre)}"></div>
+          <div class="col-6"><label class="form-label">etiqueta</label><input class="form-control" data-prop-path="fieldsets.${fsKey}.campos[${idx}].etiqueta" value="${escapeHtml(etiqueta)}"></div>
+          <div class="col-6"><label class="form-label">tipo</label><input class="form-control" data-prop-path="fieldsets.${fsKey}.campos[${idx}].tipo" value="${escapeHtml(tipo)}"></div>
+          <div class="col-6"><label class="form-label">placeholder</label><input class="form-control" data-prop-path="fieldsets.${fsKey}.campos[${idx}].placeholder" value="${escapeHtml(placeholder)}"></div>
+          <div class="col-6"><label class="form-label">valor</label><input class="form-control" data-prop-path="fieldsets.${fsKey}.campos[${idx}].valor" value="${escapeHtml(String(value??''))}"></div>
+          <div class="col-3 form-check mt-4 ms-2"><input class="form-check-input" type="checkbox" data-prop-path="fieldsets.${fsKey}.campos[${idx}].requerido" ${requerido?'checked':''}> <label class="form-check-label">requerido</label></div>
+          <div class="col-12"><label class="form-label">opciones (coma o JSON)</label><textarea class="form-control" rows="2" data-prop-path="fieldsets.${fsKey}.campos[${idx}].opciones">${escapeHtml(Array.isArray(opciones)?JSON.stringify(opciones):String(opciones||''))}</textarea></div>
+        </div>
+      </details>`;
+
+    wrap.innerHTML = `
+      ${labelHtml}
+      ${controlHtml}
+      ${propsHtml}
+    `;
+    return wrap;
+  }
+
+  function onMaterializedChange(e){
+    const t = e.target;
+    // Guardar Parametros
+    if(t.hasAttribute('data-json-path')){
+      const path = t.getAttribute('data-json-path');
+      const cur = t.type==='checkbox' ? t.checked : t.value;
+      let val = cur;
+      // Si es textarea que contiene JSON válido (arrays), parsea
+      if(t.tagName==='TEXTAREA'){
+        try{ val = JSON.parse(t.value); }catch{ /* queda string */ }
+      }
+      setJsonPathValue(FORM_JSON_LOCAL, path, coerceValue(val, t));
+      return;
+    }
+    // Guardar propiedades de campos
+    if(t.hasAttribute('data-prop-path')){
+      const path = t.getAttribute('data-prop-path');
+      let val = (t.type==='checkbox') ? t.checked : t.value;
+      // intenta parsear JSON en opciones
+      if(/\.opciones$/.test(path)){
+        try{
+          val = JSON.parse(val);
+        }catch{
+          val = String(val).split(',').map(s=>s.trim()).filter(Boolean);
+        }
+      }
+      setJsonPathValue(FORM_JSON_LOCAL, path, coerceValue(val, t));
+      // Refresca representación visual del campo si cambió algo importante
+      if(/\.etiqueta$|\.nombre$|\.tipo$|\.placeholder$|\.valor$|\.requerido$|\.opciones$/.test(path)){
+        // reconstruye sólo el bloque materializado y árbol
+        materializeMissingStructures();
+        formBuildTree();
+      }
+    }
+  }
+
+  function onMaterializedInput(e){
+    // live apply para inputs simples si quieres; por ahora no hace nada extra
+  }
+
+  function coerceValue(val, el){
+    // Convierte a número si input type number
+    if(el?.type==='number'){
+      const n = Number(val);
+      return isNaN(n) ? val : n;
+    }
+    return val;
   }
 })();

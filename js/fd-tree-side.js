@@ -1,8 +1,8 @@
 (function(){
   let TYPE_META = { field_types:{}, fieldset_types:{} };
   let root, panel, formTreeEl, filterInput, form, jsonTreeEl, tabsEl;
-  let dirtyJson = false;
   let FORM_JSON_LOCAL = null;
+  let dirtyJson = false;
 
   function qs(){
     root = document.getElementById('fd-root');
@@ -13,32 +13,18 @@
     jsonTreeEl = document.getElementById('fd-json-tree');
     tabsEl = document.getElementById('fd-side-tabs');
   }
-  qs();
-
   function ready(fn){ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', fn); else fn(); }
-
   ready(init);
 
   async function init(){
     qs();
-    injectFilterStyles();
     if(!panel) return;
-
-    // 1) Cargar JSON del formulario
+    injectFilterStyles();
     FORM_JSON_LOCAL = await loadFormJson();
-
-    // 2) Cargar metadatos de tipos (iconos)
-    try {
-      const r = await fetch('json/form-types.json');
-      if(r.ok) TYPE_META = await r.json();
-    } catch(e){}
-
+    try{ const r=await fetch('json/form-types.json'); if(r.ok) TYPE_META=await r.json(); }catch{}
     bindUI();
-
     if(root?.classList.contains('design-mode')) panel.classList.remove('hidden');
     observeFormMutations();
-
-    // Construir ambas vistas
     formBuildTree();
     jsonBuildTree();
     applyFilterAll();
@@ -48,18 +34,12 @@
     if (window.FORM_JSON && Object.keys(window.FORM_JSON).length) {
       return JSON.parse(JSON.stringify(window.FORM_JSON));
     }
-    const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) ? window.FORM_CONFIG.archivo_json : 'json/formulariogenerico2.json';
-    try{
-      const r = await fetch(archivo, {cache:'no-cache'});
-      if (!r.ok) throw new Error('No se pudo cargar '+archivo);
-      return await r.json();
-    } catch(e) {
-      console.warn('[fd-tree-side] No se pudo cargar el JSON del formulario:', e.message);
-      return { parametros:{}, fieldsets:{}, layout:{} };
-    }
+    const url = (window.FORM_CONFIG?.archivo_json) || 'json/formulariogenerico2.json';
+    try{ const r=await fetch(url,{cache:'no-cache'}); if(!r.ok) throw 0; return await r.json(); }
+    catch{ return { parametros:{}, fieldsets:{}, layout:{} }; }
   }
 
-  // ========== FORM (estructura DOM actual) ==========
+  // ===== FORM tree (DOM actual) =====
   function pickBody(g){ return g.querySelector(':scope > .card-body, :scope > .fd-fields-container') || g; }
   function isGroup(el){ return !!el && el.matches('fieldset,.fd-fieldset,.card,.panel'); }
   function isFieldWrap(el){
@@ -74,18 +54,12 @@
     return all.filter(g=> !g.parentElement.closest('fieldset,.fd-fieldset,.card,.panel'));
   }
   function ensureGroupId(g){ let id=g.getAttribute('data-group-id')||g.id; if(!id){id='g_'+Math.random().toString(36).slice(2,8);} g.setAttribute('data-group-id',id); return id; }
-  function ensureFieldId(w){
-    let id = w.getAttribute('data-field-id') || w.querySelector('[name]')?.name || w.id;
-    if(!id){ id='f_'+Math.random().toString(36).slice(2,8); }
-    w.setAttribute('data-field-id', id);
-    return id;
-  }
+  function ensureFieldId(w){ let id=w.getAttribute('data-field-id')||w.querySelector('[name]')?.name||w.id; if(!id){id='f_'+Math.random().toString(36).slice(2,8);} w.setAttribute('data-field-id',id); return id; }
   function groupTitle(g){
     return (g.querySelector(':scope > legend, :scope > .card-header')?.textContent ||
             g.getAttribute('data-fieldset-name') || g.getAttribute('data-fieldset-key') || g.id || 'Grupo').trim();
   }
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
   function fieldIcon(t){ return (TYPE_META.field_types?.[t]?.icon) || fallbackField(t); }
   function fieldsetIcon(t){ return (TYPE_META.fieldset_types?.[t]?.icon) || fallbackGroup(t); }
   function fallbackField(t){
@@ -113,7 +87,7 @@
   function formBuildTree(){
     if(!formTreeEl || panel.classList.contains('hidden')) return;
     formTreeEl.innerHTML='';
-    const top = getTopGroups();
+    const top=getTopGroups();
     if(!top.length){ formTreeEl.innerHTML='<div class="text-muted small">Sin grupos</div>'; return; }
     const ul=document.createElement('ul'); ul.className='fd-tree-root';
     top.forEach(g=> ul.appendChild(buildGroupNode(g)));
@@ -127,7 +101,7 @@
     const icon=fieldsetIcon(gtype);
     const li=document.createElement('li');
     li.dataset.node='group'; li.dataset.id=gid; li.className='fd-tree-group';
-    li.innerHTML = `
+    li.innerHTML=`
       <div class="g-title">
         <span class="toggle" title="Colapsar/Expandir">▾</span>
         <span class="handle">⋮⋮</span>
@@ -140,9 +114,9 @@
           <button data-act="delete" title="Borrar">🗑</button>
         </span>
       </div>`;
-    const body = pickBody(g);
-    const childGroups = Array.from(body.children).filter(isGroup);
-    const fields = Array.from(body.children).filter(isFieldWrap);
+    const body=pickBody(g);
+    const childGroups=Array.from(body.children).filter(isGroup);
+    const fields=Array.from(body.children).filter(isFieldWrap);
     if(childGroups.length || fields.length){
       const cu=document.createElement('ul'); cu.className='fd-tree-children';
       childGroups.forEach(ch=> cu.appendChild(buildGroupNode(ch)));
@@ -156,7 +130,7 @@
     const fid=w.getAttribute('data-field-id');
     const tipo=(w.getAttribute('data-field-type')||w.getAttribute('data-field-tipo')||w.querySelector('input,select,textarea')?.type||'text').toLowerCase();
     const icon=fieldIcon(tipo);
-    const label=(w.querySelector('label')?.textContent || fid).trim();
+    const label=(w.querySelector('label')?.textContent||fid).trim();
     const li=document.createElement('li');
     li.dataset.node='field'; li.dataset.id=fid; li.className='fd-tree-field';
     li.innerHTML=`
@@ -171,20 +145,18 @@
       </div>`;
     return li;
   }
-
   function enableDnDForm(){
     if(!window.Sortable) return;
     formTreeEl.querySelectorAll('ul').forEach(u=>{
       if(u._fdSortable) return;
-      u._fdSortable=new Sortable(u,{ group:'fd-tree-nested', handle:'.handle', animation:150, draggable:'> li', swapThreshold:0.65, onEnd: syncMoveForm });
+      u._fdSortable=new Sortable(u,{group:'fd-tree-nested',handle:'.handle',animation:150,draggable:'> li',swapThreshold:0.65,onEnd:syncMoveForm});
     });
   }
   function syncMoveForm(evt){
     const item=evt.item, parentUl=item.parentElement, parentGroupLi=parentUl.closest('li[data-node="group"]');
     if(item.dataset.node==='group'){
-      const groupId=item.dataset.id;
-      const live=form.querySelector('[data-group-id="'+CSS.escape(groupId)+'"]');
-      let container = parentGroupLi ? pickBody(form.querySelector('[data-group-id="'+CSS.escape(parentGroupLi.dataset.id)+'"]')) : form;
+      const live=form.querySelector('[data-group-id="'+CSS.escape(item.dataset.id)+'"]');
+      const container = parentGroupLi ? pickBody(form.querySelector('[data-group-id="'+CSS.escape(parentGroupLi.dataset.id)+'"]')) : form;
       container.appendChild(live);
       reorderMixed(parentUl);
     } else {
@@ -213,46 +185,54 @@
     });
   }
 
-  // ========== JSON (todas las estructuras) ==========
+  // ===== JSON tree (archivo completo) =====
   function jsonBuildTree(){
     if(!jsonTreeEl || panel.classList.contains('hidden')) return;
     jsonTreeEl.innerHTML='';
-    const rootUl=document.createElement('ul');
-    rootUl.className='fd-json-root';
+    const rootUl=document.createElement('ul'); rootUl.className='fd-json-root';
 
-    const rootObj = {
-      Parametros: FORM_JSON_LOCAL?.parametros ?? {},
-      Fieldsets  : FORM_JSON_LOCAL?.fieldsets  ?? {},
-      Layout     : FORM_JSON_LOCAL?.layout     ?? {}
-    };
-    Object.entries(rootObj).forEach(([k,v])=>{
-      rootUl.appendChild(buildJsonNode(k, v, k));
+    // Usa las claves reales del JSON (parametros, fieldsets, layout)
+    ['parametros','fieldsets','layout'].forEach(topKey=>{
+      const val = FORM_JSON_LOCAL?.[topKey];
+      const node = buildJsonNode(topKey, val, topKey, false, true);
+      rootUl.appendChild(node);
     });
+
     jsonTreeEl.appendChild(rootUl);
   }
 
-  function buildJsonNode(key, value, path){
+  function buildJsonNode(key, value, path, parentIsArray=false, isTop=false){
     const li=document.createElement('li');
     const isArr=Array.isArray(value);
     const isObj=value && typeof value==='object' && !isArr;
     const hasChildren = isArr ? value.length>0 : (isObj ? Object.keys(value).length>0 : false);
+
+    const keyLabel = parentIsArray
+      ? (typeof value==='object' && value && (value.nombre || value.etiqueta || value.titulo) ? `${key}: ${value.nombre||value.etiqueta||value.titulo}` : String(key))
+      : String(key);
+
     li.innerHTML = `
       <div class="fd-json-node ${isObj?'fd-json-type-object':''} ${isArr?'fd-json-type-array':''}" data-path="${escapeHtml(path)}">
         <span class="fd-json-toggle ${hasChildren?'':'empty'}">${hasChildren?'▾':''}</span>
-        <span class="fd-json-key">${escapeHtml(key)}</span>
+        <span class="fd-json-key">${escapeHtml(keyLabel)}</span>
         ${(!isObj && !isArr) ? `<span class="fd-json-value ${valueClass(value)}" data-type="${valueType(value)}">${renderValue(value)}</span>` : `<span class="fd-json-badge">${isArr?('['+value.length+']'):'{'+Object.keys(value).length+'}'}</span>`}
         <span class="fd-json-actions ms-auto">
           ${(!isObj && !isArr)?'<button data-act="edit" title="Editar">✎</button>':''}
         </span>
       </div>
     `;
+
     if(hasChildren){
       const ul=document.createElement('ul');
       if(isArr){
-        value.forEach((v,i)=> ul.appendChild(buildJsonNode(String(i), v, path+'['+i+']')));
+        value.forEach((v,i)=>{
+          const childPath = `${path}[${i}]`;
+          ul.appendChild(buildJsonNode(String(i), v, childPath, true, false));
+        });
       } else {
         Object.keys(value).forEach(k=>{
-          ul.appendChild(buildJsonNode(k, value[k], path+'.'+k));
+          const childPath = `${path}.${k}`;
+          ul.appendChild(buildJsonNode(k, value[k], childPath, false, false));
         });
       }
       li.appendChild(ul);
@@ -261,7 +241,7 @@
   }
 
   function valueType(v){ if(v===null) return 'null'; if(Array.isArray(v)) return 'array'; return typeof v; }
-  function valueClass(v){ const t=valueType(v); return 'fd-type-'+t; }
+  function valueClass(v){ return 'fd-type-'+valueType(v); }
   function renderValue(v){ const t=valueType(v); if(t==='boolean') return v?'true':'false'; if(t==='null') return 'null'; return String(v); }
 
   function startEdit(span){
@@ -278,42 +258,34 @@
       else if(type==='null'){ val=null; }
       else { val=raw; }
       const path = span.closest('.fd-json-node').dataset.path;
-      setJsonPathValue(path, val);
+      setJsonPathValue(FORM_JSON_LOCAL, path, val);
       span.className='fd-json-value '+valueClass(val);
       span.dataset.type=valueType(val);
       span.classList.remove('fd-editing');
       span.textContent=renderValue(val);
-      markDirty();
+      dirtyJson=true;
+      document.getElementById('fd-json-save')?.removeAttribute('disabled');
     };
     const cancel=()=>{ span.classList.remove('fd-editing'); span.textContent=old; };
     input.addEventListener('keydown', e=>{ if(e.key==='Enter') commit(); else if(e.key==='Escape') cancel(); });
     input.addEventListener('blur', commit);
   }
 
-  function setJsonPathValue(path, val){
-    try{
-      const tokens = [];
-      path.split('.').forEach(seg=>{
-        const head = seg.match(/^[^\[]+/);
-        if(head) tokens.push(head[0]);
-        const idxs = seg.match(/\[\d+\]/g);
-        idxs?.forEach(b=> tokens.push(Number(b.slice(1,-1))));
-      });
-      let obj = { Parametros:FORM_JSON_LOCAL.parametros, Fieldsets:FORM_JSON_LOCAL.fieldsets, Layout:FORM_JSON_LOCAL.layout };
-      for(let i=0;i<tokens.length-1;i++){
-        obj = obj[tokens[i]];
-      }
-      obj[tokens[tokens.length-1]] = val;
-    }catch(e){}
+  function setJsonPathValue(rootObj, path, val){
+    const tokens=[];
+    path.split('.').forEach(seg=>{
+      const head = seg.match(/^[^\[]+/); if(head) tokens.push(head[0]);
+      const idxs = seg.match(/\[\d+\]/g); idxs?.forEach(b=> tokens.push(Number(b.slice(1,-1))));
+    });
+    let obj=rootObj;
+    for(let i=0;i<tokens.length-1;i++){
+      obj = obj[tokens[i]];
+      if(obj===undefined) return;
+    }
+    obj[tokens[tokens.length-1]] = val;
   }
 
-  function markDirty(){
-    if(dirtyJson) return;
-    dirtyJson=true;
-    document.getElementById('fd-json-save')?.removeAttribute('disabled');
-  }
-
-  // ========== FILTRO (Form + JSON) ==========
+  // ===== Filter (ambas vistas) =====
   function injectFilterStyles(){
     if (document.getElementById('fd-tree-filter-styles')) return;
     const st=document.createElement('style'); st.id='fd-tree-filter-styles';
@@ -325,28 +297,25 @@
     `;
     document.head.appendChild(st);
   }
-
   function applyFilterAll(){
     const term=(filterInput?.value||'').toLowerCase().trim();
-
     function expandAncestors(li, stop){
       let cur=li;
       while(cur && cur!==stop){
         if(cur.classList.contains('collapsed')){
           cur.classList.remove('collapsed');
-          const tgl = cur.querySelector(':scope > .g-title .toggle, :scope > .fd-json-node .fd-json-toggle');
+          const tgl=cur.querySelector(':scope > .g-title .toggle, :scope > .fd-json-node .fd-json-toggle');
           if(tgl) tgl.textContent='▾';
         }
-        cur = cur.parentElement.closest('li');
+        cur=cur.parentElement.closest('li');
       }
     }
-
+    // Form
     if(formTreeEl){
       formTreeEl.querySelectorAll('li').forEach(li=> li.classList.remove('fd-filter-hide','fd-filter-hit'));
       if(term){
         formTreeEl.querySelectorAll('li').forEach(li=>{
-          const txt=li.querySelector('.txt')?.textContent.toLowerCase()||'';
-          if(txt.includes(term)) li.classList.add('fd-filter-hit');
+          const txt=li.querySelector('.txt')?.textContent.toLowerCase()||''; if(txt.includes(term)) li.classList.add('fd-filter-hit');
         });
         formTreeEl.querySelectorAll('.fd-filter-hit').forEach(li=> expandAncestors(li, formTreeEl));
         formTreeEl.querySelectorAll('li').forEach(li=>{
@@ -361,7 +330,7 @@
         });
       }
     }
-
+    // JSON
     if(jsonTreeEl){
       jsonTreeEl.querySelectorAll('li').forEach(li=> li.classList.remove('fd-filter-hide','fd-filter-hit'));
       if(term){
@@ -380,16 +349,14 @@
       } else {
         jsonTreeEl.querySelectorAll('li').forEach(li=>{
           li.classList.remove('collapsed');
-          const tg=li.querySelector(':scope > .fd-json-node .fd-json-toggle');
-          if(tg && !tg.classList.contains('empty')) tg.textContent='▾';
+          const tg=li.querySelector(':scope > .fd-json-node .fd-json-toggle'); if(tg && !tg.classList.contains('empty')) tg.textContent='▾';
         });
       }
     }
   }
 
-  // ========== EVENTOS ==========
+  // ===== Eventos =====
   function bindUI(){
-    // Tabs
     tabsEl?.addEventListener('click', e=>{
       const btn=e.target.closest('[data-tab]'); if(!btn) return; e.preventDefault();
       tabsEl.querySelectorAll('.nav-link').forEach(a=>a.classList.remove('active'));
@@ -403,32 +370,33 @@
 
     filterInput?.addEventListener('input', applyFilterAll);
 
-    // Form acciones
+    // Form actions
     formTreeEl?.addEventListener('click', e=>{
       const btn=e.target.closest('button[data-act]'); if(btn){
         const li=e.target.closest('li[data-node]'); const act=btn.dataset.act;
-        if(act==='add-group') formAddGroup(li);
-        else if(act==='add-field') formAddField(li);
-        else if(act==='rename') formRename(li);
-        else if(act==='delete') formDelete(li);
+        if(act==='add-group'){ let container = li ? pickBody(form.querySelector('[data-group-id="'+CSS.escape(li.dataset.id)+'"]')) : form; const fs=document.createElement('fieldset'); fs.setAttribute('data-fieldset-type','group'); fs.innerHTML='<legend>Nuevo Grupo</legend>'; container.appendChild(fs); formBuildTree(); }
+        else if(act==='add-field'){ let body=form; if(li){ const glive=form.querySelector('[data-group-id="'+CSS.escape(li.dataset.id)+'"]'); body=pickBody(glive); } const fid='campo_'+Math.random().toString(36).slice(2,8); const wrap=document.createElement('div'); wrap.className='mb-3 fd-field-wrapper'; wrap.setAttribute('data-field-id',fid); wrap.setAttribute('data-field-type','text'); wrap.innerHTML=`<label class="form-label mb-1">Nuevo Campo</label><input name="${fid}" class="form-control" type="text">`; body.appendChild(wrap); formBuildTree(); }
+        else if(act==='rename'){ const current=li.querySelector('.txt')?.textContent?.trim()||''; const v=prompt('Nuevo nombre:', current); if(!v) return; li.querySelector('.txt').textContent=v; if(li.dataset.node==='group'){ const live=form.querySelector('[data-group-id="'+CSS.escape(li.dataset.id)+'"]'); const lg=live?.querySelector(':scope > legend, :scope > .card-header'); if(lg) lg.textContent=v; } else { const live=form.querySelector('[data-field-id="'+CSS.escape(li.dataset.id)+'"]'); const lab=live?.querySelector('label'); if(lab) lab.textContent=v; } formBuildTree(); }
+        else if(act==='delete'){ if(!confirm('Eliminar?')) return; if(li.dataset.node==='group') form.querySelector('[data-group-id="'+CSS.escape(li.dataset.id)+'"]')?.remove(); else form.querySelector('[data-field-id="'+CSS.escape(li.dataset.id)+'"]')?.remove(); formBuildTree(); }
         return;
       }
-      const tgl=e.target.closest('.toggle'); if(tgl){
-        const li=e.target.closest('li[data-node="group"]');
-        if(li){ li.classList.toggle('collapsed'); tgl.textContent=li.classList.contains('collapsed')?'▸':'▾'; }
-      }
+      const tgl=e.target.closest('.toggle'); if(tgl){ const li=e.target.closest('li[data-node="group"]'); if(li){ li.classList.toggle('collapsed'); tgl.textContent=li.classList.contains('collapsed')?'▸':'▾'; } }
     });
 
-    // JSON acciones
+    // JSON actions
     jsonTreeEl?.addEventListener('click', e=>{
       const tgl=e.target.closest('.fd-json-toggle');
-      if(tgl && !tgl.classList.contains('empty')){
-        const li=tgl.closest('li'); li.classList.toggle('collapsed'); tgl.textContent=li.classList.contains('collapsed')?'▸':'▾';
-      }
-      const editBtn = e.target.closest('button[data-act="edit"]'); if(editBtn){
-        const valSpan=editBtn.closest('.fd-json-node').querySelector('.fd-json-value'); if(valSpan) startEdit(valSpan);
-      }
+      if(tgl && !tgl.classList.contains('empty')){ const li=tgl.closest('li'); li.classList.toggle('collapsed'); tgl.textContent=li.classList.contains('collapsed')?'▸':'▾'; }
+      const editBtn=e.target.closest('button[data-act="edit"]'); if(editBtn){ const valSpan=editBtn.closest('.fd-json-node').querySelector('.fd-json-value'); if(valSpan) startEdit(valSpan); }
       const valSpan = e.target.closest('.fd-json-value'); if(valSpan) startEdit(valSpan);
+    });
+
+    document.getElementById('fd-json-expand')?.addEventListener('click', ()=> jsonExpandCollapse(true));
+    document.getElementById('fd-json-collapse')?.addEventListener('click', ()=> jsonExpandCollapse(false));
+    document.getElementById('fd-json-save')?.addEventListener('click', ()=>{
+      console.log('JSON a guardar:', FORM_JSON_LOCAL);
+      dirtyJson=false; document.getElementById('fd-json-save')?.setAttribute('disabled','disabled');
+      alert('Simulación guardado. Implementa el endpoint en servidor.');
     });
 
     document.getElementById('toggleTreeBtn')?.addEventListener('click', ()=>{
@@ -442,59 +410,15 @@
       root.classList.toggle('design-mode', on);
       if(on){ panel.classList.remove('hidden'); formBuildTree(); jsonBuildTree(); applyFilterAll(); }
       else panel.classList.add('hidden');
-      window.dispatchEvent(new CustomEvent('design-mode-changed',{detail:{on}}));
-    });
-
-    // Guardar JSON (si pusiste el botón)
-    document.getElementById('fd-json-save')?.addEventListener('click', ()=>{
-      console.log('JSON a guardar:', FORM_JSON_LOCAL);
-      dirtyJson=false;
-      document.getElementById('fd-json-save')?.setAttribute('disabled','disabled');
-      alert('Simulación guardado. Implementa el endpoint en servidor.');
     });
   }
 
-  function formAddGroup(parentLi){
-    let container = parentLi ? pickBody(form.querySelector('[data-group-id="'+CSS.escape(parentLi.dataset.id)+'"]')) : form;
-    const fs=document.createElement('fieldset');
-    fs.setAttribute('data-fieldset-type','group');
-    fs.innerHTML='<legend>Nuevo Grupo</legend>';
-    container.appendChild(fs);
-    formBuildTree();
-  }
-  function formAddField(groupLi){
-    let body=form;
-    if(groupLi){
-      const glive=form.querySelector('[data-group-id="'+CSS.escape(groupLi.dataset.id)+'"]');
-      body=pickBody(glive);
-    }
-    const fid='campo_'+Math.random().toString(36).slice(2,8);
-    const wrap=document.createElement('div');
-    wrap.className='mb-3 fd-field-wrapper';
-    wrap.setAttribute('data-field-id',fid);
-    wrap.setAttribute('data-field-type','text');
-    wrap.innerHTML=`<label class="form-label mb-1">Nuevo Campo</label><input name="${fid}" class="form-control" type="text">`;
-    body.appendChild(wrap);
-    formBuildTree();
-  }
-  function formRename(li){
-    const current=li.querySelector('.txt')?.textContent?.trim()||'';
-    const v=prompt('Nuevo nombre:', current); if(!v) return;
-    li.querySelector('.txt').textContent=v;
-    if(li.dataset.node==='group'){
-      const live=form.querySelector('[data-group-id="'+CSS.escape(li.dataset.id)+'"]');
-      const lg=live?.querySelector(':scope > legend, :scope > .card-header'); if(lg) lg.textContent=v;
-    } else {
-      const live=form.querySelector('[data-field-id="'+CSS.escape(li.dataset.id)+'"]');
-      const lab=live?.querySelector('label'); if(lab) lab.textContent=v;
-    }
-    formBuildTree();
-  }
-  function formDelete(li){
-    if(!confirm('Eliminar?')) return;
-    if(li.dataset.node==='group') form.querySelector('[data-group-id="'+CSS.escape(li.dataset.id)+'"]')?.remove();
-    else form.querySelector('[data-field-id="'+CSS.escape(li.dataset.id)+'"]')?.remove();
-    formBuildTree();
+  function jsonExpandCollapse(expand){
+    jsonTreeEl?.querySelectorAll('.fd-json-node .fd-json-toggle:not(.empty)').forEach(t=>{
+      const li=t.closest('li');
+      if(expand){ li.classList.remove('collapsed'); t.textContent='▾'; }
+      else { li.classList.add('collapsed'); t.textContent='▸'; }
+    });
   }
 
   function observeFormMutations(){

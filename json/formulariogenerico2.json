@@ -179,7 +179,10 @@
       "titulo": "Datos principales",
       "campos": [
         { "nombre": "cliente", "tipo": "text", "etiqueta": "Cliente" },
+          { "nombre": "cliente1", "tipo": "text", "etiqueta": "Grupo" },
         { "nombre": "importe", "tipo": "number", "etiqueta": "Importe" }
+
+
       ]
     },
     "footer": {

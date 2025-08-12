@@ -196,46 +196,89 @@ function fd_build_col_classes($w){
     return "col-12 col-sm-".($n>=12?12:$n)." col-md-$n";
 }
 
+function fd_render_layout_fallback($layout, $fieldsets){
+    if(!$layout || !is_array($layout)) return '';
+    $html='';
+    $assoc = array_keys($layout)!==range(0,count($layout)-1);
+    $sections = $assoc
+        ? array_map(function($k,$v){ if(is_array($v)) $v['_section_key']=$k; return $v; }, array_keys($layout), $layout)
+        : $layout;
+
+    foreach($sections as $sec){
+        if(!is_array($sec)) continue;
+        $type = $sec['type'] ?? 'section';
+        $sKey = $sec['_section_key'] ?? null;
+
+        if($type==='tabs'){
+            $tabs = $sec['tabs'] ?? [];
+            if(!$tabs) continue;
+            $uid='tabs_'.substr(md5(json_encode($tabs)),0,8);
+            $html.='<div class="fd-tabs mb-3"'.($sKey?' data-section="'.htmlspecialchars($sKey).'"':'').'>';
+            // nav
+            $html.='<ul class="nav nav-tabs" role="tablist">';
+            foreach($tabs as $i=>$tab){
+                $active = $i===0?'active':'',
+                $tid = $uid.'_pane_'.$i;
+                $title = htmlspecialchars($tab['title'] ?? $tab['titulo'] ?? ('Tab '.($i+1)));
+                $html.="<li class='nav-item'><button class='nav-link $active' data-bs-toggle='tab' data-bs-target='#$tid' type='button'>$title</button></li>";
+            }
+            $html.='</ul>';
+            // panes
+            $html.='<div class="tab-content border border-top-0 p-3">';
+            foreach($tabs as $i=>$tab){
+                $active = $i===0?'show active':'',
+                $tid = $uid.'_pane_'.$i;
+                $html.="<div id='$tid' class='tab-pane fade $active'>";
+                $html.= fd_render_rows($tab['rows'] ?? [], $fieldsets);
+                $html.='</div>';
+            }
+            $html.='</div></div>';
+            continue;
+        }
+
+        $rows = $sec['rows'] ?? [];
+        $cls  = 'fd-section fd-section-'.preg_replace('/[^a-z0-9_\-]+/i','-', $type);
+        $html.='<div class="'.$cls.'"'.($sKey?' data-section="'.htmlspecialchars($sKey).'"':'').'>';
+        $html.= fd_render_rows($rows, $fieldsets);
+        $html.='</div>';
+    }
+    return $html;
+}
+
 function fd_render_rows($rows, $fieldsets){
     $html='';
     foreach($rows as $row){
         $cols = $row['columns'] ?? $row['cols'] ?? $row['columnas'] ?? [];
         if(!$cols || !is_array($cols)) continue;
 
-        // Escala si widths numéricos no suman 12
         $numericWidths = array_map(fn($c)=> is_array($c['width'] ?? null)? null : (int)($c['width'] ?? 12), $cols);
         $allNumeric = !in_array(null, $numericWidths, true);
-        if($allNumeric){
-            $total = array_sum($numericWidths);
-            $scale = $total>0 ? 12/$total : 1;
-        } else {
-            $scale = 1;
-        }
+        $scale = ($allNumeric && ($sum=array_sum($numericWidths))>0) ? 12/$sum : 1;
 
-        $html .= '<div class="row g-3 mb-2">';
+        $html.='<div class="row g-3 mb-2">';
         foreach($cols as $i=>$col){
             $wDef = $col['width'] ?? 12;
             if(is_numeric($wDef) && $allNumeric){
                 $wDef = (int)round($wDef * $scale);
-                if($wDef<1) $wDef=1; if($wDef>12) $wDef=12;
+                $wDef = max(1,min(12,$wDef));
             }
-            // Permite formato objeto: {"width":{"sm":6,"md":4}}
-            if(is_array($wDef) && isset($wDef['sm']) || isset($wDef['md'])){
+            // FIX: paréntesis
+            if(is_array($wDef) && (isset($wDef['sm']) || isset($wDef['md']) || isset($wDef['lg']) || isset($wDef['xs']) || isset($wDef['xl']) || isset($wDef['xxl']))){
                 $colClasses = fd_build_col_classes($wDef);
             } else {
                 $colClasses = fd_build_col_classes($wDef);
             }
 
             $fieldsetKey = $col['fieldset'] ?? $col['fs'] ?? null;
-            $html .= '<div class="'.$colClasses.'" data-col-width="'.htmlspecialchars(is_array($wDef)?json_encode($wDef):$wDef).'">';
+            $html.='<div class="'.$colClasses.'" data-col-width="'.htmlspecialchars(is_array($wDef)?json_encode($wDef):$wDef).'">';
             if($fieldsetKey && isset($fieldsets[$fieldsetKey])){
-                $html .= fd_render_fieldset($fieldsetKey, $fieldsets[$fieldsetKey]);
+                $html.= fd_render_fieldset($fieldsetKey, $fieldsets[$fieldsetKey]);
             } elseif(isset($col['html'])) {
-                $html .= $col['html'];
+                $html.= $col['html'];
             }
-            $html .= '</div>';
+            $html.='</div>';
         }
-        $html .= '</div>';
+        $html.='</div>';
     }
     return $html;
 }
@@ -271,7 +314,7 @@ function fd_render_campo_en_col($c){
     }
     $width = $sizes ?: ($c['width'] ?? 12);
     $class = fd_build_col_classes($width);
-    return '<div class="'.$class.'">'.fd_render_campo($c).'</div>';
+    return '<div class="'.$class.'">'.fd_render_field($c).'</div>';
 }
 ?><!DOCTYPE html>
 <html lang="es">

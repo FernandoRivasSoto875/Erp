@@ -1,6 +1,6 @@
 {
   "parametros": {
-    "titulo": "Formulario Genérico",
+    "titulo": "Formulario Genérico A TRATAR",
     "CssDefault": "formulariodinamicostyle12.css",
     "tituloimagen": "https://cdn.pixabay.com/photo/2017/05/31/16/39/windows-2360920_1280.png",
     "comentario": "Observa cómo cada etiqueta y tipo de campo se comporta.",
@@ -257,6 +257,8 @@
       "type": "footer",
       "rows": [
         { "columns": [ { "width": 12, "fieldset": "footer" } ] },
+          { "columns": [ { "width": 12, "fieldset": "footer" } ] },
+            { "columns": [ { "width": 12, "fieldset": "footer" } ] },
         { "columns": [ { "width": 12, "fieldset": "footer_legal" } ] }
       ]
     }

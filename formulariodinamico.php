@@ -255,7 +255,7 @@ function fd_render_layout_fallback($layout, $fieldsets) {
     }
     #fd-tree-side.hidden{display:none!important;}
     #fd-tree-side h6{font-size:.85rem;text-transform:uppercase;letter-spacing:.5px;margin:0 0 .5rem;}
-    #fd-tree-toolbar{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;}
+    #fd-tree-toolbar{display:flex;flex-wrap:wrap;gap=4px;margin-bottom:6px;}
     #fd-tree-toolbar button{font-size:.7rem;}
     #fd-tree{flex:1 1 auto;overflow:auto;font-size:.78rem;line-height:1.2;}
     #fd-tree ul{list-style:none;margin:0;padding-left:14px;}
@@ -336,32 +336,20 @@ function fd_render_layout_fallback($layout, $fieldsets) {
           </div>
         </form>
       </div>
-      <div id="fd-tree-side" class="<?php echo $modoDiseno ? '' : 'hidden'; ?>">
-        <h6 class="d-flex justify-content-between align-items-center mb-2">
-          Diseñador
-          <button type="button" id="closeTree" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:.6rem;">×</button>
-        </h6>
-        <ul class="nav nav-tabs nav-sm mb-2" id="fd-side-tabs" style="font-size:.7rem;">
-          <li class="nav-item"><button class="nav-link active" data-tab="form">Formulario</button></li>
-          <li class="nav-item"><button class="nav-link" data-tab="json">JSON</button></li>
-        </ul>
-        <div class="mb-2">
-          <input type="text" id="fd-tree-filter" class="form-control form-control-sm" placeholder="Filtrar...">
+      <!-- Panel árbol JSON -->
+      <div id="fd-tree-side" style="position:fixed;top:10px;right:10px;width:360px;max-height:90vh;overflow:auto;background:#fff;border:1px solid #ddd;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.1);z-index:9999;padding:10px;font-size:.85rem;">
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <strong>Árbol JSON</strong>
+          <input id="fd-tree-filter" class="form-control form-control-sm" placeholder="Filtrar..." />
         </div>
-
-        <div id="fd-tree-wrapper-form">
-          <div id="fd-tree"></div>
-        </div>
-
-        <div id="fd-tree-wrapper-json" class="d-none">
-          <div class="d-flex gap-2 mb-2">
-            <button id="fd-json-expand" class="btn btn-light btn-sm">Expandir</button>
-            <button id="fd-json-collapse" class="btn btn-light btn-sm">Colapsar</button>
-            <button id="fd-json-save" class="btn btn-primary btn-sm" disabled>Guardar JSON</button>
-          </div>
-          <div id="fd-json-tree" class="fd-json-tree"></div>
-        </div>
+        <div id="fd-json-tree"></div>
       </div>
+
+      <script>
+        // Ajusta si tu JSON está en otra ruta
+        window.FORM_CONFIG = { archivo_json: 'json/formulariogenerico2.json' };
+      </script>
+      <script src="js/fd-tree-side.js"></script>
     </div>
   </div>
 

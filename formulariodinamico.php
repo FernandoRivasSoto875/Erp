@@ -277,24 +277,21 @@ function fd_render_layout_fallback($layout, $fieldsets) {
     #fd-tree .fd-tree-group .ico{color:#0d6efd;}
     #fd-tree-side .nav-link{padding:.25rem .5rem;}
     #fd-tree-side .nav-link.active{background:#fff;}
-    /* JSON tree */
+    #fd-tree-side .fd-filter-hide{display:none!important;}
+    #fd-tree-side .fd-filter-hit > .g-title,
+    #fd-tree-side .fd-filter-hit > .f-item,
+    #fd-tree-side .fd-filter-hit > .fd-json-node{background:#fff3cd;}
     #fd-json-tree{max-height:60vh;overflow:auto;font-size:.72rem;font-family:ui-monospace,monospace;line-height:1.25;}
-    .fd-json-tree ul{list-style:none;margin:0;padding-left:16px;}
-    .fd-json-tree li{margin:1px 0;position:relative;}
+    #fd-json-tree ul{list-style:none;margin:0;padding-left:16px;}
+    #fd-json-tree li{margin:1px 0;}
     .fd-json-node{display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:3px;}
-    .fd-json-node:hover{background:#eef5ff;}
-    .fd-json-node.selected{background:#ffe9b5;}
     .fd-json-toggle{cursor:pointer;color:#0d6efd;font-weight:600;width:12px;text-align:center;}
     .fd-json-toggle.empty{color:#ccc;cursor:default;}
     .fd-json-key{color:#7c4d00;font-weight:600;}
-    .fd-json-type-object>.fd-json-key:after{content:" (obj)";color:#999;font-weight:400;font-size:.6rem;}
-    .fd-json-type-array>.fd-json-key:after{content:" (arr)";color:#999;font-weight:400;font-size:.6rem;}
     .fd-json-value{color:#1d4e89;flex:1;min-width:40px;cursor:pointer;}
     .fd-json-value.fd-type-string:before{content:'"';color:#999;}
     .fd-json-value.fd-type-string:after{content:'"';color:#999;}
-    .fd-json-value.fd-editing{background:#fff3cd;border:1px solid #ffec99;padding:0 2px;border-radius:2px;}
-    .fd-json-actions button{border:none;background:transparent;color:#666;padding:0 3px;font-size:.65rem;cursor:pointer;}
-    .fd-json-actions button:hover{color:#000;}
+    .fd-json-value.fd-editing{background:#fff3cd;border:1px solid #ffe066;padding:0 2px;border-radius:2px;}
     .fd-json-badge{background:#dee2e6;color:#555;font-size:.55rem;padding:1px 4px;border-radius:10px;}
     .fd-json-dirty:after{content:"*";color:#d6336c;margin-left:2px;font-weight:700;}
   </style>
@@ -352,12 +349,10 @@ function fd_render_layout_fallback($layout, $fieldsets) {
           <input type="text" id="fd-tree-filter" class="form-control form-control-sm" placeholder="Filtrar...">
         </div>
 
-        <!-- Contenido Formulario (estructura visual) -->
         <div id="fd-tree-wrapper-form">
           <div id="fd-tree"></div>
         </div>
 
-        <!-- Contenido JSON -->
         <div id="fd-tree-wrapper-json" class="d-none">
           <div class="d-flex gap-2 mb-2">
             <button id="fd-json-expand" class="btn btn-light btn-sm">Expandir</button>
@@ -375,11 +370,10 @@ function fd_render_layout_fallback($layout, $fieldsets) {
   integrity="sha512-DTOQO9RWCH3ppGqcWaEA1B4..."
   crossorigin="anonymous" referrerpolicy="no-referrer">
 <script>
-  // Preferente: inyectar el JSON ya parseado en PHP
-  window.FORM_JSON = <?php echo json_encode($json_data ?? [], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
-
-  // Fallback: si no existe en PHP, que el front lo cargue desde archivo
-  window.FORM_CONFIG = window.FORM_CONFIG || { archivo_json: 'json/formulariogenerico2.json' };
+// Expone el JSON usado para render (ajusta $json_data si usas otra variable)
+window.FORM_JSON = <?php echo json_encode($json_data ?? [], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
+// Fallback de archivo (si no llega desde PHP)
+window.FORM_CONFIG = window.FORM_CONFIG || { archivo_json: 'json/formulariogenerico2.json' };
 </script>
   <script>
 (function(){

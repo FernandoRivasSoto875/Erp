@@ -375,7 +375,11 @@ function fd_render_layout_fallback($layout, $fieldsets) {
   integrity="sha512-DTOQO9RWCH3ppGqcWaEA1B4..."
   crossorigin="anonymous" referrerpolicy="no-referrer">
 <script>
-  window.FORM_CONFIG = { archivo_json: 'formulariogenerico2.json' };
+  // Preferente: inyectar el JSON ya parseado en PHP
+  window.FORM_JSON = <?php echo json_encode($json_data ?? [], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
+
+  // Fallback: si no existe en PHP, que el front lo cargue desde archivo
+  window.FORM_CONFIG = window.FORM_CONFIG || { archivo_json: 'json/formulariogenerico2.json' };
 </script>
   <script>
 (function(){
@@ -519,8 +523,5 @@ function fd_render_layout_fallback($layout, $fieldsets) {
     }, true);
   })();
   </script>
-<script>
-window.FORM_JSON = <?php echo json_encode($json_data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
-</script>
 </body>
 </html>

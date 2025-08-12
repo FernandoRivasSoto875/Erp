@@ -175,64 +175,169 @@ function fd_render_fieldset_simple($nombre, $fs){
           . "</fieldset>";
 }
 
-// Fallback layout: si hay layout estructurado, idealmente usar funciones existentes del motor (no mostrado aquí).
-function fd_render_layout_fallback($layout, $fieldsets) {
-    if (!$layout || !is_array($layout)) {
-        // Sin layout: listar todos los fieldsets uno debajo de otro
-        $out = "<div class='row'><div class='col-12' data-col-width='12'>";
-        foreach ($fieldsets as $k=>$fs) $out .= fd_render_fieldset_simple($k,$fs);
-        $out .= "</div></div>";
-        return $out;
+function fd_render_fieldset($key, $fieldset){
+    if(!$fieldset) return '';
+    $titulo = $fieldset['titulo'] ?? $fieldset['legend'] ?? $key;
+    $campos = $fieldset['campos'] ?? [];
+    ob_start(); ?>
+    <fieldset class="fd-fieldset" data-fieldset-key="<?php echo htmlspecialchars($key); ?>">
+      <legend><?php echo htmlspecialchars($titulo); ?></legend>
+      <div class="fd-fields-container">
+        <?php foreach($campos as $c){ echo fd_render_campo($c); } ?>
+      </div>
+    </fieldset>
+    <?php
+    return ob_get_clean();
+}
+
+function fd_render_campo($c){
+    $tipo = strtolower($c['tipo'] ?? 'text');
+    $nombre = $c['nombre'] ?? ('campo_'.uniqid());
+    $etiqueta = $c['etiqueta'] ?? ($c['label'] ?? $nombre);
+    $placeholder = $c['placeholder'] ?? '';
+    $valor = $c['valor'] ?? $c['value'] ?? ($c['valor_predeterminado'] ?? '');
+    $attrsExtra = '';
+    $atr = $c['atributos'] ?? [];
+    foreach($atr as $k=>$v){
+        if(is_bool($v)) $attrsExtra .= $v ? " $k" : '';
+        else $attrsExtra .= ' '.htmlspecialchars($k).'="'.htmlspecialchars($v).'"';
     }
-    // Layout con header/main/footer (estructura actual)
-    $html = '';
-    foreach (['header','main','footer'] as $zone) {
-        if (!isset($layout[$zone])) continue;
-        $block = $layout[$zone];
-        $type  = $block['type'] ?? '';
-        if ($type === 'tabs') {
-            $tabs = $block['tabs'] ?? [];
-            $nav = "<ul class='nav nav-tabs' role='tablist'>";
-            $panes = "<div class='tab-content'>";
-            foreach ($tabs as $i=>$tab) {
-                $tabId = 'tab_'.$zone.'_'.$i;
-                $active = $i===0 ? 'active' : '';
-                $nav .= "<li class='nav-item'><a class='nav-link {$active}' data-bs-toggle='tab' href='#{$tabId}'>{$tab['title']}</a></li>";
-                $panes .= "<div class='tab-pane fade ".($i===0?'show active':'')."' id='{$tabId}' data-dropzone='tab-pane'>";
-                foreach ($tab['rows'] ?? [] as $row) {
-                    $panes .= "<div class='row'>";
-                    foreach ($row['columns'] ?? [] as $col) {
-                        $w = (int)($col['width'] ?? 12);
-                        $panes .= "<div class='col-12 col-md-{$w}' data-col-width='{$w}'>";
-                        if (!empty($col['fieldset']) && isset($fieldsets[$col['fieldset']])) {
-                            $panes .= fd_render_fieldset_simple($col['fieldset'], $fieldsets[$col['fieldset']]);
-                        }
-                        $panes .= "</div>";
-                    }
-                    $panes .= "</div>";
-                }
-                $panes .= "</div>";
+    ob_start(); ?>
+    <div class="mb-3 fd-field-wrapper" data-field-id="<?php echo htmlspecialchars($nombre); ?>" data-field-type="<?php echo htmlspecialchars($tipo); ?>">
+      <?php if($tipo!=='hidden'): ?>
+        <?php if(!empty($etiqueta)): ?><label class="form-label mb-1" for="<?php echo htmlspecialchars($nombre); ?>"><?php echo htmlspecialchars($etiqueta); ?></label><?php endif; ?>
+      <?php endif; ?>
+      <?php
+      switch($tipo){
+        case 'textarea':
+          echo '<textarea class="form-control" name="'.htmlspecialchars($nombre).'" placeholder="'.htmlspecialchars($placeholder).'"'.$attrsExtra.'>'.htmlspecialchars($valor).'</textarea>';
+          break;
+        case 'select':
+        case 'selectdata':
+        case 'select2':
+        case 'select_remote':
+        case 'select2_remote':
+          $opts = $c['opciones'] ?? [];
+          echo '<select class="form-select" name="'.htmlspecialchars($nombre).'"'.$attrsExtra.'>';
+          foreach(fd_normalize_options($opts) as $val=>$lab){
+            $sel = ((string)$valor === (string)$val || (is_array($valor)&&in_array($val,$valor)))?' selected':'';
+            echo '<option value="'.htmlspecialchars($val).'"'.$sel.'>'.htmlspecialchars($lab).'</option>';
+          }
+          echo '</select>';
+          break;
+        case 'radio':
+          foreach(fd_normalize_options($c['opciones'] ?? []) as $val=>$lab){
+            $id = $nombre.'_'.preg_replace('/\W+/','_',$val);
+            $chk = ((string)$valor === (string)$val)?' checked':'';
+            echo '<div class="form-check"><input class="form-check-input" type="radio" id="'.htmlspecialchars($id).'" name="'.htmlspecialchars($nombre).'" value="'.htmlspecialchars($val).'"'.$chk.$attrsExtra.'><label class="form-check-label" for="'.htmlspecialchars($id).'">'.htmlspecialchars($lab).'</label></div>';
+          }
+          break;
+        case 'checkbox':
+          foreach(fd_normalize_options($c['opciones'] ?? []) as $val=>$lab){
+            $id = $nombre.'_'.preg_replace('/\W+/','_',$val);
+            $chk = ((string)$valor === (string)$val || (is_array($valor)&&in_array($val,$valor)))?' checked':'';
+            echo '<div class="form-check"><input class="form-check-input" type="checkbox" id="'.htmlspecialchars($id).'" name="'.htmlspecialchars($nombre).($atr['multiple']??false?'[]':'').'" value="'.htmlspecialchars($val).'"'.$chk.$attrsExtra.'><label class="form-check-label" for="'.htmlspecialchars($id).'">'.htmlspecialchars($lab ?: $val).'</label></div>';
+          }
+          break;
+        case 'hidden':
+          echo '<input type="hidden" name="'.htmlspecialchars($nombre).'" value="'.htmlspecialchars($valor).'"'.$attrsExtra.'>';
+          break;
+        default:
+          $typeAttr = in_array($tipo,['date','number','email','password','file','time','color','url','tel','datetime','datetime-local']) ? ($tipo==='datetime'?'datetime-local':$tipo) : 'text';
+          echo '<input class="form-control" type="'.$typeAttr.'" name="'.htmlspecialchars($nombre).'" placeholder="'.htmlspecialchars($placeholder).'" value="'.htmlspecialchars($valor).'"'.$attrsExtra.'>';
+      }
+      ?>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+
+function fd_normalize_options($opts){
+    // acepta {k:label} o array simple
+    $out=[];
+    if(is_array($opts)){
+        foreach($opts as $k=>$v){
+            if(is_array($v)){
+                $out[$k]=json_encode($v);
+            } else {
+                if(is_int($k)){ $out[$v]=$v; } else { $out[$k]=$v===''?$k:$v; }
             }
-            $nav .= "</ul>";
-            $panes .= "</div>";
-            $html .= "<div class='fd-block-tabs mb-3' data-block-type='tabs'>{$nav}{$panes}</div>";
-        } else {
-            foreach ($block['rows'] ?? [] as $row) {
-                $html .= "<div class='row'>";
-                foreach ($row['columns'] ?? [] as $col) {
-                    $w = (int)($col['width'] ?? 12);
-                    $html .= "<div class='col-12 col-md-{$w}' data-col-width='{$w}'>";
-                    if (!empty($col['fieldset']) && isset($fieldsets[$col['fieldset']])) {
-                        $html .= fd_render_fieldset_simple($col['fieldset'], $fieldsets[$col['fieldset']]);
-                    }
-                    $html .= "</div>";
-                }
+        }
+    }
+    return $out;
+}
+
+function fd_render_layout_fallback($layout, $fieldsets){
+    if(!$layout || !is_array($layout)) return '';
+    $html='';
+    foreach($layout as $sectionKey=>$section){
+        $type = $section['type'] ?? 'group';
+
+        if($type === 'tabs'){
+            $tabs = $section['tabs'] ?? [];
+            $tabId = 'tabs_'.uniqid();
+            $html .= '<div class="fd-tabs mb-3">';
+            // nav
+            $html .= '<ul class="nav nav-tabs" role="tablist">';
+            foreach($tabs as $i=>$tab){
+                $active = $i===0 ? 'active' : '';
+                $tid = $tabId.'_pane_'.$i;
+                $title = htmlspecialchars($tab['title'] ?? ('Tab '.($i+1)));
+                $html .= "<li class='nav-item'><button class='nav-link $active' data-bs-toggle='tab' data-bs-target='#$tid' type='button'>$title</button></li>";
+            }
+            $html .= '</ul>';
+            // panes
+            $html .= '<div class="tab-content border border-top-0 p-3">';
+            foreach($tabs as $i=>$tab){
+                $active = $i===0 ? 'show active' : '';
+                $tid = $tabId.'_pane_'.$i;
+                $html .= "<div class='tab-pane fade $active' id='$tid'>";
+                $html .= fd_render_rows($tab['rows'] ?? [], $fieldsets);
                 $html .= "</div>";
             }
+            $html .= '</div></div>';
+        } else {
+            // header/footer/otro -> render rows
+            $html .= '<div class="fd-section fd-section-'.htmlspecialchars($type).' mb-3">';
+            $html .= fd_render_rows($section['rows'] ?? [], $fieldsets);
+            $html .= '</div>';
         }
     }
     return $html;
 }
+
+function fd_render_rows($rows, $fieldsets){
+    $html='';
+    foreach($rows as $row){
+        $cols = $row['columns'] ?? $row['cols'] ?? $row['columnas'] ?? [];
+        if(!$cols || !is_array($cols)) continue;
+
+        // Normaliza width
+        $total = array_sum(array_map(fn($c)=> (int)($c['width'] ?? 12), $cols));
+        // Si la suma no es 12, escala proporcional
+        $scale = $total>0 ? 12 / $total : 1;
+
+        $html .= '<div class="row g-3 mb-2">';
+        foreach($cols as $col){
+            $w = (int)($col['width'] ?? 12);
+            $w = max(1, min(12, (int)round($w * $scale)));
+            $class = 'col-md-'.$w;
+            $fieldsetKey = $col['fieldset'] ?? $col['fs'] ?? null;
+
+            $html .= '<div class="'.$class.'">';
+            if($fieldsetKey && isset($fieldsets[$fieldsetKey])){
+                $html .= fd_render_fieldset($fieldsetKey, $fieldsets[$fieldsetKey]);
+            } else {
+                // contenido libre si hay
+                if(isset($col['html'])) $html .= $col['html'];
+            }
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+    }
+    return $html;
+}
+// ...existing code...
 ?><!DOCTYPE html>
 <html lang="es">
 <head>

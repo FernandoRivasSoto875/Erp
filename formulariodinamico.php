@@ -107,6 +107,27 @@ Este bloque complementa el prompt principal, detallando requisitos para rediseñ
 require_once __DIR__ . '/formulariodinamicofunciones.php';
 require_once __DIR__ . '/formulariodinamicologica.php';
 
+// --- CARGA JSON FUENTE Y VARIABLES PRINCIPALES ---
+$archivo_base = $_GET['json'] ?? $_POST['json'] ?? 'formulariogenerico2.json';
+$json_path = __DIR__ . '/json/' . $archivo_base;
+$json_data = [];
+if (file_exists($json_path)) {
+  $json_raw = file_get_contents($json_path);
+  $json_data = json_decode($json_raw, true);
+  if (json_last_error() !== JSON_ERROR_NONE) {
+    $json_data = [];
+  }
+} else {
+  $json_data = [];
+}
+
+$parametros = $json_data['parametros'] ?? [];
+$fieldsets = $json_data['fieldsets'] ?? [];
+$layout = $json_data['layout'] ?? [];
+$botones_config = $parametros['botones'] ?? [];
+$titulo_formulario = $parametros['titulo'] ?? 'Formulario Genérico';
+$descripcion_formulario = $parametros['comentario'] ?? '';
+$modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
 ?>
 <body class="<?= $modoDiseno ? 'fd-design-mode' : '' ?>">
   <!-- IMPORTANTE: Revisar el bloque COPILOT_PROMPT al inicio de este archivo para TODOS los lineamientos, reglas y requisitos de rediseño runtime. -->

@@ -114,6 +114,7 @@
   if (group[key]) return { key, def: group[key] };
   const low = String(key).toLowerCase();
   const foundKey = Object.keys(group || {}).find(k => String(k).toLowerCase() === low);
+  const k = (keys || []).find(x => String(x).toLowerCase() === wl);
   return foundKey ? { key: foundKey, def: group[foundKey] } : null;
   }
 
@@ -122,7 +123,12 @@
   if (!obj || typeof obj !== 'object') return undefined;
   const keys = Object.keys(obj);
   const wl = String(wanted).toLowerCase();
-  const k = (keys || []).find(x => String(x).toLowerCase() === wl);
+  let k;
+  if (Array.isArray(keys)) {
+    k = keys.find(x => String(x).toLowerCase() === wl);
+  } else {
+    k = undefined;
+  }
   return k ? obj[k] : undefined;
   }
   function getFirstStringProp(obj, names){

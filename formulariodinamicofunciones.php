@@ -58,6 +58,13 @@ function generarPaletaTiposControl(): string {
 
 // --- Función principal para generar un campo ---
 function generarCampo($campo, $valor, $soloLectura): string {
+    $attrs = $campo['attrs'] ?? [];
+    $tipo = strtolower($campo['tipo'] ?? 'text');
+    $hLabel = htmlspecialchars($campo['etiqueta'] ?? $campo['label'] ?? '', ENT_QUOTES, 'UTF-8');
+    $inputType = $tipo;
+    $hName = htmlspecialchars($campo['nombre'] ?? $campo['name'] ?? '', ENT_QUOTES, 'UTF-8');
+    $disabled = $soloLectura ? ' disabled readonly' : '';
+    $label = $campo['etiqueta'] ?? $campo['label'] ?? '';
     $attrStr = '';
     foreach ((array)$attrs as $k => $v) {
         $attrStr .= ' '.htmlspecialchars($k, ENT_QUOTES, 'UTF-8')."=\"".htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8')."\"";
@@ -65,8 +72,14 @@ function generarCampo($campo, $valor, $soloLectura): string {
     switch ($tipo) {
         case 'email':
         case 'password':
+        case 'text':
+        case 'number':
+        case 'date':
+        case 'hidden':
             $cls = $tipo === 'hidden' ? 'form-control d-none' : 'form-control';
             return "<div class='form-group mb-2'>".($tipo==='hidden'?'':$hLabel)."<input type='{$inputType}' name='{$hName}' value='".htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8')."' class='{$cls}'{$disabled}{$attrStr}></div>";
+        case 'textarea':
+            return "<div class='form-group mb-2'>{$hLabel}<textarea name='{$hName}' class='form-control'{$disabled}{$attrStr}>".htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8')."</textarea></div>";
         case 'file':
             return "<div class='form-group mb-2'>{$hLabel}<input type='file' name='{$hName}".(isset($attrs['multiple'])?'[]':'')."' class='form-control'{$disabled}{$attrStr}></div>";
         case 'select':
@@ -86,7 +99,7 @@ function generarCampo($campo, $valor, $soloLectura): string {
             }
             return $html."</div></div>";
         case 'checkbox':
-            return "<div class='form-group form-check mb-2'><input class='form-check-input' type='checkbox' id='{$hName}' name='{$hName}' value='1'".(($valor)?' checked':'')."{$disabled}{$attrStr}><label class='form-check-label' for='{$hName}'>".htmlspecialchars($label ?? $hLabel, ENT_QUOTES, 'UTF-8')."</label></div>";
+            return "<div class='form-group form-check mb-2'><input class='form-check-input' type='checkbox' id='{$hName}' name='{$hName}' value='1'".(($valor)?' checked':'')."{$disabled}{$attrStr}><label class='form-check-label' for='{$hName}'>".htmlspecialchars($label ?: $hLabel, ENT_QUOTES, 'UTF-8')."</label></div>";
         case 'datatable':
             $cols = $campo['columnas'] ?? $campo['columns'] ?? [];
             $head = '';
@@ -98,15 +111,16 @@ function generarCampo($campo, $valor, $soloLectura): string {
             return "<div class='form-group mb-2'>{$hLabel}<input type='{$inputType}' name='{$hName}' value='".htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8')."' class='form-control'{$disabled}{$attrStr}></div>";
     }
 
-function fd_count_fields_por_fieldset(array $fieldsets): array {
+function fd_count_fields_por_fieldset(array $fieldsets) {
+    $out = [];
+    foreach ($fieldsets as $key => $fs) {
+        $out[$key] = isset($fs['campos']) && is_array($fs['campos']) ? count($fs['campos']) : 0;
+    }
     return $out;
 }
-     * @param array $fieldsets
-     * @return int
-     */
-    function fd_count_fieldsets($fieldsets): int {
-        return is_array($fieldsets) ? count($fieldsets) : 0;
-    }
+function fd_count_fieldsets($fieldsets) {
+    return is_array($fieldsets) ? count($fieldsets) : 0;
+}
 }
 
 /* ========================================================================

@@ -106,9 +106,7 @@ Este bloque complementa el prompt principal, detallando requisitos para rediseñ
 */
 require_once __DIR__ . '/formulariodinamicofunciones.php';
 require_once __DIR__ . '/formulariodinamicologica.php';
-if (!function_exists('fd_render_layout_fallback')) {
-  function fd_render_layout_fallback(){ return '<div class="alert alert-danger">Helper fd_render_layout_fallback no disponible.</div>'; }
-}
+
 ?>
 <body class="<?= $modoDiseno ? 'fd-design-mode' : '' ?>">
   <!-- IMPORTANTE: Revisar el bloque COPILOT_PROMPT al inicio de este archivo para TODOS los lineamientos, reglas y requisitos de rediseño runtime. -->

@@ -143,11 +143,7 @@ if (!function_exists('fd_render_layout_fallback')) {
       </div>
       <div class="d-flex align-items-center gap-2">
         <label class="form-check form-switch m-0">
-          <input type="checkbox"
-                 class="form-check-input"
-                 id="designModeToggle"
-                 <?= $modoDiseno ? 'checked' : '' ?>
-                 aria-label="Activar modo diseño">
+          <input type="checkbox" class="form-check-input" id="designModeToggle" <?= $modoDiseno ? 'checked' : '' ?> aria-label="Activar modo diseño">
           <span class="form-check-label">Diseño</span>
         </label>
         <button type="button" class="btn btn-sm btn-outline-secondary <?= $modoDiseno ? '' : 'd-none' ?>" id="toggleTreeBtn">Árbol</button>

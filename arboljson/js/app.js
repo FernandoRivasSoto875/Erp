@@ -29,7 +29,8 @@
 
   window.addEventListener('message',(e)=>{
     const m=e.data||{}; if(!m.fdTree) return;
-    if(m.type==='setJSON' && m.payload){ current=m.payload; render(current); }
+    if(m.type==='setJSON' && m.payload){ current=m.payload; render(current); return; }
+    if(m.type==='ping'){ post({type:'pong'}); return; }
   });
 
   document.addEventListener('DOMContentLoaded',()=>{ post({type:'ready'}); post({type:'requestJSON'}); });

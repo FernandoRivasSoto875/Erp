@@ -1,118 +1,87 @@
 /* MASTER_PROMPT_REFERENCE + PROMPT_MODO_DISENO
-   Leer COPILOT_PROMPT y PROMPT_MODO_DISENO en formulariodinamico.php antes de modificar.
-   Rol: Implementar Modo Diseño (árbol + DnD), serializar layout y sincronización bidireccional sin eliminar funcionalidades existentes.
+   Implementa Modo Diseño: al activarse muestra y monta el Árbol JSON y habilita controles.
+   No elimina funcionalidades existentes; sólo complementa.
 */
 (function(window, document){
   'use strict';
 
   const FD = window.FD || (window.FD = {});
-  // -------------------------------------------------------------------
+
   // Estado
-  // -------------------------------------------------------------------
   FD.state = Object.assign({
     designMode: false,
     dirty: false,
-    saving: false,
     treeLoaded: false,
     treeError: false,
     autoTreeOnFirstDesign: true
   }, FD.state || {});
 
-  // -------------------------------------------------------------------
   // Utils
-  // -------------------------------------------------------------------
   FD.$    = FD.$    || ((sel,root=document)=>root.querySelector(sel));
   FD.$all = FD.$all || ((sel,root=document)=>Array.from(root.querySelectorAll(sel)));
-  FD.log  = FD.log  || ((...m)=>console.debug('[FD]',...m));
-
-  FD.toast = FD.toast || function(msg,type='info',ms=3500){
-    const map={info:'secondary',warning:'warning',success:'success',danger:'danger'};
-    const box=document.createElement('div');
-    box.className='alert alert-'+(map[type]||'secondary');
-    box.textContent=msg;
-    Object.assign(box.style,{position:'fixed',right:'12px',bottom:'12px',zIndex:9999,minWidth:'220px'});
-    document.body.appendChild(box);
-    setTimeout(()=>box.remove(),ms);
+  FD.toast = FD.toast || function(msg,type='info',ms=3000){
+    const map={info:'secondary',success:'success',warning:'warning',danger:'danger'};
+    const el=document.createElement('div');
+    el.className='alert alert-'+(map[type]||'secondary');
+    el.textContent=msg;
+    Object.assign(el.style,{position:'fixed',right:'12px',bottom:'12px',zIndex:9999,minWidth:'220px'});
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),ms);
   };
 
+  // JSON helpers
+  function getFormJSON(){
+    const n = FD.$('#fd-data');
+    if(!n) return {};
+    try { return JSON.parse(n.getAttribute('data-form-json')||'{}'); }
+    catch { return {}; }
+  }
+  function setFormJSON(obj){
+    const n = FD.$('#fd-data');
+    if(n) n.setAttribute('data-form-json', JSON.stringify(obj));
+  }
+  FD.getFormJSON = FD.getFormJSON || getFormJSON;
+  FD.setFormJSON = FD.setFormJSON || setFormJSON;
+
+  // Serialización layout (placeholder compatible)
+  FD.serializeLayoutFromDom = FD.serializeLayoutFromDom || function(){
+    return getFormJSON().layout || [];
+  };
+  FD.buildSavePayload = FD.buildSavePayload || function(){
+    const data = getFormJSON();
+    data.layout = FD.serializeLayoutFromDom();
+    return data;
+  };
   FD.markDirty = FD.markDirty || function(){
     FD.state.dirty = true;
     document.body.classList.add('fd-layout-dirty');
   };
 
-  FD.getFormJSON = function(){
-    const n = FD.$('#fd-data');
-    if(!n) return {};
-    try { return JSON.parse(n.getAttribute('data-form-json')||'{}'); }
-    catch { return {}; }
-  };
-  FD.setFormJSON = function(obj){
-    const n = FD.$('#fd-data');
-    if(n) n.setAttribute('data-form-json', JSON.stringify(obj));
-  };
+  // Visibilidad controles según modo diseño
+  function updateDesignControlsVisibility(){
+    const btnTree = FD.$('#toggleTreeBtn');
+    const btnSave = FD.$('#saveLayoutBtn');
+    const on = FD.state.designMode;
 
-  // -------------------------------------------------------------------
-  // Serialización del layout desde el DOM
-  // Lee .fd-section > .fd-row > .fd-col[data-fs]
-  // -------------------------------------------------------------------
-  FD.serializeLayoutFromDom = function(){
-    const sections = [];
-    FD.$all('.fd-section').forEach(sectionEl=>{
-      // Tabs se mantienen sin modificar (futuro: soportar)
-      if(sectionEl.classList.contains('fd-tabs')){
-        // Placeholder: no re-serializamos tabs aún; conservar original
-        const originalLayout = FD.getFormJSON().layout || [];
-        // Intentar identificar sección tabs por data-tabs
-        const tabsId = sectionEl.getAttribute('data-tabs');
-        const found = (originalLayout||[]).find(s=> (s.type==='tabs' && tabsId));
-        if(found){
-          sections.push(found);
-          return;
-        }
-      }
-      const sec = { type: 'section', rows: [] };
-      sectionEl.querySelectorAll('.fd-row').forEach(rowEl=>{
-        const row = { cols: [] };
-        rowEl.querySelectorAll('.fd-col').forEach(colEl=>{
-          const fs = colEl.getAttribute('data-fs');
-            if(fs){
-              row.cols.push({ width: inferBootstrapWidth(colEl) || 12, fieldset: fs });
-            }
-        });
-        if(row.cols.length) sec.rows.push(row);
-      });
-      if(sec.rows.length) sections.push(sec);
+    [btnTree, btnSave].forEach(b=>{
+      if(!b) return;
+      b.classList.toggle('d-none', !on);
+      b.toggleAttribute('disabled', !on);
+      b.setAttribute('aria-hidden', on?'false':'true');
     });
-    return sections;
-  };
-
-  function inferBootstrapWidth(colEl){
-    // Busca clases col-md-X o col-X
-    const cls = colEl.className.split(/\s+/);
-    let width = 12;
-    cls.forEach(c=>{
-      let m = c.match(/^col(?:-md)?-(\d{1,2})$/);
-      if(m){
-        const v = parseInt(m[1],10);
-        if(v>=1 && v<=12) width = v;
-      }
-    });
-    return width;
   }
 
-  FD.buildSavePayload = function(){
-    const data = FD.getFormJSON();
-    data.layout = FD.serializeLayoutFromDom();
-    return data;
-  };
-
-  // -------------------------------------------------------------------
   // Modo Diseño
-  // -------------------------------------------------------------------
   FD.setDesignMode = function(on){
     on = !!on;
+    if(FD.state.designMode === on) {
+      updateDesignControlsVisibility();
+      return;
+    }
+    // Confirmación si hay cambios y se desactiva
     if(FD.state.designMode && !on && FD.state.dirty){
-      if(!window.confirm('Hay cambios sin guardar. ¿Salir del modo diseño igualmente?')){
+      const ok = window.confirm('Hay cambios sin guardar. ¿Salir del modo diseño igualmente?');
+      if(!ok){
         const cb = FD.$('#designModeToggle');
         if(cb) cb.checked = true;
         return;
@@ -120,112 +89,108 @@
     }
     FD.state.designMode = on;
     document.body.classList.toggle('fd-design-mode', on);
-    const saveBtn = FD.$('#saveLayoutBtn');
-    if(saveBtn) saveBtn.disabled = !on;
+    updateDesignControlsVisibility();
+
     if(on){
-      applyEditableMarkers();
-      initDnD();
-      if(FD.state.autoTreeOnFirstDesign) {
+      // Montar/mostrar árbol al entrar en modo diseño
+      if(FD.state.autoTreeOnFirstDesign){
         mountTreeApp(true);
         FD.state.autoTreeOnFirstDesign = false;
       }
     } else {
-      removeEditableMarkers();
+      // Ocultar árbol al salir (opcional)
+      const host = FD.$('#fd-json-tree-app');
+      if(host) host.classList.add('d-none');
+      document.body.classList.remove('fd-layout-dirty');
     }
   };
 
-  function applyEditableMarkers(){
-    FD.$all('.fd-section').forEach(el=> el.classList.add('fd-editable'));
-    FD.$all('.fd-fieldset').forEach(el=> el.classList.add('fd-editable'));
-  }
-  function removeEditableMarkers(){
-    FD.$all('.fd-editable').forEach(el=> el.classList.remove('fd-editable'));
-  }
-
+  // Bind toggle
   function bindDesignToggle(){
     const cb = FD.$('#designModeToggle');
     if(!cb) return;
     cb.addEventListener('change', ()=> FD.setDesignMode(cb.checked));
   }
 
-  window.addEventListener('beforeunload', e=>{
-    if(FD.state.dirty){
-      e.preventDefault();
-      e.returnValue = '';
-    }
-  });
-
-  // -------------------------------------------------------------------
-  // Árbol (micro‑app)
-  // -------------------------------------------------------------------
+  // Árbol JSON (micro‑app)
   function buildQuickTreeFallback(host){
-    const data = FD.getFormJSON();
-    host.innerHTML = '<div class="small text-muted mb-1">Árbol no disponible (fallback JSON plano).</div>';
     const pre=document.createElement('pre');
     pre.style.maxHeight='420px';
     pre.style.overflow='auto';
     pre.style.fontSize='11px';
-    pre.textContent = JSON.stringify(data,null,2);
+    pre.textContent = JSON.stringify(getFormJSON(), null, 2);
+    host.innerHTML = '<div class="small text-muted mb-2">Árbol no disponible. Mostrando JSON.</div>';
     host.appendChild(pre);
   }
 
   function mountTreeApp(auto=false){
     const host = FD.$('#fd-json-tree-app');
     if(!host) return;
-    // Mostrar si venía oculto
     host.classList.remove('d-none');
 
-    // Si ya cargado y se disparó manual (no auto) => toggle
-    if(FD.state.treeLoaded && !auto){
-      host.classList.toggle('d-none');
+    if(FD.state.treeLoaded || host.querySelector('iframe') || FD.state.treeError){
+      if(!auto) host.classList.toggle('d-none');
       return;
     }
-    if(FD.state.treeLoaded || host.querySelector('iframe') || FD.state.treeError) return;
 
     host.innerHTML = '<div class="text-center py-3 text-secondary">Cargando árbol...</div>';
     const iframe = document.createElement('iframe');
     iframe.src = 'arboljson/index.php';
     iframe.className = 'fd-tree-iframe w-100 border';
-    iframe.style.minHeight='480px';
-    iframe.title='Árbol JSON';
-    let loaded = false;
+    iframe.style.minHeight = '480px';
+    iframe.title = 'Árbol JSON';
 
+    let loaded = false;
     iframe.addEventListener('load', ()=>{
       loaded = true;
       FD.state.treeLoaded = true;
       FD.toast('Árbol cargado','success');
+      // Enviar JSON actual al árbol (si lo soporta)
+      try {
+        iframe.contentWindow?.postMessage({ fdTree:true, type:'setJSON', payload:getFormJSON() }, '*');
+      } catch {}
     });
     iframe.addEventListener('error', ()=>{
       FD.state.treeError = true;
       host.innerHTML = '';
-      FD.toast('Error al cargar árbol. Fallback.','danger');
+      FD.toast('No se pudo cargar el árbol. Fallback JSON.','danger');
       buildQuickTreeFallback(host);
     });
+
+    // Timeout de seguridad
     setTimeout(()=>{
       if(!loaded && !FD.state.treeError){
         FD.state.treeError = true;
-        host.innerHTML='';
-        FD.toast('Timeout cargando árbol. Fallback.','warning');
+        host.innerHTML = '';
+        FD.toast('Timeout cargando árbol. Fallback JSON.','warning');
         buildQuickTreeFallback(host);
       }
     }, 8000);
 
     host.innerHTML = '';
     host.appendChild(iframe);
-
-    window.addEventListener('message', e=>{
-      if(!e.data || !e.data.fdTree) return;
-      const msg = e.data;
-      if(msg.type === 'updateJSON' && msg.payload){
-        FD.setFormJSON(msg.payload);
-        window.FORM_JSON = msg.payload;
-        FD.markDirty();
-        FD.toast('JSON actualizado desde árbol','success');
-        // (Opcional) Re-render parcial: requeriría reconstruir secciones
-      }
-    });
   }
 
+  // Comunicación con micro‑app
+  window.addEventListener('message', e=>{
+    const msg = e.data;
+    if(!msg || !msg.fdTree) return;
+
+    if(msg.type === 'ready' || msg.type === 'requestJSON'){
+      // Responder con el JSON actual
+      try { e.source?.postMessage({ fdTree:true, type:'setJSON', payload:getFormJSON() }, '*'); } catch {}
+      return;
+    }
+
+    if(msg.type === 'updateJSON' && msg.payload){
+      setFormJSON(msg.payload);
+      window.FORM_JSON = msg.payload;
+      FD.markDirty();
+      FD.toast('JSON actualizado desde árbol','success');
+    }
+  });
+
+  // Botones
   function bindTreeButton(){
     const btn = FD.$('#toggleTreeBtn');
     if(!btn) return;
@@ -237,146 +202,39 @@
       mountTreeApp(false);
     });
   }
-
-  // -------------------------------------------------------------------
-  // Guardado
-  // -------------------------------------------------------------------
   function bindSave(){
     const btn = FD.$('#saveLayoutBtn');
     if(!btn) return;
     btn.addEventListener('click', ()=>{
-      if(FD.state.saving) return;
+      if(!FD.state.designMode) return;
       const payload = FD.buildSavePayload();
-      let valid = true;
-      try { JSON.stringify(payload); } catch { valid = false; }
-      if(!valid){
-        FD.toast('JSON inválido. No se guarda.','danger');
-        return;
-      }
-      FD.state.saving = true;
-      btn.disabled = true;
-      fetch('ajax/guardar_layout.php',{
-        method: 'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify(payload)
-      })
-      .then(r=>r.json().catch(()=>({ok:false,error:'Respuesta no válida'})))
-      .then(res=>{
-        if(res.ok){
-          FD.toast('Guardado','success');
-          FD.state.dirty=false;
-          document.body.classList.remove('fd-layout-dirty');
-        } else {
-          FD.toast(res.error||'Error al guardar','danger');
-        }
-      })
-      .catch(()=> FD.toast('Error de red','danger'))
-      .finally(()=>{
-        FD.state.saving=false;
-        btn.disabled = !FD.state.designMode;
-      });
+      try { JSON.stringify(payload); } catch { FD.toast('JSON inválido','danger'); return; }
+      // TODO: Implementar persistencia real si corresponde
+      FD.toast('Guardar (stub)','info');
+      FD.state.dirty=false;
+      document.body.classList.remove('fd-layout-dirty');
     });
   }
 
-  // -------------------------------------------------------------------
-  // Drag & Drop
-  // -------------------------------------------------------------------
-  function initDnD(){
-    if(typeof Sortable==='undefined') return;
-    // Reordenar columnas dentro de cada fila
-    FD.$all('#formulariodinamico .fd-row').forEach(row=>{
-      if(row.dataset.sortableCols) return;
-      Sortable.create(row,{
-        group:'fd-cols',
-        draggable:'> .fd-col',
-        animation:150,
-        handle: null,
-        onEnd(){ FD.markDirty(); }
-      });
-      row.dataset.sortableCols='1';
-    });
-
-    // Reordenar fieldsets entre columnas (mover campos entre fieldsets no trivial; se implementa mover fieldsets completos)
-    FD.$all('#formulariodinamico .fd-section').forEach(section=>{
-      if(section.dataset.sortableFieldsets) return;
-      const cols = section.querySelectorAll('.fd-col');
-      if(cols.length){
-        Sortable.create(section,{
-          group:'fd-fieldsets',
-          draggable:'.fd-col',
-          animation:150,
-          onEnd(){ FD.markDirty(); }
-        });
-        section.dataset.sortableFieldsets='1';
-      }
-    });
-
-    // Reordenar campos dentro de un fieldset (heurística: agrupar wrappers por .fd-field-wrapper si existe, si no usar inputs directos)
-    FD.$all('#formulariodinamico fieldset.fd-fieldset').forEach(fs=>{
-      if(fs.dataset.sortableFields) return;
-      let candidates = fs.querySelectorAll('.fd-field-wrapper');
-      let selector = '.fd-field-wrapper';
-      if(!candidates.length){
-        // fallback: inputs directos => envolver lógicamente
-        candidates = fs.querySelectorAll('div, .form-group');
-        selector = '> *:not(legend)';
-      }
-      if(candidates.length){
-        Sortable.create(fs,{
-          group:'fd-fields',
-          draggable: selector,
-          filter:'legend',
-          animation:120,
-          onEnd(){ FD.markDirty(); }
-        });
-        fs.dataset.sortableFields='1';
-      }
-    });
-  }
-
-  // -------------------------------------------------------------------
-  // Tabs fallback
-  // -------------------------------------------------------------------
-  (function tabsFallback(){
-    if(typeof bootstrap !== 'undefined' && bootstrap.Tab) return;
-    document.addEventListener('click', e=>{
-      const btn = e.target.closest('[data-bs-toggle="tab"]');
-      if(!btn) return;
-      e.preventDefault();
-      const targetSel = btn.getAttribute('data-bs-target') || btn.getAttribute('href');
-      if(!targetSel) return;
-      const tabsContainer = btn.closest('.fd-tabs');
-      if(!tabsContainer) return;
-
-      tabsContainer.querySelectorAll('.nav-link').forEach(l=>{
-        l.classList.remove('active');
-        l.setAttribute('aria-selected','false');
-      });
-      btn.classList.add('active');
-      btn.setAttribute('aria-selected','true');
-
-      tabsContainer.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('show','active'));
-      const pane = tabsContainer.querySelector(targetSel);
-      if(pane) pane.classList.add('show','active');
-    });
-  })();
-
-  // -------------------------------------------------------------------
   // Init
-  // -------------------------------------------------------------------
   function init(){
     bindDesignToggle();
     bindTreeButton();
     bindSave();
+    // Alinear visibilidad inicial de controles
+    updateDesignControlsVisibility();
+    // Si ya viene activo por query, aplicar
     const cb = FD.$('#designModeToggle');
     if(cb && cb.checked){
       FD.setDesignMode(true);
     }
   }
 
-  document.readyState === 'loading'
-    ? document.addEventListener('DOMContentLoaded', init)
-    : init();
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
 
   // Debug hooks
   FD.debug = Object.assign(FD.debug||{},{

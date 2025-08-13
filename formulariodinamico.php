@@ -132,8 +132,8 @@ if (!function_exists('fd_render_layout_fallback')) {
                  aria-label="Activar modo diseño">
           <span class="form-check-label">Diseño</span>
         </label>
-        <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleTreeBtn" data-tree-mount>Árbol</button>
-        <button type="button" class="btn btn-sm btn-primary" id="saveLayoutBtn" <?= $modoDiseno ? '' : 'disabled' ?>>Guardar</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary <?= $modoDiseno ? '' : 'd-none' ?>" id="toggleTreeBtn" data-tree-mount>Árbol</button>
+        <button type="button" class="btn btn-sm btn-primary <?= $modoDiseno ? '' : 'd-none' ?>" id="saveLayoutBtn" <?= $modoDiseno ? '' : 'disabled' ?>>Guardar</button>
       </div>
     </div>
 

@@ -26,6 +26,12 @@ header('Content-Type: text/html; charset=utf-8');
         <div id="status" class="status"></div>
       </div>
     </section>
+    <div id="json-tree-panel" class="border p-3">
+      <h5>Árbol de JSON</h5>
+      <div id="json-tree">
+          <?php echo generarArbolJson($json_data); ?>
+      </div>
+    </div>
   </div>
   <script src="js/app.js"></script>
 </body>

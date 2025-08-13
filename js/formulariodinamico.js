@@ -1,463 +1,349 @@
-// FIX: Forzar MODO NORMAL lo antes posible (salvo ?modoDiseno=1)
-(function normalModeGuardEarly() {
-    try {
-        var isDesign = new URLSearchParams(window.location.search).get('modoDiseno') === '1';
-        if (!isDesign) {
-            // Quitar cualquier rastro de diseño puesto por el servidor u otros scripts
-            if (document.body) document.body.classList.remove('design-mode');
-            var fuera = document.getElementById('elementos-fuera-container');
-            if (fuera) fuera.style.display = 'none';
-            var toggle = document.getElementById('designModeToggle');
-            if (toggle) toggle.checked = false;
+/* =========================================================
+   FORMULARIO DINÁMICO - UNIFICADO
+   - Complementa lógica existente (no sobreescribe si ya existe)
+   - Prioriza funciones ya definidas en este archivo antes de cargar
+   - Añade: modo diseño, árbol JSON (fallback), guardado layout, DnD, toasts
+   ========================================================= */
+(function(window, document){
+  'use strict';
+
+  const FD = window.FD || {};
+  window.FD = FD;
+
+  FD.state = Object.assign({
+    designMode: false,
+    saving: false,
+    dirty: false
+  }, FD.state || {});
+
+  if(!FD.$) FD.$ = function(sel, root=document){ return root.querySelector(sel); };
+  if(!FD.$all) FD.$all = function(sel, root=document){ return Array.from(root.querySelectorAll(sel)); };
+
+  if(!FD.toast){
+    FD.toast = function(msg, type='info'){
+      const box = document.createElement('div');
+      box.className = 'alert alert-'+mapType(type);
+      box.textContent = msg;
+      Object.assign(box.style, {
+        position:'fixed',right:'12px',bottom:'12px',zIndex:99999,minWidth:'200px'
+      });
+      document.body.appendChild(box);
+      setTimeout(()=>box.remove(), 4000);
+      function mapType(t){
+        switch(t){
+          case 'success':return 'success';
+          case 'danger': return 'danger';
+          case 'warning':return 'warning';
+          default: return 'secondary';
         }
-    } catch (e) {}
-})();
+      }
+    };
+  }
 
-// js/formulariodinamico.js
-// KEEP: Revisado y listo para commit. Lógica de modo diseño, drag & drop, undo/redo y editor visual del formulario dinámico.
-// Lógica de modo diseño, drag & drop, undo/redo, y utilidades para el formulario dinámico
+  if(!FD.markDirty){
+    FD.markDirty = function(){ FD.state.dirty = true; document.body.classList.add('fd-layout-dirty'); };
+  }
 
-$(document).ready(function() {
-    // --- LÓGICA DEL MODO DISEÑO (CORREGIDA Y MEJORADA) ---
-    const designModeToggle = $('#designModeToggle');
-    const saveLayoutBtn = $('#saveLayoutBtn');
-    const undoBtn = $('#undoBtn');
-    const redoBtn = $('#redoBtn');
-    const body = $('body');
-    let sortableInstances = [];
+  if(!FD.setDesignMode){
+    FD.setDesignMode = function(on){
+      FD.state.designMode = !!on;
+      document.body.classList.toggle('fd-design-mode', on);
+      const saveBtn = FD.$('#saveLayoutBtn');
+      if(saveBtn) saveBtn.toggleAttribute('disabled', !on);
+      if(on && typeof FD.rebuildFormTree === 'function'){
+        try{ FD.rebuildFormTree(); }catch(e){ console.warn(e); }
+      }
+    };
+  }
 
-    // --- Sistema de Historial para Undo/Redo ---
-    let history = [];
-    let historyIndex = -1;
-    const formContainer = document.getElementById('formulariodinamico');
+  function bindDesignToggle(){
+    const t = FD.$('#designModeToggle');
+    if(!t) return;
+    t.addEventListener('change', ()=> FD.setDesignMode(t.checked));
+    if(t.checked) FD.setDesignMode(true);
+  }
 
-    function saveState() {
-        if (!formContainer) return;
-        const currentState = formContainer.innerHTML;
-        if (historyIndex > -1 && history[historyIndex] === currentState) return;
-        if (historyIndex < history.length - 1) {
-            history = history.slice(0, historyIndex + 1);
-        }
-        history.push(currentState);
-        historyIndex++;
-        updateUndoRedoButtons();
+  function ensureJsonTree(){
+    if(typeof FD.renderJsonTree === 'function') return;
+    FD.renderJsonTree = function(){
+      const container = FD.$('#fd-json-tree');
+      if(!container) return;
+      const DATA = window.FORM_JSON || readEmbeddedJson();
+      if(!DATA){ container.textContent='Sin JSON'; return; }
+      container.innerHTML = '';
+      const rootUl = document.createElement('ul');
+      rootUl.appendChild(buildNode('parametros', DATA.parametros||{}, 'parametros', true));
+      rootUl.appendChild(buildNode('fieldsets', DATA.fieldsets||{}, 'fieldsets', false));
+      rootUl.appendChild(buildNode('layout', DATA.layout||{}, 'layout', false));
+      container.appendChild(rootUl);
+      container.addEventListener('click', onTreeClick);
+      const filt = FD.$('#fd-tree-filter');
+      if(filt) filt.addEventListener('input', filterTree);
+    };
+  }
+
+  function buildNode(key, value, path, editable){
+    const li=document.createElement('li');
+    const isArr=Array.isArray(value);
+    const isObj=value && typeof value==='object' && !isArr;
+    const hasCh = isArr ? value.length>0 : (isObj ? Object.keys(value).length>0 : false);
+    li.innerHTML =
+      '<div class="fd-json-node" data-path="'+escapeHtml(path)+'" data-editable="'+(editable?'1':'0')+'">'
+      + '<span class="fd-json-toggle '+(hasCh?'':'empty')+'">'+(hasCh?'▾':'')+'</span>'
+      + '<span class="fd-json-key">'+escapeHtml(key)+'</span>'
+      + ( (!isObj && !isArr)
+          ? '<span class="fd-json-value '+valClass(value)+'" data-type="'+valType(value)+'">'+renderVal(value)+'</span>'
+          : '<span class="fd-json-badge">'+(isArr?'['+value.length+']':'{'+Object.keys(value).length+'}')+'</span>')
+      + '</div>';
+    if(hasCh){
+      const ul=document.createElement('ul');
+      if(isArr){
+        value.forEach(function(v,i){ ul.appendChild(buildNode(String(i), v, path+'['+i+']', editable)); });
+      } else {
+        Object.keys(value).forEach(function(k){ ul.appendChild(buildNode(k, value[k], path+'.'+k, editable)); });
+      }
+      li.appendChild(ul);
     }
+    return li;
+  }
 
-    function restoreState(index) {
-        if (!formContainer) return;
-        if (index >= 0 && index < history.length) {
-            formContainer.innerHTML = history[index];
-            disableDesignMode(false);
-            enableDesignMode(false);
-        }
+  function onTreeClick(e){
+    const tg = e.target.closest('.fd-json-toggle');
+    if(tg){
+      if(tg.classList.contains('empty')) return;
+      const li=tg.closest('li');
+      li.classList.toggle('collapsed');
+      tg.textContent = li.classList.contains('collapsed')?'▸':'▾';
+      return;
     }
+    const val = e.target.closest('.fd-json-value');
+    if(!val) return;
+    const node = val.closest('.fd-json-node');
+    if(node.dataset.editable!=='1') return;
+    inlineEdit(val, node.dataset.path);
+  }
 
-    function undo() {
-        if (historyIndex > 0) {
-            historyIndex--;
-            restoreState(historyIndex);
-        }
-    }
-
-    function redo() {
-        if (historyIndex < history.length - 1) {
-            historyIndex++;
-            restoreState(historyIndex);
-        }
-    }
-
-    function updateUndoRedoButtons() {
-        undoBtn.prop('disabled', historyIndex <= 0);
-        redoBtn.prop('disabled', historyIndex >= history.length - 1);
-    }
-
-    undoBtn.on('click', undo);
-    redoBtn.on('click', redo);
-
-    // --- Lógica Principal del Modo Diseño ---
-
-    function enableDesignMode(doSaveState = true) {
-        body.addClass('design-mode');
-        $('#paletas-modo-diseno').show();
-        $('#elementos-fuera-container').show(); // asegurar visible solo en diseño
-        saveLayoutBtn.show();
-        undoBtn.show();
-        redoBtn.show();
-        $('.edit-icon, .tab-block-handle, .edit-tab-icon, .add-tab-button').show();
-
-        // Deshabilitar solo el submit en modo diseño
-        $('form#formulariodinamico button[type="submit"]').prop('disabled', true);
-
-        if ($('select.form-control').data('select2')) {
-            $('select.form-control').select2('destroy');
-        }
-
-        // 1) Fieldsets: mover grupos entre columnas y panes de tabs + parking
-        document.querySelectorAll('[data-col-width], [data-dropzone="tab-pane"], #elementos-fuera-container').forEach(container => {
-            sortableInstances.push(Sortable.create(container, {
-                group: { name: 'fieldsets', pull: true, put: true },
-                animation: 150,
-                ghostClass: 'sortable-ghost',
-                draggable: '.draggable-fieldset',
-                handle: 'legend, [data-fieldset-title], .draggable-fieldset',
-                onEnd: () => {
-                    saveState();
-                    if (window.DnDFormBuilder && window.DnDFormBuilder.saveDesign) {
-                        window.DnDFormBuilder.saveDesign();
-                    } else if (typeof actualizarJsonDesdeUI === 'function') {
-                        actualizarJsonDesdeUI();
-                    }
-                }
-            }));
-        });
-
-        // 2) Campos: mover campos dentro y entre fieldsets
-        document.querySelectorAll('.sortable-fields-container, #elementos-fuera-container').forEach(container => {
-            sortableInstances.push(Sortable.create(container, {
-                group: { name: 'fields', pull: true, put: true },
-                animation: 150,
-                ghostClass: 'sortable-ghost',
-                draggable: '.draggable-field',
-                onEnd: () => {
-                    saveState();
-                    if (window.DnDFormBuilder && window.DnDFormBuilder.saveDesign) {
-                        window.DnDFormBuilder.saveDesign();
-                    } else if (typeof actualizarJsonDesdeUI === 'function') {
-                        actualizarJsonDesdeUI();
-                    }
-                }
-            }));
-        });
-
-        // 3) Pestañas: reordenar pestañas y sincronizar panes
-        document.querySelectorAll('ul.nav[role="tablist"]').forEach(tabsList => {
-            sortableInstances.push(Sortable.create(tabsList, {
-                group: 'tabs',
-                animation: 150,
-                draggable: '.nav-item:not(.add-tab-button)',
-                handle: '.nav-link',
-                filter: '.add-tab-button',
-                onEnd: () => {
-                    const block = tabsList.closest('[data-block-type="tabs"]');
-                    if (!block) return;
-                    const content = block.querySelector('.tab-content');
-                    if (!content) return;
-                    const ids = Array.from(tabsList.querySelectorAll('.nav-link'))
-                        .map(a => (a.getAttribute('href') || '').replace('#',''))
-                        .filter(Boolean);
-                    ids.forEach(id => {
-                        const pane = content.querySelector('#'+CSS.escape(id));
-                        if (pane) content.appendChild(pane);
-                    });
-                    saveState();
-                    if (window.DnDFormBuilder && window.DnDFormBuilder.saveDesign) {
-                        window.DnDFormBuilder.saveDesign();
-                    } else if (typeof actualizarJsonDesdeUI === 'function') {
-                        actualizarJsonDesdeUI();
-                    }
-                }
-            }));
-        });
-
-        // Paleta de componentes (fieldsets clonables)
-        const paletaComponentes = document.getElementById('paleta-componentes');
-        if (paletaComponentes) {
-            sortableInstances.push(Sortable.create(paletaComponentes, {
-                group: { name: 'fieldsets', pull: 'clone', put: false },
-                sort: false,
-                animation: 150,
-                handle: '.handle, [data-fieldset-title]',
-                draggable: '.draggable-fieldset',
-                onStart: (evt) => evt.item.classList.add('sortable-ghost'),
-                onEnd:   (evt) => { evt.item.classList.remove('sortable-ghost'); saveState(); }
-            }));
-        }
-
-        // Paleta de tipos de control (campos clonables)
-        document.querySelectorAll('#paleta-tipos-control .draggable-tipo').forEach(el => {
-            Sortable.create(el, {
-                group: { name: 'new-fields', pull: 'clone', put: false },
-                sort: false,
-                animation: 150,
-                handle: '.handle',
-                onStart: () => el.classList.add('sortable-ghost'),
-                onEnd:   () => { el.classList.remove('sortable-ghost'); /* abrir editor de nuevo campo aquí si aplica */ }
-            });
-        });
-
-        if (doSaveState) saveState();
-        updateUndoRedoButtons();
-    }
-
-    function disableDesignMode(reinitNormal = true) {
-        body.removeClass('design-mode');
-        $('#paletas-modo-diseno').hide();
-        $('#elementos-fuera-container').hide(); // ocultar en modo normal
-        saveLayoutBtn.hide();
-        undoBtn.hide();
-        redoBtn.hide();
-        $('.edit-icon, .tab-block-handle, .edit-tab-icon, .add-tab-button').hide();
-
-        // Rehabilitar el submit en modo normal
-        $('form#formulariodinamico button[type="submit"]').prop('disabled', false);
-
-        sortableInstances.forEach(s => s.destroy());
-        sortableInstances = [];
-        if (reinitNormal) {
-            inicializarLogicaFormulario();
-        }
-    }
-    
-    // --- Eventos de los Botones ---
-    // Al cambiar el toggle, recargar con el query param modoDiseno=1|0
-    designModeToggle.on('change', function() {
-        const url = new URL(window.location.href);
-        url.searchParams.set('modoDiseno', this.checked ? '1' : '0');
-        window.location.href = url.toString();
+  function inlineEdit(span, path){
+    if(span.classList.contains('fd-editing')) return;
+    const old = span.textContent;
+    const type = span.dataset.type;
+    span.classList.add('fd-editing');
+    const inp=document.createElement('input');
+    inp.type='text';
+    inp.value = type==='string'? old.replace(/^"|"$/g,''):old;
+    span.textContent='';
+    span.appendChild(inp);
+    inp.focus(); inp.select();
+    const commit=function(){
+      let raw=inp.value, v;
+      try{
+        if(type==='number'){ v=Number(raw); if(isNaN(v)) throw 0; }
+        else if(type==='boolean'){ v=/^true$/i.test(raw); }
+        else if(type==='null'){ v=null; }
+        else v=raw;
+        setPath(window.FORM_JSON || readEmbeddedJson(), path, v);
+        span.className='fd-json-value '+valClass(v);
+        span.dataset.type=valType(v);
+        span.textContent=renderVal(v);
+        span.classList.remove('fd-editing');
+        FD.markDirty();
+      }catch(err){
+        cancel();
+      }
+    };
+    const cancel=function(){
+      span.classList.remove('fd-editing');
+      span.textContent=old;
+    };
+    inp.addEventListener('keydown', function(ev){
+      if(ev.key==='Enter') commit();
+      else if(ev.key==='Escape') cancel();
     });
+    inp.addEventListener('blur', commit);
+  }
 
-    // Lógica para editar el nombre de la pestaña
-    $(document).on('click', '.edit-tab-icon', function() {
-        if (!body.hasClass('design-mode')) return;
-        const navLink = $(this).closest('.nav-item').find('a.nav-link');
-        const oldTitle = navLink.text();
-        
-        Swal.fire({
-            title: 'Editar nombre de la pestaña',
-            input: 'text',
-            inputValue: oldTitle,
-            showCancelButton: true,
-            confirmButtonText: 'Guardar',
-        }).then((result) => {
-            if (result.isConfirmed && result.value) {
-                const newTitle = result.value;
-                navLink.text(newTitle);
-                const paneId = navLink.attr('href');
-                $(paneId).attr('data-tab-title', newTitle);
-                saveState();
-                if (window.DnDFormBuilder && window.DnDFormBuilder.saveDesign) {
-                    window.DnDFormBuilder.saveDesign();
-                } else if (typeof actualizarJsonDesdeUI === 'function') {
-                    actualizarJsonDesdeUI();
-                }
-            }
-        });
+  function filterTree(){
+    const term = (this.value||'').toLowerCase().trim();
+    const root = FD.$('#fd-json-tree'); if(!root) return;
+    root.querySelectorAll('li').forEach(function(li){ li.classList.remove('fd-filter-hide','fd-filter-hit'); });
+    if(!term) return;
+    root.querySelectorAll('.fd-json-node').forEach(function(nd){
+      const k = (nd.querySelector('.fd-json-key')||{}).textContent || '';
+      const v = (nd.querySelector('.fd-json-value')||{}).textContent || '';
+      const hit = k.toLowerCase().includes(term) || v.toLowerCase().includes(term);
+      if(hit){
+        const li = nd.closest('li');
+        li.classList.add('fd-filter-hit');
+        let cur=li;
+        while(cur){
+          cur.classList.remove('collapsed');
+          const tog = cur.querySelector(':scope > .fd-json-node .fd-json-toggle');
+            if(tog && !tog.classList.contains('empty')) tog.textContent='▾';
+          cur = cur.parentElement && cur.parentElement.closest ? cur.parentElement.closest('li') : null;
+        }
+      }
     });
-
-    // Lógica para añadir una nueva pestaña
-    $(document).on('click', '.add-tab-button', function(e) {
-        e.preventDefault();
-        if (!body.hasClass('design-mode')) return;
-
-        Swal.fire({
-            title: 'Nueva pestaña',
-            input: 'text',
-            inputPlaceholder: 'Nombre de la nueva pestaña',
-            showCancelButton: true,
-            confirmButtonText: 'Crear',
-        }).then((result) => {
-            if (result.isConfirmed && result.value) {
-                const newTitle = result.value;
-                const tabList = $(this).closest('ul.nav[role="tablist"]');
-                const tabContent = tabList.next('.tab-content');
-                const newId = 'tab-' + Date.now();
-
-                const newTabLink = `
-                    <li class="nav-item" role="presentation">
-                        <a class="nav-link" id="${newId}-link" data-toggle="pill" href="#${newId}-pane" role="tab" aria-controls="${newId}-pane" aria-selected="false">${newTitle}</a>
-                        <span class="edit-tab-icon edit-icon" style="display:inline-block;"><i class="fas fa-pencil-alt"></i></span>
-                    </li>`;
-                
-                const newTabPane = `
-                    <div class="tab-pane fade" id="${newId}-pane" role="tabpanel" aria-labelledby="${newId}-link" data-tab-title="${newTitle}">
-                        <!-- Área para soltar elementos -->
-                    </div>`;
-
-                $(this).before(newTabLink);
-                tabContent.append(newTabPane);
-
-                disableDesignMode(false);
-                enableDesignMode(true);
-            }
-        });
+    root.querySelectorAll('li').forEach(function(li){
+      if(li.classList.contains('fd-filter-hit')) return;
+      if(li.querySelector('.fd-filter-hit')) return;
+      li.classList.add('fd-filter-hide');
     });
+  }
 
-    // Lógica para editar el título del formulario (persistir en editar_propiedades.php)
-    $(document).on('click', '[data-edit="form-title"]', function() {
-        if (!body.hasClass('design-mode')) return;
-        const titleEl = $('#form-title');
-        const oldTitle = titleEl.clone().children().remove().end().text().trim(); // solo texto, sin icono
-        Swal.fire({
-            title: 'Título del formulario',
-            input: 'text',
-            inputValue: oldTitle,
-            showCancelButton: true,
-            confirmButtonText: 'Guardar',
-        }).then((result) => {
-            if (result.isConfirmed && result.value) {
-                const newTitle = result.value;
-                const archivo = (window.FORM_CONFIG && window.FORM_CONFIG.archivo_json) || '';
-                $.post('editar_propiedades.php', { archivo, tipo:'form', titulo: newTitle })
-                 .done(resp => {
-                    if (resp && resp.success) {
-                        const icon = titleEl.find('.edit-icon').detach();
-                        titleEl.text(newTitle).append(icon);
-                        saveState();
-                        Swal.fire('OK','Actualizado','success');
-                    } else {
-                        Swal.fire('Error', (resp && resp.error) || 'No se pudo actualizar', 'error');
-                    }
-                 })
-                 .fail(xhr => Swal.fire('Error', (xhr.responseJSON && xhr.responseJSON.error) || 'Error de red', 'error'));
-            }
-        });
+  function bindTreeToggle(){
+    const btn = FD.$('#toggleTreeBtn');
+    const panel = FD.$('#fd-tree-side');
+    if(!btn || !panel) return;
+    btn.addEventListener('click', function(){
+      panel.style.display = (panel.style.display==='none' || !panel.style.display)?'block':'none';
     });
+  }
 
-    // --- LÓGICA DEL EDITOR VISUAL DE PROPIEDADES ---
-    function abrirEditorPropiedades(tipo, datos, onGuardar) {
-        // tipo: 'field', 'fieldset', 'tab'
-        // datos: objeto con las propiedades actuales (puede estar vacío para nuevo)
-        // onGuardar: callback(datosActualizados)
-        let html = '';
-        if (tipo === 'field') {
-            html += '<div class="form-group">';
-            html += '<label>Tipo de campo</label>';
-            html += '<select class="form-control" name="tipo">';
-            const tipos = ['text','textarea','number','email','password','select','selectdata','radio','checkbox','file','date','datatable','hidden'];
-            tipos.forEach(t => {
-                html += `<option value=\"${t}\" ${datos.tipo===t?'selected':''}>${t}</option>`;
-            });
-            html += '</select></div>';
-            html += '<div class="form-group"><label>Nombre</label><input class="form-control" name="nombre" value="'+(datos.nombre||'')+'" required></div>';
-            html += '<div class="form-group"><label>Etiqueta</label><input class="form-control" name="etiqueta" value="'+(datos.etiqueta||'')+'"></div>';
-            html += '<div class="form-group"><label>Placeholder</label><input class="form-control" name="placeholder" value="'+(datos.placeholder||'')+'"></div>';
-            html += '<div class="form-group"><label>Valor predeterminado</label><input class="form-control" name="valor_predeterminado" value="'+(datos.valor_predeterminado||'')+'"></div>';
-            html += '<div class="form-group"><label>Atributos (JSON)</label><input class="form-control" name="atributos" value="'+(datos.atributos?JSON.stringify(datos.atributos):'')+'"></div>';
-            html += '<div class="form-group"><label>Opciones (JSON para select/radio/checkbox)</label><input class="form-control" name="opciones" value="'+(datos.opciones?JSON.stringify(datos.opciones):'')+'"></div>';
-            html += '<div class="form-group"><label>Data-source/query (para selectdata)</label><input class="form-control" name="query" value="'+(datos.query||'')+'"></div>';
-            html += '<div class="form-group"><label>Fórmula (para datatable/number)</label><input class="form-control" name="data-formula" value="'+(datos["data-formula"]||'')+'"></div>';
-        } else if (tipo === 'fieldset') {
-            html += '<div class="form-group"><label>Título</label><input class="form-control" name="titulo" value="'+(datos.titulo||'')+'" required></div>';
-        } else if (tipo === 'tab') {
-            html += '<div class="form-group"><label>Título de la pestaña</label><input class="form-control" name="title" value="'+(datos.title||'')+'" required></div>';
-        }
-        $('#editorPropiedadesBody').html(html);
-        $('#editorPropiedadesModal').modal('show');
-        $('#formEditorPropiedades').off('submit').on('submit', function(e){
-            e.preventDefault();
-            const formData = Object.fromEntries(new FormData(this).entries());
-            // Parsear atributos y opciones si corresponde
-            if(formData.atributos){ try{ formData.atributos = JSON.parse(formData.atributos);}catch(e){formData.atributos={};} }
-            if(formData.opciones){ try{ formData.opciones = JSON.parse(formData.opciones);}catch(e){formData.opciones={};} }
-            if(formData["data-formula"]){ formData["data-formula"] = formData["data-formula"]; }
-            $('#editorPropiedadesModal').modal('hide');
-            if(onGuardar) onGuardar(formData);
-        });
-    }
+  if(!FD.buildSavePayload){
+    FD.buildSavePayload = function(){
+      const base = window.FORM_JSON || readEmbeddedJson() || {};
+      if(typeof FD.serializeLayoutFromDom === 'function'){
+        try { base.layout = FD.serializeLayoutFromDom(); }
+        catch(e){ console.warn('serializeLayoutFromDom error', e); }
+      }
+      return base;
+    };
+  }
 
-    // *** CAMBIO REALIZADO: Nueva función para inicializar la lógica del formulario normal ***
-    // Esta función llama al código que está en `js/formulariodinamico.js`.
-    function inicializarLogicaFormulario() {
-        // Verificamos si la función `inicializarFormularioDinamico` existe en el script que acabamos de incluir.
-        if (typeof inicializarFormularioDinamico === 'function') {
-            const config = {
-                archivo_json: window.FORM_CONFIG ? window.FORM_CONFIG.archivo_json : ''
-            };
-            // Ejecutamos la inicialización del formulario pasándole la configuración necesaria.
-            inicializarFormularioDinamico(config);
-        } else {
-            console.warn('La función `inicializarFormularioDinamico` no se encontró en `js/formulariodinamico.js`. La funcionalidad interactiva puede no estar disponible.');
-            // Fallback por si el otro script falla: inicializa al menos los Select2 básicos.
-             $('.form-control').each(function() {
-                if ($(this).is('select')) {
-                    $(this).select2({
-                        width: '100%'
-                    });
-                }
-            });
-        }
-    }
-
-
-    // --- Función defensiva para inicializar datatables y evitar errores de find sobre undefined ---
-    function inicializarFormularioDinamico(config) {
-        // Busca todos los fieldsets y campos tipo datatable en el DOM o en window.FORM_CONFIG si existe
-        let fieldsets = window.FORM_CONFIG && window.FORM_CONFIG.fieldsets ? window.FORM_CONFIG.fieldsets : null;
-        if (!fieldsets && typeof config === 'object' && config.archivo_json) {
-            // Si tienes una variable global con el JSON cargado, úsala aquí
-            // Si no, omite y solo protege el DOM
-        }
-        // Si tienes los datos en el DOM, puedes recorrerlos aquí
-        // Protección defensiva para todos los datatable renderizados
-        $("[data-tipo='datatable']").each(function() {
-            let campo = $(this).data();
-            if (!Array.isArray(campo.columnas)) {
-                campo.columnas = [];
-            }
-        });
-        // Si tienes lógica adicional para inicializar datatables, agrégala aquí
-    }
-
-    // *** CAMBIO REALIZADO: Se llama a la lógica del formulario al cargar la página ***
-    inicializarLogicaFormulario();
-
-    // --- Forzar modo normal por defecto; solo diseño si ?modoDiseno=1 ---
-    (function initModeFromQuery(){
-        const isDesign = new URLSearchParams(window.location.search).get('modoDiseno') === '1';
-        if (isDesign) {
-            body.addClass('design-mode');
-            designModeToggle.prop('checked', true);
-            enableDesignMode();
-        } else {
-            body.removeClass('design-mode');
-            designModeToggle.prop('checked', false);
-            disableDesignMode(false);
-        }
-    })();
-});
-
-// FIX: Forzar MODO NORMAL lo antes posible (salvo ?modoDiseno=1)
-(function normalModeGuardEarly() {
-    try {
-        var isDesign = new URLSearchParams(window.location.search).get('modoDiseno') === '1';
-        if (!isDesign) {
-            // Quitar cualquier rastro de diseño puesto por el servidor u otros scripts
-            if (document.body) document.body.classList.remove('design-mode');
-            var fuera = document.getElementById('elementos-fuera-container');
-            if (fuera) fuera.style.display = 'none';
-            var toggle = document.getElementById('designModeToggle');
-            if (toggle) toggle.checked = false;
-        }
-    } catch (e) {}
-})();
-
-(function(){
-    let history = [], idx = -1;
-    function updateUndoRedoButtons() {
-        const u = document.getElementById('undoBtn'), r = document.getElementById('redoBtn');
-        if (!u || !r) return;
-        u.style.display = idx > 0 ? '' : 'none';
-        r.style.display = idx < history.length - 1 ? '' : 'none';
-    }
-    function saveState() {
-        const cont = document.querySelector('#fd-root [data-layout-container]');
-        if (!cont) return;
-        const html = cont.innerHTML;
-        if (idx >= 0 && history[idx] === html) return;
-        if (idx < history.length - 1) history = history.slice(0, idx + 1);
-        history.push(html); idx++; updateUndoRedoButtons();
-    }
-    function restore(i) {
-        const cont = document.querySelector('#fd-root [data-layout-container]');
-        if (!cont) return;
-        if (i >= 0 && i < history.length) { cont.innerHTML = history[i]; idx = i; updateUndoRedoButtons(); }
-    }
-    document.addEventListener('DOMContentLoaded', () => {
-        if (document.getElementById('fd-root')?.classList.contains('design-mode')) saveState();
-        document.getElementById('undoBtn')?.addEventListener('click', () => restore(idx - 1));
-        document.getElementById('redoBtn')?.addEventListener('click', () => restore(idx + 1));
+  function bindSaveLayout(){
+    const btn = FD.$('#saveLayoutBtn');
+    if(!btn) return;
+    btn.addEventListener('click', function(){
+      if(FD.state.saving) return;
+      const payload = FD.buildSavePayload();
+      if(!payload){ FD.toast('Sin datos para guardar','warning'); return; }
+      FD.state.saving = true;
+      btn.disabled = true;
+      fetch('ajax/guardar_layout.php',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+      })
+      .then(function(r){ return r.json().catch(function(){ return {ok:false,error:'Respuesta no JSON'}; }); })
+      .then(function(res){
+        if(res.ok){ FD.toast('Layout guardado','success'); FD.state.dirty=false; }
+        else FD.toast(res.error||'Error al guardar','danger');
+      })
+      .catch(function(err){
+        console.error(err);
+        FD.toast('Error de red','danger');
+      })
+      .finally(function(){
+        FD.state.saving=false;
+        btn.disabled=false;
+      });
     });
-    window.__designHistory = { saveState };
-})();
+  }
+
+  function initDnD(){
+    if(typeof Sortable==='undefined') return;
+    FD.$all('[data-layout-container] .row').forEach(function(row){
+      Sortable.create(row,{
+        group:'fd-cols',
+        draggable:'> [class*="col-"]',
+        animation:150,
+        onEnd: function(){ FD.markDirty(); }
+      });
+    });
+  }
+
+  function initSectionDnD(){
+    if(typeof Sortable==='undefined') return;
+    const container = FD.$('.fd-form-area form');
+    if(!container) return;
+    Sortable.create(container,{
+      handle: '.fd-section',
+      draggable: '.fd-section',
+      animation: 150,
+      onEnd(){ FD.markDirty(); if(FD.serializeLayoutFromDom) FD.serializeLayoutFromDom(); }
+    });
+  }
+  FD.afterInit = (function(prev){
+    return function(){
+      prev && prev();
+      if(FD.state.designMode) initSectionDnD();
+    };
+  })(FD.afterInit);
+
+  function setPath(root, path, val){
+    const toks=[];
+    path.split('.').forEach(function(seg){
+      const head=seg.match(/^[^\[]+/); if(head) toks.push(head[0]);
+      const idxs=seg.match(/\[\d+\]/g); idxs && idxs.forEach(function(b){ toks.push(Number(b.slice(1,-1))); });
+    });
+    let o=root;
+    for(var i=0;i<toks.length-1;i++){ if(o==null) return; o=o[toks[i]]; }
+    if(o!=null) o[toks[toks.length-1]]=val;
+  }
+  function valType(v){ if(v===null) return 'null'; if(Array.isArray(v)) return 'array'; return typeof v; }
+  function valClass(v){ return 'fd-type-'+valType(v); }
+  function renderVal(v){ var t=valType(v); if(t==='boolean') return v?'true':'false'; if(t==='null') return 'null'; return String(v); }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+  function readEmbeddedJson(){
+    const node = FD.$('#fd-data');
+    if(!node) return null;
+    try { return JSON.parse(node.getAttribute('data-form-json')||'{}'); }
+    catch(e){ return {}; }
+  }
+  FD.readEmbeddedJson = FD.readEmbeddedJson || readEmbeddedJson;
+
+  function init(){
+    bindDesignToggle();
+    bindTreeToggle();
+    ensureJsonTree();
+    if(FD.renderJsonTree) FD.renderJsonTree();
+    bindSaveLayout();
+    initDnD();
+    // sincroniza estado inicial si checkbox viene marcado
+    const t = FD.$('#designModeToggle');
+    if(t && t.checked) FD.setDesignMode(true);
+    if(FD.state.designMode){
+      const panel = FD.$('#fd-tree-side');
+      if(panel) panel.style.display='block';
+    }
+    if(typeof FD.afterInit === 'function'){
+      try { FD.afterInit(); } catch(e){ console.warn('afterInit error', e); }
+    }
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  function ensureTreeApp(){
+    const host = FD.$('#fd-json-tree-app');
+    if(!host) return;
+    if(host.querySelector('iframe')) {
+      host.classList.toggle('d-none');
+      return;
+    }
+    const ifr=document.createElement('iframe');
+    ifr.src='arboljson/index.php';
+    ifr.className='w-100 border-0';
+    ifr.style.minHeight='450px';
+    host.appendChild(ifr);
+    window.addEventListener('message', e=>{
+      if(!e.data || !e.data.fdTree) return;
+      // sincronizar cambios del árbol
+      if(e.data.type==='updateJSON' && e.data.payload){
+         window.FORM_JSON = e.data.payload;
+         FD.markDirty();
+         // opcional: re-render
+      }
+    });
+  }
+  document.addEventListener('click', e=>{
+    if(e.target.id==='toggleTreeBtn') ensureTreeApp();
+  });
+
+})(window, document);
 
 

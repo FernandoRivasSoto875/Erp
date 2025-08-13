@@ -125,4 +125,13 @@ function getFieldInfo($name, array $all_fields) {
     foreach ($all_fields as $f) if (($f['name'] ?? null) === $name) return $f;
     return ['label' => ucfirst((string)$name), 'type' => 'text', 'columns' => []];
 }
+
+function fd_count_fields_por_fieldset(array $fieldsets): array {
+    $out=[];
+    foreach($fieldsets as $k=>$fs){
+        $campos = $fs['fields'] ?? ($fs['campos'] ?? []);
+        $out[$k] = is_array($campos) ? count($campos) : 0;
+    }
+    return $out;
+}
 ?>

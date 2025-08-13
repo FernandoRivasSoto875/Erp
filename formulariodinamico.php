@@ -1,592 +1,175 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) session_start();
+/*
+COPILOT_PROMPT (Lineamientos para cualquier cambio en este archivo):
 
-$modoDiseno  = (isset($_GET['modoDiseno']) && $_GET['modoDiseno'] === '1');
+Objetivo:
+Mantener este archivo SOLO como orquestador (vista): carga JSON, pasa datos a helpers y pinta HTML mínimo.
+NO agregar aquí: lógica de negocio, funciones PHP nuevas, CSS inline, ni JS inline.
+
+Ubicación de cada tipo de código:
+- Lógica / helpers PHP existentes o nuevos: formulariodinamicofunciones.php (o archivo inc separado si crece).
+- Lógica específica adicional (validaciones, serialización, etc.): formulariodinamicologica.php (si aplica).
+- JavaScript (cualquier nuevo comportamiento): js/formulariodinamico.js (extender sin borrar funciones que ya funcionen).
+- Estilos / diseño: css/formulariodinamico.css.
+- JSON fuente: carpeta /json (no hardcodear estructuras aquí).
+- Mantenedor del Árbol JSON (micro‑app separada): arboljson/ (index.php, css/, js/).
+  * Micro‑app encapsula HTML/CSS/JS para explorar / editar parametros, fieldsets y layout.
+  * Integración: contenedor #fd-json-tree-app (iframe o montaje dinámico).
+  * Comunicación: postMessage, namespace FD, o endpoints AJAX.
+
+UX / Embellecimiento:
+- Siempre usar la última versión estable de Bootstrap (actualizar link cuando proceda).
+- Mejoras visuales SOLO vía css/formulariodinamico.css y utilidades Bootstrap (no inline aquí).
+- Usar componentes y utilidades modernos: grid responsive, nav-tabs, botones outline, offcanvas/modals, tooltips, collapse, toast.
+- Accesibilidad: incluir atributos ARIA / role cuando se añadan elementos interactivos (tabs, drag handles).
+- Evitar dependencias extra innecesarias; priorizar utilidades Bootstrap + CSS propio con prefijo .fd-.
+- Cualquier “embellecer” debe ser progresivo (no romper funcionalidad si falla JS).
+
+Modo Diseño (siempre activable/desactivable):
+- Activación: checkbox #designModeToggle y/o query ?modoDiseno=1 (sin estado ambiguo).
+- Debe poder alternar sin recargar datos base (solo re-render / clases).
+- Al entrar en modo diseño, destacar contenedores con clases .fd-editable / .fd-draggable si aplica.
+
+Interacción en modo diseño (dos modalidades compatibles):
+1. Micro‑app Árbol JSON:
+   - Edición estructural desde árbol (parametros, fieldsets, layout).
+   - Cambios sincronizados al objeto FORM_JSON y reflejados tras refresco de render (sin F5 completo).
+2. Edición directa en el formulario (WYSIWYG):
+   - Drag & Drop de tabs, secciones, fieldsets, filas, columnas y campos (incluso mover campos entre fieldsets / tabs).
+   - Respetar restricciones (ej: mantener suma de columnas, validar destino).
+   - Actualizar layout serializado (FD.serializeLayoutFromDom) para guardar.
+
+Reglas antes de modificar:
+1. Revisar primero lógica existente (formulariodinamico.js, formulariodinamicofunciones.php, arboljson/*).
+2. Mantener compatibilidad retro o crear wrapper / alias temporal.
+3. No renombrar IDs / clases usadas por JS sin actualizar todo (incluida micro‑app).
+4. Mantener contrato JSON (solo ampliar tolerantemente).
+5. Eliminaciones: marcar // DEPRECATED si no críticas, conservar breve periodo si hay riesgo.
+6. Sin echo/print debug permanentes.
+7. Sin SQL / includes extra aquí.
+8. Evitar duplicar includes/require.
+9. Sanitizar salida (htmlspecialchars) siempre.
+10. Commits/PR atómicos (render / JS / CSS / refactor / integración árbol).
+11. Integración árbol: aquí solo contenedor #fd-json-tree-app (no markup interno).
+12. CONSISTENCIA DE LLAMADOS: verificar includes, data-* (#fd-data), scripts (Sortable + formulariodinamico.js), contenedor micro‑app y funciones clave (fd_render_layout_fallback) existen y JSON decodifica (json_last_error()==JSON_ERROR_NONE).
+13. Modo diseño debe seguir operando (toggle + DnD + árbol) tras cualquier cambio.
+
+Validaciones al finalizar:
+- php -l formulariodinamico.php sin errores.
+- Sin nuevos <style> ni <script> inline.
+- Consola sin errores JS (modo normal y diseño).
+- Drag & Drop mueve elementos entre fieldsets/tabs correctamente (si habilitado).
+- Guardado layout produce JSON consistente (layout actualizado).
+- Micro‑app (si cargada) sincroniza cambios y no rompe formulario.
+- Accesibilidad básica: tabs navegables con teclado, focus visible.
+
+Formato para nuevas modificaciones:
+- Solo añadir contenedores HTML mínimos.
+- Prefijo fd- para clases nuevas.
+- Lógica adicional → helpers / JS.
+- Mejoras visuales → CSS externo.
+
+Resumen (TL;DR):
+Archivo de vista. NO lógica / NO JS / NO CSS aquí. Mantener modo diseño operativo (toggle + dos vías de edición). Embellecer usando Bootstrap moderno + CSS externo. Revisar consistencia (punto 12/13) antes de cerrar.
+
+Fin del COPILOT_PROMPT.
+*/
+/* ADENDO: Panel árbol interno removido; usar micro‑app en #fd-json-tree-app. */
+
+if (session_status() === PHP_SESSION_NONE) session_start();
+header('Content-Type: text/html; charset=utf-8');
+
+$modoDiseno = (isset($_GET['modoDiseno']) && $_GET['modoDiseno'] === '1');
 
 $archivo_base = 'formulariogenerico2.json';
-$json_path = __DIR__ . DIRECTORY_SEPARATOR . 'json' . DIRECTORY_SEPARATOR . $archivo_base;
-$json_text  = is_file($json_path) ? file_get_contents($json_path) : '{}';
-$json_data  = json_decode($json_text, true) ?: [];
+$json_path    = __DIR__ . DIRECTORY_SEPARATOR . 'json' . DIRECTORY_SEPARATOR . $archivo_base;
+$json_text    = is_file($json_path) ? file_get_contents($json_path) : '{}';
+$json_data    = json_decode($json_text, true);
 
-$params   = $json_data['parametros'] ?? [];
-$fieldsets = $json_data['fieldsets'] ?? [];
-$layout    = $json_data['layout'] ?? [];
+if (!is_array($json_data)) {
+    // JSON inválido: fallback seguro
+    // error_log('JSON inválido en '.$json_path.': '.json_last_error_msg());
+    $json_data = [];
+}
 
-$titulo_formulario      = $params['titulo']        ?? 'Formulario Dinámico';
-$descripcion_formulario = $params['comentario']    ?? ($json_data['descripcion'] ?? '');
-$css_default            = $params['CssDefault']    ?? '';
-$botones_config         = $params['botones']       ?? [];
+$params    = $json_data['parametros'] ?? [];
+$fieldsets = $json_data['fieldsets']  ?? [];
+$layout    = $json_data['layout']     ?? [];
+
+$titulo_formulario      = $params['titulo']     ?? 'Formulario Dinámico';
+$descripcion_formulario = $params['comentario'] ?? ($json_data['descripcion'] ?? '');
+$css_default            = $params['CssDefault'] ?? '';
+$botones_config         = $params['botones']    ?? [];
 
 require_once __DIR__ . '/formulariodinamicofunciones.php';
-require_once __DIR__ . '/formulariodinamicologica.php';
 
-// Helper mínimo para fallback (si no existe motor de render)
-function fd_build_attr(array $attrs){
-    $out = [];
-    foreach ($attrs as $k=>$v){
-        if ($v === null || $v === false || $v === '') continue;
-        if ($v === true) { $out[] = $k; continue; }
-        $out[] = $k . "='" . htmlspecialchars($v, ENT_QUOTES) . "'";
+if (!function_exists('fd_render_layout_fallback')) {
+    function fd_render_layout_fallback() {
+        return '<div class="alert alert-danger">Helper fd_render_layout_fallback no disponible.</div>';
     }
-    return $out ? ' '.implode(' ', $out) : '';
 }
-function fd_mask_to_pattern($mask){
-    if (!$mask) return '';
-    // Convierte # -> \d, A -> [A-Za-z], * -> .
-    $p = '';
-    for ($i=0;$i<strlen($mask);$i++){
-        $c = $mask[$i];
-        if ($c === '#') $p .= '\\d';
-        elseif ($c === 'A') $p .= '[A-Za-z]';
-        elseif ($c === '*') $p .= '.';
-        else $p .= preg_quote($c,'/');
-    }
-    return '^'.$p.'$';
-}
-function fd_render_field($f){
-    // Normaliza claves
-    $tipo   = strtolower($f['tipo'] ?? $f['type'] ?? 'text');
-    $nombre = $f['nombre'] ?? $f['name'] ?? '';
-    $etiqueta = $f['etiqueta'] ?? $f['label'] ?? $nombre;
-    $valorDef = $f['valor_predeterminado'] ?? $f['default'] ?? $f['value'] ?? '';
-    $ph    = $f['placeholder'] ?? '';
-    $ayuda = $f['ayuda'] ?? $f['help'] ?? '';
-    $req   = !empty($f['obligatorio']) || !empty($f['required']);
-    $ro    = !empty($f['readonly']);
-    $dis   = !empty($f['disabled']);
-    $min   = $f['min'] ?? null;
-    $max   = $f['max'] ?? null;
-    $step  = $f['step'] ?? null;
-    $maxlen= $f['longitud'] ?? $f['maxlength'] ?? null;
-    $mask  = $f['mascara'] ?? $f['mask'] ?? '';
-    $pattern = fd_mask_to_pattern($mask);
-    $opcs  = $f['opciones'] ?? $f['options'] ?? [];
-    $id    = $f['id'] ?? ($nombre ? 'fld_'.$nombre : 'fld_'.uniqid());
-    $classes = ['form-control'];
-    if (in_array($tipo, ['checkbox','radio'])) $classes = ['form-check-input'];
-    $wrapperClasses = ['mb-3','fd-field-wrapper','fd-field-tipo-'.$tipo];
-    if ($req) $wrapperClasses[] = 'fd-required';
-    $dataAttrs = [
-        'data-field-name'=>$nombre,
-        'data-field-tipo'=>$tipo,
-        'data-field-type'=>$tipo,   // <-- añadido
-        'data-required'=>$req?'1':'0',
-        'data-mask'=>$mask ?: null
-    ];
-    $attr = [
-        'type'=> in_array($tipo,['text','password','email','number','date','datetime','hidden']) ? ($tipo==='datetime'?'datetime-local':$tipo) : 'text',
-        'name'=>$nombre,
-        'id'=>$id,
-        'class'=>implode(' ',$classes),
-        'placeholder'=>$ph ?: null,
-        'value'=>!in_array($tipo,['textarea','select','radio']) ? $valorDef : null,
-        'required'=>$req,
-        'readonly'=>$ro,
-        'disabled'=>$dis,
-        'min'=>$min,
-        'max'=>$max,
-        'step'=>$step,
-        'maxlength'=>$maxlen,
-        'pattern'=>$pattern ?: null,
-        'autocomplete'=>'off'
-    ];
-    // Campo hidden directo
-    if ($tipo === 'hidden'){
-        return "<input ".fd_build_attr($attr).">";
-    }
-    // Label
-    $labelHtml = "<label for='".htmlspecialchars($id,ENT_QUOTES)."' class='form-label mb-1'>"
-                .htmlspecialchars($etiqueta)
-                .($req?" <span class='text-danger'>*</span>":'')
-                ."</label>";
-    $controlHtml = '';
-    if ($tipo === 'textarea'){
-        $controlHtml = "<textarea ".fd_build_attr(array_diff_key($attr,['type'=>1,'value'=>1])).">".htmlspecialchars($valorDef)."</textarea>";
-    } elseif ($tipo === 'select'){
-        $optionsHtml = '';
-        // Opciones: puede ser lista de strings o array key=>label
-        if ($opcs && is_array($opcs)){
-            foreach ($opcs as $k=>$v){
-                if (is_array($v) && isset($v['valor'])) { // caso [{valor:.., texto:..}]
-                    $val = $v['valor']; $txt = $v['texto'] ?? $v['label'] ?? $val;
-                } else {
-                    $val = is_int($k)? $v : $k;
-                    $txt = is_int($k)? $v : $v;
-                }
-                $sel = ((string)$val === (string)$valorDef) ? " selected" : "";
-                $optionsHtml .= "<option value='".htmlspecialchars($val,ENT_QUOTES)."'{$sel}>".htmlspecialchars($txt)."</option>";
-            }
-        }
-        $controlHtml = "<select ".fd_build_attr(array_diff_key($attr,['type'=>1,'value'=>1])).">{$optionsHtml}</select>";
-    } elseif ($tipo === 'checkbox'){
-        // Para checkbox ponemos el label al lado
-        $attr['class'] = 'form-check-input';
-        $attr['value'] = $valorDef ?: '1';
-        if (!empty($f['checked']) || (string)$valorDef==='1') $attr['checked']=true;
-        $controlHtml = "<div class='form-check'>"
-                      ."<input ".fd_build_attr($attr)."> "
-                      ."<label class='form-check-label' for='".htmlspecialchars($id,ENT_QUOTES)."'>".htmlspecialchars($etiqueta).($req?" *":"")."</label>"
-                      ."</div>";
-        $labelHtml = ''; // ya incluido
-    } elseif ($tipo === 'radio'){
-        // Radio group: opciones obligatorias
-        $groupHtml = '';
-        if ($opcs && is_array($opcs)){
-            foreach ($opcs as $k=>$v){
-                $val = is_int($k)? $v : $k;
-                $txt = is_int($k)? $v : $v;
-                $rid = $id.'_'.$val;
-                $ra = [
-                  'type'=>'radio',
-                  'name'=>$nombre,
-                  'id'=>$rid,
-                  'class'=>'form-check-input',
-                  'value'=>$val,
-                  'required'=>$req && empty($groupHtml)
-                ];
-                if ((string)$val === (string)$valorDef) $ra['checked']=true;
-                $groupHtml .= "<div class='form-check form-check-inline'>"
-                             ."<input ".fd_build_attr($ra).">"
-                             ."<label for='".htmlspecialchars($rid,ENT_QUOTES)."' class='form-check-label ms-1'>".htmlspecialchars($txt)."</label>"
-                             ."</div>";
-            }
-        }
-        $controlHtml = $groupHtml;
-    } else {
-        // input estándar
-        $controlHtml = "<input ".fd_build_attr($attr).">";
-    }
-    $helpHtml = $ayuda ? "<div class='form-text'>".htmlspecialchars($ayuda)."</div>" : '';
-    $errorSlot = "<div class='invalid-feedback'></div>";
-    $wrapperAttr = fd_build_attr($dataAttrs);
-    return "<div class='".implode(' ',$wrapperClasses)."' {$wrapperAttr}>{$labelHtml}{$controlHtml}{$helpHtml}{$errorSlot}</div>";
-}
-function fd_render_fieldset_simple($nombre, $fs){
-    $titulo = htmlspecialchars($fs['titulo'] ?? $fs['legend'] ?? $nombre);
-    $campos = $fs['campos'] ?? $fs['fields'] ?? [];
-    $htmlCampos = '';
-    foreach ($campos as $c){
-        $htmlCampos .= fd_render_field($c);
-    }
-    $typeFs = htmlspecialchars($fs['tipo'] ?? $fs['type'] ?? 'group', ENT_QUOTES);
-    return "<fieldset class='mb-3 p-2 border rounded draggable-fieldset' data-group-id='".htmlspecialchars($nombre,ENT_QUOTES)."' data-fieldset-name='".htmlspecialchars($nombre,ENT_QUOTES)."' data-fieldset-type='{$typeFs}'>"
-          . "<legend class='small m-0 px-1'>".$titulo."</legend>"
-          . $htmlCampos
-          . "</fieldset>";
-}
-
-// NUEVO: genera clases responsive a partir de definición
-function fd_build_col_classes($w){
-    // $w puede ser número o array ['xs'=>12,'sm'=>6,'md'=>4,'lg'=>3]
-    if(is_array($w)){
-        $map = ['xs'=>'','sm'=>'sm','md'=>'md','lg'=>'lg','xl'=>'xl','xxl'=>'xxl'];
-        $out=[];
-        foreach($map as $k=>$bp){
-            if(isset($w[$k])){
-                $n = (int)$w[$k];
-                $out[] = 'col'.($bp?'-'.$bp:'').'-'.max(1,min(12,$n));
-            }
-        }
-        if(!$out) $out[]='col-12';
-        return implode(' ',$out);
-    }
-    $n = (int)$w;
-    if($n<1 || $n>12) $n=12;
-    // default + md
-    return "col-12 col-sm-".($n>=12?12:$n)." col-md-$n";
-}
-
-function fd_render_layout_fallback($layout, $fieldsets){
-    if(!$layout || !is_array($layout)) return '';
-    $html='';
-    $assoc = array_keys($layout)!==range(0,count($layout)-1);
-    $sections = $assoc
-        ? array_map(function($k,$v){ if(is_array($v)) $v['_section_key']=$k; return $v; }, array_keys($layout), $layout)
-        : $layout;
-
-    foreach($sections as $sec){
-        if(!is_array($sec)) continue;
-        $type = $sec['type'] ?? 'section';
-        $sKey = $sec['_section_key'] ?? null;
-
-        if($type==='tabs'){
-            $tabs = $sec['tabs'] ?? [];
-            if(!$tabs) continue;
-            $uid='tabs_'.substr(md5(json_encode($tabs)),0,8);
-            $html.='<div class="fd-tabs mb-3"'.($sKey?' data-section="'.htmlspecialchars($sKey).'"':'').'>';
-            // nav
-            $html.='<ul class="nav nav-tabs" role="tablist">';
-            foreach($tabs as $i=>$tab){
-                $active = $i===0?'active':'',
-                $tid = $uid.'_pane_'.$i;
-                $title = htmlspecialchars($tab['title'] ?? $tab['titulo'] ?? ('Tab '.($i+1)));
-                $html.="<li class='nav-item'><button class='nav-link $active' data-bs-toggle='tab' data-bs-target='#$tid' type='button'>$title</button></li>";
-            }
-            $html.='</ul>';
-            // panes
-            $html.='<div class="tab-content border border-top-0 p-3">';
-            foreach($tabs as $i=>$tab){
-                $active = $i===0?'show active':'',
-                $tid = $uid.'_pane_'.$i;
-                $html.="<div id='$tid' class='tab-pane fade $active'>";
-                $html.= fd_render_rows($tab['rows'] ?? [], $fieldsets);
-                $html.='</div>';
-            }
-            $html.='</div></div>';
-            continue;
-        }
-
-        $rows = $sec['rows'] ?? [];
-        $cls  = 'fd-section fd-section-'.preg_replace('/[^a-z0-9_\-]+/i','-', $type);
-        $html.='<div class="'.$cls.'"'.($sKey?' data-section="'.htmlspecialchars($sKey).'"':'').'>';
-        $html.= fd_render_rows($rows, $fieldsets);
-        $html.='</div>';
-    }
-    return $html;
-}
-
-function fd_render_rows($rows, $fieldsets){
-    $html='';
-    foreach($rows as $row){
-        $cols = $row['columns'] ?? $row['cols'] ?? $row['columnas'] ?? [];
-        if(!$cols || !is_array($cols)) continue;
-
-        $numericWidths = array_map(fn($c)=> is_array($c['width'] ?? null)? null : (int)($c['width'] ?? 12), $cols);
-        $allNumeric = !in_array(null, $numericWidths, true);
-        $scale = ($allNumeric && ($sum=array_sum($numericWidths))>0) ? 12/$sum : 1;
-
-        $html.='<div class="row g-3 mb-2">';
-        foreach($cols as $i=>$col){
-            $wDef = $col['width'] ?? 12;
-            if(is_numeric($wDef) && $allNumeric){
-                $wDef = (int)round($wDef * $scale);
-                $wDef = max(1,min(12,$wDef));
-            }
-            // FIX: paréntesis
-            if(is_array($wDef) && (isset($wDef['sm']) || isset($wDef['md']) || isset($wDef['lg']) || isset($wDef['xs']) || isset($wDef['xl']) || isset($wDef['xxl']))){
-                $colClasses = fd_build_col_classes($wDef);
-            } else {
-                $colClasses = fd_build_col_classes($wDef);
-            }
-
-            $fieldsetKey = $col['fieldset'] ?? $col['fs'] ?? null;
-            $html.='<div class="'.$colClasses.'" data-col-width="'.htmlspecialchars(is_array($wDef)?json_encode($wDef):$wDef).'">';
-            if($fieldsetKey && isset($fieldsets[$fieldsetKey])){
-                $html.= fd_render_fieldset($fieldsetKey, $fieldsets[$fieldsetKey]);
-            } elseif(isset($col['html'])) {
-                $html.= $col['html'];
-            }
-            $html.='</div>';
-        }
-        $html.='</div>';
-    }
-    return $html;
-}
-
-// Mejora: fieldset con grid interno por campos según propiedades col/col_sm/col_md/...
-function fd_render_fieldset($key, $fieldset){
-    if(!$fieldset) return '';
-    $titulo = $fieldset['titulo'] ?? $fieldset['legend'] ?? $key;
-    $campos = $fieldset['campos'] ?? [];
-    ob_start(); ?>
-    <fieldset class="fd-fieldset" data-fieldset-key="<?php echo htmlspecialchars($key); ?>">
-      <legend><?php echo htmlspecialchars($titulo); ?></legend>
-      <div class="container-fluid px-0">
-        <div class="row g-3">
-          <?php foreach($campos as $c){
-              echo fd_render_campo_en_col($c);
-          } ?>
-        </div>
-      </div>
-    </fieldset>
-    <?php
-    return ob_get_clean();
-}
-
-function fd_render_campo_en_col($c){
-    // Lee col sizes por campo
-    $sizes=[];
-    foreach(['col','xs','sm','md','lg','xl','xxl'] as $k){
-        if(isset($c[$k])){
-            if($k==='col') $sizes['md']=$c[$k]; // retro compat
-            else $sizes[$k]=$c[$k];
-        }
-    }
-    $width = $sizes ?: ($c['width'] ?? 12);
-    $class = fd_build_col_classes($width);
-    return '<div class="'.$class.'">'.fd_render_field($c).'</div>';
-}
-?><!DOCTYPE html>
+?>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title><?php echo htmlspecialchars($titulo_formulario); ?></title>
-  <?php if ($css_default): ?>
-    <link rel="stylesheet" href="css/<?php echo htmlspecialchars($css_default); ?>">
-  <?php endif; ?>
+  <title><?= htmlspecialchars($titulo_formulario) ?></title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
-  <style>
-    body.design-mode .fd-json-tree-panel{display:block;}
-    .design-toolbar{gap:.5rem;}
-    fieldset.draggable-fieldset{cursor:move;}
-    .fd-shell{display:flex;align-items:flex-start;gap:1rem;}
-    .fd-form-area{flex:1 1 auto;min-width:0;}
-    #fd-tree-side{
-      width:320px;max-width:320px;background:#f8f9fa;border:1px solid #dee2e6;
-      border-radius:6px;padding:8px;display:flex;flex-direction:column;
-    }
-    #fd-tree-side.hidden{display:none!important;}
-    #fd-tree-side h6{font-size:.85rem;text-transform:uppercase;letter-spacing:.5px;margin:0 0 .5rem;}
-    #fd-tree-toolbar{display:flex;flex-wrap:wrap;gap=4px;margin-bottom:6px;}
-    #fd-tree-toolbar button{font-size:.7rem;}
-    #fd-tree{flex:1 1 auto;overflow:auto;font-size:.78rem;line-height:1.2;}
-    #fd-tree ul{list-style:none;margin:0;padding-left:14px;}
-    #fd-tree li{margin:2px 0;}
-    #fd-tree .g-title{display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:4px;cursor:pointer;background:#fff;}
-    #fd-tree .g-title:hover{background:#eef2ff;}
-    #fd-tree .f-item{display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:4px;cursor:grab;}
-    #fd-tree .f-item:hover{background:#f1f3fb;}
-    #fd-tree .handle{background:#6f42c1;color:#fff;border-radius:4px;padding:0 5px;font-weight:600;cursor:grab;line-height:1.1;}
-    #fd-tree .actions button{border:none;background:transparent;color:#666;padding:0 2px;font-size:.75rem;cursor:pointer;}
-    #fd-tree .actions button:hover{color:#000;}
-    #fd-tree .collapsed > ul{display:none;}
-    /* Grips form (ya en modo diseño) */
-    #fd-root.design-mode .fd-dnd-grip,#fd-root.design-mode .fd-group-grip,#fd-root.design-mode .fd-tab-grip{
-      cursor:grab;display:inline-block;margin-right:6px;background:#198754;color:#fff;border-radius:4px;padding:0 6px;font-weight:600;line-height:1.2;
-    }
-    #fd-tree .ico{width:16px;text-align:center;color:#6c757d;font-size:.7rem;}
-    #fd-tree .fd-tree-field .ico{color:#845ef7;}
-    #fd-tree .fd-tree-group .ico{color:#0d6efd;}
-    #fd-tree-side .nav-link{padding:.25rem .5rem;}
-    #fd-tree-side .nav-link.active{background:#fff;}
-    #fd-tree-side .fd-filter-hide{display:none!important;}
-    #fd-tree-side .fd-filter-hit > .g-title,
-    #fd-tree-side .fd-filter-hit > .f-item,
-    #fd-tree-side .fd-filter-hit > .fd-json-node{background:#fff3cd;}
-    #fd-json-tree{max-height:60vh;overflow:auto;font-size:.72rem;font-family:ui-monospace,monospace;line-height:1.25;}
-    #fd-json-tree ul{list-style:none;margin:0;padding-left:16px;}
-    #fd-json-tree li{margin:1px 0;}
-    .fd-json-node{display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:3px;}
-    .fd-json-toggle{cursor:pointer;color:#0d6efd;font-weight:600;width:12px;text-align:center;}
-    .fd-json-toggle.empty{color:#ccc;cursor:default;}
-    .fd-json-key{color:#7c4d00;font-weight:600;}
-    .fd-json-value{color:#1d4e89;flex:1;min-width:40px;cursor:pointer;}
-    .fd-json-value.fd-type-string:before{content:'"';color:#999;}
-    .fd-json-value.fd-type-string:after{content:'"';color:#999;}
-    .fd-json-value.fd-editing{background:#fff3cd;border:1px solid #ffe066;padding:0 2px;border-radius:2px;}
-    .fd-json-badge{background:#dee2e6;color:#555;font-size:.55rem;padding:1px 4px;border-radius:10px;}
-    .fd-json-dirty:after{content:"*";color:#d6336c;margin-left:2px;font-weight:700;}
-  </style>
+  <?php if ($css_default): ?>
+    <link rel="stylesheet" href="css/<?= htmlspecialchars($css_default) ?>">
+  <?php endif; ?>
+  <link rel="stylesheet" href="css/formulariodinamico.css">
 </head>
-<body>
-  <div id="fd-root" class="<?php echo $modoDiseno?'design-mode':''; ?>">
-    <!-- (elimina aquí el label/checkbox duplicado) -->
-  </div>
-
-  <!-- Botón/árbol aparecerán aquí -->
+<body class="<?= $modoDiseno ? 'fd-design-mode' : '' ?>">
   <div class="container-fluid py-2">
     <div class="d-flex justify-content-between align-items-center mb-3 design-toolbar">
       <div>
-        <h4 class="m-0" id="fd-form-title" data-editable="titulo-form"><?php echo htmlspecialchars($titulo_formulario); ?></h4>
+        <h4 class="m-0" id="fd-form-title" data-editable="titulo-form"><?= htmlspecialchars($titulo_formulario) ?></h4>
         <?php if ($descripcion_formulario): ?>
-          <small class="text-muted" id="fd-form-desc" data-editable="descripcion-form"><?php echo htmlspecialchars($descripcion_formulario); ?></small>
+          <small class="text-muted" id="fd-form-desc" data-editable="descripcion-form"><?= htmlspecialchars($descripcion_formulario) ?></small>
         <?php endif; ?>
       </div>
-      <div class="d-flex align-items-center gap-3">
+      <div class="d-flex align-items-center gap-2">
         <label class="form-check form-switch m-0">
-          <input type="checkbox" class="form-check-input" id="designModeToggle" <?php echo $modoDiseno?'checked':''; ?>>
-          <span class="form-check-label">Modo diseño</span>
+          <input type="checkbox" class="form-check-input" id="designModeToggle"
+                 <?= $modoDiseno ? 'checked' : '' ?>
+                 aria-label="Activar modo diseño">
+          <span class="form-check-label">Diseño</span>
         </label>
-        <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleTreeBtn">Árbol</button>
-        <button type="button" class="btn btn-sm btn-primary" id="saveLayoutBtn" <?php echo $modoDiseno?'':'disabled'; ?>>Guardar</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary" id="toggleTreeBtn" data-tree-mount>Árbol</button>
+        <button type="button" class="btn btn-sm btn-primary" id="saveLayoutBtn" <?= $modoDiseno ? '' : 'disabled' ?>>Guardar</button>
       </div>
     </div>
 
     <div class="fd-shell">
       <div class="fd-form-area">
         <form id="formulariodinamico" data-layout-container class="mb-4">
-          <?php echo fd_render_layout_fallback($layout, $fieldsets); ?>
+          <?= fd_render_layout_fallback($layout, $fieldsets); ?>
           <div class="mt-3">
             <?php foreach ($botones_config as $b):
-              $txt = htmlspecialchars($b['texto'] ?? 'Botón');
-              $acc = $b['accion'] ?? 'submit';
-              $cls = htmlspecialchars($b['clase'] ?? 'btn-secondary');
-              $type = ($acc === 'reset' ? 'reset' : 'submit');
-            ?>
-              <button type="<?php echo $type; ?>" class="btn <?php echo $cls; ?>"><?php echo $txt; ?></button>
+              $txt    = htmlspecialchars($b['texto'] ?? 'Botón');
+              $accion = $b['accion'] ?? 'submit';
+              $cls    = htmlspecialchars($b['clase'] ?? 'btn-secondary');
+              $type   = ($accion === 'reset' ? 'reset' : 'submit'); ?>
+              <button type="<?= $type ?>" class="btn <?= $cls ?>"><?= $txt ?></button>
             <?php endforeach; ?>
           </div>
         </form>
       </div>
-      <!-- Panel árbol JSON -->
-      <div id="fd-tree-side" style="position:fixed;top:10px;right:10px;width:360px;max-height:90vh;overflow:auto;background:#fff;border:1px solid #ddd;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.1);z-index:9999;padding:10px;font-size:.85rem;">
-        <div class="d-flex align-items-center gap-2 mb-2">
-          <strong>Árbol JSON</strong>
-          <input id="fd-tree-filter" class="form-control form-control-sm" placeholder="Filtrar..." />
-        </div>
-        <div id="fd-json-tree"></div>
-      </div>
-
-      <script>
-        // Ajusta si tu JSON está en otra ruta
-        window.FORM_CONFIG = { archivo_json: 'json/formulariogenerico2.json' };
-      </script>
-      <script src="js/fd-tree-side.js"></script>
     </div>
   </div>
 
-  <link rel="stylesheet"
-  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
-  integrity="sha512-DTOQO9RWCH3ppGqcWaEA1B4..."
-  crossorigin="anonymous" referrerpolicy="no-referrer">
-<script>
-// Expone el JSON usado para render (ajusta $json_data si usas otra variable)
-window.FORM_JSON = <?php echo json_encode($json_data ?? [], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES); ?>;
-// Fallback de archivo (si no llega desde PHP)
-window.FORM_CONFIG = window.FORM_CONFIG || { archivo_json: 'json/formulariogenerico2.json' };
-</script>
-  <script>
-(function(){
-  const root  = document.getElementById('fd-root');
-  const toggle= document.getElementById('designModeToggle');
-  const saveBtn = document.getElementById('saveLayoutBtn');
+  <!-- Contenedor micro‑app Árbol JSON (montaje externo) -->
+  <div id="fd-json-tree-app" data-tree-app></div>
 
-  function ensureTreePanel(){
-    if (!document.getElementById('json-tree-panel') && root.classList.contains('design-mode')){
-      const div = document.createElement('div');
-      div.id = 'json-tree-panel';
-      root.appendChild(div);
-    }
-  }
+  <div id="fd-data"
+       data-json-file="<?= htmlspecialchars($archivo_base) ?>"
+       data-form-json='<?= htmlspecialchars(json_encode($json_data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES), ENT_QUOTES | ENT_SUBSTITUTE, "UTF-8") ?>'></div>
 
-  // Builder simple si no existe renderJsonTreeFromForm (fallback)
-  if (!window.renderJsonTreeFromForm){
-    window.renderJsonTreeFromForm = function(){
-      const panel = document.getElementById('json-tree-panel');
-      if (!panel) return;
-      panel.innerHTML = '';
-      const groups = root.querySelectorAll('fieldset, .card, .panel, .fd-fieldset');
-      if (!groups.length){ panel.innerHTML = '<div class="text-muted small">Sin grupos</div>'; return; }
-      const ul = document.createElement('ul');
-      groups.forEach(g=>{
-        const gid = g.getAttribute('data-group-id') || g.id || 'g_'+Math.random().toString(36).slice(2,8);
-        if (!g.getAttribute('data-group-id')) g.setAttribute('data-group-id', gid);
-        const liG = document.createElement('li');
-        liG.setAttribute('data-node','group');
-        liG.setAttribute('data-id', gid);
-        const title = document.createElement('div');
-        title.className='title';
-        title.textContent = (g.querySelector(':scope > legend, :scope > .card-header')?.textContent||gid).trim();
-        liG.appendChild(title);
-        const fieldsWrap = document.createElement('div');
-        fieldsWrap.setAttribute('data-node','fields');
-        fieldsWrap.setAttribute('data-id', gid);
-        const list = document.createElement('ul');
-        list.className='node-fields-list';
-        list.setAttribute('data-id', gid);
-        Array.from((g.querySelector(':scope > .card-body, :scope > .fd-fields-container')||g).children)
-          .filter(ch=> !!ch.querySelector?.('input,select,textarea,[name],[data-name]') &&
-                        !ch.matches('fieldset,.card,.panel,.fd-fieldset'))
-          .forEach(w=>{
-            const fid = w.getAttribute('data-field-id') ||
-              w.querySelector('[name]')?.getAttribute('name') ||
-              w.querySelector('[id]')?.getAttribute('id') ||
-              'f_'+Math.random().toString(36).slice(2,8);
-            if (!w.getAttribute('data-field-id')) w.setAttribute('data-field-id', fid);
-            const liF = document.createElement('li');
-            liF.setAttribute('data-node','field');
-            liF.setAttribute('data-id', fid);
-            const h = document.createElement('span');
-            h.className='handle';
-            h.textContent='⋮⋮';
-            liF.appendChild(h);
-            const lbl = w.querySelector('label')?.textContent || fid;
-            liF.appendChild(document.createTextNode(' '+lbl.trim()));
-            list.appendChild(liF);
-          });
-        fieldsWrap.appendChild(list);
-        liG.appendChild(fieldsWrap);
-        ul.appendChild(liG);
-      });
-      panel.appendChild(ul);
-      // Re-engancha DnD del árbol si fd-dnd-lite lo soporta
-      window.fdDndLiteRefresh && window.fdDndLiteRefresh();
-    };
-  }
-
-  function enterDesign(on){
-    root.classList.toggle('design-mode', on);
-    saveBtn && (saveBtn.disabled = !on);
-    ensureTreePanel();
-    window.dispatchEvent(new CustomEvent('design-mode-changed',{detail:{on}}));
-    if (on){
-      window.fdDndLiteRefresh && window.fdDndLiteRefresh();
-      window.renderJsonTreeFromForm && window.renderJsonTreeFromForm();
-    } else {
-      // Limpio grips visuales si quieres (opcional)
-    }
-  }
-
-  if (toggle){
-    toggle.addEventListener('change', ()=> enterDesign(toggle.checked));
-    // Sin recargar por querystring
-  }
-
-  // Estado inicial
-  if (toggle?.checked){
-    enterDesign(true);
-  }
-
-  // Click títulos del árbol para colapsar
-  document.addEventListener('click', e=>{
-    const t = e.target.closest('#json-tree-panel [data-node="group"] > .title');
-    if (t) t.parentElement.classList.toggle('collapsed');
-  });
-
-})();
-</script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- JS principal (no agregar inline) -->
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
-  <script src="js/fd-dnd-lite-min.js"></script>
-  <script src="js/fd-tree-side.js"></script>
-  <script>
-  (function(){
-    const form = document.getElementById('formulariodinamico');
-    if (!form) return;
-    form.addEventListener('submit', function(e){
-      if (!form.checkValidity()){
-        e.preventDefault();
-        e.stopPropagation();
-        form.querySelectorAll(':invalid').forEach(inp=>{
-          const wrap = inp.closest('.fd-field-wrapper');
-          if (wrap){
-            wrap.classList.add('was-validated');
-            const fb = wrap.querySelector('.invalid-feedback');
-            if (fb && !fb.textContent.trim()) {
-              fb.textContent = inp.validationMessage;
-            }
-          }
-        });
-      }
-    });
-    // Mostrar feedback en blur
-    form.addEventListener('blur', function(e){
-      const inp = e.target;
-      if (inp.matches('input,select,textarea')){
-        const wrap = inp.closest('.fd-field-wrapper');
-        if (wrap){
-          const fb = wrap.querySelector('.invalid-feedback');
-          if (!inp.checkValidity()){
-            wrap.classList.add('was-validated');
-            if (fb) fb.textContent = inp.validationMessage;
-          } else {
-            if (fb) fb.textContent = '';
-          }
-        }
-      }
-    }, true);
-  })();
-  </script>
+  <script src="js/formulariodinamico.js"></script>
+  <!-- La micro‑app del árbol cargará su JS (ej: js/arboljson/main.js) desde formulariodinamico.js si es necesario -->
 </body>
 </html>

@@ -1,7 +1,5 @@
 <?php
 /*
-COPILOT_PROMPT (Lineamientos para cualquier cambio en este archivo):
-/*
 COPILOT_PROMPT (Lineamientos y requisitos para cualquier cambio en este archivo)
 
 Objetivo:

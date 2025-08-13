@@ -272,9 +272,8 @@ if (!function_exists('fd_render_rows_fallback')) {
                 $fieldsetKey = $col['fieldset'] ?? $col['fs'] ?? null;
                 $html .= '<div class="col-md-'.$w.' fd-col"'.($fieldsetKey?' data-fs="'.$fieldsetKey.'"':'').'>';
                 if ($fieldsetKey && isset($fieldsets[$fieldsetKey])) {
-                    $html .= '<fieldset class="fd-fieldset fd-editable" data-fs="'.$fieldsetKey.'">';
-                    // ...render campos...
-                    $html .= '</fieldset>';
+                        // Renderizar el fieldset completo con sus campos
+                        $html .= fd_render_fieldset_fallback($fieldsetKey, $fieldsets[$fieldsetKey]);
                 }
                 $html .= '</div>';
             }

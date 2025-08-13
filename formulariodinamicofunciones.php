@@ -22,38 +22,40 @@
 // ========================================================================
 // --- PALETA DE COMPONENTES ---
 function generarPaletaComponentes($fieldsets_disponibles, $fieldsets) {
-    $html = "<div id='paleta-componentes' class='paleta-componentes bg-light p-3 mb-3 solo-modo-diseno'>";
-    $html .= "<h5 class='mb-3'><i class='fas fa-toolbox'></i> Paleta de Componentes</h5>";
+    ob_start();
+    echo "<div id='paleta-componentes' class='paleta-componentes bg-light p-3 mb-3 solo-modo-diseno'>";
+    echo "<h5 class='mb-3'><i class='fas fa-toolbox'></i> Paleta de Componentes</h5>";
     if (empty($fieldsets_disponibles)) {
-        $html .= "<div class='text-muted'>No hay componentes disponibles para agregar.</div>";
+        echo "<div class='text-muted'>No hay componentes disponibles para agregar.</div>";
     } else {
-        $html .= "<div class='d-flex flex-wrap'>";
+        echo "<div class='d-flex flex-wrap'>";
         foreach ($fieldsets_disponibles as $fs_name) {
             $titulo = htmlspecialchars($fieldsets[$fs_name]['titulo'] ?? $fs_name);
-            $html .= "<div class='draggable-fieldset card m-2 p-2 text-center' data-fieldset='$fs_name' style='min-width:180px;cursor:grab;'>";
-            $html .= "<div class='handle mb-2'><i class='fas fa-grip-vertical'></i></div>";
-            $html .= "<strong>$titulo</strong><br><span class='badge badge-secondary'>$fs_name</span>";
-            $html .= "</div>";
+            echo "<div class='draggable-fieldset card m-2 p-2 text-center' data-fieldset='$fs_name' style='min-width:180px;cursor:grab;'>";
+            echo "<div class='handle mb-2'><i class='fas fa-grip-vertical'></i></div>";
+            echo "<strong>$titulo</strong><br><span class='badge badge-secondary'>$fs_name</span>";
+            echo "</div>";
         }
-        $html .= "</div>";
+        echo "</div>";
     }
-    $html .= "</div>";
-    return $html;
+    echo "</div>";
+    return ob_get_clean();
 }
 
 // --- PALETA DE TIPOS DE CONTROL (para crear nuevos campos desde cero) ---
 function generarPaletaTiposControl(): string {
     $tipos = ['text','textarea','number','email','password','select','selectdata','radio','checkbox','file','date','datatable','hidden'];
-    $html = '<div class="p-3"><h5 class="mb-3">Tipos de control</h5><div class="row">';
+    ob_start();
+    echo '<div class="p-3"><h5 class="mb-3">Tipos de control</h5><div class="row">';
     foreach ($tipos as $t) {
-        $html .= '<div class="col-6 col-md-4 mb-2">';
-        $html .= '<div class="draggable-tipo border rounded p-2 bg-white">';
-        $html .= '<div class="d-flex align-items-center"><span class="handle mr-2"><i class="fas fa-grip-vertical"></i></span>';
-        $html .= '<span>'.htmlspecialchars($t, ENT_QUOTES, 'UTF-8').'</span></div>';
-        $html .= '</div></div>';
+        echo '<div class="col-6 col-md-4 mb-2">';
+        echo '<div class="draggable-tipo border rounded p-2 bg-white">';
+        echo '<div class="d-flex align-items-center"><span class="handle mr-2"><i class="fas fa-grip-vertical"></i></span>';
+        echo '<span>'.htmlspecialchars($t, ENT_QUOTES, 'UTF-8').'</span></div>';
+        echo '</div></div>';
     }
-    $html .= '</div></div>';
-    return $html;
+    echo '</div></div>';
+    return ob_get_clean();
 }
 
 // --- Función principal para generar un campo ---
@@ -66,8 +68,15 @@ function generarCampo($campo, $valor, $soloLectura): string {
     $disabled = $soloLectura ? ' disabled readonly' : '';
     $label = $campo['etiqueta'] ?? $campo['label'] ?? '';
     $attrStr = '';
-    foreach ((array)$attrs as $k => $v) {
-        $attrStr .= ' '.htmlspecialchars($k, ENT_QUOTES, 'UTF-8')."=\"".htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8')."\"";
+    if (!empty($attrs)) {
+        $attrStr = implode(' ', array_map(
+            function($k, $v) {
+                return htmlspecialchars($k, ENT_QUOTES, 'UTF-8')."=\"".htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8')."\"";
+            },
+            array_keys($attrs),
+            $attrs
+        ));
+        $attrStr = ' ' . $attrStr;
     }
     switch ($tipo) {
         case 'email':

@@ -146,6 +146,9 @@ require_once __DIR__ . '/formulariodinamicologica.php';
               $type   = ($accion === 'reset' ? 'reset' : 'submit'); ?>
               <button type="<?= $type ?>" class="btn <?= $cls ?>"><?= $txt ?></button>
             <?php endforeach; ?>
+            <?php if ($modoDiseno): ?>
+              <button type="button" class="btn btn-warning ms-2" id="btnDisenoExtra">Botón Diseño Activo</button>
+            <?php endif; ?>
           </div>
         </form>
       </div>

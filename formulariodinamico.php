@@ -25,19 +25,16 @@ UX / Embellecimiento:
 - Evitar dependencias extra innecesarias; priorizar utilidades Bootstrap + CSS propio con prefijo .fd-.
 - Cualquier “embellecer” debe ser progresivo (no romper funcionalidad si falla JS).
 
+Botones flotantes de alternancia:
+- Deben existir dos botones flotantes siempre visibles: uno para alternar a "Diseño Árbol" y otro para "Diseño Formulario".
+- "Diseño Árbol": muestra la micro-app del árbol JSON, donde se puede editar la estructura y arrastrar objetos en el formulario.
+- "Diseño Formulario": muestra el formulario dinámico y permite arrastrar/editar objetos directamente en el formulario (DnD, WYSIWYG).
+- Ambos modos permiten arrastrar objetos en el formulario, ya sea desde el árbol o directamente.
+
 Modo Diseño (siempre activable/desactivable):
 - Activación: checkbox #designModeToggle y/o query ?modoDiseno=1 (sin estado ambiguo).
 - Debe poder alternar sin recargar datos base (solo re-render / clases).
 - Al entrar en modo diseño, destacar contenedores con clases .fd-editable / .fd-draggable si aplica.
-
-Interacción en modo diseño (dos modalidades compatibles):
-1. Micro‑app Árbol JSON:
-   - Edición estructural desde árbol (parametros, fieldsets, layout).
-   - Cambios sincronizados al objeto FORM_JSON y reflejados tras refresco de render (sin F5 completo).
-2. Edición directa en el formulario (WYSIWYG):
-   - Drag & Drop de tabs, secciones, fieldsets, filas, columnas y campos (incluso mover campos entre fieldsets / tabs).
-   - Respetar restricciones (ej: mantener suma de columnas, validar destino).
-   - Actualizar layout serializado (FD.serializeLayoutFromDom) para guardar.
 
 Reglas antes de modificar:
 0. REVISAR Y CONSERVAR FUNCIONALIDAD EXISTENTE: antes de agregar código nuevo, revisar tabs, árbol, DnD, guardado, render de fieldsets; solo complementar. PROHIBIDO eliminar, comentar o degradar funcionalidad existente salvo bug confirmado; en ese caso marcar // DEPRECATED, justificar y mantener wrapper/compatibilidad temporal.

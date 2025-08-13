@@ -9,16 +9,35 @@ $json_data = cargarJson($archivo_json);
   <title>Árbol JSON</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="css/app.css">
+  <style>
+    #fd-float-btns {
+      animation: fdFloatIn 0.7s cubic-bezier(.68,-0.55,.27,1.55);
+    }
+    @keyframes fdFloatIn {
+      from { opacity:0; transform: translateY(40px) scale(0.8); }
+      to   { opacity:1; transform: translateY(0) scale(1); }
+    }
+    #fd-float-btns .btn {
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    #fd-float-btns .btn:hover {
+      box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+      transform: scale(1.08);
+    }
+  </style>
 </head>
 <body>
   <div id="app">
     <header class="app-bar">
       <h1>Árbol/Formulario Dinámico</h1>
-      <button id="btnShowTree" class="btn btn-outline-secondary">Diseño Árbol</button>
-      <button id="btnShowForm" class="btn btn-outline-primary">Diseño Formulario</button>
       <button id="btnSync" class="btn">Solicitar JSON</button>
       <button id="btnSend" class="btn btn-primary">Enviar cambios</button>
     </header>
+    <!-- Botones flotantes para alternar vistas -->
+    <div id="fd-float-btns" style="position:fixed;bottom:32px;right:32px;z-index:9999;display:flex;flex-direction:column;gap:12px;">
+      <button id="btnShowTree" class="btn btn-outline-secondary shadow">Diseño Árbol</button>
+      <button id="btnShowForm" class="btn btn-outline-primary shadow">Diseño Formulario</button>
+    </div>
     <section class="pane" id="treePane">
       <div class="pane-left">
         <h3>Estructura</h3>

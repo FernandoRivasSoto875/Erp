@@ -73,6 +73,24 @@ Formato para nuevas modificaciones:
 Resumen (TL;DR):
 Archivo de vista. NO lógica / NO JS / NO CSS aquí. Mantener modo diseño operativo (toggle + dos vías de edición). Embellecer usando Bootstrap moderno + CSS externo. Revisar consistencia (punto 12/13) y NO eliminar funcionalidad existente (regla 0).
 
+--- PROMPT_VISIBILIDAD_CONTROLES_MODO_DISENO (Adición) ---
+Requisito de visibilidad de controles:
+- Los botones "Árbol" (#toggleTreeBtn) y "Guardar" (#saveLayoutBtn) deben mostrarse solo cuando el modo diseño está activo.
+- En modo normal: deben permanecer ocultos con d-none y deshabilitados (disabled, aria-hidden="true").
+- Al activar modo diseño: quitar d-none y disabled, y montar/mostrar el árbol automáticamente en la primera activación.
+- Al desactivar: volver a ocultar y deshabilitar ambos; el árbol puede ocultarse.
+
+Checklist (entrada al modo diseño):
+[ ] body.fd-design-mode aplicado
+[ ] Botones Árbol y Guardar visibles y habilitados
+[ ] Árbol visible/cargado (iframe o fallback)
+[ ] DnD activo y marcando dirty
+Checklist (salida del modo diseño):
+[ ] Botones ocultos y deshabilitados
+[ ] Árbol oculto (opcional)
+[ ] DnD inactivo/ignorado
+--- FIN PROMPT_VISIBILIDAD_CONTROLES_MODO_DISENO ---
+
 Fin del COPILOT_PROMPT.
 */
 /* ADENDO: Panel árbol interno removido; usar micro‑app en #fd-json-tree-app. */

@@ -98,3 +98,14 @@ body.fd-layout-dirty #saveLayoutBtn{
 /* Tabs refinados */
 .fd-tabs .nav-tabs .nav-link{cursor:pointer;}
 .fd-tabs .tab-pane{padding:.5rem;}
+
+/* Estado diseño */
+body.fd-design-mode .fd-editable{
+  outline:1px dashed rgba(13,110,253,.4);
+  position:relative;
+  transition:background-color .15s, outline-color .15s;
+}
+body.fd-design-mode .fd-editable:hover{
+  outline:2px solid #0d6efd;
+  background:rgba(13,110,253,.05);
+}

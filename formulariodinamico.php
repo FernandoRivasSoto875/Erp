@@ -55,10 +55,12 @@ Reglas antes de modificar:
 11. Integración árbol: aquí solo contenedor #fd-json-tree-app (no markup interno).
 12. CONSISTENCIA DE LLAMADOS: verificar includes, data-* (#fd-data), scripts (Sortable + formulariodinamico.js), contenedor micro‑app y funciones clave (fd_render_layout_fallback) existen y JSON decodifica (json_last_error()==JSON_ERROR_NONE).
 13. Modo diseño debe seguir operando (toggle + DnD + árbol) tras cualquier cambio.
-
+14. NO cambiar el diseño  a no ser qexplictamente cambios en <div class="css"></div>
 Validaciones al finalizar:
+15 Siempre verifica que todo quede de forma responsiva.
 - php -l formulariodinamico.php sin errores.
 - Sin nuevos <style> ni <script> inline.
+16.- Si hay algo que no puedes hacer, por restringcion del prompt, indicamelo, indicame que debemos agregar en el prompt.
 
 Resumen (TL;DR):
 Archivo de vista. NO lógica / NO JS / NO CSS aquí. Mantener modo diseño operativo (toggle + dos vías de edición). Embellecer usando Bootstrap moderno + CSS externo. Revisar consistencia (punto 12/13) y NO eliminar funcionalidad existente (regla 0).

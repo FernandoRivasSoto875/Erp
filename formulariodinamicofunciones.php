@@ -78,24 +78,25 @@ function generarCampo($campo, $valor, $soloLectura): string {
                 $opts .= "<option value='".htmlspecialchars((string)$key, ENT_QUOTES, 'UTF-8')."'{$sel}>".htmlspecialchars((string)$text, ENT_QUOTES, 'UTF-8')."</option>";
             }
             return "<div class='form-group mb-2'>{$hLabel}<select name='{$hName}' class='form-control'{$disabled}{$attrStr}>{$opts}</select></div>";
-        default:
-            return "<div class='form-group mb-2'>{$hLabel}<input type='{$inputType}' name='{$hName}' value='".htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8')."' class='form-control'{$disabled}{$attrStr}></div>";
-    }
-        case 'radio': {
+        case 'radio':
             $options = $campo['opciones'] ?? [];
             $html = "<div class='form-group mb-2'>{$hLabel}<div>";
             foreach ((array)$options as $key => $text) {
-                $html .= "<div class='form-check form-check-inline'><input class='form-check-input' type='radio' id='{$id}' name='{$hName}' value='".htmlspecialchars((string)$key, ENT_QUOTES, 'UTF-8')."'{$chk}{$disabled}{$attrStr}><label class='form-check-label' for='{$id}'>".htmlspecialchars((string)$text, ENT_QUOTES, 'UTF-8')."</label></div>";
+                $html .= "<div class='form-check form-check-inline'><input class='form-check-input' type='radio' id='{$hName}_{$key}' name='{$hName}' value='".htmlspecialchars((string)$key, ENT_QUOTES, 'UTF-8')."'".(((string)$valor === (string)$key)?' checked':'')."{$disabled}{$attrStr}><label class='form-check-label' for='{$hName}_{$key}'>".htmlspecialchars((string)$text, ENT_QUOTES, 'UTF-8')."</label></div>";
             }
             return $html."</div></div>";
-        }
-        case 'checkbox': {
-            return "<div class='form-group form-check mb-2'><input class='form-check-input' type='checkbox' id='{$hName}' name='{$hName}' value='1'{$checked}{$disabled}{$attrStr}><label class='form-check-label' for='{$hName}'>".htmlspecialchars($label, ENT_QUOTES, 'UTF-8')."</label></div>";
-        }
-        case 'datatable': {
+        case 'checkbox':
+            return "<div class='form-group form-check mb-2'><input class='form-check-input' type='checkbox' id='{$hName}' name='{$hName}' value='1'".(($valor)?' checked':'')."{$disabled}{$attrStr}><label class='form-check-label' for='{$hName}'>".htmlspecialchars($label ?? $hLabel, ENT_QUOTES, 'UTF-8')."</label></div>";
+        case 'datatable':
             $cols = $campo['columnas'] ?? $campo['columns'] ?? [];
+            $head = '';
+            foreach ($cols as $col) {
+                $head .= "<th>".htmlspecialchars($col['label'] ?? $col['nombre'] ?? $col['name'] ?? '', ENT_QUOTES, 'UTF-8')."</th>";
             }
             return "<div class='form-group mb-2'>{$hLabel}<div data-tipo='datatable' data-nombre='{$hName}' class='table-responsive'><table class='table table-sm table-bordered mb-0'><thead><tr>{$head}</tr></thead><tbody><!-- filas dinámicas --></tbody></table></div></div>";
+        default:
+            return "<div class='form-group mb-2'>{$hLabel}<input type='{$inputType}' name='{$hName}' value='".htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8')."' class='form-control'{$disabled}{$attrStr}></div>";
+    }
 
 function fd_count_fields_por_fieldset(array $fieldsets): array {
     return $out;

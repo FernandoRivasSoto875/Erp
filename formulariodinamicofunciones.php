@@ -1,4 +1,10 @@
 <?php
+/* MASTER_PROMPT_REFERENCE
+   Leer COPILOT_PROMPT en formulariodinamico.php (fuente única de lineamientos).
+   Rol de este archivo: helpers / lógica PHP reutilizable (sin HTML de vista, sin CSS, sin JS inline).
+   No romper contrato JSON (parametros, fieldsets, layout). Agregar nuevas funciones de forma compatible.
+*/
+   
 // KEEP: Revisado y listo para commit. Funciones auxiliares para renderizado y utilidades del formulario dinámico.
 /*
 ====================================================================================

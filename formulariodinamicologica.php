@@ -1,4 +1,8 @@
 <?php
+/* MASTER_PROMPT_REFERENCE
+   Leer COPILOT_PROMPT en formulariodinamico.php.
+   Rol: lógica adicional (validaciones / serialización avanzada) fuera de la vista.
+   Evitar duplicar helpers ya definidos. */
 // Helpers
 if (!function_exists('fd_escape')) {
     function fd_escape($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
@@ -520,32 +524,3 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'exito'       => 'Datos enviados correctamente.',
         'advertencia' => 'Advertencias durante el envío:',
         'error'       => 'Ocurrió un error durante el envío.'
-    ];
-    $mensajeFinal = $param_mensajes['exito'];
-    if (!empty($adjuntosWarnings)) {
-        $mensajeFinal .= "<br><div class='alert alert-warning mt-2'><b>" . $param_mensajes['advertencia'] . "</b><ul><li>" . implode('</li><li>', $adjuntosWarnings) . "</li></ul></div>";
-    }
-    $_SESSION['mensaje_flash'] = $mensajeFinal;
-
-    // Limpieza de temporales generados (no borra uploads del usuario)
-    foreach (($archivosTemporales ?? []) as $tmp) if (file_exists($tmp)) @unlink($tmp);
-
-    $redirect = trim($params['post_envio']['redireccion'] ?? '');
-    if ($redirect !== '') {
-        header("Location: " . $redirect);
-    } else {
-        header("Location: formulariodinamico.php?archivo=" . urlencode($archivo_json) . "&status=saved");
-    }
-    exit;
-}
-// AJAX: load_data
-elseif (isset($_GET['action']) && $_GET['action'] === 'load_data') {
-    header('Content-Type: application/json; charset=utf-8');
-    $formName = $_GET['archivo'] ?? '';
-    $key = $_GET['key'] ?? '';
-    if ($formName === '' || $key === '') { echo json_encode(['error'=>'Faltan parámetros']); exit; }
-    $sessionKey = 'form_data_' . $formName . '_' . $key;
-    if (isset($_SESSION[$sessionKey])) echo json_encode(['success'=>true,'data'=>$_SESSION[$sessionKey]]);
-    else echo json_encode(['success'=>false]);
-    exit;
-}

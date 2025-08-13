@@ -1,3 +1,43 @@
+/* =======================================================================
+COPILOT_PROMPT (Resumen aplicado para este JS - derivado de formulariodinamico.php)
+
+Objetivo global del proyecto:
+- formulariodinamico.php es solo orquestador (vista mínima).
+- Toda lógica dinámica, modo diseño, DnD, integración árbol JSON y mejoras UX van aquí (o en módulos JS separados importados aquí).
+- No remover funciones existentes que funcionan sin análisis; ampliarlas de forma compatible.
+
+Lineamientos clave (extraídos/adaptados):
+1. No mover lógica de negocio al PHP principal; mantenerla en este archivo u otros JS.
+2. Mantener IDs/clases usadas: #fd-data, #formulariodinamico, #fd-json-tree-app, .fd-section, .fd-tabs.
+3. Modo diseño:
+   - Toggle por #designModeToggle + clase body.fd-design-mode.
+   - Debe soportar dos vías: (a) micro‑app árbol (iframe / montaje) y (b) edición directa Drag & Drop.
+4. Drag & Drop: mover secciones/fieldsets/cols/campos preservando contrato JSON (parametros, fieldsets, layout).
+5. Guardado: usar/extender FD.serializeLayoutFromDom y FD.buildSavePayload. No duplicar funciones con nombres distintos.
+6. Si se añade nueva funcionalidad grande: modular (namespace FD.*) y marcar wrappers antiguos // DEPRECATED al reemplazar.
+7. No introducir dependencias JS extra sin necesidad (Bootstrap ya cargado, Sortable ya cargado).
+8. Accesibilidad: mantener atributos ARIA en tabs, focus consistente.
+9. Embellecer UI solo mediante clases CSS definidas en css/formulariodinamico.css (no estilos inline aquí).
+10. Comunicación con micro‑app árbol vía postMessage (e.data.fdTree) de forma tolerante (no romper si payload parcial).
+11. Antes de eliminar código existente preguntar / justificar; si se depreca, comentar con fecha.
+12. Validar errores silenciosos en try/catch con console.warn (no bloquear ejecución).
+13. Siempre que se cambie el DOM que representa layout => FD.markDirty().
+14. Mantener fallback para tabs si bootstrap.Tab no está disponible.
+15. Evitar variables globales no namespaced; usar objeto FD.
+16. Si se amplía serializeLayoutFromDom: retornar estructura coherente (layout array) preservando claves originales cuando sea posible.
+17. No hardcodear rutas ni nombres de JSON; tomar de #fd-data (data-json-file / data-form-json) cuando aplique.
+
+Checklist al terminar cambios:
+- Sin errores en consola.
+- Tabs navegables.
+- DnD funcionando en modo diseño sin afectar modo normal.
+- Guardado actualiza estado (quita fd-layout-dirty).
+- Árbol: se monta / fallback muestra JSON si no carga.
+- No se eliminaron funciones sin wrapper de compatibilidad.
+
+Fin PROMPT JS
+======================================================================= */
+
 /* =========================================================
    FORMULARIO DINÁMICO CORE
    - Modo diseño con confirmación al salir si hay cambios
@@ -192,7 +232,7 @@
   }
 
   // Fallback manual para tabs si Bootstrap JS no inicializa (o falta)
-  (function(){
+  ;(function(){
     if(typeof bootstrap !== 'undefined' && bootstrap.Tab) return;
     document.addEventListener('click', function(e){
       const btn = e.target.closest('[data-bs-toggle="tab"]');

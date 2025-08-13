@@ -40,6 +40,7 @@ Interacción en modo diseño (dos modalidades compatibles):
    - Actualizar layout serializado (FD.serializeLayoutFromDom) para guardar.
 
 Reglas antes de modificar:
+0. REVISAR Y CONSERVAR FUNCIONALIDAD EXISTENTE: antes de agregar código nuevo, revisar tabs, árbol, DnD, guardado, render de fieldsets; solo complementar. PROHIBIDO eliminar, comentar o degradar funcionalidad existente salvo bug confirmado; en ese caso marcar // DEPRECATED, justificar y mantener wrapper/compatibilidad temporal.
 1. Revisar primero lógica existente (formulariodinamico.js, formulariodinamicofunciones.php, arboljson/*).
 2. Mantener compatibilidad retro o crear wrapper / alias temporal.
 3. No renombrar IDs / clases usadas por JS sin actualizar todo (incluida micro‑app).
@@ -70,7 +71,7 @@ Formato para nuevas modificaciones:
 - Mejoras visuales → CSS externo.
 
 Resumen (TL;DR):
-Archivo de vista. NO lógica / NO JS / NO CSS aquí. Mantener modo diseño operativo (toggle + dos vías de edición). Embellecer usando Bootstrap moderno + CSS externo. Revisar consistencia (punto 12/13) antes de cerrar.
+Archivo de vista. NO lógica / NO JS / NO CSS aquí. Mantener modo diseño operativo (toggle + dos vías de edición). Embellecer usando Bootstrap moderno + CSS externo. Revisar consistencia (punto 12/13) y NO eliminar funcionalidad existente (regla 0).
 
 Fin del COPILOT_PROMPT.
 */

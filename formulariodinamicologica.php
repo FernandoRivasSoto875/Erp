@@ -524,3 +524,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'exito'       => 'Datos enviados correctamente.',
         'advertencia' => 'Advertencias durante el envío:',
         'error'       => 'Ocurrió un error durante el envío.'
+    ];
+    // ...existing code...

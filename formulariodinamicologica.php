@@ -1,3 +1,4 @@
+<?php
 // --- INTEGRACIÓN DE LIBRERÍAS ---
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;

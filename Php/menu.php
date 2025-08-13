@@ -1,0 +1,3 @@
+<?php
+include __DIR__ . '/funcionessql.php'; // Archivo que contiene la función conexionBd()
+// ...existing code...

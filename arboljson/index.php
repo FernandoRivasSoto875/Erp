@@ -1,5 +1,4 @@
 <?php
-header('Content-Type: text/html; charset=utf-8');
 require_once '../js/formulariodinamico-app/app/formulariodinamicologica.php';
 $archivo_json = $_GET['archivo'] ?? 'formulariogenerico2.json';
 $json_data = cargarJson($archivo_json);

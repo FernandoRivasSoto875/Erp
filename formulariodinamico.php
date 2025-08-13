@@ -143,7 +143,9 @@ require_once __DIR__ . '/formulariodinamicologica.php';
           echo fd_render_layout_fallback($layout, $fieldsets);
           ?>
           <div class="mt-3">
-            <?php foreach ($botones_config as $b):
+            <?php 
+            $botones_config = is_array($botones_config) ? $botones_config : [];
+            foreach ($botones_config as $b):
               $txt    = htmlspecialchars($b['texto'] ?? 'Botón');
               $accion = $b['accion'] ?? 'submit';
               $cls    = htmlspecialchars($b['clase'] ?? 'btn-secondary');

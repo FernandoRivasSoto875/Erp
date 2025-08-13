@@ -61,36 +61,7 @@ input:invalid { border-color: var(--color-error); animation: shake 0.2s; }
 .design-toolbar{gap:.5rem;}
 .fd-shell{display:flex;align-items:flex-start;gap:1rem;}
 .fd-form-area{flex:1 1 auto;min-width:0;}
-#fd-tree-side{
-  position:fixed;top:10px;right:10px;width:360px;max-height:90vh;overflow:auto;
-  background:#fff;border:1px solid #ddd;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.1);
-  z-index:9999;padding:10px;font-size:.8rem;display:none;
-}
-body.fd-design-mode #fd-tree-side{display:block;}
-#fd-tree-side input{font-size:.75rem;}
-#fd-json-tree ul{list-style:none;margin:0;padding-left:16px;}
-#fd-json-tree li{margin:1px 0;}
-.fd-json-node{display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:3px;}
-.fd-json-toggle{cursor:pointer;color:#0d6efd;font-weight:600;width:12px;text-align:center;}
-.fd-json-toggle.empty{color:#ccc;cursor:default;}
-.fd-json-key{color:#7c4d00;font-weight:600;}
-.fd-json-value{color:#1d4e89;flex:1;min-width:40px;cursor:pointer;}
-.fd-json-value.fd-type-string:before{content:'"';color:#999;}
-.fd-json-value.fd-type-string:after{content:'"';color:#999;}
-.fd-json-value.fd-editing{background:#fff3cd;border:1px solid #ffe066;padding:0 2px;border-radius:2px;}
-.fd-json-badge{background:#dee2e6;color:#555;font-size:.55rem;padding:1px 4px;border-radius:10px;}
-#fd-tree-side .fd-filter-hide{display:none!important;}
-#fd-tree-side .fd-filter-hit > .fd-json-node{background:#fff3cd;}
-fieldset.fd-fieldset legend{font-size:.9rem;}
-body.fd-design-mode .fd-section{
-  position:relative;
-  transition:background-color .15s, outline-color .15s;
-}
-body.fd-design-mode .fd-section:hover{
-  outline:2px dashed #0d6efd;
-  outline-offset:2px;
-  background:rgba(13,110,253,.05);
-}
+/* Contenedor árbol */
 #fd-json-tree-app{
   margin:1rem;
   padding:.5rem;
@@ -104,7 +75,8 @@ body.fd-design-mode .fd-section:hover{
   border:1px solid #ced4da;
   border-radius:4px;
 }
-/* Resalte secciones en modo diseño (ya solicitado) */
+
+/* Modo diseño visual */
 body.fd-design-mode .fd-section{
   position:relative;
   transition:background-color .15s, outline-color .15s;
@@ -114,12 +86,15 @@ body.fd-design-mode .fd-section:hover{
   outline-offset:2px;
   background:rgba(13,110,253,.05);
 }
-/* Indicador de layout sucio */
 body.fd-layout-dirty #saveLayoutBtn{
-  animation: pulseDirty 1.2s infinite;
+  animation:pulseDirty 1.2s infinite;
 }
 @keyframes pulseDirty{
-  0%{box-shadow:0 0 0 0 rgba(220,53,69,.6);}
+  0%{box-shadow:0 0 0 0 rgba(220,53,69,.55);}
   70%{box-shadow:0 0 0 6px rgba(220,53,69,0);}
   100%{box-shadow:0 0 0 0 rgba(220,53,69,0);}
 }
+
+/* Tabs refinados */
+.fd-tabs .nav-tabs .nav-link{cursor:pointer;}
+.fd-tabs .tab-pane{padding:.5rem;}

@@ -173,13 +173,13 @@ if (!function_exists('fd_render_layout_fallback')) {
     </div>
   </div>
 
-  <div id="fd-json-tree-app" data-tree-app></div>
-
+  <!-- Contenedor del árbol y nodo de datos -->
+  <div id="fd-json-tree-app" class="<?= $modoDiseno ? '' : 'd-none' ?>" data-tree-app></div>
   <div id="fd-data"
-       data-json-file="<?= htmlspecialchars($archivo_base) ?>"
-       data-form-json='<?= htmlspecialchars(json_encode($json_data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES), ENT_QUOTES | ENT_SUBSTITUTE, "UTF-8") ?>'></div>
+       data-json-file="<?= htmlspecialchars($archivo_base ?? 'formulariogenerico2.json') ?>"
+       data-form-json='<?= htmlspecialchars(json_encode($json_data ?? [], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES), ENT_QUOTES | ENT_SUBSTITUTE, "UTF-8") ?>'></div>
 
-  <!-- Scripts (sin inline) -->
+  <!-- Scripts requeridos -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script src="js/formulariodinamico.js"></script>

@@ -91,3 +91,35 @@ body.fd-design-mode .fd-section:hover{
   outline-offset:2px;
   background:rgba(13,110,253,.05);
 }
+#fd-json-tree-app{
+  margin:1rem;
+  padding:.5rem;
+  border:1px dashed #bbb;
+  border-radius:6px;
+  background:#fafafa;
+}
+#fd-json-tree-app.d-none{display:none!important;}
+.fd-tree-iframe{
+  background:#fff;
+  border:1px solid #ced4da;
+  border-radius:4px;
+}
+/* Resalte secciones en modo diseño (ya solicitado) */
+body.fd-design-mode .fd-section{
+  position:relative;
+  transition:background-color .15s, outline-color .15s;
+}
+body.fd-design-mode .fd-section:hover{
+  outline:2px dashed #0d6efd;
+  outline-offset:2px;
+  background:rgba(13,110,253,.05);
+}
+/* Indicador de layout sucio */
+body.fd-layout-dirty #saveLayoutBtn{
+  animation: pulseDirty 1.2s infinite;
+}
+@keyframes pulseDirty{
+  0%{box-shadow:0 0 0 0 rgba(220,53,69,.6);}
+  70%{box-shadow:0 0 0 6px rgba(220,53,69,0);}
+  100%{box-shadow:0 0 0 0 rgba(220,53,69,0);}
+}

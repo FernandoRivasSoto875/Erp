@@ -197,16 +197,27 @@ if (!function_exists('fd_render_tabs_section')) {
     function fd_render_tabs_section(array $section, array $fieldsets): string {
         $tabs = $section['tabs'] ?? [];
         if (!$tabs || !is_array($tabs)) return '';
-        $uid = 'fd_tabs_'.substr(md5(json_encode(array_keys($tabs))),0,8);
+        $uid = 'fd_tabs_'.substr(md5(json_encode(array_keys($tabs)).microtime(true)),0,8);
+
         $html = '<div class="fd-section fd-tabs" data-tabs="'.$uid.'">';
         // Nav
         $html .= '<ul class="nav nav-tabs" role="tablist">';
         foreach ($tabs as $i=>$tab) {
-            $active = $i===0 ? 'active' : '';
-            $paneId = $uid.'_pane_'.$i;
-            $title = htmlspecialchars($tab['title'] ?? $tab['titulo'] ?? ('Tab '.($i+1)), ENT_QUOTES, 'UTF-8');
+            $isActive = $i===0;
+            $paneId   = $uid.'_pane_'.$i;
+            $btnId    = $uid.'_tab_'.$i;
+            $title    = htmlspecialchars($tab['title'] ?? $tab['titulo'] ?? ('Tab '.($i+1)), ENT_QUOTES, 'UTF-8');
             $html .= '<li class="nav-item" role="presentation">';
-            $html .= '<button class="nav-link '.$active.'" data-bs-toggle="tab" data-bs-target="#'.$paneId.'" type="button" role="tab">'.$title.'</button>';
+            $html .= '<button'
+                   . ' class="nav-link'.($isActive?' active':'').'"'
+                   . ' id="'.$btnId.'"'
+                   . ' data-bs-toggle="tab"'
+                   . ' data-bs-target="#'.$paneId.'"'
+                   . ' type="button" role="tab"'
+                   . ' aria-controls="'.$paneId.'"'
+                   . ' aria-selected="'.($isActive?'true':'false').'">'
+                   . $title
+                   . '</button>';
             $html .= '</li>';
         }
         $html .= '</ul>';
@@ -214,15 +225,28 @@ if (!function_exists('fd_render_tabs_section')) {
         // Content
         $html .= '<div class="tab-content border border-top-0 p-3">';
         foreach ($tabs as $i=>$tab) {
-            $active = $i===0 ? 'show active' : '';
-            $paneId = $uid.'_pane_'.$i;
-            $rows = $tab['rows'] ?? [];
-            $html .= '<div id="'.$paneId.'" class="tab-pane fade '.$active.'" role="tabpanel">';
+            $isActive = $i===0;
+            $paneId   = $uid.'_pane_'.$i;
+            $btnId    = $uid.'_tab_'.$i;
+            $rows     = $tab['rows'] ?? [];
+            $html .= '<div'
+                   . ' id="'.$paneId.'"'
+                   . ' class="tab-pane fade'.($isActive?' show active':'').'"'
+                   . ' role="tabpanel"'
+                   . ' aria-labelledby="'.$btnId.'"'
+                   . ' tabindex="0">';
             $html .= fd_render_rows_fallback($rows, $fieldsets);
             $html .= '</div>';
         }
         $html .= '</div></div>';
         return $html;
+    }
+} else {
+    // Mejora accesibilidad/IDs si ya existía (wrapper opcional)
+    if (!function_exists('fd_render_tabs_section_a11y')) {
+        function fd_render_tabs_section_a11y(array $section, array $fieldsets): string {
+            return fd_render_tabs_section($section,$fieldsets); // Placeholder si ya declarada
+        }
     }
 }
 

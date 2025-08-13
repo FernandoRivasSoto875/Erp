@@ -85,12 +85,7 @@ $archivo_base = 'formulariogenerico2.json';
 $json_path    = __DIR__ . DIRECTORY_SEPARATOR . 'json' . DIRECTORY_SEPARATOR . $archivo_base;
 $json_text    = is_file($json_path) ? file_get_contents($json_path) : '{}';
 $json_data    = json_decode($json_text, true);
-
-if (!is_array($json_data)) {
-    // JSON inválido: fallback seguro
-    // error_log('JSON inválido en '.$json_path.': '.json_last_error_msg());
-    $json_data = [];
-}
+if (!is_array($json_data)) { $json_data = []; }
 
 $params    = $json_data['parametros'] ?? [];
 $fieldsets = $json_data['fieldsets']  ?? [];
@@ -102,19 +97,16 @@ $css_default            = $params['CssDefault'] ?? '';
 $botones_config         = $params['botones']    ?? [];
 
 require_once __DIR__ . '/formulariodinamicofunciones.php';
-
 if (!function_exists('fd_render_layout_fallback')) {
-    function fd_render_layout_fallback() {
-        return '<div class="alert alert-danger">Helper fd_render_layout_fallback no disponible.</div>';
-    }
+    function fd_render_layout_fallback(){ return '<div class="alert alert-danger">Helper fd_render_layout_fallback no disponible.</div>'; }
 }
 ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title><?= htmlspecialchars($titulo_formulario) ?></title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <?php if ($css_default): ?>
     <link rel="stylesheet" href="css/<?= htmlspecialchars($css_default) ?>">
@@ -125,14 +117,16 @@ if (!function_exists('fd_render_layout_fallback')) {
   <div class="container-fluid py-2">
     <div class="d-flex justify-content-between align-items-center mb-3 design-toolbar">
       <div>
-        <h4 class="m-0" id="fd-form-title" data-editable="titulo-form"><?= htmlspecialchars($titulo_formulario) ?></h4>
+        <h4 class="m-0" id="fd-form-title"><?= htmlspecialchars($titulo_formulario) ?></h4>
         <?php if ($descripcion_formulario): ?>
-          <small class="text-muted" id="fd-form-desc" data-editable="descripcion-form"><?= htmlspecialchars($descripcion_formulario) ?></small>
+          <small class="text-muted" id="fd-form-desc"><?= htmlspecialchars($descripcion_formulario) ?></small>
         <?php endif; ?>
       </div>
       <div class="d-flex align-items-center gap-2">
         <label class="form-check form-switch m-0">
-          <input type="checkbox" class="form-check-input" id="designModeToggle"
+          <input type="checkbox"
+                 class="form-check-input"
+                 id="designModeToggle"
                  <?= $modoDiseno ? 'checked' : '' ?>
                  aria-label="Activar modo diseño">
           <span class="form-check-label">Diseño</span>
@@ -160,16 +154,15 @@ if (!function_exists('fd_render_layout_fallback')) {
     </div>
   </div>
 
-  <!-- Contenedor micro‑app Árbol JSON (montaje externo) -->
   <div id="fd-json-tree-app" data-tree-app></div>
 
   <div id="fd-data"
        data-json-file="<?= htmlspecialchars($archivo_base) ?>"
        data-form-json='<?= htmlspecialchars(json_encode($json_data, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES), ENT_QUOTES | ENT_SUBSTITUTE, "UTF-8") ?>'></div>
 
-  <!-- JS principal (no agregar inline) -->
+  <!-- Scripts (sin inline) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script src="js/formulariodinamico.js"></script>
-  <!-- La micro‑app del árbol cargará su JS (ej: js/arboljson/main.js) desde formulariodinamico.js si es necesario -->
 </body>
 </html>

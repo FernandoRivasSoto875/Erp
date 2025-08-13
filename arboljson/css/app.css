@@ -1,0 +1,18 @@
+:root{--bg:#f6f7f9;--card:#fff;--b:#d0d7de;--txt:#222;--muted:#6c757d;--primary:#0d6efd;}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--txt);font:14px/1.4 system-ui,Segoe UI,Arial,sans-serif;}
+#app{padding:12px;}
+.app-bar{display:flex;gap:8px;align-items:center;margin-bottom:12px;}
+.app-bar h1{font-size:16px;margin:0;margin-right:auto;}
+.btn{padding:6px 10px;border:1px solid var(--b);background:#fff;border-radius:6px;cursor:pointer}
+.btn-primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.pane{display:flex;gap:12px}
+.pane-left,.pane-right{background:var(--card);border:1px solid var(--b);border-radius:8px;padding:10px}
+.pane-left{flex:0 0 280px;min-height:480px}
+.pane-right{flex:1 1 auto;min-height:480px;display:flex;flex-direction:column}
+#jsonEditor{flex:1 1 auto;width:100%;min-height:420px;border:1px solid var(--b);border-radius:6px;padding:8px;font-family:ui-monospace,Consolas,monospace;font-size:12px;resize:vertical;box-sizing:border-box;background:#fafafa}
+.tree{list-style:none;padding-left:16px;margin:0}
+.tree > li{margin:6px 0}
+.muted{color:var(--muted);font-size:12px;margin-left:6px}
+.status{margin-top:8px;font-size:12px;color:var(--muted)}
+.status.ok{color:#198754}
+.status.err{color:#dc3545}

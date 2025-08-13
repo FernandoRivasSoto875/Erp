@@ -18,7 +18,6 @@ if (!function_exists('getFieldInfo')) {
         return [];
     }
 }
-<?php
 /* MASTER_PROMPT_REFERENCE
    Leer COPILOT_PROMPT en formulariodinamico.php.
    Rol: lógica adicional (validaciones / serialización avanzada) fuera de la vista.

@@ -1,3 +1,22 @@
+// --- INTEGRACIÓN DE LIBRERÍAS ---
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+require_once __DIR__ . '/fpdf/fpdf.php';
+if (file_exists(__DIR__ . '/vendor/autoload.php')) {
+    require_once __DIR__ . '/vendor/autoload.php';
+}
+
+// --- FUNCIÓN AUXILIAR getFieldInfo ---
+if (!function_exists('getFieldInfo')) {
+    function getFieldInfo($key, $all_fields) {
+        foreach ($all_fields as $field) {
+            if (($field['name'] ?? $field['nombre'] ?? null) === $key) {
+                return $field;
+            }
+        }
+        return [];
+    }
+}
 <?php
 /* MASTER_PROMPT_REFERENCE
    Leer COPILOT_PROMPT en formulariodinamico.php.
@@ -526,3 +545,5 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'error'       => 'Ocurrió un error durante el envío.'
     ];
     // ...existing code...
+}
+// FIN DE ARCHIVO

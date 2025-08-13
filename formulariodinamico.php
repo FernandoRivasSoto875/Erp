@@ -148,6 +148,12 @@ if (!function_exists('fd_render_layout_fallback')) {
       </div>
     </div>
 
+    <!-- Botones flotantes para alternar vistas -->
+    <div id="fd-float-btns" style="position:fixed;bottom:32px;right:32px;z-index:9999;display:flex;flex-direction:column;gap:12px;">
+      <button id="btnShowTree" class="btn btn-outline-secondary shadow">Diseño Árbol</button>
+      <button id="btnShowForm" class="btn btn-outline-primary shadow">Diseño Formulario</button>
+    </div>
+
     <div class="fd-shell">
       <div class="fd-form-area">
         <form id="formulariodinamico" data-layout-container class="mb-4">
@@ -176,6 +182,7 @@ if (!function_exists('fd_render_layout_fallback')) {
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script src="js/formulariodinamico.js"></script>
+  <script src="js/formulariodinamico-float.js"></script>
 </body>
 </html>
 

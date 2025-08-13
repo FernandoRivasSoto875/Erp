@@ -110,20 +110,20 @@
 
   // Resolver definiciones de tipo (case-insensitive)
   function resolveTypeDef(group, key){
-    if (!group || !key) return null;
-    if (group[key]) return { key, def: group[key] };
-    const low = String(key).toLowerCase();
-    const foundKey = Object.keys(group).find(k => String(k).toLowerCase() === low);
-    return foundKey ? { key: foundKey, def: group[foundKey] } : null;
+  if (!group || !key) return null;
+  if (group[key]) return { key, def: group[key] };
+  const low = String(key).toLowerCase();
+  const foundKey = Object.keys(group || {}).find(k => String(k).toLowerCase() === low);
+  return foundKey ? { key: foundKey, def: group[foundKey] } : null;
   }
 
   // Helpers para obtener propiedades con alias y case-insensitive
   function getPropIgnoreCase(obj, wanted){
-    if (!obj || typeof obj !== 'object') return undefined;
-    const keys = Object.keys(obj);
-    const wl = String(wanted).toLowerCase();
-    const k = keys.find(x => String(x).toLowerCase() === wl);
-    return k ? obj[k] : undefined;
+  if (!obj || typeof obj !== 'object') return undefined;
+  const keys = Object.keys(obj);
+  const wl = String(wanted).toLowerCase();
+  const k = (keys || []).find(x => String(x).toLowerCase() === wl);
+  return k ? obj[k] : undefined;
   }
   function getFirstStringProp(obj, names){
     for (const n of names){
@@ -622,79 +622,73 @@
   // Drag & Drop: inicializar en cada contenedor de hijos
   function initTreeDnD(){
     // Si hay Sortable, úsalo
-    if (typeof Sortable !== 'undefined'){
-      // Hijos por padre (objetos/arrays)
-      $all('#jsonTreeBody .json-children').forEach((cont, idx)=>{
-        if (cont.__jtSortable) return;
-        const parentItem = cont.closest('.json-tree-item');
-        const parentPathAttr = parentItem?.getAttribute('data-path') || '[]';
-        const groupName = 'jt-' + parentPathAttr + '-' + idx;
+    $all('#jsonTreeBody .json-children').forEach((cont, idx)=>{
+      if (cont.__jtSortable) return;
+      const parentItem = cont.closest('.json-tree-item');
+      const parentPathAttr = parentItem?.getAttribute('data-path') || '[]';
+      const groupName = 'jt-' + parentPathAttr + '-' + idx;
 
-        cont.__jtSortable = new Sortable(cont, {
-          group: { name: groupName, put: false, pull: false }, // solo reordenar entre hermanos
-          animation: 150,
-          draggable: '.json-tree-item', // FIX: quitar :scope para compatibilidad
-          handle: '.json-row, .json-node-key, .json-toggle',
-          ghostClass: 'json-drag-ghost',
-          onEnd: async (evt)=>{
-            try{
-              if (!evt || evt.from !== evt.to) return; // impedir mover entre padres
-              const parentItem2 = evt.to.closest('.json-tree-item');
+      cont.__jtSortable = new Sortable(cont, {
+        group: { name: groupName, put: false, pull: false }, // solo reordenar entre hermanos
+        animation: 150,
+        draggable: '.json-tree-item', // FIX: quitar :scope para compatibilidad
+        handle: '.json-row, .json-node-key, .json-toggle',
+        ghostClass: 'json-drag-ghost',
+        onEnd: async (evt)=>{
+          try{
+            if (!evt || evt.from !== evt.to) return; // impedir mover entre padres
+            const parentItem2 = evt.to.closest('.json-tree-item');
 
-              // Reordenar en nivel raíz (sin parentItem)
-              if (!parentItem2){
-                await reorderRootByDom(evt.to);
-                buildTree();
-                return;
-              }
-
-              const parentPath = JSON.parse(parentItem2.getAttribute('data-path') || '[]');
-              const data = window.formularioJsonOriginal || {};
-              const rootKey = parentPath[0];
-              const sub = parentPath.slice(1);
-              let rootClone = deepClone(data[rootKey]);
-              let parentVal = sub.length ? getAtPath(rootClone, sub) : rootClone;
-
-              const t = typeOf(parentVal);
-              if (t === 'array'){
-                const arr = parentVal;
-                const from = evt.oldIndex;
-                const to   = evt.newIndex;
-                if (from === to) return;
-                const [moved] = arr.splice(from, 1);
-                arr.splice(to, 0, moved);
-                if (sub.length===0) rootClone = arr; else setAtPath(rootClone, sub, arr);
-                await persistRootByPath(parentPath, rootClone);
-                buildTree(); // preserva estado expandido
-              } else if (t === 'object'){
-                const obj = parentVal || {};
-                const newOrder = Array.from(evt.to.children)
-                  .map(el => {
-                    const p = JSON.parse(el.getAttribute('data-path')||'[]');
-                    return p[p.length-1];
-                  })
-                  .filter(k => k !== undefined);
-                const reordered = {};
-                newOrder.forEach(k => { reordered[k] = obj[k]; });
-                if (sub.length===0) rootClone = reordered; else setAtPath(rootClone, sub, reordered);
-                await persistRootByPath(parentPath, rootClone);
-                buildTree();
-              }
-            }catch(err){
-              console.error(err);
-              alert('Error al reordenar: '+(err.message||err));
+            // Reordenar en nivel raíz (sin parentItem)
+            if (!parentItem2){
+              await reorderRootByDom(evt.to);
+              buildTree();
+              return;
             }
+
+            const parentPath = JSON.parse(parentItem2.getAttribute('data-path') || '[]');
+            const data = window.formularioJsonOriginal || {};
+            const rootKey = parentPath[0];
+            const sub = parentPath.slice(1);
+            let rootClone = deepClone(data[rootKey]);
+            let parentVal = sub.length ? getAtPath(rootClone, sub) : rootClone;
+
+            const t = typeOf(parentVal);
+            if (t === 'array'){
+              const arr = parentVal;
+              const from = evt.oldIndex;
+              const to   = evt.newIndex;
+              if (from === to) return;
+              const [moved] = arr.splice(from, 1);
+              arr.splice(to, 0, moved);
+              if (sub.length===0) rootClone = arr; else setAtPath(rootClone, sub, arr);
+              await persistRootByPath(parentPath, rootClone);
+              buildTree(); // preserva estado expandido
+            } else if (t === 'object'){
+              const obj = parentVal || {};
+              const newOrder = Array.from(evt.to.children)
+                .map(el => {
+                  const p = JSON.parse(el.getAttribute('data-path')||'[]');
+                  return p[p.length-1];
+                })
+                .filter(k => k !== undefined);
+              const reordered = {};
+              newOrder.forEach(k => { reordered[k] = obj[k]; });
+              if (sub.length===0) rootClone = reordered; else setAtPath(rootClone, sub, reordered);
+              await persistRootByPath(parentPath, rootClone);
+              buildTree();
+            }
+          }catch(err){
+            console.error(err);
+            alert('Error al reordenar: '+(err.message||err));
           }
-        });
+        }
       });
+    });
 
-      // DnD en nivel raíz (#jsonTreeBody)
-      initRootDnDSortable();
-      return;
-    }
-
-    // Fallback nativo (HTML5 DnD) si no hay SortableJS
-    initNativeDnD();
+    // DnD en nivel raíz (#jsonTreeBody)
+    initRootDnDSortable();
+    return;
   }
 
   // DnD Sortable en nivel raíz

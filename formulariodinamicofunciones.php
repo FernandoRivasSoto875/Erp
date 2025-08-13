@@ -287,14 +287,17 @@ if (!function_exists('fd_render_rows_fallback')) {
 if (!function_exists('fd_render_fieldset_fallback')) {
     function fd_render_fieldset_fallback(string $key, array $fieldset): string {
         $titulo = htmlspecialchars($fieldset['titulo'] ?? $key, ENT_QUOTES, 'UTF-8');
-        $fields = $fieldset['fields'] ?? $fieldset['campos'] ?? [];
+        // Buscar tanto 'fields' como 'campos' para máxima compatibilidad
+        $fields = [];
+        if (isset($fieldset['fields']) && is_array($fieldset['fields'])) {
+            $fields = $fieldset['fields'];
+        } elseif (isset($fieldset['campos']) && is_array($fieldset['campos'])) {
+            $fields = $fieldset['campos'];
+        }
         $html = '<fieldset class="fd-fieldset" data-fs="'.$key.'"><legend>'.$titulo.'</legend>';
-        if (is_array($fields)) {
-            foreach ($fields as $campo) {
-                if (!is_array($campo)) continue;
-                // Valor inicial vacío (puede integrarse binding posterior)
-                $html .= generarCampo($campo, '', false);
-            }
+        foreach ($fields as $campo) {
+            if (!is_array($campo)) continue;
+            $html .= generarCampo($campo, '', false);
         }
         $html .= '</fieldset>';
         return $html;

@@ -137,7 +137,11 @@ require_once __DIR__ . '/formulariodinamicologica.php';
     <div class="fd-shell">
       <div class="fd-form-area">
         <form id="formulariodinamico" data-layout-container class="mb-4">
-          <?= fd_render_layout_fallback($layout, $fieldsets); ?>
+          <?php
+          $layout = is_array($layout) ? $layout : [];
+          $fieldsets = is_array($fieldsets) ? $fieldsets : [];
+          echo fd_render_layout_fallback($layout, $fieldsets);
+          ?>
           <div class="mt-3">
             <?php foreach ($botones_config as $b):
               $txt    = htmlspecialchars($b['texto'] ?? 'Botón');
@@ -167,4 +171,4 @@ require_once __DIR__ . '/formulariodinamicologica.php';
   <script src="js/formulariodinamico.js"></script>
   <script src="js/formulariodinamico-float.js"></script>
 </body>
-</html> 
+</html>

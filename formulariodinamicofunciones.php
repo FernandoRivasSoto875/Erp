@@ -134,4 +134,15 @@ function fd_count_fields_por_fieldset(array $fieldsets): array {
     }
     return $out;
 }
+
+if (!function_exists('fd_count_fieldsets')) {
+    /**
+     * Devuelve la cantidad de fieldsets definidos.
+     * @param array $fieldsets
+     * @return int
+     */
+    function fd_count_fieldsets($fieldsets): int {
+        return is_array($fieldsets) ? count($fieldsets) : 0;
+    }
+}
 ?>

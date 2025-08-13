@@ -84,9 +84,10 @@ body.fd-design-mode #fd-tree-side{display:block;}
 fieldset.fd-fieldset legend{font-size:.9rem;}
 body.fd-design-mode .fd-section{
   position:relative;
-  outline:2px dashed #0d6efd;
-  outline-offset:2px;
+  transition:background-color .15s, outline-color .15s;
 }
 body.fd-design-mode .fd-section:hover{
-  background:rgba(13,110,253,0.05);
+  outline:2px dashed #0d6efd;
+  outline-offset:2px;
+  background:rgba(13,110,253,.05);
 }

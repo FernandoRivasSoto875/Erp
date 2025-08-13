@@ -46,12 +46,26 @@
 
   if(!FD.setDesignMode){
     FD.setDesignMode = function(on){
+      // CONFIRMACIÓN AL SALIR CON CAMBIOS SIN GUARDAR
+      if(FD.state.designMode && !on && FD.state.dirty){
+        const salir = window.confirm('Hay cambios sin guardar. ¿Salir del modo diseño igualmente?');
+        if(!salir){
+          // Revertir checkbox visualmente
+            const cb = FD.$('#designModeToggle');
+            if(cb) cb.checked = true;
+            return;
+        }
+      }
       FD.state.designMode = !!on;
       document.body.classList.toggle('fd-design-mode', on);
       const saveBtn = FD.$('#saveLayoutBtn');
       if(saveBtn) saveBtn.toggleAttribute('disabled', !on);
       if(on && typeof FD.rebuildFormTree === 'function'){
         try{ FD.rebuildFormTree(); }catch(e){ console.warn(e); }
+      }
+      if(!on){
+        // Limpia marca visual de edición si se desea (no resetea dirty)
+        document.body.classList.remove('fd-layout-dirty');
       }
     };
   }

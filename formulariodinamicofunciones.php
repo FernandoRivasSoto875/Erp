@@ -145,4 +145,129 @@ if (!function_exists('fd_count_fieldsets')) {
         return is_array($fieldsets) ? count($fieldsets) : 0;
     }
 }
+
+/* ========================================================================
+   RENDER LAYOUT FALLBACK
+   Añade las funciones de render de layout/fieldsets que faltaban para evitar:
+   "Helper fd_render_layout_fallback no disponible."
+   No elimina nada existente. Compatible con estructuras:
+   - layout: array de secciones (sección puede tener 'rows' o ser 'tabs')
+   - sección 'tabs': ['type'=>'tabs','tabs'=>[ ['title'=>'..','rows'=>[]], ... ]]
+   - row: ['cols'=>[ { 'width'=>6,'fieldset'=>'datosBasicos' }, ... ]]
+   - col: 'width' (1..12, default 12), 'fieldset' => clave en $fieldsets
+   - fieldset: ['titulo'=>'','fields'=>[ campoDef,... ]]
+   ======================================================================== */
+if (!function_exists('fd_is_assoc')) {
+    function fd_is_assoc(array $arr): bool {
+        return $arr !== [] && array_keys($arr) !== range(0, count($arr) - 1);
+    }
+}
+
+if (!function_exists('fd_render_layout_fallback')) {
+
+    function fd_render_layout_fallback($layout, array $fieldsets): string {
+        if (!$layout || !is_array($layout)) return '';
+        // Normalizar secciones
+        $sections = fd_is_assoc($layout)
+            ? array_map(function($k,$v){ if(is_array($v)) $v['_section_key']=$k; return $v; }, array_keys($layout), $layout)
+            : $layout;
+
+        $html = '';
+        foreach ($sections as $section) {
+            if (!is_array($section)) continue;
+            $type = $section['type'] ?? 'section';
+
+            if ($type === 'tabs') {
+                $html .= fd_render_tabs_section($section, $fieldsets);
+                continue;
+            }
+
+            $rows = $section['rows'] ?? [];
+            $secKey = $section['_section_key'] ?? null;
+            $cls = 'fd-section fd-section-'.preg_replace('/[^a-z0-9_\-]+/i','-', $type);
+            $html .= '<div class="'.$cls.'"'.($secKey?' data-section="'.$secKey.'"':'').'>';
+            $html .= fd_render_rows_fallback($rows, $fieldsets);
+            $html .= '</div>';
+        }
+        return $html;
+    }
+}
+
+if (!function_exists('fd_render_tabs_section')) {
+    function fd_render_tabs_section(array $section, array $fieldsets): string {
+        $tabs = $section['tabs'] ?? [];
+        if (!$tabs || !is_array($tabs)) return '';
+        $uid = 'fd_tabs_'.substr(md5(json_encode(array_keys($tabs))),0,8);
+        $html = '<div class="fd-section fd-tabs" data-tabs="'.$uid.'">';
+        // Nav
+        $html .= '<ul class="nav nav-tabs" role="tablist">';
+        foreach ($tabs as $i=>$tab) {
+            $active = $i===0 ? 'active' : '';
+            $paneId = $uid.'_pane_'.$i;
+            $title = htmlspecialchars($tab['title'] ?? $tab['titulo'] ?? ('Tab '.($i+1)), ENT_QUOTES, 'UTF-8');
+            $html .= '<li class="nav-item" role="presentation">';
+            $html .= '<button class="nav-link '.$active.'" data-bs-toggle="tab" data-bs-target="#'.$paneId.'" type="button" role="tab">'.$title.'</button>';
+            $html .= '</li>';
+        }
+        $html .= '</ul>';
+
+        // Content
+        $html .= '<div class="tab-content border border-top-0 p-3">';
+        foreach ($tabs as $i=>$tab) {
+            $active = $i===0 ? 'show active' : '';
+            $paneId = $uid.'_pane_'.$i;
+            $rows = $tab['rows'] ?? [];
+            $html .= '<div id="'.$paneId.'" class="tab-pane fade '.$active.'" role="tabpanel">';
+            $html .= fd_render_rows_fallback($rows, $fieldsets);
+            $html .= '</div>';
+        }
+        $html .= '</div></div>';
+        return $html;
+    }
+}
+
+if (!function_exists('fd_render_rows_fallback')) {
+    function fd_render_rows_fallback($rows, array $fieldsets): string {
+        if (!$rows || !is_array($rows)) return '';
+        $html = '';
+        foreach ($rows as $row) {
+            if (!is_array($row)) continue;
+            $cols = $row['cols'] ?? $row['columns'] ?? [];
+            if (!is_array($cols) || !$cols) continue;
+            $html .= '<div class="row fd-row">';
+            foreach ($cols as $col) {
+                if (!is_array($col)) continue;
+                $w = (int)($col['width'] ?? $col['col'] ?? 12);
+                if ($w < 1 || $w > 12) $w = 12;
+                $fieldsetKey = $col['fieldset'] ?? $col['fs'] ?? null;
+                $html .= '<div class="col-md-'.$w.' fd-col"'.($fieldsetKey?' data-fs="'.$fieldsetKey.'"':'').'>';
+                if ($fieldsetKey && isset($fieldsets[$fieldsetKey])) {
+                    $html .= fd_render_fieldset_fallback($fieldsetKey, $fieldsets[$fieldsetKey]);
+                }
+                $html .= '</div>';
+            }
+            $html .= '</div>';
+        }
+        return $html;
+    }
+}
+
+if (!function_exists('fd_render_fieldset_fallback')) {
+    function fd_render_fieldset_fallback(string $key, array $fieldset): string {
+        $titulo = htmlspecialchars($fieldset['titulo'] ?? $key, ENT_QUOTES, 'UTF-8');
+        $fields = $fieldset['fields'] ?? $fieldset['campos'] ?? [];
+        $html = '<fieldset class="fd-fieldset" data-fs="'.$key.'"><legend>'.$titulo.'</legend>';
+        if (is_array($fields)) {
+            foreach ($fields as $campo) {
+                if (!is_array($campo)) continue;
+                // Valor inicial vacío (puede integrarse binding posterior)
+                $html .= generarCampo($campo, '', false);
+            }
+        }
+        $html .= '</fieldset>';
+        return $html;
+    }
+}
+// ========================================================================
+// FIN RENDER LAYOUT FALLBACK
 ?>

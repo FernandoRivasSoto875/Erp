@@ -100,8 +100,7 @@ Validaciones y consistencia:
 
 Resumen:
 Este bloque complementa el prompt principal, detallando requisitos para rediseño en tiempo de ejecución por el usuario final. Mantener estricta separación de responsabilidades, UX moderna y edición visual/estructural robusta, sin perder ninguna funcionalidad existente.
-*/
-<?php
+ 
 ...existing code...
 - Estilos / diseño: css/formulariodinamico.css.
 - JSON fuente: carpeta /json (no hardcodear estructuras aquí).

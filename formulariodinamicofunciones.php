@@ -38,7 +38,6 @@ function generarPaletaComponentes($fieldsets_disponibles, $fieldsets) {
         $html .= "</div>";
     }
     $html .= "</div>";
-<?php
     return $html;
 }
 
@@ -52,24 +51,26 @@ function generarPaletaTiposControl(): string {
         $html .= '<div class="d-flex align-items-center"><span class="handle mr-2"><i class="fas fa-grip-vertical"></i></span>';
         $html .= '<span>'.htmlspecialchars($t, ENT_QUOTES, 'UTF-8').'</span></div>';
         $html .= '</div></div>';
-    session_start();
+    }
+    $html .= '</div></div>';
+    return $html;
 }
 
 // --- Función principal para generar un campo ---
 function generarCampo($campo, $valor, $soloLectura): string {
+    $attrStr = '';
     foreach ((array)$attrs as $k => $v) {
-        $attrStr .= ' '.htmlspecialchars($k, ENT_QUOTES, 'UTF-8').'="'.htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8').'"';
-
+        $attrStr .= ' '.htmlspecialchars($k, ENT_QUOTES, 'UTF-8')."=\"".htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8')."\"";
+    }
     switch ($tipo) {
         case 'email':
         case 'password':
             $cls = $tipo === 'hidden' ? 'form-control d-none' : 'form-control';
             return "<div class='form-group mb-2'>".($tipo==='hidden'?'':$hLabel)."<input type='{$inputType}' name='{$hName}' value='".htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8')."' class='{$cls}'{$disabled}{$attrStr}></div>";
-        }
         case 'file':
             return "<div class='form-group mb-2'>{$hLabel}<input type='file' name='{$hName}".(isset($attrs['multiple'])?'[]':'')."' class='form-control'{$disabled}{$attrStr}></div>";
         case 'select':
-        case 'selectdata': {
+        case 'selectdata':
             $options = $campo['opciones'] ?? [];
             $opts = '';
             foreach ((array)$options as $key => $text) {
@@ -77,7 +78,9 @@ function generarCampo($campo, $valor, $soloLectura): string {
                 $opts .= "<option value='".htmlspecialchars((string)$key, ENT_QUOTES, 'UTF-8')."'{$sel}>".htmlspecialchars((string)$text, ENT_QUOTES, 'UTF-8')."</option>";
             }
             return "<div class='form-group mb-2'>{$hLabel}<select name='{$hName}' class='form-control'{$disabled}{$attrStr}>{$opts}</select></div>";
-        }
+        default:
+            return "<div class='form-group mb-2'>{$hLabel}<input type='{$inputType}' name='{$hName}' value='".htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8')."' class='form-control'{$disabled}{$attrStr}></div>";
+    }
         case 'radio': {
             $options = $campo['opciones'] ?? [];
             $html = "<div class='form-group mb-2'>{$hLabel}<div>";

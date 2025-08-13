@@ -36,3 +36,4 @@ $_GET['archivo'] = __DIR__ . '/json/FormularioContacto.json';
     <?php include 'footer.php'; ?>
 </body>
 </html>
+

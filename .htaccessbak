@@ -1,0 +1,4 @@
+RewriteEngine On
+RewriteCond %{HTTP_HOST} ^saludenterreno\.cl$ [NC]       # Aplica solo al dominio sin www
+RewriteCond %{REQUEST_URI} !^/sitio/                     # Evita redirección si ya estás en /sitio/
+RewriteRule ^(.*)$ /sitio/index.php [L]                  # Redirige todo lo demás a /sitio/index.php  

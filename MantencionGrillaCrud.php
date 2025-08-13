@@ -98,6 +98,10 @@ if ($action == 'create') {
     } else {
         echo json_encode(["error" => "Error al eliminar registro: " . $conn->error]);
     }
+    
+} else {
+    echo json_encode(["error" => "Acción no válida."]);
 }
+
 $conn->close();
 ?>

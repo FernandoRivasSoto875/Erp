@@ -1,6 +1,6 @@
 <?php
 // Autor: Fernando Rivas S.
-// filepath: c:\\Respaldos Mensuales\\Mis Documentos\\Sitios\\Set\\Sitio Web\\Erp\\contacto.php
+// filepath: c:\Respaldos Mensuales\Mis Documentos\Sitios\Set\Sitio Web\Erp\contacto.php
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -30,4 +30,6 @@
 
     <?php include 'footer.php'; ?>
 </body>
-</html>
+</html> 
+
+

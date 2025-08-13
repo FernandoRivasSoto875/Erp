@@ -44,6 +44,9 @@ $conn->close();
         <button class="nav-link" id="datos-tab" data-bs-toggle="tab" data-bs-target="#datos" type="button" role="tab" aria-selected="false">
         <i class="fas fa-edit" style="color: #007bff;"></i>
         </button>
+
+
+
       </li>
       <!-- Tab 3: Informes con icono de reportes -->
       <li class="nav-item" role="presentation">
@@ -95,14 +98,65 @@ $conn->close();
       
       <!-- Tab 3: Informes -->
       <div class="tab-pane fade" id="informes" role="tabpanel" aria-labelledby="informes-tab">
-        <!-- Aquí iría el contenido de informes -->
+        <h3>Informes</h3>
+        <p>Aquí se mostrarán los informes.</p>
       </div>
       
       <!-- Tab 4: Exportar -->
       <div class="tab-pane fade" id="exportar" role="tabpanel" aria-labelledby="exportar-tab">
-        <!-- Aquí iría el contenido de exportación -->
+        <h3>Exportar</h3>
+        <button id="exportExcelBtn" class="btn btn-outline-secondary me-2" title="Exportar a Excel">
+          <i class="fas fa-file-excel"></i>
+        </button>
+        <button id="exportPdfBtn" class="btn btn-outline-secondary me-2" title="Exportar a PDF">
+          <i class="fas fa-file-pdf"></i>
+        </button>
+        <button id="exportJsonBtn" class="btn btn-outline-secondary me-2" title="Exportar a JSON">
+          <i class="fas fa-file-code"></i>
+        </button>
+        <button id="exportCsvBtn" class="btn btn-outline-secondary me-2" title="Exportar a CSV">
+          <i class="fas fa-file-csv"></i>
+        </button>
+        <button id="exportXmlBtn" class="btn btn-outline-secondary me-2" title="Exportar a XML">
+          <i class="fas fa-file-code"></i>
+        </button>
+        <button id="exportGSheetsBtn" class="btn btn-outline-secondary" title="Exportar a Google Sheets">
+          <i class="fab fa-google"></i>
+        </button>
       </div>
+    
     </div>
   </div>
-</body>
+  
+  <!-- Botón "Add" flotante (visible solo en el tab DataTable) -->
+  <button id="addBtn" class="btn btn-primary floating-add" title="Agregar">
+    <i class="fas fa-plus"></i>
+  </button>
+  
+  <!-- Modal para SearchBuilder -->
+  <div id="searchPopup" class="modal">
+    <h2>Filtro Avanzado</h2>
+    <div id="searchBuilderContainer" style="min-height:300px; border:1px solid #ccc; padding:5px; display:block;"></div>
+    <button onclick="$.modal.close()">Cerrar</button>
+  </div>
+  
+  <!-- Modal para Depuración -->
+  <div id="debugPopup" class="modal">
+    <h2>Información de Depuración</h2>
+    <div id="debugContent" style="padding:10px; border:1px solid #ccc; background:#f9f9f9;"></div>
+    <button onclick="$.modal.close()">Cerrar</button>
+  </div>
+  
+  <!-- Variable global para el nombre de la tabla -->
+  <script>
+    var tableNameGlobal = "<?php echo htmlspecialchars($table_name); ?>";
+    window.tableNameGlobal = tableNameGlobal;
+  </script>
+  
+  <!-- Inclusión de archivos JS personalizados -->
+  <script src="js/MantencionGrillaFuncionesGenerales.js"></script>
+  <script src="js/MantencionGrillaDataTable.js"></script>
+  <script src="js/MantencionGrillaDataTableAdicionales.js"></script>
+  <script src="js/MantencionGrillaFuncionesExport.js"></script>
+  </body>
 </html>

@@ -1,4 +1,4 @@
-<?<?php
+<?php
 /*
 COPILOT_PROMPT (Lineamientos y requisitos para cualquier cambio en este archivo)
 
@@ -8,6 +8,7 @@ NO agregar aquí: lógica de negocio, funciones PHP nuevas, CSS inline, ni JS in
 
 Ubicación de cada tipo de código:
 - Lógica / helpers PHP existentes o nuevos: formulariodinamicofunciones.php (o archivo inc separado si crece).
+
 - Lógica específica adicional (validaciones, serialización, etc.): formulariodinamicologica.php (si aplica).
 - JavaScript (cualquier nuevo comportamiento): js/formulariodinamico.js (extender sin borrar funciones que ya funcionen).
 - Estilos / diseño: css/formulariodinamico.css.
@@ -104,6 +105,7 @@ Resumen:
 Este bloque complementa el prompt principal, detallando requisitos para rediseño en tiempo de ejecución por el usuario final. Mantener estricta separación de responsabilidades, UX moderna y edición visual/estructural robusta, sin perder ninguna funcionalidad existente.
 */
 require_once __DIR__ . '/formulariodinamicofunciones.php';
+require_once __DIR__ . '/formulariodinamicologica.php';
 if (!function_exists('fd_render_layout_fallback')) {
   function fd_render_layout_fallback(){ return '<div class="alert alert-danger">Helper fd_render_layout_fallback no disponible.</div>'; }
 }
@@ -164,6 +166,4 @@ if (!function_exists('fd_render_layout_fallback')) {
   <script src="js/formulariodinamico.js"></script>
   <script src="js/formulariodinamico-float.js"></script>
 </body>
-</html>
-php
-// ...existing code...
+</html> 

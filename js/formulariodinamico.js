@@ -4,7 +4,6 @@
 */
 (function(w,d){
   'use strict';
-
   const FD = w.FD || (w.FD={});
   FD.state = Object.assign({ designMode:false, dirty:false, treeLoaded:false, treeError:false, autoTreeOnFirstDesign:true }, FD.state||{});
 
@@ -14,79 +13,30 @@
   function btnSave(){ return d.getElementById('saveLayoutBtn'); }
   function toggle(){ return d.getElementById('designModeToggle'); }
 
-  function getJSON(){
-    const n = getNode(); if(!n) return {};
-    try{ return JSON.parse(n.getAttribute('data-form-json')||'{}'); }catch{ return {}; }
-  }
-  function setJSON(o){ const n=getNode(); if(n) n.setAttribute('data-form-json', JSON.stringify(o)); }
-  FD.getFormJSON = FD.getFormJSON || getJSON;
-  FD.setFormJSON = FD.setFormJSON || setJSON;
-  FD.serializeLayoutFromDom = FD.serializeLayoutFromDom || function(){ return getJSON().layout || []; };
-  FD.buildSavePayload = FD.buildSavePayload || function(){ const data=getJSON(); data.layout=FD.serializeLayoutFromDom(); return data; };
-  FD.markDirty = FD.markDirty || function(){ FD.state.dirty=true; d.body.classList.add('fd-layout-dirty'); };
-  w.addEventListener('beforeunload', e=>{ if(FD.state.dirty){ e.preventDefault(); e.returnValue=''; } });
-
   function updateControls(){
     const on=FD.state.designMode;
-    const t=btnTree(), s=btnSave(), host=getHost();
-    [t,s].forEach(b=>{ if(!b) return; b.classList.toggle('d-none',!on); b.toggleAttribute('disabled',!on); b.setAttribute('aria-hidden', on?'false':'true'); });
+    [btnTree(), btnSave()].forEach(b=>{
+      if(!b) return;
+      b.classList.toggle('d-none',!on);
+      b.toggleAttribute('disabled',!on);
+      b.setAttribute('aria-hidden', on?'false':'true');
+    });
+    const host=getHost();
     if(host) host.classList.toggle('d-none', !on && !FD.state.treeLoaded);
   }
 
   FD.setDesignMode=function(on){
     on=!!on;
-    if(FD.state.designMode && !on && FD.state.dirty){
-      if(!w.confirm('Hay cambios sin guardar. ¿Salir igualmente?')){
-        const cb=toggle(); if(cb) cb.checked=true; return;
-      }
-    }
     FD.state.designMode=on;
     d.body.classList.toggle('fd-design-mode', on);
     updateControls();
     if(on){
-      try{ initDnD(); }catch(e){ console.warn('DnD init error', e); }
+      initDnD();
       if(FD.state.autoTreeOnFirstDesign){ mountTree(); FD.state.autoTreeOnFirstDesign=false; }
     } else {
       const host=getHost(); if(host) host.classList.add('d-none');
     }
   };
-
-  function buildFallback(host){
-    host.innerHTML = '<div class="small text-muted mb-2">Árbol no disponible. JSON actual:</div>'+
-      '<pre style="max-height:420px;overflow:auto;font-size:11px">'+JSON.stringify(getJSON(),null,2)+'</pre>';
-  }
-  function mountTree(){
-    const host = getHost(); if(!host) return;
-    host.classList.remove('d-none');
-    if(FD.state.treeLoaded || host.querySelector('iframe') || FD.state.treeError) return;
-
-    host.innerHTML = '<div class="text-center py-3 text-secondary">Cargando árbol...</div>';
-    const ifr = d.createElement('iframe');
-    ifr.src='arboljson/index.php';
-    ifr.className='fd-tree-iframe w-100 border';
-    ifr.style.minHeight='480px';
-    let loaded=false;
-
-    ifr.addEventListener('load', ()=>{
-      loaded=true; FD.state.treeLoaded=true;
-      try{ ifr.contentWindow?.postMessage({fdTree:true,type:'setJSON',payload:getJSON()}, '*'); }catch{}
-    });
-    ifr.addEventListener('error', ()=>{
-      FD.state.treeError=true; host.innerHTML=''; buildFallback(host);
-    });
-    setTimeout(()=>{ if(!loaded && !FD.state.treeError){ FD.state.treeError=true; host.innerHTML=''; buildFallback(host); } },8000);
-
-    host.innerHTML=''; host.appendChild(ifr);
-  }
-
-  w.addEventListener('message', (e)=>{
-    const m=e.data; if(!m||!m.fdTree) return;
-    if(m.type==='ready'||m.type==='requestJSON'){
-      try{ e.source?.postMessage({fdTree:true,type:'setJSON',payload:getJSON()}, '*'); }catch{}
-      return;
-    }
-    if(m.type==='updateJSON' && m.payload){ setJSON(m.payload); w.FORM_JSON=m.payload; FD.markDirty(); }
-  });
 
   function initDnD(){
     if(typeof Sortable==='undefined') return;
@@ -104,14 +54,42 @@
     });
   }
 
-  function init(){
+  function mountTree(){
+    const host = getHost(); if(!host) return;
+    host.classList.remove('d-none');
+    if(FD.state.treeLoaded || host.querySelector('iframe') || FD.state.treeError) return;
+    host.innerHTML = '<div class="text-center py-3 text-secondary">Cargando árbol...</div>';
+    const ifr = d.createElement('iframe');
+    ifr.src='arboljson/index.php';
+    ifr.className='fd-tree-iframe w-100 border';
+    ifr.style.minHeight='480px';
+    let loaded=false;
+    ifr.addEventListener('load', ()=>{ loaded=true; FD.state.treeLoaded=true; });
+    ifr.addEventListener('error', ()=>{ FD.state.treeError=true; host.innerHTML='Árbol no disponible.'; });
+    setTimeout(()=>{ if(!loaded && !FD.state.treeError){ FD.state.treeError=true; host.innerHTML='Árbol no disponible.'; } },8000);
+    host.innerHTML=''; host.appendChild(ifr);
+  }
+
+  function bindEvents(){
     const cb=toggle();
     if(cb) cb.addEventListener('change',()=>FD.setDesignMode(cb.checked));
     const bt=btnTree(); if(bt) bt.addEventListener('click',()=>{ if(!FD.state.designMode) return; mountTree(); });
-    const bs=btnSave(); if(bs) bs.addEventListener('click',()=>{ if(!FD.state.designMode) return; const payload=FD.buildSavePayload(); try{ JSON.stringify(payload); }catch{ alert('JSON inválido'); return; } alert('Guardado (simulado)'); FD.state.dirty=false; d.body.classList.remove('fd-layout-dirty'); });
+    const bs=btnSave();
+    if(bs) bs.addEventListener('click',()=>{
+      if(!FD.state.designMode) return;
+      const payload = FD.buildSavePayload();
+      fetch('guardar_layout.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      .then(r=>r.json())
+      .then(data=>{ alert('Guardado correctamente'); FD.state.dirty=false; })
+      .catch(()=>{ alert('Error al guardar'); });
+    });
     if(cb && cb.checked){ FD.setDesignMode(true); } else { updateControls(); }
   }
-  if(d.readyState==='loading'){ d.addEventListener('DOMContentLoaded', init); } else { init(); }
+  if(d.readyState==='loading'){ d.addEventListener('DOMContentLoaded', bindEvents); } else { bindEvents(); }
 })(window,document);
 
 /* Compat: define alias $/$all si no existen (sin jQuery) */
@@ -119,5 +97,14 @@
   if(typeof w.$ === 'undefined'){ w.$ = (sel,root)=> (root||d).querySelector(sel); }
   if(typeof w.$all === 'undefined'){ w.$all = (sel,root)=> Array.from((root||d).querySelectorAll(sel)); }
 })(window,document);
+
+window.addEventListener('message', (e)=>{
+  const m=e.data; if(!m||!m.fdTree) return;
+  if(m.type==='updateJSON' && m.payload){
+    FD.setFormJSON(m.payload);
+    // Aquí puedes refrescar el render si tienes lógica para ello
+    FD.markDirty();
+  }
+});
 
 

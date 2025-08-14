@@ -246,7 +246,7 @@
           ]
         },
         {
-          "title": "Grilla Ejemplo",
+          "title": "Grilla Ejemplo1",
           "rows": [
             { "columns": [ { "width": 12, "fieldset": "grupo_grilla_ejemplo" } ] }
           ]

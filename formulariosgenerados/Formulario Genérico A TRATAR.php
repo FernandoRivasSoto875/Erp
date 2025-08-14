@@ -48,7 +48,26 @@ echo '<link rel="stylesheet" href="' . $cssPath . '" />';
     <div class="fd-shell">
       <div class="fd-form-area">
         <form id="formulariodinamico" data-layout-container class="mb-4">
-          <?= fd_render_layout_fallback($layout, $fieldsets); ?>
+      <?php
+      $layoutHtml = fd_render_layout_fallback($layout, $fieldsets);
+      // Si el resultado es un JSON clasificado (de fd_render_tabs_section), decodificar y mostrar cada parte
+      if (is_string($layoutHtml) && strpos($layoutHtml, '{"css":') === 0) {
+        $layoutParts = json_decode($layoutHtml, true);
+        if (!empty($layoutParts['css'])) {
+          echo $layoutParts['css'];
+        }
+        if (!empty($layoutParts['tabs'])) {
+          echo $layoutParts['tabs'];
+        }
+        if (!empty($layoutParts['panes'])) {
+          foreach ($layoutParts['panes'] as $paneHtml) {
+            echo $paneHtml;
+          }
+        }
+      } else {
+        echo $layoutHtml;
+      }
+      ?>
           <div class="mt-3">
             <?php foreach ($botones_config as $b):
               $txt    = htmlspecialchars($b['texto'] ?? 'Botón');

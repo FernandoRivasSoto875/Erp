@@ -185,9 +185,10 @@ if (!function_exists('fd_render_tabs_section')) {
         if (!$tabs || !is_array($tabs)) return '';
         $uid = 'fd_tabs_'.substr(md5(json_encode(array_keys($tabs)).microtime(true)),0,8);
 
-        $html = '<div class="fd-section fd-tabs" data-tabs="'.$uid.'">';
-        // Nav
-        $html .= '<ul class="nav nav-tabs" role="tablist">';
+        $html = '<div class="fd-section fd-tabs-vertical row" data-tabs="'.$uid.'">';
+        // Vertical Nav
+        $html .= '<div class="col-md-3">';
+        $html .= '<ul class="nav nav-pills flex-column" role="tablist">';
         foreach ($tabs as $i=>$tab) {
             $isActive = $i===0;
             $paneId   = $uid.'_pane_'.$i;
@@ -207,9 +208,11 @@ if (!function_exists('fd_render_tabs_section')) {
             $html .= '</li>';
         }
         $html .= '</ul>';
+        $html .= '</div>';
 
         // Content
-        $html .= '<div class="tab-content border border-top-0 p-3">';
+        $html .= '<div class="col-md-9">';
+        $html .= '<div class="tab-content border p-3">';
         foreach ($tabs as $i=>$tab) {
             $isActive = $i===0;
             $paneId   = $uid.'_pane_'.$i;
@@ -225,6 +228,7 @@ if (!function_exists('fd_render_tabs_section')) {
             $html .= '</div>';
         }
         $html .= '</div></div>';
+        $html .= '</div>';
         return $html;
     }
 } else {

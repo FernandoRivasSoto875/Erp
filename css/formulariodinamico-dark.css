@@ -105,3 +105,22 @@ input:focus, select:focus, textarea:focus { border-color: var(--color-primary); 
 .tooltip { background: var(--color-primary); color: #23262f; border-radius: 6px; padding: 0.5em 1em; font-size: 0.95em; position: absolute; z-index: 10; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
 input:invalid { border-color: var(--color-error); animation: shake 0.2s; }
 @keyframes shake { 0% { transform: translateX(0);} 25% { transform: translateX(-4px);} 50% { transform: translateX(4px);} 75% { transform: translateX(-4px);} 100% { transform: translateX(0);} }
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  margin-right: -15px;
+  margin-left: -15px;
+}
+[class^="col-md-"] {
+  position: relative;
+  min-height: 1px;
+  padding-right: 15px;
+  padding-left: 15px;
+  /* Por defecto, ocupa todo el ancho si no se especifica */
+  flex: 1 0 0%;
+  max-width: 100%;
+}
+.col-md-3 { flex: 0 0 25%; max-width: 25%; }
+.col-md-6 { flex: 0 0 50%; max-width: 50%; }
+.col-md-12 { flex: 0 0 100%; max-width: 100%; }

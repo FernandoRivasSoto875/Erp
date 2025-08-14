@@ -231,9 +231,15 @@ if (!function_exists('fd_render_rows_fallback')) {
             $cols = $row['cols'] ?? $row['columns'] ?? [];
             if (!is_array($cols) || !$cols) continue;
             $html .= '<div class="row fd-row">';
+            // Calcular ancho automático si no se especifica
+            $autoWidth = 12;
+            $colCount = count($cols);
+            $widths = array_map(function($col) { return isset($col['width']) || isset($col['col']); }, $cols);
+            $anyWidth = in_array(true, $widths);
+            $defaultW = $anyWidth ? null : ($colCount > 0 ? intdiv($autoWidth, $colCount) : 12);
             foreach ($cols as $col) {
                 if (!is_array($col)) continue;
-                $w = (int)($col['width'] ?? $col['col'] ?? 12);
+                $w = (int)($col['width'] ?? $col['col'] ?? $defaultW ?? 12);
                 if ($w < 1 || $w > 12) $w = 12;
                 $fieldsetKey = $col['fieldset'] ?? $col['fs'] ?? null;
                 $html .= '<div class="col-md-'.$w.' fd-col"'.($fieldsetKey?' data-fs="'.$fieldsetKey.'"':'').'>';

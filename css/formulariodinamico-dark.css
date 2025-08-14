@@ -209,16 +209,20 @@ input:focus, select:focus, textarea:focus { border-color: var(--color-primary); 
   color: #23262f;
   border: none;
   border-radius: var(--radius);
-  padding: 0.4em 1em;
-  font-size: 0.98em;
+  padding: 0.5em 1.4em;
+  font-size: 1em;
   transition: background 0.2s, transform 0.1s;
   box-shadow: 0 2px 8px rgba(255,179,71,0.10);
   margin: 0.15em 0.3em;
-  min-width: 120px;
-  max-width: 220px;
+  min-width: 160px;
+  max-width: 160px;
+  height: 44px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 @media (max-width: 900px) {
   .fd-tabs-bullets-horizontal {

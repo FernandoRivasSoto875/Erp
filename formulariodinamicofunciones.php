@@ -266,9 +266,33 @@ if (!function_exists('fd_render_fieldset_fallback')) {
             $fields = $fieldset['campos'];
         }
         $html = '<fieldset class="fd-fieldset" data-fs="'.$key.'"><legend>'.$titulo.'</legend>';
-        foreach ($fields as $campo) {
-            if (!is_array($campo)) continue;
-            $html .= generarCampo($campo, '', false);
+        // Si existe layout, renderizar en filas y columnas
+        if (isset($fieldset['layout']) && is_array($fieldset['layout'])) {
+            foreach ($fieldset['layout'] as $row) {
+                if (!isset($row['row']) || !is_array($row['row'])) continue;
+                $html .= '<div class="row fd-row">';
+                foreach ($row['row'] as $col) {
+                    $colW = (int)($col['col'] ?? 12);
+                    $campoKey = $col['campo'] ?? null;
+                    $campoObj = null;
+                    foreach ($fields as $f) {
+                        if (isset($f['nombre']) && $f['nombre'] === $campoKey) {
+                            $campoObj = $f;
+                            break;
+                        }
+                    }
+                    if ($campoObj) {
+                        $html .= '<div class="col-md-'.$colW.' fd-col">'.generarCampo($campoObj, '', false).'</div>';
+                    }
+                }
+                $html .= '</div>';
+            }
+        } else {
+            // Render simple si no hay layout
+            foreach ($fields as $campo) {
+                if (!is_array($campo)) continue;
+                $html .= generarCampo($campo, '', false);
+            }
         }
         $html .= '</fieldset>';
         return $html;

@@ -1,6 +1,9 @@
 <?php
 /*
 COPILOT_PROMPT (Lineamientos y requisitos para cualquier cambio en este archivo)
+AJUSTE DE ALINEACIÓN ENTRE TÍTULOS Y CAMPOS:
+Mejorar la alineación visual entre el título (label) y el campo de entrada, especialmente en controles tipo combobox/select. El título debe quedar alineado horizontalmente junto al campo, evitando que el label quede centrado y el campo descentrado o distante. La distancia entre el label y el campo debe ser mínima y visualmente coherente, logrando una presentación compacta y profesional. Usar la clase CSS `.fd-label-inline` para lograr esta alineación en los controles relevantes. Validar que la solución funcione en todos los dispositivos y modos de visualización.
+IMPORTANTE: Los fieldsets pueden incluir una propiedad opcional "layout" que permite organizar los campos internos en filas y columnas. El renderizador PHP debe interpretar esta estructura y mostrar los campos según la distribución definida en el JSON. Si no existe "layout", los campos se muestran en orden simple.
 
 Objetivo:
 

@@ -78,6 +78,24 @@
   display: flex;
   align-items: center;
   gap: 0.5em;
+  justify-content: flex-start;
+  min-width: 120px;
+}
+
+/* Ajuste para label y campo en la misma línea en controles tipo select, input, combobox */
+.fd-fieldset .fd-label-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin-bottom: 0.25em;
+}
+.fd-fieldset .fd-label-inline select,
+.fd-fieldset .fd-label-inline input,
+.fd-fieldset .fd-label-inline .form-control {
+  margin-left: 0.5em;
+  margin-bottom: 0 !important;
+  vertical-align: middle;
+}
 }
 
 /* Iconos contextuales para cada tipo de campo */

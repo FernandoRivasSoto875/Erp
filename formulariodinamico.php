@@ -5,13 +5,9 @@ COPILOT_PROMPT (Lineamientos y requisitos para cualquier cambio en este archivo)
 Objetivo:
 
 IMPORTANTE: Las mejoras de apariencia, responsividad y embellecimiento aplicadas en css/formulariodinamico.css y css/formulariodinamico-dark.css (incluyendo modernización de UI, optimización de tabs y botones para móviles/tablets, y cualquier ajuste visual reciente) deben mantenerse como parte inalterable del sistema. NO modificar ni revertir estos cambios salvo petición explícita del usuario o requerimiento funcional justificado. Si se solicita modificar, documentar el cambio y justificarlo en el prompt.
-
 Todos los botones del sistema deben mantener el mismo tamaño, igual al de los botones "Guardar" y "Limpiar" (ancho, alto, padding y estilo homogéneo), como parte inalterable del diseño visual. No modificar esta regla salvo petición explícita.
 Mantener este archivo SOLO como orquestador (vista): carga JSON, pasa datos a helpers y pinta HTML mínimo.
 NO agregar aquí: lógica de negocio, funciones PHP nuevas, CSS inline, ni JS inline.
-
-Ubicación de cada tipo de código:
-- Lógica / helpers PHP existentes o nuevos: formulariodinamicofunciones.php (o archivo inc separado si crece).
 
 - Lógica específica adicional (validaciones, serialización, etc.): formulariodinamicologica.php (si aplica).
 - JavaScript (cualquier nuevo comportamiento): js/formulariodinamico.js (extender sin borrar funciones que ya funcionen).
@@ -29,7 +25,6 @@ UX / Embellecimiento:
 - Accesibilidad: incluir atributos ARIA / role cuando se añadan elementos interactivos (tabs, drag handles).
 - Evitar dependencias extra innecesarias; priorizar utilidades Bootstrap + CSS propio con prefijo .fd-.
 - Cualquier “embellecer” debe ser progresivo (no romper funcionalidad si falla JS).
-
 Separación de modos y funcionalidades:
 - Modo normal: solo muestra el formulario para el usuario final, sin controles de edición ni DnD.
 - Botón tipo círculo "Diseño": activa el modo diseño.

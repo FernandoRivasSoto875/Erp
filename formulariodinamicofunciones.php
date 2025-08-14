@@ -203,7 +203,8 @@ if (!function_exists('fd_render_tabs_section')) {
             $paneId = $uid.'_pane_'.$i;
             $title = htmlspecialchars($tab['title'] ?? $tab['titulo'] ?? ('Tab '.($i+1)), ENT_QUOTES, 'UTF-8');
             $tabsHtml .= '<li class="nav-item" style="list-style-type: disc;">';
-            $tabsHtml .= '<a href="#" class="nav-link fd-tab-bullet' . ($isActive ? ' active' : '') . '" style="border-radius:50px; padding:0.5em 1.5em; position:relative;" data-pane="'.$paneId.'" onclick="event.preventDefault();document.querySelectorAll(\'.fd-tab-bullet\').forEach(function(e){e.classList.remove('active');});this.classList.add('active');document.querySelectorAll(\'.fd-tab-content-pane\').forEach(function(e){e.style.display='none';});document.getElementById(\''.$paneId.'\').style.display='block';">'.$title.'</a>';
+            $class = 'nav-link fd-tab-bullet' . ($isActive ? ' active' : '');
+            $tabsHtml .= '<a href="#" class="' . $class . '" style="border-radius:50px; padding:0.5em 1.5em; position:relative;" data-pane="'.$paneId.'" onclick="event.preventDefault();document.querySelectorAll(\'.fd-tab-bullet\').forEach(function(e){e.classList.remove(\'active\');});this.classList.add(\'active\');document.querySelectorAll(\'.fd-tab-content-pane\').forEach(function(e){e.style.display=\'none\';});document.getElementById(\''.$paneId.'\').style.display=\'block\';">'.$title.'</a>';
             $tabsHtml .= '</li>';
         }
         $tabsHtml .= '</ul>';

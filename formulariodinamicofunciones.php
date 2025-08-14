@@ -191,7 +191,7 @@ if (!function_exists('fd_render_tabs_section')) {
         $uid = 'fd_tabs_'.substr(md5(json_encode(array_keys($tabs)).microtime(true)),0,8);
 
         // CSS inline para efecto hover tipo botón
-            $html = '<div class="fd-section fd-tabs-bullets-horizontal" data-tabs="'.$uid.'">';
+        $html = '<div class="fd-section fd-tabs-bullets-horizontal" data-tabs="'.$uid.'">';
             $html .= '<div class="fd-tab-bullets-horizontal">';
             foreach ($tabs as $i => $tab) {
                 $isActive = $i === 0;

@@ -7,12 +7,12 @@ function fd_render_tabs_section(array $section, array $fieldsets): string {
         $html = '<div class="fd-section fd-tabs-bullets row" data-tabs="'.$uid.'">';
         $html .= '<div class="col-md-3">';
         $html .= '<ul class="fd-tab-bullets" style="list-style-type: disc; padding-left: 1.5em;">';
-        foreach ($tabs as $i=>$tab) {
+        foreach ($tabs as $i => $tab) {
             $isActive = $i===0;
             $paneId   = $uid.'_pane_'.$i;
             $title    = htmlspecialchars($tab['title'] ?? $tab['titulo'] ?? ('Tab '.($i+1)), ENT_QUOTES, 'UTF-8');
             $js = "var bullets=document.querySelectorAll('.fd-tab-bullet');bullets.forEach(function(e){e.classList.remove('active');});this.classList.add('active');var panes=document.querySelectorAll('.fd-tab-content-pane');panes.forEach(function(e){e.style.display='none';});document.getElementById('{$paneId}').style.display='block';";
-            $html .= '<li class="fd-tab-bullet'.($isActive?' active':'').'" style="cursor:pointer;" data-pane="'.$paneId.'" onclick="'.$js.'">'.$title.'</li>';
+            $html .= '<li class="fd-tab-bullet'.($isActive ? ' active' : '').'" style="cursor:pointer;" data-pane="'.$paneId.'" onclick="'.$js.'">'.$title.'</li>';
         }
         $html .= '</ul>';
         $html .= '</div>';
@@ -29,6 +29,34 @@ function fd_render_tabs_section(array $section, array $fieldsets): string {
             $html .= '</div>';
         }
         $html .= '</div>';
+        $html .= '</div>';
+        return $html;
+    }
+    function fd_render_tabs_section(array $section, array $fieldsets): string {
+        $tabs = $section['tabs'] ?? [];
+        if (!$tabs || !is_array($tabs)) return '';
+        $uid = 'fd_tabs_'.substr(md5(json_encode(array_keys($tabs)).microtime(true)),0,8);
+
+        $html = '<div class="fd-section fd-tabs-bullets-horizontal" data-tabs="'.$uid.'">';
+        $html .= '<ul class="nav nav-pills fd-tab-bullets-horizontal" style="display: flex; gap: 2em; padding-left: 1.5em;">';
+        foreach ($tabs as $i => $tab) {
+            $isActive = $i === 0;
+            $paneId = $uid.'_pane_'.$i;
+            $title = htmlspecialchars($tab['title'] ?? $tab['titulo'] ?? ('Tab '.($i+1)), ENT_QUOTES, 'UTF-8');
+            $html .= '<li class="nav-item" style="list-style-type: disc;">';
+            $html .= '<a href="#" class="nav-link fd-tab-bullet'.($isActive ? ' active' : '').'" style="border-radius:50px; padding:0.5em 1.5em; position:relative;" data-pane="'.$paneId.'" onclick="event.preventDefault();document.querySelectorAll(\'.fd-tab-bullet\').forEach(function(e){e.classList.remove(\'active\');});this.classList.add(\'active\');document.querySelectorAll(\'.fd-tab-content-pane\').forEach(function(e){e.style.display=\'none\';});document.getElementById(\''.$paneId.'\').style.display=\'block\';">'.$title.'</a>';
+            $html .= '</li>';
+        }
+        $html .= '</ul>';
+        foreach ($tabs as $i => $tab) {
+            $isActive = $i === 0;
+            $paneId = $uid.'_pane_'.$i;
+            $rows = $tab['rows'] ?? [];
+            $display = $isActive ? 'display:block;' : 'display:none;';
+            $html .= '<div id="'.$paneId.'" class="fd-tab-content-pane" style="'.$display.'">';
+            $html .= fd_render_rows_fallback($rows, $fieldsets);
+            $html .= '</div>';
+        }
         $html .= '</div>';
         return $html;
     }

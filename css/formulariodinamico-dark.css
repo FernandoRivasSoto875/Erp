@@ -205,11 +205,56 @@ input:focus, select:focus, textarea:focus { border-color: var(--color-primary); 
   color: #23262f;
   border: none;
   border-radius: var(--radius);
-  padding: 0.5em 1.2em;
-  font-size: 1em;
+  padding: 0.4em 1em;
+  font-size: 0.98em;
   transition: background 0.2s, transform 0.1s;
   box-shadow: 0 2px 8px rgba(255,179,71,0.10);
-  margin: 0.2em 0.5em;
+  margin: 0.15em 0.3em;
+  min-width: 120px;
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 900px) {
+  .fd-tabs-bullets-horizontal {
+    flex-direction: row !important;
+    overflow-x: auto;
+    padding: 1em 0.5em 0.5em 0.5em;
+    font-size: 0.95em;
+    gap: 0.5em;
+    scrollbar-width: thin;
+  }
+  .fd-tab-bullets-horizontal {
+    flex-direction: row !important;
+    gap: 0.5em;
+    align-items: stretch;
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+  .fd-tab-bullet {
+    min-width: 48px;
+    max-width: 80px;
+    font-size: 0.95em;
+    padding: 0.6em 0.5em;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-radius: 12px;
+  }
+  .fd-tab-bullet span {
+    display: none;
+  }
+  .fd-tab-bullet[data-short]::after {
+    content: attr(data-short);
+    font-weight: bold;
+    font-size: 1em;
+    color: #23262f;
+  }
+  .fd-tab-content-pane {
+    padding: 1em;
+  }
 }
 .btn-primary:hover { background: linear-gradient(90deg, var(--color-accent), var(--color-primary)); color: #181a20; transform: scale(1.04); }
 .form-progress { height: 6px; background: var(--color-primary); border-radius: 3px; margin-bottom: 1.5em; transition: width 0.3s; }

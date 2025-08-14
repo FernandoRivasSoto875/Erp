@@ -129,6 +129,35 @@
     },
     "todos_los_controles": {
       "titulo": "Todos los Tipos de Control",
+      "layout": [
+        { "row": [
+          { "col": 6, "campo": "campo_texto" },
+          { "col": 6, "campo": "campo_textarea" }
+        ] },
+        { "row": [
+          { "col": 4, "campo": "campo_numero" },
+          { "col": 4, "campo": "campo_email" },
+          { "col": 4, "campo": "campo_password" }
+        ] },
+        { "row": [
+          { "col": 6, "campo": "campo_select" },
+          { "col": 6, "campo": "campo_selectdata" }
+        ] },
+        { "row": [
+          { "col": 6, "campo": "campo_radio" },
+          { "col": 6, "campo": "campo_checkbox" }
+        ] },
+        { "row": [
+          { "col": 6, "campo": "campo_file" },
+          { "col": 6, "campo": "campo_date" }
+        ] },
+        { "row": [
+          { "col": 12, "campo": "campo_select_multiple" }
+        ] },
+        { "row": [
+          { "col": 12, "campo": "campo_datatable" }
+        ] }
+      ],
       "campos": [
         { "nombre": "campo_texto", "etiqueta": "Campo de Texto", "tipo": "text", "placeholder": "Texto simple" },
         { "nombre": "campo_textarea", "etiqueta": "Área de Texto", "tipo": "textarea", "placeholder": "Texto largo" },

@@ -1,4 +1,7 @@
 <?php
+if (!headers_sent()) {
+    header('Content-Type: text/html; charset=UTF-8');
+}
 // editar_propiedades.php
 if (session_status() === PHP_SESSION_NONE) session_start();
 header('Content-Type: application/json; charset=utf-8');

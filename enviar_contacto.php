@@ -1,4 +1,7 @@
 <?php
+if (!headers_sent()) {
+    header('Content-Type: text/html; charset=UTF-8');
+}
 // Leer el archivo JSON desde la carpeta "config"
 $parametros = json_decode(file_get_contents('json/parametro.json'), true);
 

@@ -1,4 +1,7 @@
 <?php
+if (!headers_sent()) {
+    header('Content-Type: text/html; charset=UTF-8');
+}
 // File: FormularioContactoEngine.php
 // Engine to render forms based on the 'grupos'/'campos' JSON structure.
 

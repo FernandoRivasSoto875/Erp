@@ -1,5 +1,9 @@
-    }
 <?php
+// Encabezado para forzar UTF-8 en la salida HTML
+if (!headers_sent()) {
+    header('Content-Type: text/html; charset=UTF-8');
+}
+
 /* MASTER_PROMPT_REFERENCE
    Leer COPILOT_PROMPT en formulariodinamico.php (fuente única de lineamientos).
    Rol de este archivo: helpers / lógica PHP reutilizable (sin HTML de vista, sin CSS, sin JS inline).

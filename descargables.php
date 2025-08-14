@@ -1,4 +1,7 @@
 <?php
+if (!headers_sent()) {
+    header('Content-Type: text/html; charset=UTF-8');
+}
 // Cargar las opciones del menú desde el archivo JSON
 $menu_items = [];
 if (file_exists('json/menuintranet.json')) {

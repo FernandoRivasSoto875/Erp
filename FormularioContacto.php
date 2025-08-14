@@ -12,7 +12,10 @@
     <?php include 'redes.php'; ?>
 
     <main>
-          <?php
+        <?php
+        if (!headers_sent()) {
+            header('Content-Type: text/html; charset=UTF-8');
+        }
         // Ruta absoluta del archivo JSON
         $_GET['archivo'] = __DIR__ . '/json/contactoformulario02.json';
 

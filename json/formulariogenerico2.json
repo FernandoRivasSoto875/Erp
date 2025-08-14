@@ -196,8 +196,12 @@
     "header": {
       "type": "header",
       "rows": [
-        { "columns": [ { "width": 12, "fieldset": "header" } ] },
-        { "columns": [ { "width": 12, "fieldset": "header_info" } ] }
+        {
+          "columns": [
+            { "width": 6, "fieldset": "header" },
+            { "width": 6, "fieldset": "header_info" }
+          ]
+        }
       ]
     },
     "main": {
@@ -212,7 +216,12 @@
         {
           "title": "Datos Personales",
           "rows": [
-            { "columns": [ { "width": 12, "fieldset": "datos_personales" } ] }
+            {
+              "columns": [
+                { "width": 6, "fieldset": "datos_personales" },
+                { "width": 6, "fieldset": "datos_contacto" }
+              ]
+            }
           ]
         },
         {
@@ -247,8 +256,14 @@
         },
         {
           "title": "Grilla Ejemplo1",
+
+
+
           "rows": [
             { "columns": [ { "width": 12, "fieldset": "grupo_grilla_ejemplo" } ] }
+
+
+
           ]
         }
       ]

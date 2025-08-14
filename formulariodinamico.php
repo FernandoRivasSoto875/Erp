@@ -131,7 +131,14 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
 ?>
 <body class="<?= $modoDiseno ? 'fd-design-mode' : '' ?>">
   <!-- Hoja de estilos principal del formulario dinámico -->
-  <link rel="stylesheet" href="css/formulariodinamico.css">
+  <?php
+    $cssDefault = $parametros['CssDefault'] ?? 'formulariodinamico.css';
+    $cssPath = 'css/' . $cssDefault;
+    if (!file_exists(__DIR__ . '/css/' . $cssDefault)) {
+      $cssPath = 'css/formulariodinamico.css';
+    }
+  ?>
+  <link rel="stylesheet" href="<?= $cssPath ?>">
   <!-- IMPORTANTE: Revisar el bloque COPILOT_PROMPT al inicio de este archivo para TODOS los lineamientos, reglas y requisitos de rediseño runtime. -->
   <div class="container-fluid py-2">
     <div class="d-flex justify-content-between align-items-center mb-3 design-toolbar">

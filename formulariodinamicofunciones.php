@@ -220,17 +220,18 @@ if (!function_exists('fd_render_tabs_section')) {
         $uid = 'fd_tabs_'.substr(md5(json_encode(array_keys($tabs)).microtime(true)),0,8);
 
         // Render vertical bullets and content
-        $html = '<div class="fd-section fd-tabs-bullets-horizontal" data-tabs="'.$uid.'">';
-        $html .= '<ul class="fd-tab-bullets-horizontal" style="list-style-type: disc; display: flex; gap: 2em; padding-left: 1.5em;">';
-        foreach ($tabs as $i=>$tab) {
+            $html = '<div class="fd-section fd-tabs-bullets-horizontal" data-tabs="'.$uid.'">';
+            $html .= '<ul class="nav nav-pills fd-tab-bullets-horizontal" style="display: flex; gap: 2em; padding-left: 1.5em;">';
             $isActive = $i===0;
             $paneId   = $uid.'_pane_'.$i;
             $title    = htmlspecialchars($tab['title'] ?? $tab['titulo'] ?? ('Tab '.($i+1)), ENT_QUOTES, 'UTF-8');
             $html .= '<li class="fd-tab-bullet'.($isActive?' active':'').'" style="cursor:pointer;" data-pane="'.$paneId.'" onclick="document.querySelectorAll(\'.fd-tab-bullet\').forEach(function(e){e.classList.remove(\'active\');});this.classList.add(\'active\');document.querySelectorAll(\'.fd-tab-content-pane\').forEach(function(e){e.style.display=\'none\';});document.getElementById(\''.$paneId.'\').style.display=\'block\';">'.$title.'</li>';
-        }
+                $html .= '<li class="nav-item" style="list-style-type: disc;">';
+                $html .= '<a class="nav-link fd-tab-bullet'.($isActive?' active':'').'" style="border-radius:50px; padding:0.5em 1.5em; position:relative;" data-pane="'.$paneId.'" onclick="event.preventDefault();document.querySelectorAll(\'.fd-tab-bullet\').forEach(function(e){e.classList.remove(\'active\');});this.classList.add(\'active\');document.querySelectorAll(\'.fd-tab-content-pane\').forEach(function(e){e.style.display=\'none\';});document.getElementById(\''.$paneId.'\').style.display=\'block\';">'.$title.'</a>';
+                $html .= '</li>';
         $html .= '</ul>';
-        foreach ($tabs as $i=>$tab) {
-            $isActive = $i===0;
+            $html .= '</ul>';
+            $html .= '</div>'; // Closing the col-md-3 div
             $paneId   = $uid.'_pane_'.$i;
             $rows     = $tab['rows'] ?? [];
             $html .= '<div id="'.$paneId.'" class="fd-tab-content-pane" style="'.($isActive?'display:block;':'display:none;').'">';

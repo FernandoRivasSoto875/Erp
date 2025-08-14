@@ -187,42 +187,34 @@ if (!function_exists('fd_render_layout_fallback')) {
 if (!function_exists('fd_render_tabs_section')) {
     function fd_render_tabs_section(array $section, array $fieldsets): string {
         $tabs = $section['tabs'] ?? [];
-        if (!$tabs || !is_array($tabs)) return json_encode([]);
+        if (!$tabs || !is_array($tabs)) return '';
         $uid = 'fd_tabs_'.substr(md5(json_encode(array_keys($tabs)).microtime(true)),0,8);
 
-        $result = [
-            'css' => '<style>.fd-tab-bullet:hover { background: #007bff; color: #fff !important; box-shadow: 0 2px 8px rgba(0,0,0,0.10); transition: background 0.2s, color 0.2s; }</style>',
-            'tabs' => '',
-            'panes' => []
-        ];
-
-        // Tabs HTML
-        $tabsHtml = '<ul class="nav nav-pills fd-tab-bullets-horizontal" style="display: flex; gap: 2em; padding-left: 1.5em;">';
+        // CSS inline para efecto hover tipo botón
+        $html = '<style>.fd-tab-bullet:hover { background: #007bff; color: #fff !important; box-shadow: 0 2px 8px rgba(0,0,0,0.10); transition: background 0.2s, color 0.2s; }</style>';
+        $html .= '<div class="fd-section fd-tabs-bullets-horizontal" data-tabs="'.$uid.'">';
+        $html .= '<ul class="nav nav-pills fd-tab-bullets-horizontal" style="display: flex; gap: 2em; padding-left: 1.5em;">';
         foreach ($tabs as $i => $tab) {
             $isActive = $i === 0;
             $paneId = $uid.'_pane_'.$i;
             $title = htmlspecialchars($tab['title'] ?? $tab['titulo'] ?? ('Tab '.($i+1)), ENT_QUOTES, 'UTF-8');
-            $tabsHtml .= '<li class="nav-item" style="list-style-type: disc;">';
             $class = 'nav-link fd-tab-bullet' . ($isActive ? ' active' : '');
-            $tabsHtml .= '<a href="#" class="' . $class . '" style="border-radius:50px; padding:0.5em 1.5em; position:relative;" data-pane="'.$paneId.'" onclick="event.preventDefault();document.querySelectorAll(\'.fd-tab-bullet\').forEach(function(e){e.classList.remove(\'active\');});this.classList.add(\'active\');document.querySelectorAll(\'.fd-tab-content-pane\').forEach(function(e){e.style.display=\'none\';});document.getElementById(\''.$paneId.'\').style.display=\'block\';">'.$title.'</a>';
-            $tabsHtml .= '</li>';
+            $html .= '<li class="nav-item" style="list-style-type: disc;">';
+            $html .= '<a href="#" class="' . $class . '" style="border-radius:50px; padding:0.5em 1.5em; position:relative;" data-pane="'.$paneId.'" onclick="event.preventDefault();document.querySelectorAll(\'.fd-tab-bullet\').forEach(function(e){e.classList.remove(\'active\');});this.classList.add(\'active\');document.querySelectorAll(\'.fd-tab-content-pane\').forEach(function(e){e.style.display=\'none\';});document.getElementById(\''.$paneId.'\').style.display=\'block\';">'.$title.'</a>';
+            $html .= '</li>';
         }
-        $tabsHtml .= '</ul>';
-        $result['tabs'] = $tabsHtml;
-
-        // Panes HTML
+        $html .= '</ul>';
         foreach ($tabs as $i => $tab) {
             $isActive = $i === 0;
             $paneId = $uid.'_pane_'.$i;
             $rows = $tab['rows'] ?? [];
             $display = $isActive ? 'display:block;' : 'display:none;';
-            $paneHtml = '<div id="'.$paneId.'" class="fd-tab-content-pane" style="'.$display.'">';
-            $paneHtml .= fd_render_rows_fallback($rows, $fieldsets);
-            $paneHtml .= '</div>';
-            $result['panes'][] = $paneHtml;
+            $html .= '<div id="'.$paneId.'" class="fd-tab-content-pane" style="'.$display.'">';
+            $html .= fd_render_rows_fallback($rows, $fieldsets);
+            $html .= '</div>';
         }
-
-        return json_encode($result);
+        $html .= '</div>';
+        return $html;
     }
 } else {
     // Mejora accesibilidad/IDs si ya existía (wrapper opcional)

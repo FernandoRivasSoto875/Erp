@@ -23,7 +23,8 @@
             $isActive = $i===0;
             $paneId   = $uid.'_pane_'.$i;
             $rows     = $tab['rows'] ?? [];
-            $html .= '<div id="'.$paneId.'" class="fd-tab-content-pane" style="'.($isActive?'display:block;':'display:none;').'">';
+            $display = $isActive ? 'display:block;' : 'display:none;';
+            $html .= '<div id="'.$paneId.'" class="fd-tab-content-pane" style="'.$display.'">';
             $html .= fd_render_rows_fallback($rows, $fieldsets);
             $html .= '</div>';
         }
@@ -219,9 +220,8 @@ if (!function_exists('fd_render_tabs_section')) {
         $uid = 'fd_tabs_'.substr(md5(json_encode(array_keys($tabs)).microtime(true)),0,8);
 
         // Render vertical bullets and content
-        $html = '<div class="fd-section fd-tabs-bullets row" data-tabs="'.$uid.'">';
-        $html .= '<div class="col-md-3">';
-        $html .= '<ul class="fd-tab-bullets" style="list-style-type: disc; padding-left: 1.5em;">';
+        $html = '<div class="fd-section fd-tabs-bullets-horizontal" data-tabs="'.$uid.'">';
+        $html .= '<ul class="fd-tab-bullets-horizontal" style="list-style-type: disc; display: flex; gap: 2em; padding-left: 1.5em;">';
         foreach ($tabs as $i=>$tab) {
             $isActive = $i===0;
             $paneId   = $uid.'_pane_'.$i;
@@ -229,10 +229,6 @@ if (!function_exists('fd_render_tabs_section')) {
             $html .= '<li class="fd-tab-bullet'.($isActive?' active':'').'" style="cursor:pointer;" data-pane="'.$paneId.'" onclick="document.querySelectorAll(\'.fd-tab-bullet\').forEach(function(e){e.classList.remove(\'active\');});this.classList.add(\'active\');document.querySelectorAll(\'.fd-tab-content-pane\').forEach(function(e){e.style.display=\'none\';});document.getElementById(\''.$paneId.'\').style.display=\'block\';">'.$title.'</li>';
         }
         $html .= '</ul>';
-        $html .= '</div>';
-
-        // Content panes
-        $html .= '<div class="col-md-9">';
         foreach ($tabs as $i=>$tab) {
             $isActive = $i===0;
             $paneId   = $uid.'_pane_'.$i;
@@ -241,7 +237,6 @@ if (!function_exists('fd_render_tabs_section')) {
             $html .= fd_render_rows_fallback($rows, $fieldsets);
             $html .= '</div>';
         }
-        $html .= '</div>';
         $html .= '</div>';
         return $html;
     }

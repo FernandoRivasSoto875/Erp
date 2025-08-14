@@ -191,19 +191,16 @@ if (!function_exists('fd_render_tabs_section')) {
         $uid = 'fd_tabs_'.substr(md5(json_encode(array_keys($tabs)).microtime(true)),0,8);
 
         // CSS inline para efecto hover tipo botón
-        $html = '<style>.fd-tab-bullet:hover { background: #007bff; color: #fff !important; box-shadow: 0 2px 8px rgba(0,0,0,0.10); transition: background 0.2s, color 0.2s; }</style>';
-        $html .= '<div class="fd-section fd-tabs-bullets-horizontal" data-tabs="'.$uid.'">';
-        $html .= '<ul class="nav nav-pills fd-tab-bullets-horizontal" style="display: flex; gap: 2em; padding-left: 1.5em;">';
-        foreach ($tabs as $i => $tab) {
-            $isActive = $i === 0;
-            $paneId = $uid.'_pane_'.$i;
-            $title = htmlspecialchars($tab['title'] ?? $tab['titulo'] ?? ('Tab '.($i+1)), ENT_QUOTES, 'UTF-8');
-            $class = 'nav-link fd-tab-bullet' . ($isActive ? ' active' : '');
-            $html .= '<li class="nav-item" style="list-style-type: disc;">';
-            $html .= '<a href="#" class="' . $class . '" style="border-radius:50px; padding:0.5em 1.5em; position:relative;" data-pane="'.$paneId.'" onclick="event.preventDefault();document.querySelectorAll(\'.fd-tab-bullet\').forEach(function(e){e.classList.remove(\'active\');});this.classList.add(\'active\');document.querySelectorAll(\'.fd-tab-content-pane\').forEach(function(e){e.style.display=\'none\';});document.getElementById(\''.$paneId.'\').style.display=\'block\';">'.$title.'</a>';
-            $html .= '</li>';
-        }
-        $html .= '</ul>';
+            $html = '<div class="fd-section fd-tabs-bullets-horizontal" data-tabs="'.$uid.'">';
+            $html .= '<div class="fd-tab-bullets-horizontal">';
+            foreach ($tabs as $i => $tab) {
+                $isActive = $i === 0;
+                $paneId = $uid.'_pane_'.$i;
+                $title = htmlspecialchars($tab['title'] ?? $tab['titulo'] ?? ('Tab '.($i+1)), ENT_QUOTES, 'UTF-8');
+                $class = 'fd-tab-bullet' . ($isActive ? ' active' : '');
+                $html .= '<button type="button" class="' . $class . '" data-pane="'.$paneId.'" onclick="event.preventDefault();document.querySelectorAll(\'.fd-tab-bullet\').forEach(function(e){e.classList.remove(\'active\');});this.classList.add(\'active\');document.querySelectorAll(\'.fd-tab-content-pane\').forEach(function(e){e.style.display=\'none\';});document.getElementById(\''.$paneId.'\').style.display=\'block\';">'.$title.'</button>';
+            }
+            $html .= '</div>';
         foreach ($tabs as $i => $tab) {
             $isActive = $i === 0;
             $paneId = $uid.'_pane_'.$i;

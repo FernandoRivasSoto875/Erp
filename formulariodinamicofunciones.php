@@ -1,3 +1,36 @@
+    function fd_render_tabs_section(array $section, array $fieldsets): string {
+        $tabs = $section['tabs'] ?? [];
+        if (!$tabs || !is_array($tabs)) return '';
+        $uid = 'fd_tabs_'.substr(md5(json_encode(array_keys($tabs)).microtime(true)),0,8);
+
+        // Render vertical bullets and content
+        $html = '<div class="fd-section fd-tabs-bullets row" data-tabs="'.$uid.'">';
+        $html .= '<div class="col-md-3">';
+        $html .= '<ul class="fd-tab-bullets" style="list-style-type: disc; padding-left: 1.5em;">';
+        foreach ($tabs as $i=>$tab) {
+            $isActive = $i===0;
+            $paneId   = $uid.'_pane_'.$i;
+            $title    = htmlspecialchars($tab['title'] ?? $tab['titulo'] ?? ('Tab '.($i+1)), ENT_QUOTES, 'UTF-8');
+            $js = "var bullets=document.querySelectorAll('.fd-tab-bullet');bullets.forEach(function(e){e.classList.remove('active');});this.classList.add('active');var panes=document.querySelectorAll('.fd-tab-content-pane');panes.forEach(function(e){e.style.display='none';});document.getElementById('{$paneId}').style.display='block';";
+            $html .= '<li class="fd-tab-bullet'.($isActive?' active':'').'" style="cursor:pointer;" data-pane="'.$paneId.'" onclick="'.$js.'">'.$title.'</li>';
+        }
+        $html .= '</ul>';
+        $html .= '</div>';
+
+        // Content panes
+        $html .= '<div class="col-md-9">';
+        foreach ($tabs as $i=>$tab) {
+            $isActive = $i===0;
+            $paneId   = $uid.'_pane_'.$i;
+            $rows     = $tab['rows'] ?? [];
+            $html .= '<div id="'.$paneId.'" class="fd-tab-content-pane" style="'.($isActive?'display:block;':'display:none;').'">';
+            $html .= fd_render_rows_fallback($rows, $fieldsets);
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+        $html .= '</div>';
+        return $html;
+    }
 <?php
 /* MASTER_PROMPT_REFERENCE
    Leer COPILOT_PROMPT en formulariodinamico.php (fuente única de lineamientos).
@@ -185,46 +218,42 @@ if (!function_exists('fd_render_tabs_section')) {
         if (!$tabs || !is_array($tabs)) return '';
         $uid = 'fd_tabs_'.substr(md5(json_encode(array_keys($tabs)).microtime(true)),0,8);
 
-        $html = '<div class="fd-section fd-tabs" data-tabs="'.$uid.'">';
-        // Horizontal Nav
-        $html .= '<ul class="nav nav-tabs" role="tablist">';
+        // Render vertical bullets and content
+        $html = '<div class="fd-section fd-tabs-bullets row" data-tabs="'.$uid.'">';
+        $html .= '<div class="col-md-3">';
+        $html .= '<ul class="fd-tab-bullets" style="list-style-type: disc; padding-left: 1.5em;">';
         foreach ($tabs as $i=>$tab) {
             $isActive = $i===0;
             $paneId   = $uid.'_pane_'.$i;
-            $btnId    = $uid.'_tab_'.$i;
             $title    = htmlspecialchars($tab['title'] ?? $tab['titulo'] ?? ('Tab '.($i+1)), ENT_QUOTES, 'UTF-8');
-            $html .= '<li class="nav-item" role="presentation">';
-            $html .= '<button'
-                   . ' class="nav-link'.($isActive?' active':'').'"'
-                   . ' id="'.$btnId.'"'
-                   . ' data-bs-toggle="tab"'
-                   . ' data-bs-target="#'.$paneId.'"'
-                   . ' type="button" role="tab"'
-                   . ' aria-controls="'.$paneId.'"'
-                   . ' aria-selected="'.($isActive?'true':'false').'">'
-                   . $title
-                   . '</button>';
-            $html .= '</li>';
+            $html .= '<li'
+                . ' class="fd-tab-bullet'.($isActive?' active':'').'"'
+                . ' style="cursor:pointer;"'
+                . ' data-pane="'.$paneId.'"'
+                . ' onclick="document.querySelectorAll(\'.fd-tab-bullet\').forEach(e=>e.classList.remove(\'active\'));this.classList.add(\'active\');document.querySelectorAll(\'.fd-tab-content-pane\').forEach(e=>e.style.display=\'none\');document.getElementById(\''.$paneId.'\').style.display=\'block\';"
+                . '>'
+                . $title
+                . '</li>';
         }
         $html .= '</ul>';
+        $html .= '</div>';
 
-        // Content
-        $html .= '<div class="tab-content border border-top-0 p-3">';
+        // Content panes
+        $html .= '<div class="col-md-9">';
         foreach ($tabs as $i=>$tab) {
             $isActive = $i===0;
-            $paneId   = $uid+'_pane_'+$i;
-            $btnId    = $uid.'_tab_'+$i;
+            $paneId   = $uid.'_pane_'.$i;
             $rows     = $tab['rows'] ?? [];
             $html .= '<div'
-                   . ' id="'.$paneId.'"'
-                   . ' class="tab-pane fade'.($isActive?' show active':'').'"'
-                   . ' role="tabpanel"'
-                   . ' aria-labelledby="'.$btnId.'"'
-                   . ' tabindex="0">';
+                . ' id="'.$paneId.'"'
+                . ' class="fd-tab-content-pane"'
+                . ' style="'.($isActive?'display:block;':'display:none;').'"'
+                . '>';
             $html .= fd_render_rows_fallback($rows, $fieldsets);
             $html .= '</div>';
         }
-        $html .= '</div></div>';
+        $html .= '</div>';
+        $html .= '</div>';
         return $html;
     }
 } else {

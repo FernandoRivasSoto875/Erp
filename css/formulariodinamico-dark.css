@@ -1,3 +1,16 @@
+
+/* Limitar ancho de elementos internos en columnas y fieldsets */
+.fd-col, .fd-fieldset {
+  box-sizing: border-box;
+  max-width: 100%;
+}
+.fd-fieldset textarea,
+.fd-fieldset input,
+.fd-fieldset select {
+  max-width: 100%;
+  width: 100%;
+  box-sizing: border-box;
+}
 /* Style: Dark Mode (oscuro moderno) */
 /* Tabs bullets horizontal (modo oscuro) */
 

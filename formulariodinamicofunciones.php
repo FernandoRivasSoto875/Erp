@@ -226,14 +226,7 @@ if (!function_exists('fd_render_tabs_section')) {
             $isActive = $i===0;
             $paneId   = $uid.'_pane_'.$i;
             $title    = htmlspecialchars($tab['title'] ?? $tab['titulo'] ?? ('Tab '.($i+1)), ENT_QUOTES, 'UTF-8');
-            $html .= '<li'
-                . ' class="fd-tab-bullet'.($isActive?' active':'').'"'
-                . ' style="cursor:pointer;"'
-                . ' data-pane="'.$paneId.'"'
-                . ' onclick="document.querySelectorAll(\'.fd-tab-bullet\').forEach(e=>e.classList.remove(\'active\'));this.classList.add(\'active\');document.querySelectorAll(\'.fd-tab-content-pane\').forEach(e=>e.style.display=\'none\');document.getElementById(\''.$paneId.'\').style.display=\'block\';"
-                . '>'
-                . $title
-                . '</li>';
+            $html .= '<li class="fd-tab-bullet'.($isActive?' active':'').'" style="cursor:pointer;" data-pane="'.$paneId.'" onclick="document.querySelectorAll(\'.fd-tab-bullet\').forEach(function(e){e.classList.remove(\'active\');});this.classList.add(\'active\');document.querySelectorAll(\'.fd-tab-content-pane\').forEach(function(e){e.style.display=\'none\';});document.getElementById(\''.$paneId.'\').style.display=\'block\';">'.$title.'</li>';
         }
         $html .= '</ul>';
         $html .= '</div>';
@@ -244,11 +237,7 @@ if (!function_exists('fd_render_tabs_section')) {
             $isActive = $i===0;
             $paneId   = $uid.'_pane_'.$i;
             $rows     = $tab['rows'] ?? [];
-            $html .= '<div'
-                . ' id="'.$paneId.'"'
-                . ' class="fd-tab-content-pane"'
-                . ' style="'.($isActive?'display:block;':'display:none;').'"'
-                . '>';
+            $html .= '<div id="'.$paneId.'" class="fd-tab-content-pane" style="'.($isActive?'display:block;':'display:none;').'">';
             $html .= fd_render_rows_fallback($rows, $fieldsets);
             $html .= '</div>';
         }

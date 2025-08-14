@@ -1,4 +1,47 @@
 /* Style: Dark Mode (oscuro moderno) */
+/* Tabs bullets horizontal (modo oscuro) */
+.fd-tabs-bullets-horizontal {
+  background: var(--color-card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1em 2em 0.5em 2em;
+  margin-bottom: 2em;
+}
+.fd-tab-bullets-horizontal {
+  gap: 2em;
+  padding-left: 1.5em;
+}
+.fd-tab-bullet {
+  background: #23262f;
+  color: #ffb347 !important;
+  border-radius: 50px;
+  padding: 0.5em 1.5em;
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(255,179,71,0.10);
+  transition: background 0.2s, color 0.2s, transform 0.1s;
+  border: 2px solid transparent;
+}
+.fd-tab-bullet:hover {
+  background: var(--color-primary);
+  color: #23262f !important;
+  border-color: var(--color-primary);
+  transform: scale(1.05);
+}
+.fd-tab-bullet.active {
+  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  color: #23262f !important;
+  border-color: var(--color-primary);
+  box-shadow: 0 4px 16px rgba(255,179,71,0.18);
+  transform: scale(1.08);
+}
+.fd-tab-content-pane {
+  background: #23262f;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2em;
+  margin-top: 1em;
+  color: #fff;
+}
 html, body {
   width: 100%;
   height: 100%;

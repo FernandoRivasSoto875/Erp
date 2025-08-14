@@ -155,19 +155,6 @@ html, body {
     padding: 1em;
     min-height: 100vh;
   }
-    .row, .fd-row {
-      flex-direction: column !important;
-    }
-    [class^="col-md-"], .fd-col {
-      max-width: 100% !important;
-      flex: 0 0 100% !important;
-      margin-bottom: 1em;
-    }
-    .btn-primary, .btn-success, .btn-secondary {
-      width: 100%;
-      font-size: 1em;
-      padding: 0.7em 1em;
-    }
 }
 :root {
   --color-bg: #181a20;

@@ -7,6 +7,7 @@ require_once __DIR__ . '/../formulariodinamicofunciones.php';
 require_once __DIR__ . '/../formulariodinamicologica.php';
 
 // Cargar datos JSON
+
 $json_data = json_decode(file_get_contents(__DIR__ . '/../json/formulariogenerico2.json'), true);
 $parametros = $json_data['parametros'] ?? [];
 $fieldsets = $json_data['fieldsets'] ?? [];
@@ -16,6 +17,14 @@ $titulo_formulario = $parametros['titulo'] ?? '';
 $descripcion_formulario = $parametros['comentario'] ?? '';
 $archivo_base = 'formulariogenerico2.json';
 $modoDiseno = false;
+
+// Cargar CSS según CssDefault
+$cssDefault = $parametros['CssDefault'] ?? 'formulariodinamico.css';
+$cssPath = '../css/' . $cssDefault;
+if (!file_exists(__DIR__ . '/../css/' . $cssDefault)) {
+  $cssPath = '../css/formulariodinamico.css';
+}
+echo '<link rel="stylesheet" href="' . $cssPath . '" />';
 
 ?>
 <body class="<?= $modoDiseno ? 'fd-design-mode' : '' ?>">

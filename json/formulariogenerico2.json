@@ -256,10 +256,14 @@
     "footer": {
       "type": "footer",
       "rows": [
-        { "columns": [ { "width": 3, "fieldset": "footer" } ] },
-        { "columns": [ { "width": 3, "fieldset": "footer" } ] },
-        { "columns": [ { "width": 3, "fieldset": "footer" } ] },
-        { "columns": [ { "width": 3, "fieldset": "footer_legal" } ] }
+        {
+          "columns": [
+            { "width": 3, "fieldset": "footer" },
+            { "width": 3, "fieldset": "footer" },
+            { "width": 3, "fieldset": "footer" },
+            { "width": 3, "fieldset": "footer_legal" }
+          ]
+        }
       ]
     }
   }

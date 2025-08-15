@@ -108,7 +108,7 @@ window.addEventListener('message', (e)=>{
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-  // 1. Renderiza selects con data-source
+  // Renderiza selects con data-source
   document.querySelectorAll('select[data-source]').forEach(function(sel) {
     let config;
     try { config = JSON.parse(sel.getAttribute('data-source')); } catch(e){ config = null; }
@@ -136,10 +136,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // 2. Función para cargar select con filtro dinámico
   function cargarSelectConFiltro(sel, config) {
     let filtro = config.filtro || '1=1';
-    // Reemplaza placeholders por valores actuales
     filtro = filtro.replace(/\{([a-zA-Z0-9_]+)\}/g, function(_, name){
       const depSel = document.querySelector(`[name="${name}"]`);
       return depSel ? depSel.value : '';
@@ -158,26 +156,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       });
   }
-
-  // 3. Renderiza selects tipo selectdata
-  document.querySelectorAll('select[data-selectdata]').forEach(function(sel) {
-    let config;
-    try { config = JSON.parse(sel.getAttribute('data-selectdata')); } catch(e){ config = null; }
-    if (!config || !config.tabla || !config.campo) return;
-
-    fetch('ajax/selectdata.php?tabla=' + encodeURIComponent(config.tabla) +
-          '&campo_etiqueta=' + encodeURIComponent(config.campo) +
-          (config.campo_valor ? '&campo_valor=' + encodeURIComponent(config.campo_valor) : '') +
-          (config.filtro ? '&filtro=' + encodeURIComponent(config.filtro) : '') +
-          (config.order ? '&order=' + encodeURIComponent(config.order) : ''))
-      .then(r => r.json())
-      .then(data => {
-        sel.innerHTML = '<option value="">'+(config.placeholder||'Seleccione...')+'</option>';
-        data.forEach(opt => {
-          sel.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
-        });
-      });
-  });
 });
 
 

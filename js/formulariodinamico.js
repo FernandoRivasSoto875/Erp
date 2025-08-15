@@ -128,4 +128,12 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
- 
+function renderField(field) {
+  // ...otros tipos...
+  if(field.tipo === 'datatable') {
+    return renderDatatable(field);
+  }
+  // ...otros tipos...
+}
+
+

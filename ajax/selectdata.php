@@ -31,7 +31,7 @@ if ($order) $sql .= " ORDER BY $order";
 $sql .= " LIMIT 100";
 
 // Depuración: muestra el SQL si necesitas
-// error_log($sql);
+error_log($sql);
 
 $result = $conn->query($sql);
 

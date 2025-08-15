@@ -108,45 +108,15 @@ window.addEventListener('message', (e)=>{
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-  // Renderiza selects con data-source
   document.querySelectorAll('select[data-source]').forEach(function(sel) {
     let config;
     try { config = JSON.parse(sel.getAttribute('data-source')); } catch(e){ config = null; }
     if (!config || !config.tabla) return;
 
-    // Si tiene filtro con placeholder, espera dependiente
-    if(config.filtro && config.filtro.includes('{')) {
-      // Detecta campo dependiente
-      const matches = config.filtro.match(/\{([a-zA-Z0-9_]+)\}/g);
-      if(matches) {
-        matches.forEach(function(ph){
-          const depName = ph.replace(/[{}]/g,'');
-          const depSel = document.querySelector(`[name="${depName}"]`);
-          if(depSel) {
-            depSel.addEventListener('change', function(){
-              cargarSelectConFiltro(sel, config);
-            });
-            // Carga inicial si hay valor
-            if(depSel.value) cargarSelectConFiltro(sel, config);
-          }
-        });
-      }
-    } else {
-      cargarSelectConFiltro(sel, config);
-    }
-  });
-
-  function cargarSelectConFiltro(sel, config) {
-    let filtro = config.filtro || '1=1';
-    filtro = filtro.replace(/\{([a-zA-Z0-9_]+)\}/g, function(_, name){
-      const depSel = document.querySelector(`[name="${name}"]`);
-      return depSel ? depSel.value : '';
-    });
-
     fetch('ajax/selectdata.php?tabla=' + encodeURIComponent(config.tabla) +
           (config.campo_valor ? '&campo_valor=' + encodeURIComponent(config.campo_valor) : '') +
           (config.campo_etiqueta ? '&campo_etiqueta=' + encodeURIComponent(config.campo_etiqueta) : '') +
-          (filtro ? '&filtro=' + encodeURIComponent(filtro) : '') +
+          (config.filtro ? '&filtro=' + encodeURIComponent(config.filtro) : '') +
           (config.order ? '&order=' + encodeURIComponent(config.order) : ''))
       .then(r => r.json())
       .then(data => {
@@ -155,7 +125,7 @@ document.addEventListener('DOMContentLoaded', function() {
           sel.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
         });
       });
-  }
+  });
 });
-
+ 
 

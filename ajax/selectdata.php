@@ -19,21 +19,21 @@ if ($conn === null) {
     exit;
 }
 
+// Validación básica de nombres
+if(!preg_match('/^[a-zA-Z0-9_]+$/', $tabla)) die(json_encode([]));
+if(!preg_match('/^[a-zA-Z0-9_]+$/', $campo_valor)) die(json_encode([]));
+if(!preg_match('/^[a-zA-Z0-9_]+$/', $campo_etiqueta)) die(json_encode([]));
+if($order && !preg_match('/^[a-zA-Z0-9_ ]+(ASC|DESC)?$/i', $order)) $order = '';
+
 // Construir la consulta
-$sql = "SELECT DISTINCT " . $conn->real_escape_string($campo_valor) . " as value, " . $conn->real_escape_string($campo_etiqueta) . " as label 
-        FROM " . $conn->real_escape_string($tabla) . " 
-        WHERE $filtro";
-if ($order) $sql .= " ORDER BY " . $conn->real_escape_string($order);
+$sql = "SELECT DISTINCT $campo_valor as value, $campo_etiqueta as label FROM $tabla WHERE $filtro";
+if ($order) $sql .= " ORDER BY $order";
 $sql .= " LIMIT 100";
 
-$stmt = $conn->prepare($sql);
-if ($stmt === false) {
-    echo json_encode([]);
-    exit;
-}
+// Depuración: muestra el SQL si necesitas
+// error_log($sql);
 
-$stmt->execute();
-$result = $stmt->get_result();
+$result = $conn->query($sql);
 
 $data = [];
 if ($result) {
@@ -41,8 +41,6 @@ if ($result) {
         $data[] = ['value' => $row['value'], 'label' => $row['label']];
     }
 }
-
-$stmt->close();
 
 echo json_encode($data);
 ?>

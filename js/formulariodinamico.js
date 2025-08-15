@@ -136,4 +136,94 @@ function renderField(field) {
   // ...otros tipos...
 }
 
+function renderDatatable(field) {
+  // Crea contenedor
+  const container = document.createElement('div');
+  container.className = 'fd-datatable-container mb-3';
+
+  // Botón agregar
+  const btnAdd = document.createElement('button');
+  btnAdd.textContent = 'Agregar fila';
+  btnAdd.className = 'btn btn-primary btn-sm mb-2';
+  btnAdd.onclick = function() {
+    // Lógica para agregar fila (puedes abrir un modal o agregar inputs en la tabla)
+    const tr = document.createElement('tr');
+    field.columnas.forEach(col => {
+      const td = document.createElement('td');
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'form-control form-control-sm';
+      td.appendChild(input);
+      tr.appendChild(td);
+    });
+    // Acciones
+    const tdAcc = document.createElement('td');
+    const btnSave = document.createElement('button');
+    btnSave.textContent = 'Guardar';
+    btnSave.className = 'btn btn-success btn-sm';
+    btnSave.onclick = function() {
+      // Aquí puedes enviar los datos vía AJAX a datatable_crud.php?action=add
+      tr.remove();
+    };
+    tdAcc.appendChild(btnSave);
+    tr.appendChild(tdAcc);
+    tbody.appendChild(tr);
+  };
+
+  // Tabla
+  const table = document.createElement('table');
+  table.className = 'table table-bordered table-sm';
+  const thead = document.createElement('thead');
+  const tbody = document.createElement('tbody');
+  const trHead = document.createElement('tr');
+  field.columnas.forEach(col => {
+    const th = document.createElement('th');
+    th.textContent = col.etiqueta || col.nombre;
+    trHead.appendChild(th);
+  });
+  const thAcc = document.createElement('th');
+  thAcc.textContent = 'Acciones';
+  trHead.appendChild(thAcc);
+  thead.appendChild(trHead);
+  table.appendChild(thead);
+  table.appendChild(tbody);
+
+  // Cargar datos existentes (AJAX)
+  fetch('ajax/datatable_crud.php?tabla=' + encodeURIComponent(field.dataSource?.tabla || field.nombre) + '&action=list')
+    .then(r => r.json())
+    .then(resp => {
+      (resp.data||[]).forEach(row => {
+        const tr = document.createElement('tr');
+        field.columnas.forEach(col => {
+          const td = document.createElement('td');
+          td.textContent = row[col.nombre] || '';
+          tr.appendChild(td);
+        });
+        // Acciones
+        const tdAcc = document.createElement('td');
+        const btnEdit = document.createElement('button');
+        btnEdit.textContent = 'Editar';
+        btnEdit.className = 'btn btn-warning btn-sm me-1';
+        btnEdit.onclick = function() {
+          // Lógica para editar (puedes abrir modal o convertir celdas en inputs)
+        };
+        const btnDel = document.createElement('button');
+        btnDel.textContent = 'Eliminar';
+        btnDel.className = 'btn btn-danger btn-sm';
+        btnDel.onclick = function() {
+          // Lógica para eliminar (AJAX a datatable_crud.php?action=delete)
+          tr.remove();
+        };
+        tdAcc.appendChild(btnEdit);
+        tdAcc.appendChild(btnDel);
+        tr.appendChild(tdAcc);
+        tbody.appendChild(tr);
+      });
+    });
+
+  container.appendChild(btnAdd);
+  container.appendChild(table);
+  return container;
+}
+
 

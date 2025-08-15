@@ -97,7 +97,24 @@ function generarCampo($campo, $valor, $soloLectura): string {
         case 'file':
             return "<div class='form-group mb-2'>{$hLabel}<input type='file' name='{$hName}".(isset($attrs['multiple'])?'[]':'')."' class='form-control'{$disabled}{$attrStr}></div>";
         case 'select':
+            // Si tiene data-source, renderiza el select vacío con atributo data-source
+            if (!empty($campo['data-source'])) {
+                return "<div class='form-group mb-2'>{$hLabel}<select name='{$hName}' class='form-control' data-source='" . htmlspecialchars(json_encode($campo['data-source']), ENT_QUOTES, 'UTF-8') . "'{$disabled}{$attrStr}></select></div>";
+            }
+            // Si tiene opciones estáticas
+            $options = $campo['opciones'] ?? [];
+            $opts = '';
+            foreach ((array)$options as $key => $text) {
+                $sel = ((string)$valor === (string)$key) ? ' selected' : '';
+                $opts .= "<option value='".htmlspecialchars((string)$key, ENT_QUOTES, 'UTF-8')."'{$sel}>".htmlspecialchars((string)$text, ENT_QUOTES, 'UTF-8')."</option>";
+            }
+            return "<div class='form-group mb-2'>{$hLabel}<select name='{$hName}' class='form-control'{$disabled}{$attrStr}>{$opts}</select></div>";
         case 'selectdata':
+            // Si tiene data, renderiza el select vacío con atributo data-selectdata
+            if (!empty($campo['data'])) {
+                return "<div class='form-group mb-2'>{$hLabel}<select name='{$hName}' class='form-control' data-selectdata='" . htmlspecialchars(json_encode($campo['data']), ENT_QUOTES, 'UTF-8') . "'{$disabled}{$attrStr}></select></div>";
+            }
+            // Si tiene opciones estáticas
             $options = $campo['opciones'] ?? [];
             $opts = '';
             foreach ((array)$options as $key => $text) {

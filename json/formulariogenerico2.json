@@ -94,6 +94,22 @@
     "order": "CiuDes ASC"
   } },
 
+
+
+ { "nombre": "comuna_Id", "etiqueta": "Comuna (depende del país..)", "tipo": "select", "data-source": {
+    "tabla": "Comuna",
+    "campo_valor": "ComId",
+    "campo_etiqueta": "ComDes",
+    "filtro": "CidId={Ciudad_db}",
+    "order": "CiuDes ASC"
+  } },
+
+
+
+
+
+
+
         
         { "nombre": "habilidades", "etiqueta": "Habilidades (select2 múltiple)", "tipo": "select", "atributos": { "multiple": "multiple" }, "opciones": { "php": "PHP", "js": "JavaScript", "css": "CSS", "sql": "SQL", "react": "React" } },
         { "nombre": "acepta_notificaciones", "etiqueta": "Acepta recibir notificaciones (checkbox)", "tipo": "checkbox", "opciones": { "si": "" } },

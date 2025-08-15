@@ -204,5 +204,27 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script src="js/formulariodinamico.js"></script>
   <script src="js/formulariodinamico-float.js"></script>
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('select[data-source]').forEach(function(sel) {
+      let config;
+      try { config = JSON.parse(sel.getAttribute('data-source')); } catch(e){ config = null; }
+      if (!config || !config.tabla) return;
+
+      fetch('ajax/selectdata.php?tabla=' + encodeURIComponent(config.tabla) +
+            (config.campo_valor ? '&campo_valor=' + encodeURIComponent(config.campo_valor) : '') +
+            (config.campo_etiqueta ? '&campo_etiqueta=' + encodeURIComponent(config.campo_etiqueta) : '') +
+            (config.filtro ? '&filtro=' + encodeURIComponent(config.filtro) : '') +
+            (config.order ? '&order=' + encodeURIComponent(config.order) : ''))
+        .then(r => r.json())
+        .then(data => {
+          sel.innerHTML = '<option value="">Seleccione...</option>';
+          data.forEach(opt => {
+            sel.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
+          });
+        });
+    });
+  });
+  </script>
 </body>
 </html>

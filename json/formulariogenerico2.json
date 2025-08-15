@@ -96,18 +96,13 @@
 
 
 
- { "nombre": "comuna_Id", "etiqueta": "Comuna (depende del país..)", "tipo": "select", "data-source": {
+ { "nombre": "comuna_Id", "etiqueta": "Comuna (depende del ciudad)", "tipo": "select", "data-source": {
     "tabla": "Comuna",
     "campo_valor": "ComId",
     "campo_etiqueta": "ComDes",
-    "filtro": "CidId={Ciudad_db}",
-    "order": "CiuDes ASC"
+    "filtro": "CiuId={ciudad_db}",
+    "order": "ComDes ASC"
   } },
-
-
-
-
-
 
 
         

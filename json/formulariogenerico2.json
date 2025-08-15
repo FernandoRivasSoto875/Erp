@@ -89,7 +89,7 @@
         { "nombre": "ciudad_db", "etiqueta": "Ciudad (depende del país..)", "tipo": "select", "data-source": {
     "tabla": "Ciudad",
     "campo_valor": "CiuId",
-    "campo_etiqueta": "CiuNDes",
+    "campo_etiqueta": "CiuDes",
     "filtro": "PaiId={pais_db}",
     "order": "CiuDes ASC"
   } },

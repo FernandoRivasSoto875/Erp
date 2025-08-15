@@ -96,13 +96,8 @@
           "etiqueta": "Producto",
           "columnas": [
             { "nombre": "producto", "etiqueta": "Producto", "tipo": "text" },
-            { "nombre": "precio", "etiqueta": "Precio", "tipo": "number", "atributos": { "class": "calculo-datatable" } },
-            { "nombre": "cantidad", "etiqueta": "Cantidad", "tipo": "number", "atributos": { "class": "calculo-datatable" } },
 
-
-
-
-   {
+  {
           "name": "ciudad_2",
           "label": "Ciudad data",
           "type": "selectdata",
@@ -115,6 +110,14 @@
         },
 
 
+
+            { "nombre": "precio", "etiqueta": "Precio", "tipo": "number", "atributos": { "class": "calculo-datatable" } },
+            { "nombre": "cantidad", "etiqueta": "Cantidad", "tipo": "number", "atributos": { "class": "calculo-datatable" } },
+
+          
+
+
+ 
 
 
 
@@ -332,8 +335,7 @@
         {
           "columns": [
             { "width": 3, "fieldset": "footer" },
-            { "width": 3, "fieldset": "footer" },
-            { "width": 3, "fieldset": "footer" },
+           
             { "width": 3, "fieldset": "footer_legal" }
           ]
         }

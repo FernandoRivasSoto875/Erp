@@ -1,3 +1,70 @@
+/* KEEP: Esquema base: layout, filas/columnas, alineación y responsividad (sin colores) */
+.row, .fd-row {
+  display: flex !important;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.col-md-3, .fd-col {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 25%;
+  flex: 0 0 25%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+.col-md-4 { flex: 0 0 33.3333%; max-width: 33.3333%; }
+.col-md-5 { flex: 0 0 41.6667%; max-width: 41.6667%; }
+.col-md-6 { flex: 0 0 50%; max-width: 50%; }
+.col-md-7 { flex: 0 0 58.3333%; max-width: 58.3333%; }
+.col-md-8 { flex: 0 0 66.6667%; max-width: 66.6667%; }
+.col-md-9 { flex: 0 0 75%; max-width: 75%; }
+.col-md-10 { flex: 0 0 83.3333%; max-width: 83.3333%; }
+.col-md-11 { flex: 0 0 91.6667%; max-width: 91.6667%; }
+.col-md-12 { flex: 0 0 100%; max-width: 100%; }
+.fd-fieldset {
+  width: 100%;
+}
+  .fd-fieldset textarea,
+  .fd-fieldset input,
+  .fd-fieldset select {
+    max-width: 340px;
+    width: 100%;
+    min-width: 120px;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+    display: block;
+    font-size: 0.98em;
+    padding: 0.35em 0.7em;
+    border-radius: 8px;
+    transition: box-shadow 0.2s, border-color 0.2s;
+  }
+/* Etiquetas compactas y con icono */
+.fd-fieldset label {
+  font-size: 0.97em;
+  font-weight: 500;
+  margin-bottom: 0.25em;
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  justify-content: flex-start;
+  min-width: 120px;
+}
+/* Ajuste para label y campo en la misma línea en controles tipo select, input, combobox */
+.fd-fieldset .fd-label-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin-bottom: 0.25em;
+}
+.fd-fieldset .fd-label-inline select,
+.fd-fieldset .fd-label-inline input,
+.fd-fieldset .fd-label-inline .form-control {
+  margin-left: 0.5em;
+  margin-bottom: 0 !important;
+  vertical-align: middle;
+}
 /* Style: Black & Gold Premium (negro y dorado premium) */
 html, body {
   width: 100%;

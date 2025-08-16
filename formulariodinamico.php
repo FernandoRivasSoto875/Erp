@@ -1,4 +1,5 @@
 <?php
+// Vista principal del formulario dinámico. Orquesta la carga del JSON y el renderizado visual.
 /*
 COPILOT_PROMPT (Lineamientos y requisitos para cualquier cambio en este archivo)
 AJUSTE DE ALINEACIÓN ENTRE TÍTULOS Y CAMPOS:
@@ -106,16 +107,18 @@ Validaciones y consistencia:
 Resumen:
 Este bloque complementa el prompt principal, detallando requisitos para rediseño en tiempo de ejecución por el usuario final. Mantener estricta separación de responsabilidades, UX moderna y edición visual/estructural robusta, sin perder ninguna funcionalidad existente.
 */
+// Incluye helpers de renderizado y lógica adicional
 require_once __DIR__ . '/formulariodinamicofunciones.php';
 require_once __DIR__ . '/formulariodinamicologica.php';
 
 // --- CARGA JSON FUENTE Y VARIABLES PRINCIPALES ---
-$archivo_base = $_GET['json'] ?? $_POST['json'] ?? 'formulariogenerico2.json';
+// Carga el JSON fuente y extrae variables principales
+$archivo_base = $_GET['json'] ?? $_POST['json'] ?? 'formulariogenerico2.json'; // Determina el archivo JSON a usar
 $json_path = __DIR__ . '/json/' . $archivo_base;
 $json_data = [];
 if (file_exists($json_path)) {
-  $json_raw = file_get_contents($json_path);
-  $json_data = json_decode($json_raw, true);
+  $json_raw = file_get_contents($json_path); // Lee el archivo JSON
+  $json_data = json_decode($json_raw, true); // Decodifica el JSON
   if (json_last_error() !== JSON_ERROR_NONE) {
     $json_data = [];
   }
@@ -123,6 +126,7 @@ if (file_exists($json_path)) {
   $json_data = [];
 }
 
+// Extrae parámetros y configuraciones del JSON
 $parametros = $json_data['parametros'] ?? [];
 $fieldsets = $json_data['fieldsets'] ?? [];
 $layout = $json_data['layout'] ?? [];
@@ -134,6 +138,7 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
 <body class="<?= $modoDiseno ? 'fd-design-mode' : '' ?>">
   <!-- Hoja de estilos principal del formulario dinámico -->
   <?php
+    // Determina la hoja de estilos principal a usar
     $cssDefault = $parametros['CssDefault'] ?? 'formulariodinamico.css';
     $cssPath = 'css/' . $cssDefault;
     if (!file_exists(__DIR__ . '/css/' . $cssDefault)) {
@@ -170,12 +175,14 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
       <div class="fd-form-area">
         <form id="formulariodinamico" data-layout-container class="mb-4">
           <?php
+          // Renderiza el layout y los fieldsets usando el helper PHP
           $layout = is_array($layout) ? $layout : [];
           $fieldsets = is_array($fieldsets) ? $fieldsets : [];
           echo fd_render_layout_fallback($layout, $fieldsets);
           ?>
           <div class="mt-3">
             <?php 
+            // Renderiza los botones configurados en el JSON
             $botones_config = is_array($botones_config) ? $botones_config : [];
             foreach ($botones_config as $b):
               $txt    = htmlspecialchars($b['texto'] ?? 'Botón');
@@ -194,16 +201,17 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
   </div>
 
   <!-- Contenedor del árbol y nodo de datos -->
+  <!-- Contenedor para el árbol JSON y el nodo de datos -->
   <div id="fd-json-tree-app" class="<?= $modoDiseno ? '' : 'd-none' ?>" data-tree-app></div>
   <div id="fd-data"
        data-json-file="<?= htmlspecialchars($archivo_base ?? 'formulariogenerico2.json') ?>"
        data-form-json='<?= htmlspecialchars(json_encode($json_data ?? [], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES), ENT_QUOTES | ENT_SUBSTITUTE, "UTF-8") ?>'></div>
 
   <!-- Scripts requeridos -->
+  <!-- Scripts requeridos para render y diseño -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script src="js/formulariodinamico.js"></script>
   <script src="js/formulariodinamico-init.js"></script>
- 
 </body>
 </html>

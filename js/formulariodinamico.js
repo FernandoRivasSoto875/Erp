@@ -59,7 +59,6 @@ function renderForm(json, containerId = 'formulariodinamico') {
                 colDiv.appendChild(renderFieldsetRec(json.fieldsets[col.fieldset]));
               } else if (col.campo && json.fieldsets) {
                 // Buscar el campo por nombre en todos los fieldsets
-                let found = false;
                 Object.values(json.fieldsets).forEach(fs => {
                   if (fs.campos && Array.isArray(fs.campos)) {
                     fs.campos.forEach(field => {
@@ -98,6 +97,7 @@ function renderForm(json, containerId = 'formulariodinamico') {
           tabDiv.appendChild(rowDiv);
         });
       }
+                        if (field.tipo === 'datatable') {
       container.appendChild(tabDiv);
     });
   } else {
@@ -277,7 +277,6 @@ function renderField(field) {
     }
     return el;
   }
-// Renderiza campo tipo embevido (iframe)
 function renderEmbevido(field) {
   const url = field.url_embebido || '';
   const params = field.parametros_embebido || {};
@@ -325,6 +324,7 @@ function renderDatatable(field) {
   // Filtro avanzado
   if(field.filtro_avanzado === 'enable') {
     const btnFiltro = document.createElement('button');
+              // Buscar el campo por nombre en todos los fieldsets
     btnFiltro.textContent = 'Filtro Avanzado';
     btnFiltro.className = 'btn btn-secondary btn-sm';
     btnFiltro.onclick = function() {

@@ -234,11 +234,7 @@
             { "nombre": "col3", "etiqueta": "Columna 3", "tipo": "select", "opciones": { "a": "A", "b": "B" } }
           ]
         }
-        },
-          "busqueda_simple": "enable",
-          "filtro_avanzado": "enable",
-          "sumar_columnas": ["col2"],
-          "dataSource": { "tabla": "" }
+      ]
     },
     "header": {
       "titulo": "Cabecera",

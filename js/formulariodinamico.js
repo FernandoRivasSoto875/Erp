@@ -147,8 +147,11 @@ function renderDatatable(field) {
   const btnAdd = document.createElement('button');
   btnAdd.textContent = 'Agregar fila';
   btnAdd.className = 'btn btn-primary btn-sm mb-2';
+  // Local data array
+  if(!field._localData) field._localData = [];
   btnAdd.onclick = function() {
     const tr = document.createElement('tr');
+    const inputs = [];
     field.columnas.forEach(col => {
       const td = document.createElement('td');
       const input = document.createElement('input');
@@ -156,6 +159,7 @@ function renderDatatable(field) {
       input.className = 'form-control form-control-sm';
       td.appendChild(input);
       tr.appendChild(td);
+      inputs.push(input);
     });
     // Acciones
     const tdAcc = document.createElement('td');
@@ -163,7 +167,6 @@ function renderDatatable(field) {
     btnSave.textContent = 'Guardar';
     btnSave.className = 'btn btn-success btn-sm';
     btnSave.onclick = function() {
-      // Si hay tabla, guarda vía AJAX
       if(field.dataSource && field.dataSource.tabla){
         const datos = {};
         field.columnas.forEach((col, idx) => {
@@ -176,14 +179,82 @@ function renderDatatable(field) {
           if(resp.success) tr.remove();
         });
       } else {
-        // Local: solo elimina la fila de edición
-        tr.remove();
+        // Local: guarda en memoria y muestra en tabla
+        const rowData = {};
+        field.columnas.forEach((col, idx) => {
+          rowData[col.nombre] = inputs[idx].value;
+        });
+        field._localData.push(rowData);
+        renderLocalRows();
       }
+      tr.remove();
     };
     tdAcc.appendChild(btnSave);
     tr.appendChild(tdAcc);
     tbody.appendChild(tr);
   };
+
+  // Render local rows
+  function renderLocalRows() {
+    // Limpia tbody
+    tbody.innerHTML = '';
+    field._localData.forEach((row, rowIdx) => {
+      const tr = document.createElement('tr');
+      field.columnas.forEach(col => {
+        const td = document.createElement('td');
+        td.textContent = row[col.nombre] || '';
+        tr.appendChild(td);
+      });
+      // Acciones
+      const tdAcc = document.createElement('td');
+      const btnEdit = document.createElement('button');
+      btnEdit.textContent = 'Editar';
+      btnEdit.className = 'btn btn-warning btn-sm me-1';
+      btnEdit.onclick = function() {
+        // Editar: convierte celdas en inputs
+        tr.innerHTML = '';
+        const editInputs = [];
+        field.columnas.forEach(col => {
+          const td = document.createElement('td');
+          const input = document.createElement('input');
+          input.type = col.tipo || 'text';
+          input.className = 'form-control form-control-sm';
+          input.value = row[col.nombre] || '';
+          td.appendChild(input);
+          tr.appendChild(td);
+          editInputs.push(input);
+        });
+        const tdAccEdit = document.createElement('td');
+        const btnSaveEdit = document.createElement('button');
+        btnSaveEdit.textContent = 'Guardar';
+        btnSaveEdit.className = 'btn btn-success btn-sm';
+        btnSaveEdit.onclick = function() {
+          field.columnas.forEach((col, idx) => {
+            field._localData[rowIdx][col.nombre] = editInputs[idx].value;
+          });
+          renderLocalRows();
+        };
+        tdAccEdit.appendChild(btnSaveEdit);
+        tr.appendChild(tdAccEdit);
+      };
+      const btnDel = document.createElement('button');
+      btnDel.textContent = 'Eliminar';
+      btnDel.className = 'btn btn-danger btn-sm';
+      btnDel.onclick = function() {
+        field._localData.splice(rowIdx, 1);
+        renderLocalRows();
+      };
+      tdAcc.appendChild(btnEdit);
+      tdAcc.appendChild(btnDel);
+      tr.appendChild(tdAcc);
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Inicializa local si no hay tabla
+  if(!(field.dataSource && field.dataSource.tabla)) {
+    renderLocalRows();
+  }
 
   // Tabla
   const table = document.createElement('table');

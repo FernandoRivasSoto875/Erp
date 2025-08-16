@@ -1,3 +1,27 @@
+// Renderiza el formulario completo desde el JSON
+function renderForm(json, containerId = 'formulariodinamico') {
+  const container = document.getElementById(containerId);
+  if (!container || !json || !json.fieldsets) return;
+  container.innerHTML = '';
+  Object.values(json.fieldsets).forEach(fieldset => {
+    const fs = document.createElement('fieldset');
+    if (fieldset.titulo) {
+      const legend = document.createElement('legend');
+      legend.textContent = fieldset.titulo;
+      fs.appendChild(legend);
+    }
+    (fieldset.campos||[]).forEach(field => {
+      const fieldEl = renderField(field);
+      if (fieldEl) {
+        const wrap = document.createElement('div');
+        wrap.className = 'fd-field-wrapper mb-3';
+        wrap.appendChild(fieldEl);
+        fs.appendChild(wrap);
+      }
+    });
+    container.appendChild(fs);
+  });
+}
 /* MASTER_PROMPT_REFERENCE + PROMPT_MODO_DISENO
    Implementa Modo Diseño: al activarse muestra y monta el Árbol JSON y habilita controles.
    No elimina funcionalidades existentes; sólo complementa.

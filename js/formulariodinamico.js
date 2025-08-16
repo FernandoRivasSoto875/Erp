@@ -132,6 +132,12 @@ window.addEventListener('message', (e)=>{
 });
 
 document.addEventListener('DOMContentLoaded', function() {
+  // Renderiza el formulario principal
+  if(window.formularioJsonOriginal){
+    renderForm(window.formularioJsonOriginal, 'formulariodinamico');
+  }
+
+  // Renderiza selects con data-source
   document.querySelectorAll('select[data-source]').forEach(function(sel) {
     let config;
     try { config = JSON.parse(sel.getAttribute('data-source')); } catch(e){ config = null; }

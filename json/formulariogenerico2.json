@@ -209,7 +209,7 @@
             { "nombre": "col_texto", "etiqueta": "Columna Texto", "tipo": "text" },
             { "nombre": "col_numero", "etiqueta": "Columna Número", "tipo": "number" },
             { "nombre": "col_select", "etiqueta": "Columna Select", "tipo": "select", "opciones": { "a": "A", "b": "B" } },
-              { "nombre": "col_fecha", "etiqueta": "Columna Fecha", "tipo": "date" },
+            { "nombre": "col_fecha", "etiqueta": "Columna Fecha", "tipo": "date" },
             { "nombre": "col_checkbox", "etiqueta": "Columna Checkbox", "tipo": "checkbox", "opciones": { "si": "Sí", "no": "No" } }
           ] }
       ]

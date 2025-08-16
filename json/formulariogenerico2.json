@@ -58,7 +58,23 @@
     }
   },
   "fieldsets": {
-    "datos_personales": {
+  "datos_personales": {
+    "embevido_demo": {
+      "titulo": "Demo Embebido",
+      "campos": [
+        {
+          "nombre": "contenido_embebido",
+          "tipo": "embevido",
+          "etiqueta": "Contenido Embebido",
+          "url_embebido": "https://www.ejemplo.com/archivo.html",
+          "parametros_embebido": { "usuario": "123", "token": "abc" },
+          "alto": "400px",
+          "ancho": "100%",
+          "mostrar_borde": true,
+          "permitir_fullscreen": true
+        }
+      ]
+    },
       "titulo": "Datos Personales.......................",
       "campos": [
         { "nombre": "nombre_completo", "etiqueta": "Nombre Completo (text)", "tipo": "text", "placeholder": "Ingrese su nombre", "atributos": { "required": true } },
@@ -301,6 +317,12 @@
                 { "width": 6, "fieldset": "datos_contacto" }
               ]
             }
+          ]
+        },
+        {
+          "title": "Embebido",
+          "rows": [
+            { "columns": [ { "width": 12, "fieldset": "embevido_demo" } ] }
           ]
         },
         {

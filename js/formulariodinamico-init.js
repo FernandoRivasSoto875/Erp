@@ -62,3 +62,20 @@ document.addEventListener('DOMContentLoaded', function() {
   if(typeof w.$ === 'undefined'){ w.$ = (sel,root)=> (root||d).querySelector(sel); }
   if(typeof w.$all === 'undefined'){ w.$all = (sel,root)=> Array.from((root||d).querySelectorAll(sel)); }
 })(window,document);
+// 4. Inicialización del formulario dinámico desde JSON
+document.addEventListener('DOMContentLoaded', function() {
+  const dataDiv = document.getElementById('fd-data');
+  if (dataDiv) {
+    const jsonStr = dataDiv.getAttribute('data-form-json');
+    if (jsonStr) {
+      try {
+        window.formularioJsonOriginal = JSON.parse(jsonStr);
+        if (typeof renderForm === 'function') {
+          renderForm(window.formularioJsonOriginal, 'formulariodinamico');
+        }
+      } catch(e) {
+        console.error('Error al parsear JSON del formulario:', e);
+      }
+    }
+  }
+});

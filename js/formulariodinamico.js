@@ -166,6 +166,30 @@ function renderField(field) {
   if(field.tipo === 'datatable') {
     return renderDatatable(field);
   }
+  if(field.tipo === 'embevido') {
+    return renderEmbevido(field);
+  }
+// Renderiza campo tipo embevido (iframe)
+function renderEmbevido(field) {
+  const url = field.url_embebido || '';
+  const params = field.parametros_embebido || {};
+  const alto = field.alto || '400px';
+  const ancho = field.ancho || '100%';
+  const mostrarBorde = field.mostrar_borde ? '1px solid #ccc' : 'none';
+  const permitirFS = field.permitir_fullscreen ? 'allowfullscreen' : '';
+  // Construir query string
+  let urlFinal = url;
+  const paramStr = Object.keys(params).length ? '?' + Object.entries(params).map(([k,v])=>`${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&') : '';
+  if(url && paramStr) urlFinal += paramStr;
+  const iframe = document.createElement('iframe');
+  iframe.src = urlFinal;
+  iframe.style.width = ancho;
+  iframe.style.height = alto;
+  iframe.style.border = mostrarBorde;
+  if(permitirFS) iframe.setAttribute('allowfullscreen','true');
+  iframe.setAttribute('title', field.etiqueta || 'Contenido Embebido');
+  return iframe;
+}
   // ...otros tipos...
 }
 

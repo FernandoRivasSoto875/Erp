@@ -340,7 +340,7 @@ function renderDatatable(field) {
   // Cargar datos existentes si hay tabla
   if(field.dataSource && field.dataSource.tabla){
     fetch('ajax/datatable_crud.php?tabla=' + encodeURIComponent(field.dataSource.tabla) + '&action=list')
-      .then(r => r.json())
+      .then r => r.json())
       .then(resp => {
         (resp.data||[]).forEach(row => {
           const tr = document.createElement('tr');
@@ -380,6 +380,4 @@ function renderDatatable(field) {
   container.appendChild(table);
   return container;
 }
-// --- Fin sección datatable dinámica ---
-
-
+ 

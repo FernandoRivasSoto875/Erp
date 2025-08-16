@@ -59,36 +59,41 @@ function renderForm(json, containerId = 'formulariodinamico') {
                 colDiv.appendChild(renderFieldsetRec(json.fieldsets[col.fieldset]));
               } else if (col.campo && json.fieldsets) {
                 // Buscar el campo por nombre en todos los fieldsets
+                let found = false;
                 Object.values(json.fieldsets).forEach(fs => {
-                  if (fs.campos && Array.isArray(fs.campos)) {
-                    fs.campos.forEach(field => {
-                      if (field.nombre === col.campo) {
-                        const fieldEl = renderField(field);
-                        if (fieldEl) {
-                          // Diagnóstico visual para campos renderizados por layout
-                          let diag = null;
-                          if (field.tipo === 'datatable') {
-                            diag = document.createElement('div');
-                            diag.className = 'alert alert-info p-1 mb-1';
-                            diag.textContent = '[Diagnóstico] Renderizando campo tipo DATATABLE: ' + (field.nombre || field.etiqueta || 'sin nombre');
-                          } else if (field.tipo === 'embevido') {
-                            diag = document.createElement('div');
-                            diag.className = 'alert alert-info p-1 mb-1';
-                            diag.textContent = '[Diagnóstico] Renderizando campo tipo EMBEBIDO: ' + (field.nombre || field.etiqueta || 'sin nombre');
-                          }
-                          const wrap = document.createElement('div');
-                          wrap.className = 'fd-field-wrapper mb-3';
-                          if (diag) wrap.appendChild(diag);
-                          wrap.appendChild(fieldEl);
-                          colDiv.appendChild(wrap);
-                          found = true;
+                  const camposArr = Array.isArray(fs.campos) ? fs.campos : [];
+                  for (let i = 0; i < camposArr.length; i++) {
+                    const field = camposArr[i];
+                    if (field && typeof field === 'object' && field.nombre === col.campo) {
+                      const fieldEl = renderField(field);
+                      if (fieldEl) {
+                        // Diagnóstico visual para campos tipo datatable y embebido
+                        let diag = null;
+                        if (field.tipo === 'datatable') {
+                          diag = document.createElement('div');
+                          diag.className = 'alert alert-info p-1 mb-1';
+                          diag.textContent = '[Diagnóstico] Renderizando campo tipo DATATABLE: ' + (field.nombre || field.etiqueta || 'sin nombre');
+                          alert(diag.textContent);
+                        } else if (field.tipo === 'embevido') {
+                          diag = document.createElement('div');
+                          diag.className = 'alert alert-info p-1 mb-1';
+                          diag.textContent = '[Diagnóstico] Renderizando campo tipo EMBEBIDO: ' + (field.nombre || field.etiqueta || 'sin nombre');
+                          alert(diag.textContent);
                         }
+                        const wrap = document.createElement('div');
+                        wrap.className = 'fd-field-wrapper mb-3';
+                        if (diag) wrap.appendChild(diag);
+                        wrap.appendChild(fieldEl);
+                        colDiv.appendChild(wrap);
+                        found = true;
                       }
-                    });
+                    }
                   }
                 });
                 if (!found) {
-                  colDiv.appendChild(document.createElement('div')).innerHTML = '<div class="alert alert-warning">Campo no encontrado: ' + col.campo + '</div>';
+                  const warnDiv = document.createElement('div');
+                  warnDiv.innerHTML = '<div class="alert alert-warning">Campo no encontrado: ' + col.campo + '</div>';
+                  colDiv.appendChild(warnDiv);
                 }
               }
               rowDiv.appendChild(colDiv);
@@ -97,7 +102,6 @@ function renderForm(json, containerId = 'formulariodinamico') {
           tabDiv.appendChild(rowDiv);
         });
       }
-                        if (field.tipo === 'datatable') {
       container.appendChild(tabDiv);
     });
   } else {

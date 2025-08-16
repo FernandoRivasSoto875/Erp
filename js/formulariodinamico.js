@@ -66,8 +66,20 @@ function renderForm(json, containerId = 'formulariodinamico') {
                       if (field.nombre === col.campo) {
                         const fieldEl = renderField(field);
                         if (fieldEl) {
+                          // Diagnóstico visual para campos renderizados por layout
+                          let diag = null;
+                          if (field.tipo === 'datatable') {
+                            diag = document.createElement('div');
+                            diag.className = 'alert alert-info p-1 mb-1';
+                            diag.textContent = '[Diagnóstico] Renderizando campo tipo DATATABLE: ' + (field.nombre || field.etiqueta || 'sin nombre');
+                          } else if (field.tipo === 'embevido') {
+                            diag = document.createElement('div');
+                            diag.className = 'alert alert-info p-1 mb-1';
+                            diag.textContent = '[Diagnóstico] Renderizando campo tipo EMBEBIDO: ' + (field.nombre || field.etiqueta || 'sin nombre');
+                          }
                           const wrap = document.createElement('div');
                           wrap.className = 'fd-field-wrapper mb-3';
+                          if (diag) wrap.appendChild(diag);
                           wrap.appendChild(fieldEl);
                           colDiv.appendChild(wrap);
                           found = true;

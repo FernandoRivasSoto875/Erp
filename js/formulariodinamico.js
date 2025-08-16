@@ -36,9 +36,40 @@ function renderForm(json, containerId = 'formulariodinamico') {
     }
     return fs;
   }
-  Object.values(json.fieldsets).forEach(fieldset => {
-    container.appendChild(renderFieldsetRec(fieldset));
-  });
+  // Renderizar fieldsets según layout si existe
+  if (json.layout && json.layout.main && json.layout.main.tabs) {
+    json.layout.main.tabs.forEach(tab => {
+      const tabDiv = document.createElement('div');
+      tabDiv.className = 'fd-tab-content mb-4';
+      if (tab.title) {
+        const tabTitle = document.createElement('h5');
+        tabTitle.textContent = tab.title;
+        tabDiv.appendChild(tabTitle);
+      }
+      if (tab.rows) {
+        tab.rows.forEach(row => {
+          const rowDiv = document.createElement('div');
+          rowDiv.className = 'row';
+          if (row.columns) {
+            row.columns.forEach(col => {
+              const colDiv = document.createElement('div');
+              colDiv.className = 'col-' + (col.width || 12);
+              if (col.fieldset && json.fieldsets[col.fieldset]) {
+                colDiv.appendChild(renderFieldsetRec(json.fieldsets[col.fieldset]));
+              }
+              rowDiv.appendChild(colDiv);
+            });
+          }
+          tabDiv.appendChild(rowDiv);
+        });
+      }
+      container.appendChild(tabDiv);
+    });
+  } else {
+    Object.values(json.fieldsets).forEach(fieldset => {
+      container.appendChild(renderFieldsetRec(fieldset));
+    });
+  }
 }
 /* MASTER_PROMPT_REFERENCE + PROMPT_MODO_DISENO
    Implementa Modo Diseño: al activarse muestra y monta el Árbol JSON y habilita controles.

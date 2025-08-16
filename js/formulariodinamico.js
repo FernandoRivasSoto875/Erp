@@ -182,10 +182,26 @@ document.addEventListener('DOMContentLoaded', function() {
 function renderField(field) {
   // ...otros tipos...
   if(field.tipo === 'datatable') {
-    return renderDatatable(field);
+    const el = renderDatatable(field);
+    // Diagnóstico visual
+    const diag = document.createElement('div');
+    diag.className = 'alert alert-info p-1 mb-1';
+    diag.textContent = '[Diagnóstico] Renderizando campo tipo DATATABLE: ' + (field.nombre || field.etiqueta || 'sin nombre');
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(diag);
+    wrapper.appendChild(el);
+    return wrapper;
   }
   if(field.tipo === 'embevido') {
-    return renderEmbevido(field);
+    const el = renderEmbevido(field);
+    // Diagnóstico visual
+    const diag = document.createElement('div');
+    diag.className = 'alert alert-info p-1 mb-1';
+    diag.textContent = '[Diagnóstico] Renderizando campo tipo EMBEBIDO: ' + (field.nombre || field.etiqueta || 'sin nombre');
+    const wrapper = document.createElement('div');
+    wrapper.appendChild(diag);
+    wrapper.appendChild(el);
+    return wrapper;
   }
 // Renderiza campo tipo embevido (iframe)
 function renderEmbevido(field) {

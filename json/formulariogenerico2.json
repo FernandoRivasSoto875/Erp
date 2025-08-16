@@ -60,19 +60,20 @@
   },
   "fieldsets": {
   "embevido_demo": {
-    "titulo": "Demo Embebido",
-      {
-        "nombre": "contenido_embebido",
-        "tipo": "embevido",
-        "etiqueta": "Contenido Embebido",
-        "url_embebido": "https://www.linkedin.com/notifications/?filter=all",
-        "parametros_embebido": { "usuario": "123", "token": "abc" },
-        "alto": "400px",
-        "ancho": "100%",
-        "mostrar_borde": true,
-        "permitir_fullscreen": true
-      }
-    ]
+      "titulo": "Demo Embebido",
+      "campos": [
+        {
+          "nombre": "contenido_embebido",
+          "tipo": "embevido",
+          "etiqueta": "Contenido Embebido",
+          "url_embebido": "https://www.linkedin.com/notifications/?filter=all",
+          "parametros_embebido": { "usuario": "123", "token": "abc" },
+          "alto": "400px",
+          "ancho": "100%",
+          "mostrar_borde": true,
+          "permitir_fullscreen": true
+        }
+      ]
   },
   "datos_personales": {
     "titulo": "Datos Personales",

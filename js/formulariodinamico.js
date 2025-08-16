@@ -250,24 +250,32 @@ function renderField(field) {
   if(field.tipo === 'datatable') {
     const el = renderDatatable(field);
     // Diagnóstico visual
-    const diag = document.createElement('div');
-    diag.className = 'alert alert-info p-1 mb-1';
-    diag.textContent = '[Diagnóstico] Renderizando campo tipo DATATABLE: ' + (field.nombre || field.etiqueta || 'sin nombre');
-    const wrapper = document.createElement('div');
-    wrapper.appendChild(diag);
-    wrapper.appendChild(el);
-    return wrapper;
+    if (!el.__diagnosticAdded) {
+      const diag = document.createElement('div');
+      diag.className = 'alert alert-info p-1 mb-1';
+      diag.textContent = '[Diagnóstico] Renderizando campo tipo DATATABLE: ' + (field.nombre || field.etiqueta || 'sin nombre');
+      el.__diagnosticAdded = true;
+      const wrapper = document.createElement('div');
+      wrapper.appendChild(diag);
+      wrapper.appendChild(el);
+      return wrapper;
+    }
+    return el;
   }
   if(field.tipo === 'embevido') {
     const el = renderEmbevido(field);
     // Diagnóstico visual
-    const diag = document.createElement('div');
-    diag.className = 'alert alert-info p-1 mb-1';
-    diag.textContent = '[Diagnóstico] Renderizando campo tipo EMBEBIDO: ' + (field.nombre || field.etiqueta || 'sin nombre');
-    const wrapper = document.createElement('div');
-    wrapper.appendChild(diag);
-    wrapper.appendChild(el);
-    return wrapper;
+    if (!el.__diagnosticAdded) {
+      const diag = document.createElement('div');
+      diag.className = 'alert alert-info p-1 mb-1';
+      diag.textContent = '[Diagnóstico] Renderizando campo tipo EMBEBIDO: ' + (field.nombre || field.etiqueta || 'sin nombre');
+      el.__diagnosticAdded = true;
+      const wrapper = document.createElement('div');
+      wrapper.appendChild(diag);
+      wrapper.appendChild(el);
+      return wrapper;
+    }
+    return el;
   }
 // Renderiza campo tipo embevido (iframe)
 function renderEmbevido(field) {

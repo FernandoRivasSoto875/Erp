@@ -461,5 +461,4 @@ function renderDatatable(field) {
   container.appendChild(table);
   return container;
 }
-
 window.renderForm = renderForm;

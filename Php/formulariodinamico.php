@@ -1,6 +1,36 @@
 <?<?php
 /*
+
 COPILOT_PROMPT (Lineamientos y requisitos para cualquier cambio en este archivo)
+
+NUEVA FUNCIONALIDAD: Campo tipo "embevido"
+-------------------------------------------
+Debe permitir agregar un campo con:
+  - "tipo": "embevido"
+  - "etiqueta": "Contenido Embebido"
+  - "url_embebido": URL o ruta local del recurso a mostrar (página web, archivo HTML, archivo local)
+  - "parametros_embebido": objeto con parámetros clave-valor que se enviarán al recurso embebido (por ejemplo, como query string)
+  - "alto": altura en px o % (opcional)
+  - "ancho": ancho en px o % (opcional)
+  - "mostrar_borde": booleano (opcional, para mostrar borde en el iframe)
+  - "permitir_fullscreen": booleano (opcional, para permitir pantalla completa)
+
+El render debe crear un <iframe> con la URL y parámetros, aplicar alto/ancho, borde y fullscreen según las propiedades.
+
+Ejemplo de campo en el JSON:
+{
+  "nombre": "contenido_embebido",
+  "tipo": "embevido",
+  "etiqueta": "Contenido Embebido",
+  "url_embebido": "https://www.ejemplo.com/archivo.html",
+  "parametros_embebido": { "usuario": "123", "token": "abc" },
+  "alto": "400px",
+  "ancho": "100%",
+  "mostrar_borde": true,
+  "permitir_fullscreen": true
+}
+
+Esta funcionalidad debe estar soportada en el renderizador JS y en el JSON.
 
 Objetivo:
 Mantener este archivo SOLO como orquestador (vista): carga JSON, pasa datos a helpers y pinta HTML mínimo.

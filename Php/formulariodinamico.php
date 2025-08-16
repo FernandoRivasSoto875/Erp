@@ -32,12 +32,66 @@ Ejemplo de campo en el JSON:
 
 Esta funcionalidad debe estar soportada en el renderizador JS y en el JSON.
 
+NUEVA PROPIEDAD: FormularioDataSourcePrincipal en 'parametros' del JSON
+-----------------------------------------------------------------------
+Agrega la propiedad "FormularioDataSourcePrincipal" dentro del objeto "parametros" del JSON principal.
+Su función es definir el modo de operación del formulario:
+  - Si está vacía (""): el formulario es de entrada de datos libre, no interactúa con la base de datos.
+  - Si contiene un valor (por ejemplo, "Cliente"): el formulario interactúa directamente con la base de datos indicada.
+Esto permite distinguir si el formulario debe operar en modo libre o vinculado a una entidad de BD.
+
+Ejemplo en el JSON:
+"parametros": {
+  ...
+  "FormularioDataSourcePrincipal": "Cliente"
+}
+
+El render y la lógica deben respetar este comportamiento.
+
 Objetivo:
 Mantener este archivo SOLO como orquestador (vista): carga JSON, pasa datos a helpers y pinta HTML mínimo.
 NO agregar aquí: lógica de negocio, funciones PHP nuevas, CSS inline, ni JS inline.
 
 Ubicación de cada tipo de código:
-- Lógica / helpers PHP existentes o nuevos: formulariodinamicofunciones.php (o archivo inc separado si crece).
+
+
+NUEVA FUNCIONALIDAD: Campo tipo "datatable"
+-------------------------------------------
+Debe permitir agregar un campo con:
+  - "tipo": "datatable"
+  - "etiqueta": "Datatable"
+  - "columnas": array de columnas (cada una con nombre, etiqueta, tipo, opciones, etc.)
+  - "busqueda_simple": "enable" para mostrar búsqueda rápida
+  - "filtro_avanzado": "enable" para mostrar filtros avanzados
+  - "sumar_columnas": array con nombres de columnas a sumar
+  - "dataSource": objeto con "tabla" (opcional, si se conecta a BD)
+
+Requisitos:
+- El datatable debe funcionar con todas sus funcionalidades (CRUD, búsqueda, filtro, suma) y mostrar controles siempre, sin importar si tiene "tabla" asociada.
+- Si "dataSource.tabla" está vacío o no definido, el datatable debe funcionar como formulario libre, permitiendo al usuario agregar, editar y eliminar filas manualmente.
+- Si "dataSource.tabla" está definido, debe cargar y sincronizar datos con la BD.
+- Las columnas pueden ser de cualquier tipo soportado (text, number, select, date, checkbox, etc.).
+- La suma de columnas debe calcularse y mostrarse en el pie del datatable.
+- El render JS debe soportar ambos modos (libre y BD) sin perder funcionalidad.
+
+Ejemplo de campo en el JSON:
+{
+  "nombre": "detalle_productos",
+  "tipo": "datatable",
+  "etiqueta": "Producto",
+  "busqueda_simple": "enable",
+  "filtro_avanzado": "enable",
+  "sumar_columnas": ["precio", "cantidad"],
+  "columnas": [
+    { "nombre": "producto", "etiqueta": "Producto", "tipo": "text" },
+    { "nombre": "precio", "etiqueta": "Precio", "tipo": "number" },
+    { "nombre": "cantidad", "etiqueta": "Cantidad", "tipo": "number" },
+    { "nombre": "total_linea", "etiqueta": "Total", "tipo": "number" }
+  ],
+  "dataSource": { "tabla": "" }
+}
+
+Esta funcionalidad debe estar soportada en el renderizador JS y en el JSON.
 - Lógica específica adicional (validaciones, serialización, etc.): formulariodinamicologica.php (si aplica).
 - JavaScript (cualquier nuevo comportamiento): js/formulariodinamico.js (extender sin borrar funciones que ya funcionen).
 - Estilos / diseño: css/formulariodinamico.css.

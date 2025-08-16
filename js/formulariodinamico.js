@@ -215,6 +215,34 @@ function renderDatatable(field) {
   const container = document.createElement('div');
   container.className = 'fd-datatable-container mb-3';
 
+  // Controles de búsqueda y filtro avanzado
+  const controlsRow = document.createElement('div');
+  controlsRow.className = 'd-flex gap-2 mb-2';
+  // Búsqueda simple
+  if(field.busqueda_simple === 'enable') {
+    const inputSearch = document.createElement('input');
+    inputSearch.type = 'text';
+    inputSearch.className = 'form-control form-control-sm';
+    inputSearch.placeholder = 'Buscar...';
+    inputSearch.oninput = function() {
+      const term = inputSearch.value.toLowerCase();
+      Array.from(tbody.children).forEach(tr => {
+        tr.style.display = Array.from(tr.children).some(td => td.textContent.toLowerCase().includes(term)) ? '' : 'none';
+      });
+    };
+    controlsRow.appendChild(inputSearch);
+  }
+  // Filtro avanzado
+  if(field.filtro_avanzado === 'enable') {
+    const btnFiltro = document.createElement('button');
+    btnFiltro.textContent = 'Filtro Avanzado';
+    btnFiltro.className = 'btn btn-secondary btn-sm';
+    btnFiltro.onclick = function() {
+      alert('Aquí puedes implementar el filtro avanzado personalizado.');
+    };
+    controlsRow.appendChild(btnFiltro);
+  }
+
   // Tabla
   const table = document.createElement('table');
   table.className = 'table table-bordered table-sm';
@@ -331,6 +359,7 @@ function renderDatatable(field) {
   }
 
   container.appendChild(btnAdd);
+    container.appendChild(controlsRow);
   container.appendChild(table);
   return container;
 }

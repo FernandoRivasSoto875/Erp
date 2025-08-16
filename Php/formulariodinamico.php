@@ -137,7 +137,7 @@ if (!function_exists('fd_render_layout_fallback')) {
     <div class="fd-shell">
       <div class="fd-form-area">
         <form id="formulariodinamico" data-layout-container class="mb-4">
-          <?= fd_render_layout_fallback($layout, $fieldsets); ?>
+          <div id="formulariodinamico"></div>
           <div class="mt-3">
             <?php foreach ($botones_config as $b):
               $txt    = htmlspecialchars($b['texto'] ?? 'Botón');
@@ -163,7 +163,17 @@ if (!function_exists('fd_render_layout_fallback')) {
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script src="js/formulariodinamico.js"></script>
   <script src="js/formulariodinamico-float.js"></script>
+  <script>
+    // Carga el JSON desde el atributo data-form-json
+    (function(){
+      var fdData = document.getElementById('fd-data');
+      if(fdData && fdData.getAttribute('data-form-json')){
+        try {
+          window.formularioJsonOriginal = JSON.parse(fdData.getAttribute('data-form-json'));
+        } catch(e){ window.formularioJsonOriginal = {}; }
+      }
+    })();
+  </script>
 </body>
 </html>
 php
-// ...existing code...

@@ -2,6 +2,11 @@
 function renderForm(json, containerId = 'formulariodinamico') {
   const container = document.getElementById(containerId);
   if (!container || !json || !json.fieldsets) return;
+  // Validación de estructura básica
+  if (typeof json.fieldsets !== 'object' || Array.isArray(json.fieldsets)) {
+    container.innerHTML = '<div class="alert alert-danger">Error: El JSON no tiene la estructura esperada en fieldsets.</div>';
+    return;
+  }
   container.innerHTML = '';
   function renderFieldsetRec(fieldset) {
     const fs = document.createElement('fieldset');
@@ -11,6 +16,10 @@ function renderForm(json, containerId = 'formulariodinamico') {
       fs.appendChild(legend);
     }
     if (fieldset.campos) {
+      if (!Array.isArray(fieldset.campos)) {
+        fs.appendChild(document.createElement('div')).innerHTML = '<div class="alert alert-warning">Error: El fieldset no tiene un array de campos.</div>';
+        return fs;
+      }
       fieldset.campos.forEach(field => {
         if (field.tipo === 'fieldset' && field.fieldset_ref && json.fieldsets[field.fieldset_ref]) {
           fs.appendChild(renderFieldsetRec(json.fieldsets[field.fieldset_ref]));

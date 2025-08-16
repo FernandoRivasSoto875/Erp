@@ -54,8 +54,31 @@ function renderForm(json, containerId = 'formulariodinamico') {
             row.columns.forEach(col => {
               const colDiv = document.createElement('div');
               colDiv.className = 'col-' + (col.width || 12);
+              // Soporte para 'fieldset' y 'campo' en layout
               if (col.fieldset && json.fieldsets[col.fieldset]) {
                 colDiv.appendChild(renderFieldsetRec(json.fieldsets[col.fieldset]));
+              } else if (col.campo && json.fieldsets) {
+                // Buscar el campo por nombre en todos los fieldsets
+                let found = false;
+                Object.values(json.fieldsets).forEach(fs => {
+                  if (fs.campos && Array.isArray(fs.campos)) {
+                    fs.campos.forEach(field => {
+                      if (field.nombre === col.campo) {
+                        const fieldEl = renderField(field);
+                        if (fieldEl) {
+                          const wrap = document.createElement('div');
+                          wrap.className = 'fd-field-wrapper mb-3';
+                          wrap.appendChild(fieldEl);
+                          colDiv.appendChild(wrap);
+                          found = true;
+                        }
+                      }
+                    });
+                  }
+                });
+                if (!found) {
+                  colDiv.appendChild(document.createElement('div')).innerHTML = '<div class="alert alert-warning">Campo no encontrado: ' + col.campo + '</div>';
+                }
               }
               rowDiv.appendChild(colDiv);
             });

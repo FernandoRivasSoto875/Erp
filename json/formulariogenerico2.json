@@ -333,7 +333,7 @@
           ]
         },
         {
-          "title": "Campos Variados",
+          "title": "Campos Varios",
           "rows": [
             { "columns": [ { "width": 12, "fieldset": "campos_variados" } ] }
           ]
@@ -351,7 +351,7 @@
           ]
         },
         {
-          "title": "Todos los Controles",
+          "title": "Controles",
           "rows": [
             { "columns": [ { "width": 12, "fieldset": "todos_los_controles" } ] }
           ]

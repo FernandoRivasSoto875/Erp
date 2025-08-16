@@ -202,16 +202,19 @@
         { "nombre": "campo_date", "etiqueta": "Fecha", "tipo": "date" },
         { "nombre": "campo_hidden", "tipo": "hidden", "valor_predeterminado": "oculto123" },
         { "nombre": "campo_select_multiple", "etiqueta": "Select Múltiple", "tipo": "select", "atributos": { "multiple": "multiple" }, "opciones": { "uno": "Uno", "dos": "Dos", "tres": "Tres" } },
-        { "nombre": "campo_datatable", "etiqueta": "Datatable (Mixto)", "tipo": "datatable", "busqueda_simple": "",
-          "filtro_avanzado": "",
-          "sumar_columnas": [],
+        { "nombre": "campo_datatable", "etiqueta": "Datatable (Mixto)", "tipo": "datatable",
+          "busqueda_simple": "enable",
+          "filtro_avanzado": "enable",
+          "sumar_columnas": ["col_numero"],
           "columnas": [
             { "nombre": "col_texto", "etiqueta": "Columna Texto", "tipo": "text" },
             { "nombre": "col_numero", "etiqueta": "Columna Número", "tipo": "number" },
             { "nombre": "col_select", "etiqueta": "Columna Select", "tipo": "select", "opciones": { "a": "A", "b": "B" } },
             { "nombre": "col_fecha", "etiqueta": "Columna Fecha", "tipo": "date" },
             { "nombre": "col_checkbox", "etiqueta": "Columna Checkbox", "tipo": "checkbox", "opciones": { "si": "Sí", "no": "No" } }
-          ] }
+          ],
+          "dataSource": { "tabla": "" }
+        }
       ]
     },
     "grupo_grilla_ejemplo": {
@@ -221,13 +224,21 @@
           "nombre": "grilla_ejemplo",
           "tipo": "datatable",
           "etiqueta": "Grilla de Ejemplo",
+          "busqueda_simple": "enable",
+          "filtro_avanzado": "enable",
+          "sumar_columnas": ["col2"],
+          "dataSource": { "tabla": "" },
           "columnas": [
             { "nombre": "col1", "etiqueta": "Columna 1", "tipo": "text" },
             { "nombre": "col2", "etiqueta": "Columna 2", "tipo": "number" },
             { "nombre": "col3", "etiqueta": "Columna 3", "tipo": "select", "opciones": { "a": "A", "b": "B" } }
           ]
         }
-      ]
+        },
+          "busqueda_simple": "enable",
+          "filtro_avanzado": "enable",
+          "sumar_columnas": ["col2"],
+          "dataSource": { "tabla": "" }
     },
     "header": {
       "titulo": "Cabecera",

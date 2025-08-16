@@ -1,5 +1,9 @@
 // Renderiza el formulario completo desde el JSON
 function renderForm(json, containerId = 'formulariodinamico') {
+}
+
+// Exponer la función en el global para depuración y pruebas manuales
+window.renderForm = renderForm;
   const container = document.getElementById(containerId);
   if (!container || !json || !json.fieldsets) return;
   // Validación de estructura básica

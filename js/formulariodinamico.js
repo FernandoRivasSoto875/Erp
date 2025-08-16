@@ -3,23 +3,32 @@ function renderForm(json, containerId = 'formulariodinamico') {
   const container = document.getElementById(containerId);
   if (!container || !json || !json.fieldsets) return;
   container.innerHTML = '';
-  Object.values(json.fieldsets).forEach(fieldset => {
+  function renderFieldsetRec(fieldset) {
     const fs = document.createElement('fieldset');
     if (fieldset.titulo) {
       const legend = document.createElement('legend');
       legend.textContent = fieldset.titulo;
       fs.appendChild(legend);
     }
-    (fieldset.campos||[]).forEach(field => {
-      const fieldEl = renderField(field);
-      if (fieldEl) {
-        const wrap = document.createElement('div');
-        wrap.className = 'fd-field-wrapper mb-3';
-        wrap.appendChild(fieldEl);
-        fs.appendChild(wrap);
-      }
-    });
-    container.appendChild(fs);
+    if (fieldset.campos) {
+      fieldset.campos.forEach(field => {
+        if (field.tipo === 'fieldset' && field.fieldset_ref && json.fieldsets[field.fieldset_ref]) {
+          fs.appendChild(renderFieldsetRec(json.fieldsets[field.fieldset_ref]));
+        } else {
+          const fieldEl = renderField(field);
+          if (fieldEl) {
+            const wrap = document.createElement('div');
+            wrap.className = 'fd-field-wrapper mb-3';
+            wrap.appendChild(fieldEl);
+            fs.appendChild(wrap);
+          }
+        }
+      });
+    }
+    return fs;
+  }
+  Object.values(json.fieldsets).forEach(fieldset => {
+    container.appendChild(renderFieldsetRec(fieldset));
   });
 }
 /* MASTER_PROMPT_REFERENCE + PROMPT_MODO_DISENO

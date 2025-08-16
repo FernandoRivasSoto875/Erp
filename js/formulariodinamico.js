@@ -128,6 +128,9 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
+// --- Sección: Renderizado y lógica dinámica para campos tipo "datatable" ---
+// Detecta campos con "tipo": "datatable" y arma una grilla dinámica con controles CRUD.
+
 function renderField(field) {
   // ...otros tipos...
   if(field.tipo === 'datatable') {
@@ -137,7 +140,6 @@ function renderField(field) {
 }
 
 function renderDatatable(field) {
-  // Crea contenedor
   const container = document.createElement('div');
   container.className = 'fd-datatable-container mb-3';
 
@@ -146,12 +148,11 @@ function renderDatatable(field) {
   btnAdd.textContent = 'Agregar fila';
   btnAdd.className = 'btn btn-primary btn-sm mb-2';
   btnAdd.onclick = function() {
-    // Lógica para agregar fila (puedes abrir un modal o agregar inputs en la tabla)
     const tr = document.createElement('tr');
     field.columnas.forEach(col => {
       const td = document.createElement('td');
       const input = document.createElement('input');
-      input.type = 'text';
+      input.type = col.tipo || 'text';
       input.className = 'form-control form-control-sm';
       td.appendChild(input);
       tr.appendChild(td);
@@ -162,8 +163,22 @@ function renderDatatable(field) {
     btnSave.textContent = 'Guardar';
     btnSave.className = 'btn btn-success btn-sm';
     btnSave.onclick = function() {
-      // Aquí puedes enviar los datos vía AJAX a datatable_crud.php?action=add
-      tr.remove();
+      // Si hay tabla, guarda vía AJAX
+      if(field.dataSource && field.dataSource.tabla){
+        const datos = {};
+        field.columnas.forEach((col, idx) => {
+          datos[col.nombre] = tr.children[idx].firstChild.value;
+        });
+        fetch('ajax/datatable_crud.php?tabla=' + encodeURIComponent(field.dataSource.tabla) + '&action=add', {
+          method: 'POST',
+          body: new URLSearchParams(datos)
+        }).then(r=>r.json()).then(resp=>{
+          if(resp.success) tr.remove();
+        });
+      } else {
+        // Local: solo elimina la fila de edición
+        tr.remove();
+      }
     };
     tdAcc.appendChild(btnSave);
     tr.appendChild(tdAcc);
@@ -188,42 +203,49 @@ function renderDatatable(field) {
   table.appendChild(thead);
   table.appendChild(tbody);
 
-  // Cargar datos existentes (AJAX)
-  fetch('ajax/datatable_crud.php?tabla=' + encodeURIComponent(field.dataSource?.tabla || field.nombre) + '&action=list')
-    .then(r => r.json())
-    .then(resp => {
-      (resp.data||[]).forEach(row => {
-        const tr = document.createElement('tr');
-        field.columnas.forEach(col => {
-          const td = document.createElement('td');
-          td.textContent = row[col.nombre] || '';
-          tr.appendChild(td);
+  // Cargar datos existentes si hay tabla
+  if(field.dataSource && field.dataSource.tabla){
+    fetch('ajax/datatable_crud.php?tabla=' + encodeURIComponent(field.dataSource.tabla) + '&action=list')
+      .then(r => r.json())
+      .then(resp => {
+        (resp.data||[]).forEach(row => {
+          const tr = document.createElement('tr');
+          field.columnas.forEach(col => {
+            const td = document.createElement('td');
+            td.textContent = row[col.nombre] || '';
+            tr.appendChild(td);
+          });
+          // Acciones
+          const tdAcc = document.createElement('td');
+          const btnEdit = document.createElement('button');
+          btnEdit.textContent = 'Editar';
+          btnEdit.className = 'btn btn-warning btn-sm me-1';
+          btnEdit.onclick = function() {
+            // Lógica para editar (puedes abrir modal o convertir celdas en inputs)
+          };
+          const btnDel = document.createElement('button');
+          btnDel.textContent = 'Eliminar';
+          btnDel.className = 'btn btn-danger btn-sm';
+          btnDel.onclick = function() {
+            fetch('ajax/datatable_crud.php?tabla=' + encodeURIComponent(field.dataSource.tabla) + '&action=delete', {
+              method: 'POST',
+              body: new URLSearchParams({ id: row.id })
+            }).then(r=>r.json()).then(resp=>{
+              if(resp.success) tr.remove();
+            });
+          };
+          tdAcc.appendChild(btnEdit);
+          tdAcc.appendChild(btnDel);
+          tr.appendChild(tdAcc);
+          tbody.appendChild(tr);
         });
-        // Acciones
-        const tdAcc = document.createElement('td');
-        const btnEdit = document.createElement('button');
-        btnEdit.textContent = 'Editar';
-        btnEdit.className = 'btn btn-warning btn-sm me-1';
-        btnEdit.onclick = function() {
-          // Lógica para editar (puedes abrir modal o convertir celdas en inputs)
-        };
-        const btnDel = document.createElement('button');
-        btnDel.textContent = 'Eliminar';
-        btnDel.className = 'btn btn-danger btn-sm';
-        btnDel.onclick = function() {
-          // Lógica para eliminar (AJAX a datatable_crud.php?action=delete)
-          tr.remove();
-        };
-        tdAcc.appendChild(btnEdit);
-        tdAcc.appendChild(btnDel);
-        tr.appendChild(tdAcc);
-        tbody.appendChild(tr);
       });
-    });
+  }
 
   container.appendChild(btnAdd);
   container.appendChild(table);
   return container;
 }
+// --- Fin sección datatable dinámica ---
 
 

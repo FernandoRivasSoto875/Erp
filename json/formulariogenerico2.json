@@ -258,6 +258,17 @@
       "campos": [
         { "nombre": "observaciones", "tipo": "textarea", "etiqueta": "Observaciones" }
       ]
+    },
+    "contenido_embebido": {
+      "nombre": "contenido_embebido",
+      "tipo": "embevido",
+      "etiqueta": "Contenido Embebido",
+      "url_embebido": "https://www.ejemplo.com/archivo.html",
+      "parametros_embebido": { "usuario": "123", "token": "abc" },
+      "alto": "400px",
+      "ancho": "100%",
+      "mostrar_borde": true,
+      "permitir_fullscreen": true
     }
   },
   "layout": {

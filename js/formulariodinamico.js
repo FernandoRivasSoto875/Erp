@@ -215,11 +215,28 @@ function renderDatatable(field) {
   const container = document.createElement('div');
   container.className = 'fd-datatable-container mb-3';
 
+  // Tabla
+  const table = document.createElement('table');
+  table.className = 'table table-bordered table-sm';
+  const thead = document.createElement('thead');
+  const tbody = document.createElement('tbody'); // <-- Crear tbody antes
+  const trHead = document.createElement('tr');
+  field.columnas.forEach(col => {
+    const th = document.createElement('th');
+    th.textContent = col.etiqueta || col.nombre;
+    trHead.appendChild(th);
+  });
+  const thAcc = document.createElement('th');
+  thAcc.textContent = 'Acciones';
+  trHead.appendChild(thAcc);
+  thead.appendChild(trHead);
+  table.appendChild(thead);
+  table.appendChild(tbody);
+
   // Botón agregar
   const btnAdd = document.createElement('button');
   btnAdd.textContent = 'Agregar fila';
   btnAdd.className = 'btn btn-primary btn-sm mb-2';
-  // Local data array
   if(!field._localData) field._localData = [];
   btnAdd.onclick = function() {
     const tr = document.createElement('tr');
@@ -239,26 +256,13 @@ function renderDatatable(field) {
     btnSave.textContent = 'Guardar';
     btnSave.className = 'btn btn-success btn-sm';
     btnSave.onclick = function() {
-      if(field.dataSource && field.dataSource.tabla){
-        const datos = {};
-        field.columnas.forEach((col, idx) => {
-          datos[col.nombre] = tr.children[idx].firstChild.value;
-        });
-        fetch('ajax/datatable_crud.php?tabla=' + encodeURIComponent(field.dataSource.tabla) + '&action=add', {
-          method: 'POST',
-          body: new URLSearchParams(datos)
-        }).then(r=>r.json()).then(resp=>{
-          if(resp.success) tr.remove();
-        });
-      } else {
-        // Local: guarda en memoria y muestra en tabla
-        const rowData = {};
-        field.columnas.forEach((col, idx) => {
-          rowData[col.nombre] = inputs[idx].value;
-        });
-        field._localData.push(rowData);
-        renderLocalRows();
-      }
+      // Local: guarda en memoria y muestra en tabla
+      const rowData = {};
+      field.columnas.forEach((col, idx) => {
+        rowData[col.nombre] = inputs[idx].value;
+      });
+      field._localData.push(rowData);
+      renderLocalRows();
       tr.remove();
     };
     tdAcc.appendChild(btnSave);
@@ -268,7 +272,6 @@ function renderDatatable(field) {
 
   // Render local rows
   function renderLocalRows() {
-    // Limpia tbody
     tbody.innerHTML = '';
     field._localData.forEach((row, rowIdx) => {
       const tr = document.createElement('tr');
@@ -283,7 +286,6 @@ function renderDatatable(field) {
       btnEdit.textContent = 'Editar';
       btnEdit.className = 'btn btn-warning btn-sm me-1';
       btnEdit.onclick = function() {
-        // Editar: convierte celdas en inputs
         tr.innerHTML = '';
         const editInputs = [];
         field.columnas.forEach(col => {
@@ -328,65 +330,7 @@ function renderDatatable(field) {
     renderLocalRows();
   }
 
-  // Tabla
-  const table = document.createElement('table');
-  table.className = 'table table-bordered table-sm';
-  const thead = document.createElement('thead');
-  const tbody = document.createElement('tbody');
-  const trHead = document.createElement('tr');
-  field.columnas.forEach(col => {
-    const th = document.createElement('th');
-    th.textContent = col.etiqueta || col.nombre;
-    trHead.appendChild(th);
-  });
-  const thAcc = document.createElement('th');
-  thAcc.textContent = 'Acciones';
-  trHead.appendChild(thAcc);
-  thead.appendChild(trHead);
-  table.appendChild(thead);
-  table.appendChild(tbody);
-
-  // Cargar datos existentes si hay tabla
-  if(field.dataSource && field.dataSource.tabla){
-    fetch('ajax/datatable_crud.php?tabla=' + encodeURIComponent(field.dataSource.tabla) + '&action=list')
-      .then r => r.json())
-      .then(resp => {
-        (resp.data||[]).forEach(row => {
-          const tr = document.createElement('tr');
-          field.columnas.forEach(col => {
-            const td = document.createElement('td');
-            td.textContent = row[col.nombre] || '';
-            tr.appendChild(td);
-          });
-          // Acciones
-          const tdAcc = document.createElement('td');
-          const btnEdit = document.createElement('button');
-          btnEdit.textContent = 'Editar';
-          btnEdit.className = 'btn btn-warning btn-sm me-1';
-          btnEdit.onclick = function() {
-            // Lógica para editar (puedes abrir modal o convertir celdas en inputs)
-          };
-          const btnDel = document.createElement('button');
-          btnDel.textContent = 'Eliminar';
-          btnDel.className = 'btn btn-danger btn-sm';
-          btnDel.onclick = function() {
-            fetch('ajax/datatable_crud.php?tabla=' + encodeURIComponent(field.dataSource.tabla) + '&action=delete', {
-              method: 'POST',
-              body: new URLSearchParams({ id: row.id })
-            }).then(r=>r.json()).then(resp=>{
-              if(resp.success) tr.remove();
-            });
-          };
-          tdAcc.appendChild(btnEdit);
-          tdAcc.appendChild(btnDel);
-          tr.appendChild(tdAcc);
-          tbody.appendChild(tr);
-        });
-      });
-  }
-
   container.appendChild(btnAdd);
   container.appendChild(table);
   return container;
 }
- 

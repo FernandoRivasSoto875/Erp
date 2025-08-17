@@ -238,8 +238,6 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
     echo '</div>'; // fd-shell
   echo '</div>'; // container-fluid
 
-  <!-- Contenedor del árbol y nodo de datos -->
-  <!-- Contenedor para el árbol JSON y el nodo de datos -->
   <?php
     // Contenedor del árbol y nodo de datos
     echo '<div id="fd-json-tree-app" class="'.($modoDiseno ? '' : 'd-none').'" data-tree-app></div>';

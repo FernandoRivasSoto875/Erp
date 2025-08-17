@@ -323,6 +323,7 @@ if (!function_exists('fd_render_fieldset_fallback')) {
             }
         } else {
             // Render simple si no hay layout
+                $html .= '<div class="alert alert-info">Diagnóstico: Fieldset <strong>'.htmlspecialchars($key).'</strong> contiene <strong>'.count($fields).'</strong> campos.</div>';
                 if (empty($fields)) {
                     $html .= '<div class="alert alert-warning">ADVERTENCIA: El fieldset <strong>'.htmlspecialchars($key).'</strong> no tiene campos definidos o está vacío.</div>';
                 } else {

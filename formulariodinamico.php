@@ -190,17 +190,15 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
 
     <div class="fd-shell">
       <div class="fd-form-area">
+        <?php
+        // Diagnóstico visual: ¿existen tabs en el HTML generado?
+        $hasTabs = false;
+        if (isset($layout['main']['type']) && $layout['main']['type'] === 'tabs') {
+          $hasTabs = true;
+        }
+        echo '<div class="alert alert-info mb-2"><strong>Diagnóstico PHP:</strong> ' . ($hasTabs ? 'Tabs HTML generados por PHP' : 'NO se generaron tabs en el HTML por PHP') . '</div>';
+        ?>
         <form id="formulariodinamico" data-layout-container class="mb-4">
-          <?php
-          // Diagnóstico visual: ¿existen tabs en el HTML generado?
-          ob_start();
-          $hasTabs = false;
-          if (isset($layout['main']['type']) && $layout['main']['type'] === 'tabs') {
-            $hasTabs = true;
-          }
-          echo '<div class="alert alert-info mb-2"><strong>Diagnóstico PHP:</strong> ' . ($hasTabs ? 'Tabs HTML generados por PHP' : 'NO se generaron tabs en el HTML por PHP') . '</div>';
-          echo ob_get_clean();
-          ?>
           <?php
           // Renderiza el layout y los fieldsets usando el helper PHP
           $layout = is_array($layout) ? $layout : [];

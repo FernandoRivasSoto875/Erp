@@ -1,5 +1,12 @@
 // Renderiza el formulario completo desde el JSON
 function renderForm(json, containerId = 'formulariodinamico') {
+  // Diagnóstico visual: estado de Bootstrap y tabs
+  var diagDiv = document.createElement('div');
+  diagDiv.className = 'alert alert-info mb-2';
+  var bsStatus = (window.bootstrap && window.bootstrap.Tab) ? 'Bootstrap 5 detectado' : 'Bootstrap 5 NO detectado';
+  var tabsStatus = container.querySelector('.nav-tabs') ? 'Tabs HTML detectados' : 'Tabs HTML NO detectados';
+  diagDiv.innerHTML = '<strong>Diagnóstico:</strong> ' + bsStatus + ' | ' + tabsStatus;
+  container.prepend(diagDiv);
   const container = document.getElementById(containerId);
   if (!container || !json || !json.fieldsets) return;
   // Si ya existen tabs generados por PHP, solo inicializar interactividad

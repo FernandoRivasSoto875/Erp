@@ -19,6 +19,7 @@ El render debe crear un <iframe> con la URL y parámetros, aplicar alto/ancho, b
 Ejemplo de campo en el JSON:
 {
   "nombre": "contenido_embebido",
+  "kkk"
   "tipo": "embevido",
   "etiqueta": "Contenido Embebido",
   "url_embebido": "https://www.ejemplo.com/archivo.html",

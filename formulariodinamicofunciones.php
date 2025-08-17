@@ -84,6 +84,19 @@ function generarCampo($campo, $valor, $soloLectura): string {
         $attrStr = ' ' . $attrStr;
     }
     switch ($tipo) {
+        case 'embevido':
+            // Renderizar iframe embebido
+            $url = $campo['url_embebido'] ?? $campo['url'] ?? '';
+            $alto = $campo['alto'] ?? '400px';
+            $ancho = $campo['ancho'] ?? '100%';
+            $borde = !empty($campo['mostrar_borde']) ? '1' : '0';
+            $fullscreen = !empty($campo['permitir_fullscreen']) ? 'allowfullscreen' : '';
+            $params = $campo['parametros_embebido'] ?? [];
+            if (!empty($params) && is_array($params)) {
+                $url .= (strpos($url, '?') === false ? '?' : '&') . http_build_query($params);
+            }
+            $iframe = "<iframe src='".htmlspecialchars($url, ENT_QUOTES, 'UTF-8')."' width='".htmlspecialchars($ancho, ENT_QUOTES, 'UTF-8')."' height='".htmlspecialchars($alto, ENT_QUOTES, 'UTF-8')."' frameborder='".htmlspecialchars($borde, ENT_QUOTES, 'UTF-8')."' style='border:1px solid #ccc;' $fullscreen></iframe>";
+            return "<div class='form-group mb-2'>{$hLabel}{$iframe}</div>";
         case 'email':
         case 'password':
         case 'text':

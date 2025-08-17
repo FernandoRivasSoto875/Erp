@@ -20,6 +20,49 @@ function renderForm(json, containerId = 'formulariodinamico') {
         target.classList.add('show','active');
       });
     });
+    // Inicializar campos especiales en el HTML generado por PHP
+    // Embevido
+    container.querySelectorAll('[data-tipo="embevido"], .fd-embed').forEach(function(el){
+      if (el.dataset.embeddedInit) return;
+      var url = el.dataset.url || el.getAttribute('data-url_embebido');
+      var alto = el.dataset.alto || el.getAttribute('data-alto') || '400px';
+      var ancho = el.dataset.ancho || el.getAttribute('data-ancho') || '100%';
+      var mostrarBorde = el.dataset.mostrarBorde || el.getAttribute('data-mostrar_borde') ? '1px solid #ccc' : 'none';
+      var permitirFS = el.dataset.permitirFullscreen || el.getAttribute('data-permitir_fullscreen') ? 'allowfullscreen' : '';
+      if (url) {
+        var iframe = document.createElement('iframe');
+        iframe.src = url;
+        iframe.style.width = ancho;
+        iframe.style.height = alto;
+        iframe.style.border = mostrarBorde;
+        if (permitirFS) iframe.setAttribute('allowfullscreen','true');
+        el.innerHTML = '';
+        el.appendChild(iframe);
+        el.dataset.embeddedInit = '1';
+      }
+    });
+    // Datatable
+    container.querySelectorAll('[data-tipo="datatable"]').forEach(function(el){
+      if (el.dataset.datatableInit) return;
+      // Buscar definición en JSON por nombre
+      var nombre = el.getAttribute('data-nombre');
+      var field = null;
+      if (json && json.fieldsets) {
+        Object.values(json.fieldsets).forEach(function(fs){
+          if (fs.campos) {
+            fs.campos.forEach(function(c){
+              if (c.nombre === nombre && c.tipo === 'datatable') field = c;
+            });
+          }
+        });
+      }
+      if (field) {
+        var dt = renderDatatable(field);
+        el.innerHTML = '';
+        el.appendChild(dt);
+        el.dataset.datatableInit = '1';
+      }
+    });
     return;
   }
   // Si no existen tabs, renderizar el formulario completo (modo fallback)

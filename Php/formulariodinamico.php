@@ -1,4 +1,4 @@
-<?<?php
+<?php
 /*
 
 COPILOT_PROMPT (Lineamientos y requisitos para cualquier cambio en este archivo)

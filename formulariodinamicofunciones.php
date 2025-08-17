@@ -323,10 +323,14 @@ if (!function_exists('fd_render_fieldset_fallback')) {
             }
         } else {
             // Render simple si no hay layout
-            foreach ($fields as $campo) {
-                if (!is_array($campo)) continue;
-                $html .= generarCampo($campo, '', false);
-            }
+                if (empty($fields)) {
+                    $html .= '<div class="alert alert-warning">ADVERTENCIA: El fieldset <strong>'.htmlspecialchars($key).'</strong> no tiene campos definidos o está vacío.</div>';
+                } else {
+                    foreach ($fields as $campo) {
+                        if (!is_array($campo)) continue;
+                        $html .= generarCampo($campo, '', false);
+                    }
+                }
         }
         $html .= '</fieldset>';
         return $html;

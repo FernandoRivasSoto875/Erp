@@ -162,6 +162,7 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
       $cssPath = 'css/formulariodinamico.css';
     }
   ?>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="<?= $cssPath ?>">
   <!-- IMPORTANTE: Revisar el bloque COPILOT_PROMPT al inicio de este archivo para TODOS los lineamientos, reglas y requisitos de rediseño runtime. -->
   <div class="container-fluid py-2">
@@ -252,6 +253,15 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
   <!-- Scripts requeridos -->
   <!-- Scripts requeridos para render y diseño -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var test = typeof bootstrap !== 'undefined' ? 'Bootstrap JS cargado correctamente.' : 'ERROR: Bootstrap JS NO está cargado.';
+      var diag = document.createElement('div');
+      diag.className = 'alert alert-info';
+      diag.innerText = 'Diagnóstico JS: ' + test;
+      document.body.insertBefore(diag, document.body.firstChild);
+    });
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script src="js/formulariodinamico_v2.js"></script>
   <script src="js/formulariodinamico-init.js"></script>

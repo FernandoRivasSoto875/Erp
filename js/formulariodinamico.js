@@ -15,7 +15,36 @@ function renderForm(json, containerId = 'formulariodinamico') {
       legend.textContent = fieldset.titulo;
       fs.appendChild(legend);
     }
-    if (fieldset.campos) {
+    // Si el fieldset tiene layout interno, renderizar filas/columnas
+    if (Array.isArray(fieldset.layout)) {
+      fieldset.layout.forEach(rowObj => {
+        if (!rowObj.row || !Array.isArray(rowObj.row)) return;
+        const rowDiv = document.createElement('div');
+        rowDiv.className = 'row';
+        rowObj.row.forEach(colObj => {
+          const colDiv = document.createElement('div');
+          colDiv.className = 'col-' + (colObj.col || 12);
+          // Buscar el campo por nombre en los campos del fieldset
+          const campoKey = colObj.campo;
+          const campoObj = Array.isArray(fieldset.campos)
+            ? fieldset.campos.find(f => f.nombre === campoKey)
+            : null;
+          if (campoObj) {
+            const fieldEl = renderField(campoObj);
+            if (fieldEl) {
+              const wrap = document.createElement('div');
+              wrap.className = 'fd-field-wrapper mb-3';
+              wrap.appendChild(fieldEl);
+              colDiv.appendChild(wrap);
+            }
+          } else {
+            colDiv.innerHTML = '<div class="alert alert-warning">Campo no encontrado: ' + campoKey + '</div>';
+          }
+          rowDiv.appendChild(colDiv);
+        });
+        fs.appendChild(rowDiv);
+      });
+    } else if (fieldset.campos) {
       if (!Array.isArray(fieldset.campos)) {
         fs.appendChild(document.createElement('div')).innerHTML = '<div class="alert alert-warning">Error: El fieldset no tiene un array de campos.</div>';
         return fs;

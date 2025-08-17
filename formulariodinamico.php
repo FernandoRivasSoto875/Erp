@@ -200,8 +200,14 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
         echo '<div class="alert alert-info mb-2"><strong>Diagnóstico PHP:</strong> ' . ($hasTabs ? 'Tabs HTML generados por PHP' : 'NO se generaron tabs en el HTML por PHP') . '</div>';
           echo '<div class="alert alert-primary">Diagnóstico PHP: Renderizando layout main (tabs)</div>';
     $mainLayout = $json['layout']['main'];
-    echo '<div class="alert alert-info">Diagnóstico PHP: Layout main contiene ' . (isset($mainLayout['tabs']) ? count($mainLayout['tabs']) : 0) . ' tabs</div>';
-    echo fd_render_tabs_section($mainLayout, $json['fieldsets']);
+    $tabsCount = isset($mainLayout['tabs']) && is_array($mainLayout['tabs']) ? count($mainLayout['tabs']) : 0;
+    echo '<div class="alert alert-info">Diagnóstico PHP: Layout main contiene ' . $tabsCount . ' tabs</div>';
+    echo '<pre class="alert alert-secondary">Diagnóstico PHP: Contenido de $mainLayout["tabs"]:\n' . htmlspecialchars(print_r($mainLayout['tabs'], true)) . '</pre>';
+    if ($tabsCount > 0) {
+      echo fd_render_tabs_section($mainLayout, $json['fieldsets']);
+    } else {
+      echo '<div class="alert alert-danger">Diagnóstico PHP: No se encontraron tabs para renderizar</div>';
+    }
     echo '<div class="alert alert-warning">Diagnóstico PHP: Fin de renderizado de tabs</div>';
         ?>
         <form id="formulariodinamico" data-layout-container class="mb-4">

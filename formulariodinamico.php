@@ -199,7 +199,9 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
         }
         echo '<div class="alert alert-info mb-2"><strong>Diagnóstico PHP:</strong> ' . ($hasTabs ? 'Tabs HTML generados por PHP' : 'NO se generaron tabs en el HTML por PHP') . '</div>';
           echo '<div class="alert alert-primary">Diagnóstico PHP: Renderizando layout main (tabs)</div>';
-    $mainLayout = $json['layout']['main'];
+  echo '<div class="alert alert-dark">Diagnóstico PHP: Ruta del archivo JSON cargado:<br>' . htmlspecialchars($json_path) . '</div>';
+  echo '<pre class="alert alert-secondary">Diagnóstico PHP: Contenido bruto del archivo JSON:\n' . htmlspecialchars($json_raw) . '</pre>';
+  $mainLayout = $json_data['layout']['main'];
     echo '<pre class="alert alert-secondary">Diagnóstico PHP: Contenido completo de $json["layout"]["main"]:\n' . htmlspecialchars(print_r($mainLayout, true)) . '</pre>';
     $tabsCount = isset($mainLayout['tabs']) && is_array($mainLayout['tabs']) ? count($mainLayout['tabs']) : 0;
     echo '<div class="alert alert-info">Diagnóstico PHP: Layout main contiene ' . $tabsCount . ' tabs</div>';

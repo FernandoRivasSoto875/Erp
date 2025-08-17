@@ -2,12 +2,27 @@
 function renderForm(json, containerId = 'formulariodinamico') {
   const container = document.getElementById(containerId);
   if (!container || !json || !json.fieldsets) return;
-  // Validación de estructura básica
-  if (typeof json.fieldsets !== 'object' || Array.isArray(json.fieldsets)) {
-    container.innerHTML = '<div class="alert alert-danger">Error: El JSON no tiene la estructura esperada en fieldsets.</div>';
+  // Si ya existen tabs generados por PHP, solo inicializar interactividad
+  if (container.querySelector('.nav-tabs')) {
+    // Inicializa los tabs de Bootstrap si existen
+    var tabEls = container.querySelectorAll('.nav-tabs .nav-link');
+    tabEls.forEach(function(tabEl) {
+      tabEl.addEventListener('click', function(e) {
+        e.preventDefault();
+        var target = container.querySelector(tabEl.getAttribute('data-bs-target'));
+        if (!target) return;
+        // Desactivar todos los tabs y panes
+        tabEls.forEach(function(t) { t.classList.remove('active'); });
+        var panes = container.querySelectorAll('.tab-pane');
+        panes.forEach(function(p) { p.classList.remove('show','active'); });
+        // Activar el tab y pane actual
+        tabEl.classList.add('active');
+        target.classList.add('show','active');
+      });
+    });
     return;
   }
-  container.innerHTML = '';
+  // Si no existen tabs, renderizar el formulario completo (modo fallback)
   function renderFieldsetRec(fieldset) {
     const fs = document.createElement('fieldset');
     if (fieldset.titulo) {
@@ -15,7 +30,7 @@ function renderForm(json, containerId = 'formulariodinamico') {
       legend.textContent = fieldset.titulo;
       fs.appendChild(legend);
     }
-    // Si el fieldset tiene layout interno, renderizar filas/columnas
+    // ...existing code...
     if (Array.isArray(fieldset.layout)) {
       fieldset.layout.forEach(rowObj => {
         if (!rowObj.row || !Array.isArray(rowObj.row)) return;
@@ -24,7 +39,6 @@ function renderForm(json, containerId = 'formulariodinamico') {
         rowObj.row.forEach(colObj => {
           const colDiv = document.createElement('div');
           colDiv.className = 'col-' + (colObj.col || 12);
-          // Buscar el campo por nombre en los campos del fieldset
           const campoKey = colObj.campo;
           const campoObj = Array.isArray(fieldset.campos)
             ? fieldset.campos.find(f => f.nombre === campoKey)
@@ -65,7 +79,7 @@ function renderForm(json, containerId = 'formulariodinamico') {
     }
     return fs;
   }
-  // El render de tabs se realiza por el helper PHP, no por JS. El JS solo debe renderizar si no existe estructura de tabs en el HTML.
+  // Renderizar solo si no hay tabs
   if (!(json.layout && json.layout.main && json.layout.main.tabs)) {
     Object.values(json.fieldsets).forEach(fieldset => {
       container.appendChild(renderFieldsetRec(fieldset));

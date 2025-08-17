@@ -207,7 +207,9 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
     echo '<div class="alert alert-info">Diagnóstico PHP: Layout main contiene ' . $tabsCount . ' tabs</div>';
     echo '<pre class="alert alert-secondary">Diagnóstico PHP: Contenido de $mainLayout["tabs"]:\n' . htmlspecialchars(print_r($mainLayout['tabs'], true)) . '</pre>';
     if ($tabsCount > 0) {
-      echo fd_render_tabs_section($mainLayout, $json['fieldsets']);
+    $htmlTabs = fd_render_tabs_section($mainLayout, $json_data['fieldsets']);
+    echo '<pre class="alert alert-success">Diagnóstico PHP: HTML generado por fd_render_tabs_section:\n' . htmlspecialchars($htmlTabs) . '</pre>';
+    echo $htmlTabs;
     } else {
       echo '<div class="alert alert-danger">Diagnóstico PHP: No se encontraron tabs para renderizar</div>';
     }

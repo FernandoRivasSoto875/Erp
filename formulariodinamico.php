@@ -235,8 +235,8 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
     }
       // Cierre correcto de contenedores
       echo '</div>'; // fd-form-area
-    echo '</div>'; // fd-shell
-  echo '</div>'; // container-fluid
+      echo '</div>'; // fd-shell
+      echo '</div>'; // container-fluid
 
   <?php
     // Contenedor del árbol y nodo de datos

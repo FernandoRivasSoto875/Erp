@@ -214,34 +214,10 @@ document.addEventListener('DOMContentLoaded', function() {
 function renderField(field) {
   // ...otros tipos...
   if(field.tipo === 'datatable') {
-    const el = renderDatatable(field);
-    // Diagnóstico visual
-    if (!el.__diagnosticAdded) {
-      const diag = document.createElement('div');
-      diag.className = 'alert alert-info p-1 mb-1';
-      diag.textContent = '[Diagnóstico] Renderizando campo tipo DATATABLE: ' + (field.nombre || field.etiqueta || 'sin nombre');
-      el.__diagnosticAdded = true;
-      const wrapper = document.createElement('div');
-      wrapper.appendChild(diag);
-      wrapper.appendChild(el);
-      return wrapper;
-    }
-    return el;
+    return renderDatatable(field);
   }
   if(field.tipo === 'embevido') {
-    const el = renderEmbevido(field);
-    // Diagnóstico visual
-    if (!el.__diagnosticAdded) {
-      const diag = document.createElement('div');
-      diag.className = 'alert alert-info p-1 mb-1';
-      diag.textContent = '[Diagnóstico] Renderizando campo tipo EMBEBIDO: ' + (field.nombre || field.etiqueta || 'sin nombre');
-      el.__diagnosticAdded = true;
-      const wrapper = document.createElement('div');
-      wrapper.appendChild(diag);
-      wrapper.appendChild(el);
-      return wrapper;
-    }
-    return el;
+    return renderEmbevido(field);
   }
 function renderEmbevido(field) {
   const url = field.url_embebido || '';

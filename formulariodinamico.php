@@ -2,6 +2,23 @@
 // Vista principal del formulario dinámico. Orquesta la carga del JSON y el renderizado visual.
 /*
 COPILOT_PROMPT (Lineamientos y requisitos para cualquier cambio en este archivo)
+
+REGLAS EXPERTAS ADICIONALES (complemento obligatorio):
+1. Validar la estructura y tipos del JSON antes de renderizar. Mostrar errores claros si faltan claves críticas.
+2. Helpers PHP solo para renderizado/utilidades, sin lógica de negocio ni persistencia. El PHP principal solo orquesta.
+3. Helpers deben ser extensibles y soportar nuevos tipos de campo/layout sin romper compatibilidad.
+4. Permitir internacionalización (i18n) de etiquetas y mensajes si el sistema crece.
+5. Todos los controles y navegaciones deben tener atributos ARIA, roles y etiquetas para accesibilidad.
+6. Permitir renderizado progresivo y carga diferida para formularios grandes.
+7. Registrar cambios en modo diseño (auditoría, undo/redo, versionado JSON) si multiusuario.
+8. Sanitizar toda la salida HTML para evitar XSS. Validar y filtrar datos de entrada antes de procesar/guardar.
+9. Mantener tests automáticos y documentación clara de funciones y estructura JSON.
+10. Si falla el render JS, el HTML debe ser funcional y navegable. Mostrar advertencia si falta un fieldset.
+11. Mantener estilos homogéneos y definidos en el CSS principal. No permitir estilos inline ni clases arbitrarias.
+12. El sistema debe integrarse con micro-apps (como el árbol JSON) sin romper layout ni funcionalidad.
+
+Estas reglas son obligatorias para robustez, seguridad, escalabilidad y experiencia profesional.
+
 AJUSTE DE ALINEACIÓN ENTRE TÍTULOS Y CAMPOS:
 Mejorar la alineación visual entre el título (label) y el campo de entrada, especialmente en controles tipo combobox/select. El título debe quedar alineado horizontalmente junto al campo, evitando que el label quede centrado y el campo descentrado o distante. La distancia entre el label y el campo debe ser mínima y visualmente coherente, logrando una presentación compacta y profesional. Usar la clase CSS `.fd-label-inline` para lograr esta alineación en los controles relevantes. Validar que la solución funcione en todos los dispositivos y modos de visualización.
 IMPORTANTE: Los fieldsets pueden incluir una propiedad opcional "layout" que permite organizar los campos internos en filas y columnas. El renderizador PHP debe interpretar esta estructura y mostrar los campos según la distribución definida en el JSON. Si no existe "layout", los campos se muestran en orden simple.

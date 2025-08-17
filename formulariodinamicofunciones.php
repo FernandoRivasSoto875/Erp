@@ -206,27 +206,29 @@ if (!function_exists('fd_render_tabs_section')) {
         $tabs = $section['tabs'] ?? [];
         if (!$tabs || !is_array($tabs)) return '';
         $uid = 'fd_tabs_'.substr(md5(json_encode(array_keys($tabs)).microtime(true)),0,8);
-
-        // CSS inline para efecto hover tipo botón
-        $html = '<div class="fd-section fd-tabs-bullets-horizontal" data-tabs="'.$uid.'">';
-            $html .= '<div class="fd-tab-bullets-horizontal">';
-            foreach ($tabs as $i => $tab) {
-                $isActive = $i === 0;
-                $paneId = $uid.'_pane_'.$i;
-                $title = htmlspecialchars($tab['title'] ?? $tab['titulo'] ?? ('Tab '.($i+1)), ENT_QUOTES, 'UTF-8');
-                $class = 'fd-tab-bullet' . ($isActive ? ' active' : '');
-                $html .= '<button type="button" class="' . $class . '" data-pane="'.$paneId.'" onclick="event.preventDefault();document.querySelectorAll(\'.fd-tab-bullet\').forEach(function(e){e.classList.remove(\'active\');});this.classList.add(\'active\');document.querySelectorAll(\'.fd-tab-content-pane\').forEach(function(e){e.style.display=\'none\';});document.getElementById(\''.$paneId.'\').style.display=\'block\';">'.$title.'</button>';
-            }
-            $html .= '</div>';
+        $html = '<div class="fd-section fd-tabs-bootstrap" data-tabs="'.$uid.'">';
+        // Nav tabs
+        $html .= '<ul class="nav nav-tabs" id="'.$uid.'_nav" role="tablist">';
+        foreach ($tabs as $i => $tab) {
+            $isActive = $i === 0;
+            $paneId = $uid.'_pane_'.$i;
+            $title = htmlspecialchars($tab['title'] ?? $tab['titulo'] ?? ('Tab '.($i+1)), ENT_QUOTES, 'UTF-8');
+            $html .= '<li class="nav-item" role="presentation">';
+            $html .= '<button class="nav-link'.($isActive?' active':'').'" id="'.$paneId.'-tab" data-bs-toggle="tab" data-bs-target="#'.$paneId.'" type="button" role="tab" aria-controls="'.$paneId.'" aria-selected="'.($isActive?'true':'false').'">'.$title.'</button>';
+            $html .= '</li>';
+        }
+        $html .= '</ul>';
+        // Tab content
+        $html .= '<div class="tab-content" id="'.$uid.'_content">';
         foreach ($tabs as $i => $tab) {
             $isActive = $i === 0;
             $paneId = $uid.'_pane_'.$i;
             $rows = $tab['rows'] ?? [];
-            $display = $isActive ? 'display:block;' : 'display:none;';
-            $html .= '<div id="'.$paneId.'" class="fd-tab-content-pane" style="'.$display.'">';
+            $html .= '<div class="tab-pane fade'.($isActive?' show active':'').'" id="'.$paneId.'" role="tabpanel" aria-labelledby="'.$paneId.'-tab">';
             $html .= fd_render_rows_fallback($rows, $fieldsets);
             $html .= '</div>';
         }
+        $html .= '</div>';
         $html .= '</div>';
         return $html;
     }

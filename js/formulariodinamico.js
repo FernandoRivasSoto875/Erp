@@ -4,22 +4,32 @@ function renderForm(json, containerId = 'formulariodinamico') {
   if (!container || !json || !json.fieldsets) return;
   // Si ya existen tabs generados por PHP, solo inicializar interactividad
   if (container.querySelector('.nav-tabs')) {
-    // Inicializa los tabs de Bootstrap si existen
-    var tabEls = container.querySelectorAll('.nav-tabs .nav-link');
-    tabEls.forEach(function(tabEl) {
-      tabEl.addEventListener('click', function(e) {
-        e.preventDefault();
-        var target = container.querySelector(tabEl.getAttribute('data-bs-target'));
-        if (!target) return;
-        // Desactivar todos los tabs y panes
-        tabEls.forEach(function(t) { t.classList.remove('active'); });
-        var panes = container.querySelectorAll('.tab-pane');
-        panes.forEach(function(p) { p.classList.remove('show','active'); });
-        // Activar el tab y pane actual
-        tabEl.classList.add('active');
-        target.classList.add('show','active');
+    // Inicializa los tabs usando Bootstrap 5 (no manipular manualmente las clases)
+    if (window.bootstrap && window.bootstrap.Tab) {
+      var tabEls = container.querySelectorAll('.nav-tabs .nav-link');
+      tabEls.forEach(function(tabEl) {
+        tabEl.addEventListener('click', function(e) {
+          e.preventDefault();
+          var tab = new window.bootstrap.Tab(tabEl);
+          tab.show();
+        });
       });
-    });
+    } else {
+      // Fallback manual solo si Bootstrap no está disponible
+      var tabEls = container.querySelectorAll('.nav-tabs .nav-link');
+      tabEls.forEach(function(tabEl) {
+        tabEl.addEventListener('click', function(e) {
+          e.preventDefault();
+          var target = container.querySelector(tabEl.getAttribute('data-bs-target'));
+          if (!target) return;
+          tabEls.forEach(function(t) { t.classList.remove('active'); });
+          var panes = container.querySelectorAll('.tab-pane');
+          panes.forEach(function(p) { p.classList.remove('show','active'); });
+          tabEl.classList.add('active');
+          target.classList.add('show','active');
+        });
+      });
+    }
     // Inicializar campos especiales en el HTML generado por PHP
     // Embevido
     container.querySelectorAll('[data-tipo="embevido"], .fd-embed').forEach(function(el){
@@ -44,7 +54,6 @@ function renderForm(json, containerId = 'formulariodinamico') {
     // Datatable
     container.querySelectorAll('[data-tipo="datatable"]').forEach(function(el){
       if (el.dataset.datatableInit) return;
-      // Buscar definición en JSON por nombre
       var nombre = el.getAttribute('data-nombre');
       var field = null;
       if (json && json.fieldsets) {

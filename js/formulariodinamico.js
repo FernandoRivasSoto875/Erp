@@ -65,62 +65,8 @@ function renderForm(json, containerId = 'formulariodinamico') {
     }
     return fs;
   }
-  // Renderizar fieldsets según layout si existe
-  if (json.layout && json.layout.main && json.layout.main.tabs) {
-    json.layout.main.tabs.forEach(tab => {
-      const tabDiv = document.createElement('div');
-      tabDiv.className = 'fd-tab-content mb-4';
-      if (tab.title) {
-        const tabTitle = document.createElement('h5');
-        tabTitle.textContent = tab.title;
-        tabDiv.appendChild(tabTitle);
-      }
-      if (tab.rows) {
-        tab.rows.forEach(row => {
-          const rowDiv = document.createElement('div');
-          rowDiv.className = 'row';
-          if (row.columns) {
-            row.columns.forEach(col => {
-              const colDiv = document.createElement('div');
-              colDiv.className = 'col-' + (col.width || 12);
-              // Soporte para 'fieldset' y 'campo' en layout
-              if (col.fieldset && json.fieldsets[col.fieldset]) {
-                colDiv.appendChild(renderFieldsetRec(json.fieldsets[col.fieldset]));
-              } else if (col.campo && json.fieldsets) {
-                // Buscar el campo por nombre en todos los fieldsets
-                let found = false;
-                Object.values(json.fieldsets).forEach(fs => {
-                  const camposArr = Array.isArray(fs.campos) ? fs.campos : [];
-                  for (let i = 0; i < camposArr.length; i++) {
-                    const field = camposArr[i];
-                    if (field && typeof field === 'object' && field.nombre === col.campo) {
-                      const fieldEl = renderField(field);
-                      if (fieldEl) {
-                        // Renderiza el campo normalmente, sin mensajes de diagnóstico ni popup
-                        const wrap = document.createElement('div');
-                        wrap.className = 'fd-field-wrapper mb-3';
-                        wrap.appendChild(fieldEl);
-                        colDiv.appendChild(wrap);
-                        found = true;
-                      }
-                    }
-                  }
-                });
-                if (!found) {
-                  const warnDiv = document.createElement('div');
-                  warnDiv.innerHTML = '<div class="alert alert-warning">Campo no encontrado: ' + col.campo + '</div>';
-                  colDiv.appendChild(warnDiv);
-                }
-              }
-              rowDiv.appendChild(colDiv);
-            });
-          }
-          tabDiv.appendChild(rowDiv);
-        });
-      }
-      container.appendChild(tabDiv);
-    });
-  } else {
+  // El render de tabs se realiza por el helper PHP, no por JS. El JS solo debe renderizar si no existe estructura de tabs en el HTML.
+  if (!(json.layout && json.layout.main && json.layout.main.tabs)) {
     Object.values(json.fieldsets).forEach(fieldset => {
       container.appendChild(renderFieldsetRec(fieldset));
     });

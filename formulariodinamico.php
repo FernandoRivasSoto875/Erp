@@ -200,6 +200,7 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
         echo '<div class="alert alert-info mb-2"><strong>Diagnóstico PHP:</strong> ' . ($hasTabs ? 'Tabs HTML generados por PHP' : 'NO se generaron tabs en el HTML por PHP') . '</div>';
           echo '<div class="alert alert-primary">Diagnóstico PHP: Renderizando layout main (tabs)</div>';
     $mainLayout = $json['layout']['main'];
+    echo '<pre class="alert alert-secondary">Diagnóstico PHP: Contenido completo de $json["layout"]["main"]:\n' . htmlspecialchars(print_r($mainLayout, true)) . '</pre>';
     $tabsCount = isset($mainLayout['tabs']) && is_array($mainLayout['tabs']) ? count($mainLayout['tabs']) : 0;
     echo '<div class="alert alert-info">Diagnóstico PHP: Layout main contiene ' . $tabsCount . ' tabs</div>';
     echo '<pre class="alert alert-secondary">Diagnóstico PHP: Contenido de $mainLayout["tabs"]:\n' . htmlspecialchars(print_r($mainLayout['tabs'], true)) . '</pre>';

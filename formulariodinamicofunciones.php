@@ -294,10 +294,19 @@ if (!function_exists('fd_render_fieldset_fallback')) {
         // Si existe layout, renderizar en filas y columnas
         if (isset($fieldset['layout']) && is_array($fieldset['layout'])) {
             foreach ($fieldset['layout'] as $row) {
-                if (!isset($row['row']) || !is_array($row['row'])) continue;
+                // Compatibilidad: aceptar tanto 'row' como 'columns'/'cols'
+                $cols = [];
+                if (isset($row['row']) && is_array($row['row'])) {
+                    $cols = $row['row'];
+                } elseif (isset($row['columns']) && is_array($row['columns'])) {
+                    $cols = $row['columns'];
+                } elseif (isset($row['cols']) && is_array($row['cols'])) {
+                    $cols = $row['cols'];
+                }
+                if (!is_array($cols) || !$cols) continue;
                 $html .= '<div class="row fd-row">';
-                foreach ($row['row'] as $col) {
-                    $colW = (int)($col['col'] ?? 12);
+                foreach ($cols as $col) {
+                    $colW = (int)($col['col'] ?? $col['width'] ?? 12);
                     $campoKey = $col['campo'] ?? null;
                     $campoObj = null;
                     foreach ($fields as $f) {

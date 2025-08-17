@@ -204,9 +204,10 @@ if (!function_exists('fd_render_layout_fallback')) {
 if (!function_exists('fd_render_tabs_section')) {
     function fd_render_tabs_section(array $section, array $fieldsets): string {
         $tabs = $section['tabs'] ?? [];
-        if (!$tabs || !is_array($tabs)) return '';
+        if (!$tabs || !is_array($tabs)) return '<div class="alert alert-danger">Diagnóstico Helper: No se encontraron tabs en la sección.</div>';
         $uid = 'fd_tabs_'.substr(md5(json_encode(array_keys($tabs)).microtime(true)),0,8);
         $html = '<div class="fd-section fd-tabs-bootstrap" data-tabs="'.$uid.'">';
+        $html .= '<div class="alert alert-info">Diagnóstico Helper: Generando nav-tabs con '.count($tabs).' tabs</div>';
         // Nav tabs
         $html .= '<ul class="nav nav-tabs" id="'.$uid.'_nav" role="tablist">';
         foreach ($tabs as $i => $tab) {
@@ -218,6 +219,7 @@ if (!function_exists('fd_render_tabs_section')) {
             $html .= '</li>';
         }
         $html .= '</ul>';
+        $html .= '<div class="alert alert-success">Diagnóstico Helper: Nav-tabs generado</div>';
         // Tab content
         $html .= '<div class="tab-content" id="'.$uid.'_content">';
         foreach ($tabs as $i => $tab) {
@@ -225,11 +227,14 @@ if (!function_exists('fd_render_tabs_section')) {
             $paneId = $uid.'_pane_'.$i;
             $rows = $tab['rows'] ?? [];
             $html .= '<div class="tab-pane fade'.($isActive?' show active':'').'" id="'.$paneId.'" role="tabpanel" aria-labelledby="'.$paneId.'-tab">';
+            $html .= '<div class="alert alert-warning">Diagnóstico Helper: Generando pane para tab ['.$title.']</div>';
             $html .= fd_render_rows_fallback($rows, $fieldsets);
             $html .= '</div>';
         }
         $html .= '</div>';
+        $html .= '<div class="alert alert-success">Diagnóstico Helper: Tab-content generado</div>';
         $html .= '</div>';
+        $html .= '<div class="alert alert-primary">Diagnóstico Helper: HTML tabs generado</div>';
         return $html;
     }
 } else {

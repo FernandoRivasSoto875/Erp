@@ -195,44 +195,58 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
     require_once __DIR__ . '/formulariodinamicofunciones.php';
     $mainLayout = $json_data['layout']['main'];
     $tabsCount = isset($mainLayout['tabs']) && is_array($mainLayout['tabs']) ? count($mainLayout['tabs']) : 0;
-    if ($tabsCount > 0) {
-      $htmlTabs = fd_render_tabs_section($mainLayout, $json_data['fieldsets']);
-      echo $htmlTabs;
+    if ($tabsCount > 0 && ($mainLayout['type'] ?? '') === 'tabs') {
+      // Solo renderizar los tabs y su contenido
+      echo fd_render_tabs_section($mainLayout, $json_data['fieldsets']);
+      // Renderizar los botones debajo de los tabs
+      echo '<div class="mt-3">';
+      $botones_config = is_array($botones_config) ? $botones_config : [];
+      foreach ($botones_config as $b) {
+        $txt    = htmlspecialchars($b['texto'] ?? 'Botón');
+        $accion = $b['accion'] ?? 'submit';
+        $cls    = htmlspecialchars($b['clase'] ?? 'btn-secondary');
+        $type   = ($accion === 'reset' ? 'reset' : 'submit');
+        echo "<button type=\"$type\" class=\"btn $cls\">$txt</button>";
+      }
+      if ($modoDiseno) {
+        echo '<button type="button" class="btn btn-warning ms-2" id="btnDisenoExtra">Botón Diseño Activo</button>';
+      }
+      echo '</div>';
+    } else {
+      // Si no hay tabs, renderizar el layout completo como antes
+      echo '<form id="formulariodinamico" data-layout-container class="mb-4">';
+      $layout = is_array($layout) ? $layout : [];
+      $fieldsets = is_array($fieldsets) ? $fieldsets : [];
+      echo fd_render_layout_fallback($layout, $fieldsets);
+      echo '<div class="mt-3">';
+      $botones_config = is_array($botones_config) ? $botones_config : [];
+      foreach ($botones_config as $b) {
+        $txt    = htmlspecialchars($b['texto'] ?? 'Botón');
+        $accion = $b['accion'] ?? 'submit';
+        $cls    = htmlspecialchars($b['clase'] ?? 'btn-secondary');
+        $type   = ($accion === 'reset' ? 'reset' : 'submit');
+        echo "<button type=\"$type\" class=\"btn $cls\">$txt</button>";
+      }
+      if ($modoDiseno) {
+        echo '<button type="button" class="btn btn-warning ms-2" id="btnDisenoExtra">Botón Diseño Activo</button>';
+      }
+      echo '</div>';
+      echo '</form>';
     }
-        ?>
-        <form id="formulariodinamico" data-layout-container class="mb-4">
-          <?php
-          // Renderiza el layout y los fieldsets usando el helper PHP
-          $layout = is_array($layout) ? $layout : [];
-          $fieldsets = is_array($fieldsets) ? $fieldsets : [];
-          echo fd_render_layout_fallback($layout, $fieldsets);
-          ?>
-          <div class="mt-3">
-            <?php 
-            // Renderiza los botones configurados en el JSON
-            $botones_config = is_array($botones_config) ? $botones_config : [];
-            foreach ($botones_config as $b):
-              $txt    = htmlspecialchars($b['texto'] ?? 'Botón');
-              $accion = $b['accion'] ?? 'submit';
-              $cls    = htmlspecialchars($b['clase'] ?? 'btn-secondary');
-              $type   = ($accion === 'reset' ? 'reset' : 'submit'); ?>
-              <button type="<?= $type ?>" class="btn <?= $cls ?>"><?= $txt ?></button>
-            <?php endforeach; ?>
-            <?php if ($modoDiseno): ?>
-              <button type="button" class="btn btn-warning ms-2" id="btnDisenoExtra">Botón Diseño Activo</button>
-            <?php endif; ?>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
+      // Cierre correcto de contenedores
+      echo '</div>'; // fd-form-area
+    echo '</div>'; // fd-shell
+  echo '</div>'; // container-fluid
 
   <!-- Contenedor del árbol y nodo de datos -->
   <!-- Contenedor para el árbol JSON y el nodo de datos -->
-  <div id="fd-json-tree-app" class="<?= $modoDiseno ? '' : 'd-none' ?>" data-tree-app></div>
-  <div id="fd-data"
-       data-json-file="<?= htmlspecialchars($archivo_base ?? 'formulariogenerico2.json') ?>"
-       data-form-json='<?= htmlspecialchars(json_encode($json_data ?? [], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES), ENT_QUOTES | ENT_SUBSTITUTE, "UTF-8") ?>'></div>
+  <?php
+    // Contenedor del árbol y nodo de datos
+    echo '<div id="fd-json-tree-app" class="'.($modoDiseno ? '' : 'd-none').'" data-tree-app></div>';
+    echo '<div id="fd-data"'
+      .' data-json-file="'.htmlspecialchars($archivo_base ?? 'formulariogenerico2.json').'"'
+      .' data-form-json=\''.htmlspecialchars(json_encode($json_data ?? [], JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES), ENT_QUOTES | ENT_SUBSTITUTE, "UTF-8").'\'></div>';
+  ?>
 
   <!-- Scripts requeridos -->
   <!-- Scripts requeridos para render y diseño -->

@@ -191,30 +191,14 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
 
     <div class="fd-shell">
       <div class="fd-form-area">
-        <?php
-  // Diagnóstico visual: ¿existen tabs en el HTML generado?
-  require_once __DIR__ . '/formulariodinamicofunciones.php'; // Incluir helper dinámico
-        $hasTabs = false;
-        if (isset($layout['main']['type']) && $layout['main']['type'] === 'tabs') {
-            $hasTabs = true; // Forzado para diagnóstico visual
-        }
-        echo '<div class="alert alert-info mb-2"><strong>Diagnóstico PHP:</strong> ' . ($hasTabs ? 'Tabs HTML generados por PHP' : 'NO se generaron tabs en el HTML por PHP') . '</div>';
-          echo '<div class="alert alert-primary">Diagnóstico PHP: Renderizando layout main (tabs)</div>';
-  echo '<div class="alert alert-dark">Diagnóstico PHP: Ruta del archivo JSON cargado:<br>' . htmlspecialchars($json_path) . '</div>';
-  echo '<pre class="alert alert-secondary">Diagnóstico PHP: Contenido bruto del archivo JSON:\n' . htmlspecialchars($json_raw) . '</pre>';
-  $mainLayout = $json_data['layout']['main'];
-    echo '<pre class="alert alert-secondary">Diagnóstico PHP: Contenido completo de $json["layout"]["main"]:\n' . htmlspecialchars(print_r($mainLayout, true)) . '</pre>';
+    <?php
+    require_once __DIR__ . '/formulariodinamicofunciones.php';
+    $mainLayout = $json_data['layout']['main'];
     $tabsCount = isset($mainLayout['tabs']) && is_array($mainLayout['tabs']) ? count($mainLayout['tabs']) : 0;
-    echo '<div class="alert alert-info">Diagnóstico PHP: Layout main contiene ' . $tabsCount . ' tabs</div>';
-    echo '<pre class="alert alert-secondary">Diagnóstico PHP: Contenido de $mainLayout["tabs"]:\n' . htmlspecialchars(print_r($mainLayout['tabs'], true)) . '</pre>';
     if ($tabsCount > 0) {
-    $htmlTabs = fd_render_tabs_section($mainLayout, $json_data['fieldsets']);
-    echo '<pre class="alert alert-success">Diagnóstico PHP: HTML generado por fd_render_tabs_section:\n' . htmlspecialchars($htmlTabs) . '</pre>';
-    echo $htmlTabs;
-    } else {
-      echo '<div class="alert alert-danger">Diagnóstico PHP: No se encontraron tabs para renderizar</div>';
+      $htmlTabs = fd_render_tabs_section($mainLayout, $json_data['fieldsets']);
+      echo $htmlTabs;
     }
-    echo '<div class="alert alert-warning">Diagnóstico PHP: Fin de renderizado de tabs</div>';
         ?>
         <form id="formulariodinamico" data-layout-container class="mb-4">
           <?php

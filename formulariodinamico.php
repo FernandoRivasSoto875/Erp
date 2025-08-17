@@ -191,12 +191,18 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
     <div class="fd-shell">
       <div class="fd-form-area">
         <?php
-        // Diagnóstico visual: ¿existen tabs en el HTML generado?
+  // Diagnóstico visual: ¿existen tabs en el HTML generado?
+  require_once __DIR__ . '/formulariodinamicofunciones.php'; // Incluir helper dinámico
         $hasTabs = false;
         if (isset($layout['main']['type']) && $layout['main']['type'] === 'tabs') {
-          $hasTabs = true;
+            $hasTabs = true; // Forzado para diagnóstico visual
         }
         echo '<div class="alert alert-info mb-2"><strong>Diagnóstico PHP:</strong> ' . ($hasTabs ? 'Tabs HTML generados por PHP' : 'NO se generaron tabs en el HTML por PHP') . '</div>';
+          echo '<div class="alert alert-primary">Diagnóstico PHP: Renderizando layout main (tabs)</div>';
+    $mainLayout = $json['layout']['main'];
+    echo '<div class="alert alert-info">Diagnóstico PHP: Layout main contiene ' . (isset($mainLayout['tabs']) ? count($mainLayout['tabs']) : 0) . ' tabs</div>';
+    echo fd_render_tabs_section($mainLayout, $json['fieldsets']);
+    echo '<div class="alert alert-warning">Diagnóstico PHP: Fin de renderizado de tabs</div>';
         ?>
         <form id="formulariodinamico" data-layout-container class="mb-4">
           <?php

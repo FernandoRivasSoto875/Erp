@@ -247,7 +247,13 @@ if (!function_exists('fd_render_rows_fallback')) {
         $html = '';
         foreach ($rows as $row) {
             if (!is_array($row)) continue;
-            $cols = $row['cols'] ?? $row['columns'] ?? [];
+            // Compatibilidad: aceptar tanto 'columns' como 'cols'
+            $cols = [];
+            if (isset($row['columns']) && is_array($row['columns'])) {
+                $cols = $row['columns'];
+            } elseif (isset($row['cols']) && is_array($row['cols'])) {
+                $cols = $row['cols'];
+            }
             if (!is_array($cols) || !$cols) continue;
             $html .= '<div class="row fd-row">';
             // Calcular ancho automático si no se especifica

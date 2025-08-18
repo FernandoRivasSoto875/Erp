@@ -25,11 +25,8 @@ Ejemplo de campo en el JSON:
   "parametros_embebido": { "usuario": "123", "token": "abc" },
   "alto": "400px",
   "ancho": "100%",
-  "mostrar_borde": true,
+  "mostrar_borde": true
 }
-    "nombre": "contenido_embebido",
-    "tipo": "embevido",
-
 Esta funcionalidad debe estar soportada en el renderizador JS y en el JSON.
 
 NUEVA PROPIEDAD: FormularioDataSourcePrincipal en 'parametros' del JSON

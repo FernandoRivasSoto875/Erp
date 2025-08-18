@@ -26,8 +26,9 @@ Ejemplo de campo en el JSON:
   "alto": "400px",
   "ancho": "100%",
   "mostrar_borde": true,
-  "permitir_fullscreen": true
 }
+    "nombre": "contenido_embebido",
+    "tipo": "embevido",
 
 Esta funcionalidad debe estar soportada en el renderizador JS y en el JSON.
 

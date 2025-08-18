@@ -1,5 +1,5 @@
 <?php
-// --- INTEGRACIÓN DE LIBRERÍAS ---
+// Leer COPILOT_PROMPT en formulariodinamicoprompt.txt.
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 require_once __DIR__ . '/fpdf/fpdf.php';
@@ -18,10 +18,7 @@ if (!function_exists('getFieldInfo')) {
         return [];
     }
 }
-/* MASTER_PROMPT_REFERENCE
-   Leer COPILOT_PROMPT en formulariodinamico.php.
-   Rol: lógica adicional (validaciones / serialización avanzada) fuera de la vista.
-   Evitar duplicar helpers ya definidos. */
+/* Leer COPILOT_PROMPT en formulariodinamicoprompt.txt */
 // Helpers
 if (!function_exists('fd_escape')) {
     function fd_escape($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }

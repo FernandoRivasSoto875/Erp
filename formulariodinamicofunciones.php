@@ -3,29 +3,11 @@
 if (!headers_sent()) {
     header('Content-Type: text/html; charset=UTF-8');
 }
-
 /* MASTER_PROMPT_REFERENCE
-   Leer COPILOT_PROMPT en formulariodinamico.php (fuente única de lineamientos).
-   Rol de este archivo: helpers / lógica PHP reutilizable (sin HTML de vista, sin CSS, sin JS inline).
-   No romper contrato JSON (parametros, fieldsets, layout). Agregar nuevas funciones de forma compatible.
-*/
+   Leer COPILOT_PROMPT en Leer COPILOT_PROMPT en formulariodinamicoprompt.txt (fuente única de lineamientos).
+  */
    
-// KEEP: Revisado y listo para commit. Funciones auxiliares para renderizado y utilidades del formulario dinámico.
-/*
-====================================================================================
-  KEEP: UNIFICADO
-  Este archivo contiene TODAS las funciones de generación de campos y paleta.
-  NO debe ser sobrescrito ni fragmentado. Mantener siempre esta versión unificada.
-  Si se actualiza, conservar este bloque y toda la lógica unificada.
-====================================================================================
-*/
-// KEEP: UNIFICADO. Incluye funciones de paleta y de generación de campos.
-// ========================================================================
-//  - Contiene las funciones para generar cada tipo de campo del formulario.
-//  - Incluye funciones para la paleta de componentes y tipos de control.
-//  - SOLUCIONA EL ERROR "Couldn't fetch mysqli" en la función de 'selectdata'.
-// ========================================================================
-// --- PALETA DE COMPONENTES ---
+ // --- PALETA DE COMPONENTES ---
 function generarPaletaComponentes($fieldsets_disponibles, $fieldsets) {
     ob_start();
     echo "<div id='paleta-componentes' class='paleta-componentes bg-light p-3 mb-3 solo-modo-diseno'>";
@@ -85,9 +67,7 @@ function generarCampo($campo, $valor, $soloLectura): string {
     }
     switch ($tipo) {
         case 'embevido':
-            // Renderizar iframe embebido
-            $url = $campo['url_embebido'] ?? $campo['url'] ?? '';
-            $alto = $campo['alto'] ?? '400px';
+        /* Leer COPILOT_PROMPT en formulariodinamicoprompt.txt */
             $ancho = $campo['ancho'] ?? '100%';
             $borde = !empty($campo['mostrar_borde']) ? '1' : '0';
             $fullscreen = !empty($campo['permitir_fullscreen']) ? 'allowfullscreen' : '';

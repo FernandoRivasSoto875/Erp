@@ -503,9 +503,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Envío de correo (respeta notificaciones.enviar_correo y claves alternativas)
     $enviarCorreo = (bool)($params['notificaciones']['enviar_correo'] ?? true);
     $destinatario = $params['destinatario'] ?? ($params['mailPara'] ?? null);
-    if ($enviarCorreo && $destinatario && class_exists(PHPMailer::class)) {
+    if ($enviarCorreo && $destinatario && class_exists('PHPMailer\PHPMailer\PHPMailer')) {
         try {
-            $mail = new PHPMailer(true);
+            $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
             if (!empty($params['smtp_host'])) {
                 $mail->isSMTP();
                 $mail->Host = $params['smtp_host'];

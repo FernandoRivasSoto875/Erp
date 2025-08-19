@@ -1,11 +1,9 @@
 <?php
 // Encabezado para forzar UTF-8 en la salida HTML
+//   Leer COPILOT_PROMPT en Leer COPILOT_PROMPT en formulariodinamicoprompt.txt (fuente única de lineamientos).
 if (!headers_sent()) {
     header('Content-Type: text/html; charset=UTF-8');
 }
-/* MASTER_PROMPT_REFERENCE
-   Leer COPILOT_PROMPT en Leer COPILOT_PROMPT en formulariodinamicoprompt.txt (fuente única de lineamientos).
-  */
    
  // --- PALETA DE COMPONENTES ---
 function generarPaletaComponentes($fieldsets_disponibles, $fieldsets) {
@@ -69,13 +67,16 @@ function generarCampo($campo, $valor, $soloLectura): string {
         case 'embevido':
         /* Leer COPILOT_PROMPT en formulariodinamicoprompt.txt */
             $ancho = $campo['ancho'] ?? '100%';
+            $alto = $campo['alto'] ?? '400px';
             $borde = !empty($campo['mostrar_borde']) ? '1' : '0';
             $fullscreen = !empty($campo['permitir_fullscreen']) ? 'allowfullscreen' : '';
             $params = $campo['parametros_embebido'] ?? [];
+            $url = isset($url) ? $url : '';
             if (!empty($params) && is_array($params)) {
                 $url .= (strpos($url, '?') === false ? '?' : '&') . http_build_query($params);
             }
             $iframe = "<iframe src='".htmlspecialchars($url, ENT_QUOTES, 'UTF-8')."' width='".htmlspecialchars($ancho, ENT_QUOTES, 'UTF-8')."' height='".htmlspecialchars($alto, ENT_QUOTES, 'UTF-8')."' frameborder='".htmlspecialchars($borde, ENT_QUOTES, 'UTF-8')."' style='border:1px solid #ccc;' $fullscreen></iframe>";
+                $alto = isset($alto) ? $alto : '400px';
             return "<div class='form-group mb-2'>{$hLabel}{$iframe}</div>";
         case 'email':
         case 'password':

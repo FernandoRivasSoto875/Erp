@@ -1,9 +1,5 @@
 <?php
-// Vista principal del formulario dinámico. Orquesta la carga del JSON y el renderizado visual.
-/*
-COPILOT_PROMPT (Lineamientos y requisitos para cualquier cambio en este archivo)
-Leer COPILOT_PROMPT en formulariodinamicoprompt.txt.
- */
+/* Leer COPILOT_PROMPT en formulariodinamicoprompt.txt */
 // Incluye helpers de renderizado y lógica adicional
 require_once __DIR__ . '/formulariodinamicofunciones.php';
 require_once __DIR__ . '/formulariodinamicologica.php';
@@ -132,5 +128,4 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
   <script src="js/formulariodinamico_v2.js"></script>
   <script src="js/formulariodinamico-init.js"></script>
-</body>
-</html>
+?>

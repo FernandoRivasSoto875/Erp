@@ -22,10 +22,16 @@
     echo '<div class="alert alert-danger">No se encontró el archivo JSON: '.$json_path.'</div>';
   }
   require_once __DIR__ . '/formulariodinamicofunciones.php';
-    // Renderizar los tabs en modo botones (nav-pills)
-    $mainLayout = $json_data['layout']['main'];
-    $tabsCount = isset($mainLayout['tabs']) && is_array($mainLayout['tabs']) ? count($mainLayout['tabs']) : 0;
-    if ($tabsCount > 0 && ($mainLayout['type'] ?? '') === 'tabs') {
+  // Inicializar variables clave
+  $botones_config = $json_data['parametros']['botones'] ?? [];
+  $modoDiseno = false;
+  $layout = $json_data['layout'] ?? [];
+  $fieldsets = $json_data['fieldsets'] ?? [];
+  $mainLayout = $layout['main'] ?? [];
+  $tabsCount = isset($mainLayout['tabs']) && is_array($mainLayout['tabs']) ? count($mainLayout['tabs']) : 0;
+  if (empty($json_data) || empty($layout) || empty($fieldsets)) {
+    echo '<div class="alert alert-warning">No hay datos suficientes para renderizar el formulario.</div>';
+  } elseif ($tabsCount > 0 && ($mainLayout['type'] ?? '') === 'tabs') {
       // Renderizar tabs como nav-pills (botones)
       echo fd_render_tabs_section($mainLayout, $json_data['fieldsets'], true);
       // Botones debajo de los tabs

@@ -233,7 +233,6 @@ if (!function_exists('fd_render_tabs_section')) {
             return fd_render_tabs_section($section,$fieldsets); // Placeholder si ya declarada
         }
     }
-}
 
 // --- Renderiza el layout completo (fallback global) ---
 if (!function_exists('fd_render_layout_fallback')) {

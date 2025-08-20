@@ -66,7 +66,7 @@
           "nombre": "contenido_embebido",
           "tipo": "embevido",
           "etiqueta": "Contenido Embebido",
-          "url_embebido": "https://www.linkedin.com/notifications/?filter=all",
+          "url_embebido": "https://www.youtube.com/embed/dQw4w9WgXcQ",
           "parametros_embebido": { "usuario": "123", "token": "abc" },
           "alto": "400px",
           "ancho": "100%",

@@ -288,84 +288,80 @@ if (!function_exists('fd_render_layout_fallback')) {
     }
 }
 
-if (!function_exists('fd_render_fieldset_fallback')) {
-    function fd_render_fieldset_fallback(string $key, array $fieldset): string {
-        $titulo = htmlspecialchars($fieldset['titulo'] ?? $key, ENT_QUOTES, 'UTF-8');
-        // Buscar tanto 'fields' como 'campos' para máxima compatibilidad
-        $fields = [];
-        if (isset($fieldset['fields']) && is_array($fieldset['fields'])) {
-            $fields = $fieldset['fields'];
-        } elseif (isset($fieldset['campos']) && is_array($fieldset['campos'])) {
-            $fields = $fieldset['campos'];
-        }
-        $html = '<fieldset class="fd-fieldset" data-fs="'.$key.'"><legend>'.$titulo.'</legend>';
-        // Si existe layout, renderizar en filas y columnas
-        if (isset($fieldset['layout']) && is_array($fieldset['layout'])) {
-            foreach ($fieldset['layout'] as $row) {
-                // Compatibilidad: aceptar tanto 'row' como 'columns'/'cols'
-                $cols = [];
-                if (isset($row['row']) && is_array($row['row'])) {
-                    $cols = $row['row'];
-                } elseif (isset($row['columns']) && is_array($row['columns'])) {
-                    $cols = $row['columns'];
-                } elseif (isset($row['cols']) && is_array($row['cols'])) {
-                    $cols = $row['cols'];
-                }
-                if (!is_array($cols) || !$cols) continue;
-                $html .= '<div class="row fd-row">';
-                foreach ($cols as $col) {
-                    $colW = (int)($col['col'] ?? $col['width'] ?? 12);
-                    $campoKey = $col['campo'] ?? null;
-                    $campoObj = null;
-                    foreach ($fields as $f) {
-                        if (isset($f['nombre']) && $f['nombre'] === $campoKey) {
-                            $campoObj = $f;
-                            break;
-                        }
-                    }
-                    if ($campoObj) {
-                        $html .= '<div class="col-md-'.$colW.' fd-col">'.generarCampo($campoObj, '', false).'</div>';
-                    }
-                }
-                $html .= '</div>';
-            }
-        } else {
-            // Render simple si no hay layout
-            if (!empty($fields)) {
-                foreach ($fields as $campo) {
-                    if (!is_array($campo)) continue;
-                    $html .= generarCampo($campo, '', false);
-                }
-            }
-        }
-        $html .= '</fieldset>';
-        return $html;
-    }
-}
+ function fd_render_fieldset_fallback(string $key, array $fieldset): string {
+     $titulo = htmlspecialchars($fieldset['titulo'] ?? $key, ENT_QUOTES, 'UTF-8');
+     // Buscar tanto 'fields' como 'campos' para máxima compatibilidad
+     $fields = [];
+     if (isset($fieldset['fields']) && is_array($fieldset['fields'])) {
+         $fields = $fieldset['fields'];
+     } elseif (isset($fieldset['campos']) && is_array($fieldset['campos'])) {
+         $fields = $fieldset['campos'];
+     }
+     $html = '<fieldset class="fd-fieldset" data-fs="'.$key.'"><legend>'.$titulo.'</legend>';
+     // Si existe layout, renderizar en filas y columnas
+     if (isset($fieldset['layout']) && is_array($fieldset['layout'])) {
+         foreach ($fieldset['layout'] as $row) {
+             // Compatibilidad: aceptar tanto 'row' como 'columns'/'cols'
+             $cols = [];
+             if (isset($row['row']) && is_array($row['row'])) {
+                 $cols = $row['row'];
+             } elseif (isset($row['columns']) && is_array($row['columns'])) {
+                 $cols = $row['columns'];
+             } elseif (isset($row['cols']) && is_array($row['cols'])) {
+                 $cols = $row['cols'];
+             }
+             if (!is_array($cols) || !$cols) continue;
+             $html .= '<div class="row fd-row">';
+             foreach ($cols as $col) {
+                 $colW = (int)($col['col'] ?? $col['width'] ?? 12);
+                 $campoKey = $col['campo'] ?? null;
+                 $campoObj = null;
+                 foreach ($fields as $f) {
+                     if (isset($f['nombre']) && $f['nombre'] === $campoKey) {
+                         $campoObj = $f;
+                         break;
+                     }
+                 }
+                 if ($campoObj) {
+                     $html .= '<div class="col-md-'.$colW.' fd-col">'.generarCampo($campoObj, '', false).'</div>';
+                 }
+             }
+             $html .= '</div>';
+         }
+     } else {
+         // Render simple si no hay layout
+         if (!empty($fields)) {
+             foreach ($fields as $campo) {
+                 if (!is_array($campo)) continue;
+                 $html .= generarCampo($campo, '', false);
+             }
+         }
+     }
+     $html .= '</fieldset>';
+     return $html;
+ }
 // ========================================================================
 // FIN RENDER LAYOUT FALLBACK
 
 // Renderiza un array de filas (rows) con columnas y fieldsets
-if (!function_exists('fd_render_rows_fallback')) {
-    function fd_render_rows_fallback(array $rows, array $fieldsets): string {
-        $html = '';
-        foreach ($rows as $row) {
-            $columns = $row['columns'] ?? $row['cols'] ?? [];
-            $html .= '<div class="row">';
-            foreach ($columns as $col) {
-                $width = intval($col['width'] ?? $col['col'] ?? 12);
-                $fsKey = $col['fieldset'] ?? $col['fs'] ?? null;
-                $html .= '<div class="col-md-' . $width . '">';
-                if ($fsKey && isset($fieldsets[$fsKey])) {
-                    $html .= fd_render_fieldset_fallback($fsKey, $fieldsets[$fsKey]);
-                }
-                $html .= '</div>';
-            }
-            $html .= '</div>';
-        }
-        return $html;
-    }
-}
+ function fd_render_rows_fallback(array $rows, array $fieldsets): string {
+     $html = '';
+     foreach ($rows as $row) {
+         $columns = $row['columns'] ?? $row['cols'] ?? [];
+         $html .= '<div class="row">';
+         foreach ($columns as $col) {
+             $width = intval($col['width'] ?? $col['col'] ?? 12);
+             $fsKey = $col['fieldset'] ?? $col['fs'] ?? null;
+             $html .= '<div class="col-md-' . $width . '">';
+             if ($fsKey && isset($fieldsets[$fsKey])) {
+                 $html .= fd_render_fieldset_fallback($fsKey, $fieldsets[$fsKey]);
+             }
+             $html .= '</div>';
+         }
+         $html .= '</div>';
+     }
+     return $html;
+ }
 
 // Renderiza un array de filas (rows) con columnas y fieldsets
 if (!function_exists('fd_render_rows_fallback')) {

@@ -194,7 +194,7 @@
           ]
         }
       ]
-    },
+    ,
     "header": {
       "titulo": "Cabecera",
       "campos": [
@@ -306,7 +306,7 @@
           "order": "ComDes ASC"
         } }
       ]
-    }
+    },
     },
     "main_operaciones": {
       "type": "tabs",

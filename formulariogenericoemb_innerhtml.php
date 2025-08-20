@@ -9,7 +9,7 @@
 </head>
 <body>
     <div style="max-width:900px;margin:2em auto;">
-        <iframe src="formulariodinamico.php?archivo=json/formulariogenerico2.json" 
+        <iframe src="formulariodinamico.php?archivo=formulariogenerico2.json" 
             style="width:100%;min-height:400px;max-height:90vh;border:none;overflow:auto;"
             allowfullscreen
             loading="lazy"

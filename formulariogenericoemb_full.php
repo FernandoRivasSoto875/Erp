@@ -19,7 +19,7 @@
     <?php include 'menu.php'; ?>
     <?php include 'redes.php'; ?>
     <main id="formulario-dinamico-main">
-        <iframe src="https://saludenterreno.cl/ErpQa/formulariodinamico.php?archivo=json/formulariogenerico2.json"
+        <iframe src="https://saludenterreno.cl/ErpQa/formulariodinamico.php?archivo=formulariogenerico2.json"
             style="width:100%;min-height:400px;max-height:90vh;border:none;overflow:auto;"
             allowfullscreen
             loading="lazy"

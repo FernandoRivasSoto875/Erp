@@ -345,5 +345,27 @@ if (!function_exists('fd_render_fieldset_fallback')) {
 // ========================================================================
 // FIN RENDER LAYOUT FALLBACK
 
+// Renderiza un array de filas (rows) con columnas y fieldsets
+if (!function_exists('fd_render_rows_fallback')) {
+    function fd_render_rows_fallback(array $rows, array $fieldsets): string {
+        $html = '';
+        foreach ($rows as $row) {
+            $columns = $row['columns'] ?? $row['cols'] ?? [];
+            $html .= '<div class="row">';
+            foreach ($columns as $col) {
+                $width = intval($col['width'] ?? $col['col'] ?? 12);
+                $fsKey = $col['fieldset'] ?? $col['fs'] ?? null;
+                $html .= '<div class="col-md-' . $width . '">';
+                if ($fsKey && isset($fieldsets[$fsKey])) {
+                    $html .= fd_render_fieldset_fallback($fsKey, $fieldsets[$fsKey]);
+                }
+                $html .= '</div>';
+            }
+            $html .= '</div>';
+        }
+        return $html;
+    }
+}
+
 ?>
 

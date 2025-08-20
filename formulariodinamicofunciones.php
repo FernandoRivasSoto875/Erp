@@ -92,9 +92,12 @@ function generarCampo($campo, $valor, $soloLectura): string {
             return "<div class='form-group mb-2'>{$hLabel}<input type='file' name='{$hName}".(isset($attrs['multiple'])?'[]':'')."' class='form-control'{$disabled}{$attrStr}></div>";
         case 'select':
             // Si tiene data-source, renderiza el select vacío con atributo data-source
-            if (!empty($campo['data-source'])) {
-                return "<div class='form-group mb-2'>{$hLabel}<select name='{$hName}' class='form-control' data-source='" . htmlspecialchars(json_encode($campo['data-source']), ENT_QUOTES, 'UTF-8') . "'{$disabled}{$attrStr}></select></div>";
-            }
+                if (!empty($campo['data-source'])) {
+                    $multiple = isset($attrs['multiple']) ? ' multiple' : '';
+                    $optionInit = '<option value="">Seleccione...</option>';
+                    $msgFail = "<div class='fd-select-msg text-danger' style='display:none;'>No se pudo cargar opciones.</div>";
+                    return "<div class='form-group mb-2'>{$hLabel}<select name='{$hName}' class='form-control' data-source='" . htmlspecialchars(json_encode($campo['data-source']), ENT_QUOTES, 'UTF-8') . "'{$disabled}{$attrStr}{$multiple}>$optionInit</select>$msgFail</div>";
+                }
             // Si tiene opciones estáticas
             $options = $campo['opciones'] ?? [];
             $opts = '';

@@ -26,4 +26,4 @@ if (!$result['ok']) {
 } else {
     $result['msg'] = 'Todas las funciones PHP requeridas están presentes.';
 }
-echo json_encode($result); 
+echo json_encode($result);

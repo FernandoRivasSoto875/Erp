@@ -248,7 +248,7 @@
       ]
     },
     "contenido_embebido": {
-      "nombre": "contenido_embebido",
+      "nombre": "contenido _embebido",
       "tipo": "embevido",
       "etiqueta": "Contenido Embebido",
       "url_embebido": "https://www.ejemplo.com/archivo.html",

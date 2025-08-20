@@ -52,9 +52,25 @@ document.addEventListener('DOMContentLoaded', function() {
       .then(r => r.json())
       .then(data => {
         sel.innerHTML = '<option value="">Seleccione...</option>';
-        data.forEach(opt => {
-          sel.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
-        });
+        if(Array.isArray(data) && data.length > 0) {
+          data.forEach(opt => {
+            sel.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
+          });
+          if(sel.nextElementSibling && sel.nextElementSibling.classList.contains('fd-select-msg')) {
+            sel.nextElementSibling.style.display = 'none';
+          }
+        } else {
+          if(sel.nextElementSibling && sel.nextElementSibling.classList.contains('fd-select-msg')) {
+            sel.nextElementSibling.style.display = '';
+            sel.nextElementSibling.textContent = 'No se encontraron opciones.';
+          }
+        }
+      })
+      .catch(err => {
+        if(sel.nextElementSibling && sel.nextElementSibling.classList.contains('fd-select-msg')) {
+          sel.nextElementSibling.style.display = '';
+          sel.nextElementSibling.textContent = 'Error al cargar opciones.';
+        }
       });
   }
 });

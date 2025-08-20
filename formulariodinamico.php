@@ -29,7 +29,7 @@ foreach ($fieldsets as $fs) {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Formulario Dinámico</title>
+    <title><?php echo htmlspecialchars($json['parametros']['titulo'] ?? 'Formulario Dinámico'); ?></title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <?php if (!empty($json['CssDefault'])): ?>
@@ -45,7 +45,7 @@ foreach ($fieldsets as $fs) {
 <body>
 <?php $cssDefault = $json['CssDefault'] ?? ''; ?>
 <div class="container mt-4 <?php echo htmlspecialchars($cssDefault); ?>">
-    <h2 class="mb-3">Formulario Dinámico</h2>
+    <h2 class="mb-3"><?php echo htmlspecialchars($json['parametros']['titulo'] ?? 'Formulario Dinámico'); ?></h2>
     <?php
     // Diagnóstico visual de funciones PHP
     if (function_exists('fd_diagnostico_html')) {

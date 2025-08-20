@@ -260,7 +260,7 @@
         {
           "columns": [
             { "width": 6, "fieldset": "header" },
-            { "width": 6, "fieldset": "header_info" }
+            { "width": 6, "tabs_section": "main_datos" }
           ]
         }
       ]

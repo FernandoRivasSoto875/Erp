@@ -1,3 +1,24 @@
+# Lineamientos de Versatilidad para Formularios Dinámicos
+
+Este prompt define las capacidades y opciones de presentación que debe soportar el sistema de formularios dinámicos:
+
+1. **Tabs anidados**: Permitir la creación de tabs dentro de otros tabs para formularios complejos.
+2. **Acordeones**: Secciones colapsables para agrupar campos y ahorrar espacio visual.
+3. **Wizard/Pasos**: Formularios multi-paso con navegación y validación por etapa.
+4. **Columnas flexibles**: Layouts de 2, 3 o más columnas, mezclando fieldsets y tabs.
+5. **Campos condicionales**: Mostrar/ocultar campos según selecciones previas del usuario.
+6. **Resumen lateral**: Panel lateral que muestra un resumen en tiempo real de lo ingresado.
+7. **Vista previa**: Botón para ver cómo quedará el formulario antes de enviar.
+8. **Modo compacto/expandido**: Alternar entre vista resumida y detallada del formulario.
+9. **Drag & drop**: Reordenar secciones, tabs o campos arrastrando.
+10. **Temas visuales**: Cambiar el estilo visual (colores, fuentes, etc.) desde el JSON.
+11. **Mensajes contextuales**: Mostrar advertencias, sugerencias o ayudas junto a cada campo.
+12. **Integración multimedia**: Permitir imágenes, videos o archivos embebidos en cualquier sección.
+13. **Accesibilidad**: Navegación por teclado, contraste alto, etiquetas ARIA y soporte para lectores de pantalla.
+14. **Layouts responsivos**: Adaptar la presentación según el dispositivo (móvil, tablet, escritorio).
+15. **Validaciones en tiempo real**: Feedback inmediato al usuario mientras completa el formulario.
+
+Estos lineamientos deben ser considerados en el diseño, desarrollo y evolución del sistema de formularios dinámicos para maximizar la experiencia y flexibilidad del usuario final.
 COPILOT_PROMPT (Lineamientos y requisitos para cualquier cambio en este archivo)
 
 NUEVA FUNCIONALIDAD: Campo tipo "embevido"

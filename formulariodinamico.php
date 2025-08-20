@@ -23,7 +23,6 @@ foreach ($fieldsets as $fs) {
         $all_fields[] = $campo;
     }
 }
-
 // --- RENDER DEL FORMULARIO ---
 ?><!DOCTYPE html>
 <html lang="es">

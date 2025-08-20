@@ -359,9 +359,12 @@ if (!function_exists('fd_render_layout_fallback')) {
          foreach ($columns as $col) {
              $width = intval($col['width'] ?? $col['col'] ?? 12);
              $fsKey = $col['fieldset'] ?? $col['fs'] ?? null;
+             $tabsSection = $col['tabs_section'] ?? null;
              $html .= '<div class="col-md-' . $width . '">';
              if ($fsKey && isset($fieldsets[$fsKey])) {
                  $html .= fd_render_fieldset_fallback($fsKey, $fieldsets[$fsKey]);
+             } elseif ($tabsSection && isset($GLOBALS['json']['layout'][$tabsSection])) {
+                 $html .= fd_render_tabs_section($GLOBALS['json']['layout'][$tabsSection], $fieldsets);
              }
              $html .= '</div>';
          }

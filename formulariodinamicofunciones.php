@@ -71,12 +71,11 @@ function generarCampo($campo, $valor, $soloLectura): string {
             $borde = !empty($campo['mostrar_borde']) ? '1' : '0';
             $fullscreen = !empty($campo['permitir_fullscreen']) ? 'allowfullscreen' : '';
             $params = $campo['parametros_embebido'] ?? [];
-            $url = isset($url) ? $url : '';
-            if (!empty($params) && is_array($params)) {
+            $url = $campo['url_embebido'] ?? '';
+            if (!empty($url) && !empty($params) && is_array($params)) {
                 $url .= (strpos($url, '?') === false ? '?' : '&') . http_build_query($params);
             }
             $iframe = "<iframe src='".htmlspecialchars($url, ENT_QUOTES, 'UTF-8')."' width='".htmlspecialchars($ancho, ENT_QUOTES, 'UTF-8')."' height='".htmlspecialchars($alto, ENT_QUOTES, 'UTF-8')."' frameborder='".htmlspecialchars($borde, ENT_QUOTES, 'UTF-8')."' style='border:1px solid #ccc;' $fullscreen></iframe>";
-                $alto = isset($alto) ? $alto : '400px';
             return "<div class='form-group mb-2'>{$hLabel}{$iframe}</div>";
         case 'email':
         case 'password':

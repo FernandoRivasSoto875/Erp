@@ -166,7 +166,7 @@
           "filtro_avanzado": "enable",
           "sumar_columnas": ["col_numero"],
           "columnas": [
-            { "nombre": "col_texto", "etiqueta": "Columna Texto", "tipo": "text" },
+            { "nombre": "col_texto", "etiqueta": "Columna Texto..", "tipo": "text" },
             { "nombre": "col_numero", "etiqueta": "Columna Número", "tipo": "number" },
             { "nombre": "col_select", "etiqueta": "Columna Select", "tipo": "select", "opciones": { "a": "A", "b": "B" } },
             { "nombre": "col_fecha", "etiqueta": "Columna Fecha", "tipo": "date" },

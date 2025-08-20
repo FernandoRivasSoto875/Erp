@@ -218,8 +218,7 @@ if (!function_exists('fd_render_layout_fallback')) {
                     $html .= '<div class="col-md-' . $width . '">';
                     if ($fsKey && isset($fieldsets[$fsKey])) {
                         $html .= fd_render_fieldset_fallback($fsKey, $fieldsets[$fsKey]);
-                    }
-                    $html .= '</div>';
+                    }                    $html .= '</div>';
                 }
                 $html .= '</div>';
             }
@@ -282,6 +281,28 @@ if (!function_exists('fd_render_rows_fallback')) {
     }
 }
 
+// --- AUTODIAGNÓSTICO AUTOMÁTICO ---
+if (isset($_GET['diag']) && $_GET['diag'] === '1') {
+    header('Content-Type: application/json');
+    $funcs = [
+        'fd_render_rows_fallback',
+        'fd_render_tabs_section',
+        'fd_render_layout_fallback',
+        'fd_render_fieldset_fallback',
+        'generarCampo',
+        'generarLayout',
+        'generarFieldsetContenido'
+    ];
+    $result = [ 'ok' => true, 'missing' => [] ];
+    foreach ($funcs as $f) {
+        if (!function_exists($f)) {
+            $result['ok'] = false;
+            $result['missing'][] = $f;
+        }
+    }
+    echo json_encode($result);
+    exit;
+}
 // Puedes agregar aquí más funciones auxiliares según las necesidades del formulario dinámico.
 
 ?>

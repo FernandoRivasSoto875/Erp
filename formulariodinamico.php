@@ -58,6 +58,15 @@ foreach ($fieldsets as $fs) {
     <a href="/formulariodinamicotest.php" target="_blank" class="btn btn-outline-warning btn-sm">Ver diagnóstico PHP (test)</a>
     </div>
     <!-- Bloque de diagnóstico visual -->
+            <div class="alert alert-info">
+                <strong>Diagnóstico JSON:</strong><br>
+                <b>Archivo:</b> <?php echo htmlspecialchars($json_path); ?><br>
+                <b>¿Existe?:</b> <?php echo file_exists($json_path) ? 'Sí' : 'No'; ?><br>
+                <b>Decodificación:</b> <?php echo is_array($json) ? 'OK' : 'Error'; ?><br>
+                <b>Claves raíz:</b> <?php echo is_array($json) ? implode(', ', array_keys($json)) : 'N/A'; ?><br>
+                <b>Fieldsets cargados:</b> <?php echo is_array($fieldsets) ? count($fieldsets) : '0'; ?><br>
+                <b>Layout presente:</b> <?php echo !empty($layout) ? 'Sí' : 'No'; ?><br>
+            </div>
     <div class="alert alert-info mb-3">
         <b>Diagnóstico:</b><br>
         <?php

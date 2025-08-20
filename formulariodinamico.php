@@ -36,7 +36,7 @@ foreach ($fieldsets as $fs) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/formulariodinamico.js"></script>
-        <script src="/js/formulariodinamico-page.js"></script>
+    <script src="/js/formulariodinamico-page.js"></script>
     <script src="/js/formulariodinamico-init.js"></script>
     <script src="/js/formulariodinamico-float.js"></script>
     <script src="/js/formulariodinamicotest.js"></script>
@@ -53,7 +53,7 @@ foreach ($fieldsets as $fs) {
     }
     ?>
     <div class="mb-2">
-        <a href="/Php/formulariodinamicotest.php" target="_blank" class="btn btn-outline-warning btn-sm">Ver diagnóstico PHP (test)</a>
+        <a href="/formulariodinamicotest.php" target="_blank" class="btn btn-outline-warning btn-sm">Ver diagnóstico PHP (test)</a>
     </div>
     <!-- Bloque de diagnóstico visual -->
     <div class="alert alert-info mb-3">

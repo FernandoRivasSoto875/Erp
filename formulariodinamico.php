@@ -1,67 +1,7 @@
     ?>
     <div class="fd-shell">
       <div class="fd-form-area">
-    <?php
-    // Renderizar header
-    if (!empty($json_data['layout']['header'])) {
-      echo fd_render_layout_fallback(['header' => $json_data['layout']['header']], $json_data['fieldsets']);
-    }
-    // Renderizar main (tabs)
-    $mainLayout = $json_data['layout']['main'];
-    $tabsCount = isset($mainLayout['tabs']) && is_array($mainLayout['tabs']) ? count($mainLayout['tabs']) : 0;
-    if ($tabsCount > 0 && ($mainLayout['type'] ?? '') === 'tabs') {
-      echo fd_render_tabs_section($mainLayout, $json_data['fieldsets'], true);
-      // Botones debajo de los tabs
-      echo '<div class="mt-3">';
-      $botones_config = is_array($botones_config) ? $botones_config : [];
-      foreach ($botones_config as $b) {
-        $txt    = htmlspecialchars($b['texto'] ?? 'Botón');
-        $accion = $b['accion'] ?? 'submit';
-        $cls    = htmlspecialchars($b['clase'] ?? 'btn-secondary');
-        $type   = ($accion === 'reset' ? 'reset' : 'submit');
-        echo "<button type=\"$type\" class=\"btn $cls\">$txt</button>";
-      }
-      if ($modoDiseno) {
-        echo '<button type="button" class="btn btn-warning ms-2" id="btnDisenoExtra">Botón Diseño Activo</button>';
-      }
-      echo '</div>';
-      // Mostrar los fieldsets no referenciados en los tabs, header y footer
-      $referenciados = [];
-      // Tabs
-      foreach ($mainLayout['tabs'] as $tab) {
-        foreach ($tab['rows'] as $row) {
-          foreach ($row['columns'] as $col) {
-            if (!empty($col['fieldset'])) $referenciados[] = $col['fieldset'];
-          }
-        }
-      }
-      // Header
-      if (!empty($json_data['layout']['header']['rows'])) {
-        foreach ($json_data['layout']['header']['rows'] as $row) {
-          foreach ($row['columns'] as $col) {
-            if (!empty($col['fieldset'])) $referenciados[] = $col['fieldset'];
-          }
-        }
-      }
-      // Footer
-      if (!empty($json_data['layout']['footer']['rows'])) {
-        foreach ($json_data['layout']['footer']['rows'] as $row) {
-          foreach ($row['columns'] as $col) {
-            if (!empty($col['fieldset'])) $referenciados[] = $col['fieldset'];
-          }
-        }
-      }
-      $otros_fieldsets = array_diff(array_keys($json_data['fieldsets']), $referenciados);
-      if (!empty($otros_fieldsets)) {
-        echo '<div class="mt-4"><h5>Otros Fieldsets</h5>';
-        foreach ($otros_fieldsets as $fs) {
-          echo fd_render_fieldset_fallback($fs, $json_data['fieldsets'][$fs]);
-        }
-        echo '</div>';
-      }
-    } else {
-      // Si no hay tabs, renderizar el layout completo como antes
-      echo '<form id="formulariodinamico" data-layout-container class="mb-4">';
+  <!-- ...existing code... -->
       $layout = is_array($layout) ? $layout : [];
       $fieldsets = is_array($fieldsets) ? $fieldsets : [];
       echo fd_render_layout_fallback($layout, $fieldsets);

@@ -136,6 +136,8 @@ function generarCampo($campo, $valor, $soloLectura): string {
             return "<div class='form-group mb-2'>{$hLabel}<input type='{$inputType}' name='{$hName}' value='".htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8')."' class='form-control'{$disabled}{$attrStr}></div>";
     }
 
+}
+
 function fd_count_fields_por_fieldset(array $fieldsets) {
     $out = [];
     foreach ($fieldsets as $key => $fs) {
@@ -145,7 +147,6 @@ function fd_count_fields_por_fieldset(array $fieldsets) {
 }
 function fd_count_fieldsets($fieldsets) {
     return is_array($fieldsets) ? count($fieldsets) : 0;
-}
 }
 
 /* ========================================================================

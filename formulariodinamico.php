@@ -60,6 +60,8 @@ foreach ($fieldsets as $fs) {
         <b>Diagnóstico:</b><br>
         <?php
         echo 'Archivo JSON: <b>' . htmlspecialchars($archivo_json) . '</b><br>';
+        echo 'Ruta absoluta: <b>' . htmlspecialchars($json_path) . '</b><br>';
+        echo '¿Existe el archivo?: <b>' . (file_exists($json_path) ? 'Sí' : 'No') . '</b><br>';
         echo 'Fieldsets cargados: <b>' . count($fieldsets) . '</b><br>';
         echo 'Layout presente: <b>' . (!empty($layout) ? 'Sí' : 'No') . '</b><br>';
         if (empty($fieldsets)) echo '<span class="text-danger">No se encontraron fieldsets en el JSON.</span><br>';

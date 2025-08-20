@@ -1,30 +1,4 @@
-    ?>
-    <div class="fd-shell">
-      <div class="fd-form-area">
   <!-- ...existing code... -->
-      $layout = is_array($layout) ? $layout : [];
-      $fieldsets = is_array($fieldsets) ? $fieldsets : [];
-      echo fd_render_layout_fallback($layout, $fieldsets);
-      echo '<div class="mt-3">';
-      $botones_config = is_array($botones_config) ? $botones_config : [];
-      foreach ($botones_config as $b) {
-        $txt    = htmlspecialchars($b['texto'] ?? 'Botón');
-        $accion = $b['accion'] ?? 'submit';
-        $cls    = htmlspecialchars($b['clase'] ?? 'btn-secondary');
-        $type   = ($accion === 'reset' ? 'reset' : 'submit');
-        echo "<button type=\"$type\" class=\"btn $cls\">$txt</button>";
-      }
-      if ($modoDiseno) {
-        echo '<button type="button" class="btn btn-warning ms-2" id="btnDisenoExtra">Botón Diseño Activo</button>';
-      }
-      echo '</div>';
-      echo '</form>';
-    }
-    // Renderizar footer al final
-    if (!empty($json_data['layout']['footer'])) {
-      echo fd_render_layout_fallback(['footer' => $json_data['layout']['footer']], $json_data['fieldsets']);
-    }
-    ?>
     <!-- Botones flotantes para alternar vistas -->
     <div id="fd-float-btns" style="position:fixed;bottom:32px;right:32px;z-index:9999;display:flex;flex-direction:column;gap:12px;">
       <button id="btnShowTree" class="btn btn-outline-secondary shadow">Diseño Árbol</button>

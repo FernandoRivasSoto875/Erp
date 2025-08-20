@@ -4,6 +4,7 @@
 // =============================
 // Definir el archivo JSON antes de cualquier salida
 $_GET['archivo'] = __DIR__ . '/json/FormularioContacto.json';
+require_once __DIR__ . '/formulariodinamicofunciones.php';
 ?>
 <!DOCTYPE html>
 <html lang="es">

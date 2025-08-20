@@ -249,13 +249,13 @@
       "type": "tabs",
       "tabs": [
         {
-          "title": "General_Datos",
+          "title": "General_Datos1",
           "rows": [
             { "columns": [ { "width": 12, "fieldset": "principal" } ] }
           ]
         },
         {
-          "title": "Datos_Personales_Datos",
+          "title": "Datos_Personales_Datos1",
           "rows": [
             {
               "columns": [
@@ -266,7 +266,7 @@
           ]
         },
         {
-          "title": "Direccion_Datos",
+          "title": "Direccion_Datos1",
           "rows": [
             {
               "columns": [
@@ -276,7 +276,7 @@
           ]
         },
         {
-          "title": "Campos_Varios_Datos",
+          "title": "Campos_Varios_Datos1",
           "rows": [
             { "columns": [ { "width": 12, "fieldset": "campos_variados" } ] }
           ]

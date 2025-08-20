@@ -45,7 +45,7 @@ function generarPaletaTiposControl(): string {
 
 // --- Función principal para generar un campo ---
 function generarCampo($campo, $valor, $soloLectura): string {
-    $attrs = $campo['attrs'] ?? [];
+    $attrs = $campo['atributos'] ?? $campo['attrs'] ?? [];
     $tipo = strtolower($campo['tipo'] ?? 'text');
     $hLabel = htmlspecialchars($campo['etiqueta'] ?? $campo['label'] ?? '', ENT_QUOTES, 'UTF-8');
     $inputType = $tipo;
@@ -62,6 +62,10 @@ function generarCampo($campo, $valor, $soloLectura): string {
             $attrs
         ));
         $attrStr = ' ' . $attrStr;
+    }
+    $style = '';
+    if (!empty($campo['style'])) {
+        $style = ' style="' . htmlspecialchars($campo['style'], ENT_QUOTES, 'UTF-8') . '"';
     }
     switch ($tipo) {
         case 'embevido':
@@ -92,12 +96,12 @@ function generarCampo($campo, $valor, $soloLectura): string {
             return "<div class='form-group mb-2'>{$hLabel}<input type='file' name='{$hName}".(isset($attrs['multiple'])?'[]':'')."' class='form-control'{$disabled}{$attrStr}></div>";
         case 'select':
             // Si tiene data-source, renderiza el select vacío con atributo data-source
-                if (!empty($campo['data-source'])) {
-                    $multiple = isset($attrs['multiple']) ? ' multiple' : '';
-                    $optionInit = '<option value="">Seleccione...</option>';
-                    $msgFail = "<div class='fd-select-msg text-danger' style='display:none;'>No se pudo cargar opciones.</div>";
-                    return "<div class='form-group mb-2'>{$hLabel}<select name='{$hName}' class='form-control' data-source='" . htmlspecialchars(json_encode($campo['data-source']), ENT_QUOTES, 'UTF-8') . "'{$disabled}{$attrStr}{$multiple}>$optionInit</select>$msgFail</div>";
-                }
+            if (!empty($campo['data-source'])) {
+                $multiple = isset($attrs['multiple']) ? ' multiple' : '';
+                $optionInit = '<option value="">Seleccione...</option>';
+                $msgFail = "<div class='fd-select-msg text-danger' style='display:none;'>No se pudo cargar opciones.</div>";
+                return "<div class='form-group mb-2'{$style}>{$hLabel}<select name='{$hName}' class='form-control' data-source='" . htmlspecialchars(json_encode($campo['data-source']), ENT_QUOTES, 'UTF-8') . "'{$disabled}{$attrStr}{$multiple}>$optionInit</select>$msgFail</div>";
+            }
             // Si tiene opciones estáticas
             $options = $campo['opciones'] ?? [];
             $opts = '';
@@ -105,7 +109,7 @@ function generarCampo($campo, $valor, $soloLectura): string {
                 $sel = ((string)$valor === (string)$key) ? ' selected' : '';
                 $opts .= "<option value='".htmlspecialchars((string)$key, ENT_QUOTES, 'UTF-8')."'{$sel}>".htmlspecialchars((string)$text, ENT_QUOTES, 'UTF-8')."</option>";
             }
-            return "<div class='form-group mb-2'>{$hLabel}<select name='{$hName}' class='form-control'{$disabled}{$attrStr}>{$opts}</select></div>";
+            return "<div class='form-group mb-2'{$style}>{$hLabel}<select name='{$hName}' class='form-control'{$disabled}{$attrStr}>{$opts}</select></div>";
         case 'selectdata':
             // Si tiene data, renderiza el select vacío con atributo data-selectdata
             if (!empty($campo['data'])) {
@@ -132,9 +136,9 @@ function generarCampo($campo, $valor, $soloLectura): string {
             $cols = $campo['columnas'] ?? $campo['columns'] ?? [];
             $head = '';
             foreach ($cols as $col) {
-                $head .= "<th>".htmlspecialchars($col['label'] ?? $col['nombre'] ?? $col['name'] ?? '', ENT_QUOTES, 'UTF-8')."</th>";
+                $head .= "<th>".htmlspecialchars($col['label'] ?? $col['etiqueta'] ?? $col['nombre'] ?? $col['name'] ?? '', ENT_QUOTES, 'UTF-8')."</th>";
             }
-            return "<div class='form-group mb-2'>{$hLabel}<div data-tipo='datatable' data-nombre='{$hName}' class='table-responsive'><table class='table table-sm table-bordered mb-0'><thead><tr>{$head}</tr></thead><tbody><!-- filas dinámicas --></tbody></table></div></div>";
+            return "<div class='form-group mb-2'{$style}>{$hLabel}<div data-tipo='datatable' data-nombre='{$hName}' class='table-responsive'><table class='table table-sm table-bordered mb-0'><thead><tr>{$head}</tr></thead><tbody><!-- filas dinámicas --></tbody></table></div></div>";
         default:
             return "<div class='form-group mb-2'>{$hLabel}<input type='{$inputType}' name='{$hName}' value='".htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8')."' class='form-control'{$disabled}{$attrStr}></div>";
     }

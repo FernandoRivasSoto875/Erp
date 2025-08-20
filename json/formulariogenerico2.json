@@ -265,7 +265,7 @@
         }
       ]
     },
-    "main": {
+    "main_datos": {
       "type": "tabs",
       "tabs": [
         {
@@ -286,23 +286,16 @@
           ]
         },
         {
-          "title": "Embebido",
-          "rows": [
-            { "columns": [ { "width": 12, "fieldset": "embevido_demo" } ] }
-          ]
-        },
-        {
-          "title": "Contacto",
-          "rows": [
-            { "columns": [ { "width": 12, "fieldset": "datos_contacto" } ] }
-          ]
-        },
-        {
           "title": "Campos Varios",
           "rows": [
             { "columns": [ { "width": 12, "fieldset": "campos_variados" } ] }
           ]
-        },
+        }
+      ]
+    },
+    "main_operaciones": {
+      "type": "tabs",
+      "tabs": [
         {
           "title": "Productos",
           "rows": [
@@ -316,15 +309,32 @@
           ]
         },
         {
-          "title": "Controles",
-          "rows": [
-            { "columns": [ { "width": 12, "fieldset": "todos_los_controles" } ] }
-          ]
-        },
-        {
           "title": "Grilla",
           "rows": [
             { "columns": [ { "width": 12, "fieldset": "grupo_grilla_ejemplo" } ] }
+          ]
+        }
+      ]
+    },
+    "main_extras": {
+      "type": "tabs",
+      "tabs": [
+        {
+          "title": "Embebido",
+          "rows": [
+            { "columns": [ { "width": 12, "fieldset": "embevido_demo" } ] }
+          ]
+        },
+        {
+          "title": "Contacto",
+          "rows": [
+            { "columns": [ { "width": 12, "fieldset": "datos_contacto" } ] }
+          ]
+        },
+        {
+          "title": "Controles",
+          "rows": [
+            { "columns": [ { "width": 12, "fieldset": "todos_los_controles" } ] }
           ]
         }
       ]

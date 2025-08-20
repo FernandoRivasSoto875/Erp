@@ -237,23 +237,38 @@ if (!function_exists('fd_render_tabs_section')) {
     }
 }
 
-if (!function_exists('fd_render_rows_fallback')) {
-    function fd_render_rows_fallback($rows, array $fieldsets): string {
-        if (!$rows || !is_array($rows)) return '';
+// --- Renderiza el layout completo (fallback global) ---
+if (!function_exists('fd_render_layout_fallback')) {
+    function fd_render_layout_fallback($layout, array $fieldsets): string {
+        if (!$layout || !is_array($layout)) return '';
+        $sections = fd_is_assoc($layout)
+            ? array_map(function($k,$v){ if(is_array($v)) $v['_section_key']=$k; return $v; }, array_keys($layout), $layout)
+            : $layout;
         $html = '';
-        foreach ($rows as $row) {
-            if (!is_array($row)) continue;
-            // Compatibilidad: aceptar tanto 'columns' como 'cols'
-            $cols = [];
-            if (isset($row['columns']) && is_array($row['columns'])) {
-                $cols = $row['columns'];
-            } elseif (isset($row['cols']) && is_array($row['cols'])) {
-                $cols = $row['cols'];
+        foreach ($sections as $section) {
+            if (!is_array($section)) continue;
+            $sectionKey = $section['_section_key'] ?? '';
+            $rows = $section['rows'] ?? [];
+            $html .= '<div class="fd-section mb-4">';
+            foreach ($rows as $row) {
+                $columns = $row['columns'] ?? [];
+                $html .= '<div class="row">';
+                foreach ($columns as $col) {
+                    $width = intval($col['width'] ?? 12);
+                    $fsKey = $col['fieldset'] ?? null;
+                    $html .= '<div class="col-md-' . $width . '">';
+                    if ($fsKey && isset($fieldsets[$fsKey])) {
+                        $html .= fd_render_fieldset_fallback($fsKey, $fieldsets[$fsKey]);
+                    }
+                    $html .= '</div>';
+                }
+                $html .= '</div>';
             }
-            if (!is_array($cols) || !$cols) continue;
-            $html .= '<div class="row fd-row">';
-            // Calcular ancho automático si no se especifica
-            $autoWidth = 12;
+            $html .= '</div>';
+        }
+        return $html;
+    }
+}
             $colCount = count($cols);
             $widths = array_map(function($col) { return isset($col['width']) || isset($col['col']); }, $cols);
             $anyWidth = in_array(true, $widths);

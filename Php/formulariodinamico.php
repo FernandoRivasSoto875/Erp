@@ -45,6 +45,17 @@ foreach ($fieldsets as $fs) {
 <body>
 <div class="container mt-4">
     <h2 class="mb-3">Formulario Dinámico</h2>
+    <!-- Bloque de diagnóstico visual -->
+    <div class="alert alert-info mb-3">
+        <b>Diagnóstico:</b><br>
+        <?php
+        echo 'Archivo JSON: <b>' . htmlspecialchars($archivo_json) . '</b><br>';
+        echo 'Fieldsets cargados: <b>' . count($fieldsets) . '</b><br>';
+        echo 'Layout presente: <b>' . (!empty($layout) ? 'Sí' : 'No') . '</b><br>';
+        if (empty($fieldsets)) echo '<span class="text-danger">No se encontraron fieldsets en el JSON.</span><br>';
+        if (empty($layout)) echo '<span class="text-warning">No se encontró layout, se mostrarán todos los fieldsets.</span><br>';
+        ?>
+    </div>
     <?php
     // Renderizar el layout principal
     if (!empty($layout)) {

@@ -2,7 +2,7 @@
   "parametros": {
     "FormularioDataSourcePrincipal": "",
     "titulo": "Formulario Genérico A TRATAR",
-    "CssDefault": "formulariodinamico-base.css",
+    "CssDefault": "formulariodinamico-base.css" ,
     "tituloimagen": "https://cdn.pixabay.com/photo/2017/05/31/16/39/windows-2360920_1280.png",
     "comentario": "Observa cómo cada etiqueta y tipo de campo se comporta.",
     "pie": "Gracias por usar nuestro sistema.",
@@ -59,7 +59,7 @@
     }
   },
   "fieldsets": {
-    "embevido_demo": {
+  "embevido_demo": {
       "titulo": "Demo Embebido",
       "campos": [
         {
@@ -74,10 +74,10 @@
           "permitir_fullscreen": true
         }
       ]
-    },
-    "datos_personales": {
-      "titulo": "Datos Personales",
-      "campos": [
+  },
+  "datos_personales": {
+    "titulo": "Datos Personales",
+    "campos": [
         { "nombre": "nombre_completo", "etiqueta": "Nombre Completo (text)", "tipo": "text", "placeholder": "Ingrese su nombre", "atributos": { "required": true } },
         { "nombre": "email", "etiqueta": "Correo Electrónico (email)", "tipo": "email", "placeholder": "ejemplo@dominio.com" },
         { "nombre": "clave_acceso", "etiqueta": "Contraseña (password)", "tipo": "password" }
@@ -96,59 +96,59 @@
         { "nombre": "pais_db", "etiqueta": "País (cargado desde BD)..", "tipo": "select", "data-source": {
           "tabla": "Pais",
           "campo_valor": "PaiId",
-          "campo_etiqueta": "PaiDes",
-          "order": "PaiDes ASC"
-        } },
-        { "nombre": "ciudad_db", "etiqueta": "Ciudad (depende del país..)", "tipo": "select", "data-source": {
-          "tabla": "Ciudad",
-          "campo_valor": "CiuId",
-          "campo_etiqueta": "CiuDes",
-          "filtro": "PaiId={pais_db}",
-          "order": "CiuDes ASC"
-        } },
-        { "nombre": "comuna_Id", "etiqueta": "Comuna (depende del ciudad)", "tipo": "select", "data-source": {
-          "tabla": "Comuna",
-          "campo_valor": "ComId",
-          "campo_etiqueta": "ComDes",
-          "filtro": "CiuId={ciudad_db}",
-          "order": "ComDes ASC"
-        } },
-        { "nombre": "fecha_nacimiento", "etiqueta": "Fecha de Nacimiento (date)", "tipo": "date" },
-        { "nombre": "edad", "etiqueta": "Edad (number)", "tipo": "number", "placeholder": "30" },
-        { "nombre": "genero", "etiqueta": "Género (radio)", "tipo": "radio", "opciones": { "masculino": "Masculino", "femenino": "Femenino", "otro": "Otro" } },
-        { "nombre": "habilidades", "etiqueta": "Habilidades (select2 múltiple)", "tipo": "select", "atributos": { "multiple": "multiple" }, "opciones": { "php": "PHP", "js": "JavaScript", "css": "CSS", "sql": "SQL", "react": "React" } },
-        { "nombre": "acepta_notificaciones", "etiqueta": "Acepta recibir notificaciones (checkbox)", "tipo": "checkbox", "opciones": { "si": "" } },
-        { "nombre": "id_oculto", "tipo": "hidden", "valor_predeterminado": "ABC-123" },
-        { "nombre": "cv_adjunto", "etiqueta": "Adjuntar CV (file)", "tipo": "file" }
-      ]
-    },
-    "productos_factura": {
-      "titulo": "Detalle de Productos (Datatable con Fórmula)",
-      "campos": [
-        {
-          "nombre": "detalle_productos",
-          "tipo": "datatable",
-          "etiqueta": "Producto",
-          "busqueda_simple": "enable",
-          "filtro_avanzado": "enable",
-          "sumar_columnas": ["precio", "cantidad"],
-          "columnas": [
-            { "nombre": "producto", "etiqueta": "Producto", "tipo": "text" },
-            { "nombre": "precio", "etiqueta": "Precio", "tipo": "number" },
-            { "nombre": "cantidad", "etiqueta": "Cantidad", "tipo": "number" },
-            { "nombre": "total_linea", "etiqueta": "Total", "tipo": "number" }
-          ],
-          "dataSource": { "tabla": "" }
-        }
-      ]
-    },
-    "resumen_factura": {
-      "titulo": "Resumen y Totales",
-      "campos": [
-        {
-          "nombre": "total_factura",
-          "etiqueta": "Total Factura (Fórmula)",
-          "tipo": "number",
+          "campos_variados": {
+            "titulo": "Tipos de Campos Variados",
+            "campos": [
+              { "nombre": "pais_db", "etiqueta": "País (cargado desde BD)..", "tipo": "select", "data-source": {
+                "tabla": "Pais",
+                "campo_valor": "PaiId",
+                "campo_etiqueta": "PaiDes",
+                "order": "PaiDes ASC"
+              } },
+              { "nombre": "ciudad_db", "etiqueta": "Ciudad (depende del país..)", "tipo": "select", "data-source": {
+                "tabla": "Ciudad",
+                "campo_valor": "CiuId",
+                "campo_etiqueta": "CiuDes",
+                "filtro": "PaiId={pais_db}",
+                "order": "CiuDes ASC"
+              } },
+              { "nombre": "comuna_Id", "etiqueta": "Comuna (depende del ciudad)", "tipo": "select", "data-source": {
+                "tabla": "Comuna",
+                "campo_valor": "ComId",
+                "campo_etiqueta": "ComDes",
+                "filtro": "CiuId={ciudad_db}",
+                "order": "ComDes ASC"
+              } },
+              { "nombre": "fecha_nacimiento", "etiqueta": "Fecha de Nacimiento (date)", "tipo": "date" },
+              { "nombre": "edad", "etiqueta": "Edad (number)", "tipo": "number", "placeholder": "30" },
+              { "nombre": "genero", "etiqueta": "Género (radio)", "tipo": "radio", "opciones": { "masculino": "Masculino", "femenino": "Femenino", "otro": "Otro" } },
+              { "nombre": "habilidades", "etiqueta": "Habilidades (select2 múltiple)", "tipo": "select", "atributos": { "multiple": "multiple" }, "opciones": { "php": "PHP", "js": "JavaScript", "css": "CSS", "sql": "SQL", "react": "React" } },
+              { "nombre": "acepta_notificaciones", "etiqueta": "Acepta recibir notificaciones (checkbox)", "tipo": "checkbox", "opciones": { "si": "" } },
+              { "nombre": "id_oculto", "tipo": "hidden", "valor_predeterminado": "ABC-123" },
+              { "nombre": "cv_adjunto", "etiqueta": "Adjuntar CV (file)", "tipo": "file" }
+            ]
+          },
+          "productos_factura": {
+            "titulo": "Detalle de Productos (Datatable con Fórmula)",
+            "campos": [
+              {
+                "nombre": "detalle_productos",
+                "tipo": "datatable",
+                "etiqueta": "Producto",
+                "busqueda_simple": "enable",
+                "filtro_avanzado": "enable",
+                "sumar_columnas": ["precio", "cantidad"],
+                "columnas": [
+                  { "nombre": "producto", "etiqueta": "Producto", "tipo": "text" },
+                  { "nombre": "precio", "etiqueta": "Precio", "tipo": "number" },
+                  { "nombre": "cantidad", "etiqueta": "Cantidad", "tipo": "number" },
+                  { "nombre": "total_linea", "etiqueta": "Total", "tipo": "number" }
+                ],
+                "dataSource": {
+                  "tabla": ""
+                }
+              }
+            ]
           "atributos": { "readonly": true, "style": "font-weight: bold; font-size: 1.2em;" },
           "data-formula": "SUM(detalle_productos.total_linea)"
         }
@@ -167,7 +167,7 @@
       ]
     },
     "todos_los_controles": {
-      "titulo": "Todos los Tipos de Control",
+  "titulo": "Todos los Tipos de Control",
       "campos": [
         { "nombre": "campo_texto", "etiqueta": "Campo de Texto", "tipo": "text", "placeholder": "Texto simple" },
         { "nombre": "campo_textarea", "etiqueta": "Área de Texto", "tipo": "textarea", "placeholder": "Texto largo" },
@@ -175,7 +175,7 @@
         { "nombre": "campo_email", "etiqueta": "Correo Electrónico", "tipo": "email", "placeholder": "correo@dominio.com" },
         { "nombre": "campo_password", "etiqueta": "Contraseña", "tipo": "password" },
         { "nombre": "campo_select", "etiqueta": "Select (Opciones Fijas)", "tipo": "select", "opciones": { "op1": "Opción 1", "op2": "Opción 2", "op3": "Opción 3" } },
-        { "nombre": "campo_radio", "etiqueta": "Radio", "tipo": "radio", "opciones": { "a": "Opción A", "b": "Opción B" } },
+         { "nombre": "campo_radio", "etiqueta": "Radio", "tipo": "radio", "opciones": { "a": "Opción A", "b": "Opción B" } },
         { "nombre": "campo_checkbox", "etiqueta": "Checkbox", "tipo": "checkbox", "opciones": { "x": "Marca X", "y": "Marca Y" } },
         { "nombre": "campo_file", "etiqueta": "Archivo", "tipo": "file" },
         { "nombre": "campo_date", "etiqueta": "Fecha", "tipo": "date" },
@@ -226,8 +226,10 @@
       "titulo": "Datos principales",
       "campos": [
         { "nombre": "cliente", "tipo": "text", "etiqueta": "Cliente" },
-        { "nombre": "cliente1", "tipo": "text", "etiqueta": "Grupo" },
+          { "nombre": "cliente1", "tipo": "text", "etiqueta": "Grupo" },
         { "nombre": "importe", "tipo": "number", "etiqueta": "Importe" }
+
+
       ]
     },
     "footer": {
@@ -237,20 +239,15 @@
       ]
     },
     "contenido_embebido": {
-      "titulo": "Contenido Embebido",
-      "campos": [
-        {
-          "nombre": "contenido_embebido",
-          "tipo": "embevido",
-          "etiqueta": "Contenido Embebido",
-          "url_embebido": "https://www.ejemplo.com/archivo.html",
-          "parametros_embebido": { "usuario": "123", "token": "abc" },
-          "alto": "400px",
-          "ancho": "100%",
-          "mostrar_borde": true,
-          "permitir_fullscreen": true
-        }
-      ]
+      "nombre": "contenido _embebido",
+      "tipo": "embevido",
+      "etiqueta": "Contenido Embebido",
+      "url_embebido": "https://www.ejemplo.com/archivo.html",
+      "parametros_embebido": { "usuario": "123", "token": "abc" },
+      "alto": "400px",
+      "ancho": "100%",
+      "mostrar_borde": true,
+      "permitir_fullscreen": true
     }
   },
   "layout": {
@@ -323,8 +320,14 @@
         },
         {
           "title": "Grilla",
+
+
+
           "rows": [
             { "columns": [ { "width": 12, "fieldset": "grupo_grilla_ejemplo" } ] }
+
+
+
           ]
         }
       ]
@@ -335,6 +338,7 @@
         {
           "columns": [
             { "width": 3, "fieldset": "footer" },
+           
             { "width": 3, "fieldset": "footer_legal" }
           ]
         }

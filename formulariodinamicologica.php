@@ -24,45 +24,7 @@ if (!function_exists('getFieldInfo')) {
 if (!function_exists('fd_escape')) {
     function fd_escape($s){ return htmlspecialchars((string)$s, ENT_QUOTES, 'UTF-8'); }
 }
-if (!function_exists('generarCampo')) {
-    function generarCampo(array $c, $v = null, bool $ro = false): string {
-        $nombre = (string)($c['nombre'] ?? $c['name'] ?? '');
-        $etq    = (string)($c['etiqueta'] ?? $c['label'] ?? $nombre);
-        $tipo   = strtolower((string)($c['tipo'] ?? $c['type'] ?? 'text'));
-        $attrs  = (string)($c['attrs'] ?? '');
-        $dis    = $ro ? 'readonly disabled' : '';
-        $val    = (string)($v ?? $c['valor_predeterminado'] ?? $c['default'] ?? '');
-        $ph     = (string)($c['placeholder'] ?? '');
-
-        $html = '<div class="form-group mb-2" data-field="'.$nombre.'">';
-        if ($tipo !== 'checkbox') $html .= '<label class="form-label">'.fd_escape($etq).'</label>';
-
-        switch ($tipo) {
-            case 'textarea':
-                $html .= '<textarea name="'.fd_escape($nombre).'" class="form-control" '.$dis.' '.$attrs.'>'.fd_escape($val).'</textarea>';
-                break;
-            case 'select':
-                $ops = $c['opciones'] ?? $c['options'] ?? [];
-                $html .= '<select name="'.fd_escape($nombre).'" class="form-control" '.$dis.' '.$attrs.'>';
-                foreach ($ops as $k => $txt) {
-                    $sel = ((string)$k === (string)$val) ? 'selected' : '';
-                    $html .= '<option value="'.fd_escape($k).'" '.$sel.'>'.fd_escape(is_array($txt)?($txt['texto']??$txt['label']??$k):$txt).'</option>';
-                }
-                $html .= '</select>';
-                break;
-            case 'checkbox':
-                $chk = (!empty($c['checked']) || $val==='1' || $val===1 || $val===true) ? 'checked' : '';
-                $html .= '<div class="form-check"><input type="checkbox" class="form-check-input" name="'.fd_escape($nombre).'" value="1" '.$chk.' '.$dis.' '.$attrs.'>';
-                $html .= '<label class="form-check-label">'.fd_escape($etq).'</label></div>';
-                break;
-            default:
-                $html .= '<input type="'.fd_escape($tipo).'" name="'.fd_escape($nombre).'" value="'.fd_escape($val).'" placeholder="'.fd_escape($ph).'" class="form-control" '.$dis.' '.$attrs.' />';
-        }
-
-        $html .= '</div>';
-        return $html;
-    }
-}
+// Duplicado eliminado: generarCampo está definido en Php/formulariodinamicofunciones.php
 
 // Fieldset
 if (!function_exists('generarFieldsetContenido')) {

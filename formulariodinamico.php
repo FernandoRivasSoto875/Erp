@@ -79,9 +79,11 @@ foreach ($fieldsets as $fs) {
         ?>
     </div>
     <?php
-    // Renderizar el layout principal
+    // Renderizar todas las secciones del layout (incluyendo tabs múltiples)
     if (!empty($layout)) {
-        echo generarLayout($layout, $fieldsets, $valores, $soloLectura);
+        foreach ($layout as $sectionKey => $section) {
+            echo fd_render_layout_fallback([$sectionKey => $section], $fieldsets);
+        }
     } else {
         // Renderizar todos los fieldsets si no hay layout
         foreach (array_keys($fieldsets) as $fsName) {

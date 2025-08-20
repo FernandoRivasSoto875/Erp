@@ -1,7 +1,7 @@
 {
   "parametros": {
     "FormularioDataSourcePrincipal": "",
-    "titulo": "Formulario Genérico A TRATAR 1",
+    "titulo": "Formulario Genérico A TRATAR",
     "CssDefault": "formulariodinamico-base.css",
     "tituloimagen": "https://cdn.pixabay.com/photo/2017/05/31/16/39/windows-2360920_1280.png",
     "comentario": "Observa cómo cada etiqueta y tipo de campo se comporta.",
@@ -194,7 +194,7 @@
           ]
         }
       ]
-,    
+      },
     "header": {
       "titulo": "Cabecera",
       "campos": [

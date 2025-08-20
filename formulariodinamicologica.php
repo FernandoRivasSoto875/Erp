@@ -1,5 +1,6 @@
 <?php
 // Leer COPILOT_PROMPT en formulariodinamicoprompt.txt.
+// Leer COPILOT_PROMPT en formulariodinamicoprompt.txt.
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 require_once __DIR__ . '/fpdf/fpdf.php';

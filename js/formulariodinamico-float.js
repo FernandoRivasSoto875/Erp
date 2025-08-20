@@ -1,4 +1,5 @@
 // JS para alternar entre vista de árbol y formulario en formulariodinamico.php
+// Leer COPILOT_PROMPT en formulariodinamicoprompt.txt.
 (function(w,d){
   var btnTree = d.getElementById('btnShowTree');
   var btnForm = d.getElementById('btnShowForm');

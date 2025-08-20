@@ -1,4 +1,5 @@
 // Renderiza el formulario completo desde el JSON
+// Leer COPILOT_PROMPT en formulariodinamicoprompt.txt.
 function renderForm(json, containerId = 'formulariodinamico') {
   // Diagnóstico visual: estado de Bootstrap y tabs
   var diagDiv = document.createElement('div');

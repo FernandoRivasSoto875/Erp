@@ -8,6 +8,7 @@
     <div class="fd-shell">
       <div class="fd-form-area">
   <?php
+  // Leer COPILOT_PROMPT en formulariodinamicoprompt.txt.
   // Cargar y decodificar el JSON del formulario
   $json_path = __DIR__ . '/json/formulariogenerico2.json';
   $json_data = [];

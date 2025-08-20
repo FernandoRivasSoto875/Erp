@@ -1,4 +1,6 @@
 // 1. Mensajería con micro-app árbol
+// Leer COPILOT_PROMPT en formulariodinamicoprompt.txt.
+// 1. Mensajería con micro-app árbol
 window.addEventListener('message', (e)=>{
   const m=e.data; if(!m||!m.fdTree) return;
   if(m.type==='updateJSON' && m.payload){

@@ -3,6 +3,7 @@
 (function(){
   'use strict';
 
+// Leer COPILOT_PROMPT en formulariodinamicoprompt.txt.
   // --------- Config / Estado ---------
   const state = {
     designMode: false,

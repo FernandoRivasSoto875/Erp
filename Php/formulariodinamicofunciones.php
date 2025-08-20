@@ -1,67 +1,288 @@
 <?php
+// Leer COPILOT_PROMPT en formulariodinamicoprompt.txt.
 /* MASTER_PROMPT_REFERENCE
    Leer COPILOT_PROMPT en formulariodinamico.php (fuente única de lineamientos).
    Rol de este archivo: helpers / lógica PHP reutilizable (sin HTML de vista, sin CSS, sin JS inline).
    No romper contrato JSON (parametros, fieldsets, layout). Agregar nuevas funciones de forma compatible.
 */
-   
-// KEEP: Revisado y listo para commit. Funciones auxiliares para renderizado y utilidades del formulario dinámico.
-/*
-====================================================================================
-  KEEP: UNIFICADO
-  Este archivo contiene TODAS las funciones de generación de campos y paleta.
-  NO debe ser sobrescrito ni fragmentado. Mantener siempre esta versión unificada.
-  Si se actualiza, conservar este bloque y toda la lógica unificada.
-====================================================================================
-*/
-// KEEP: UNIFICADO. Incluye funciones de paleta y de generación de campos.
-// ========================================================================
-//  - Contiene las funciones para generar cada tipo de campo del formulario.
-//  - Incluye funciones para la paleta de componentes y tipos de control.
-//  - SOLUCIONA EL ERROR "Couldn't fetch mysqli" en la función de 'selectdata'.
-// ========================================================================
 // --- PALETA DE COMPONENTES ---
 function generarPaletaComponentes($fieldsets_disponibles, $fieldsets) {
-    $html = "<div id='paleta-componentes' class='paleta-componentes bg-light p-3 mb-3 solo-modo-diseno'>";
-    $html .= "<h5 class='mb-3'><i class='fas fa-toolbox'></i> Paleta de Componentes</h5>";
+    ob_start();
+    echo "<div id='paleta-componentes' class='paleta-componentes bg-light p-3 mb-3 solo-modo-diseno'>";
+    echo "<h5 class='mb-3'><i class='fas fa-toolbox'></i> Paleta de Componentes</h5>";
     if (empty($fieldsets_disponibles)) {
-        $html .= "<div class='text-muted'>No hay componentes disponibles para agregar.</div>";
+        echo "<div class='text-muted'>No hay componentes disponibles para agregar.</div>";
     } else {
-        $html .= "<div class='d-flex flex-wrap'>";
+        echo "<div class='d-flex flex-wrap'>";
         foreach ($fieldsets_disponibles as $fs_name) {
             $titulo = htmlspecialchars($fieldsets[$fs_name]['titulo'] ?? $fs_name);
-            $html .= "<div class='draggable-fieldset card m-2 p-2 text-center' data-fieldset='$fs_name' style='min-width:180px;cursor:grab;'>";
-            $html .= "<div class='handle mb-2'><i class='fas fa-grip-vertical'></i></div>";
-            $html .= "<strong>$titulo</strong><br><span class='badge badge-secondary'>$fs_name</span>";
-            $html .= "</div>";
+            echo "<div class='draggable-fieldset card m-2 p-2 text-center' data-fieldset='$fs_name' style='min-width:180px;cursor:grab;'>";
+            echo "<div class='handle mb-2'><i class='fas fa-grip-vertical'></i></div>";
+            echo "<strong>$titulo</strong><br><span class='badge badge-secondary'>$fs_name</span>";
+            echo "</div>";
         }
-        $html .= "</div>";
+        echo "</div>";
     }
-    $html .= "</div>";
-    return $html;
+    echo "</div>";
+    return ob_get_clean();
 }
 
-// --- PALETA DE TIPOS DE CONTROL (para crear nuevos campos desde cero) ---
 function generarPaletaTiposControl(): string {
     $tipos = ['text','textarea','number','email','password','select','selectdata','radio','checkbox','file','date','datatable','hidden'];
-    $html = '<div class="p-3"><h5 class="mb-3">Tipos de control</h5><div class="row">';
+    ob_start();
+    echo '<div class="p-3"><h5 class="mb-3">Tipos de control</h5><div class="row">';
     foreach ($tipos as $t) {
-        $html .= '<div class="col-6 col-md-4 mb-2">';
-        $html .= '<div class="draggable-tipo border rounded p-2 bg-white">';
-        $html .= '<div class="d-flex align-items-center"><span class="handle mr-2"><i class="fas fa-grip-vertical"></i></span>';
-        $html .= '<span>'.htmlspecialchars($t, ENT_QUOTES, 'UTF-8').'</span></div>';
-        $html .= '</div></div>';
+        echo '<div class="col-6 col-md-4 mb-2">';
+        echo '<div class="draggable-tipo border rounded p-2 bg-white">';
+        echo '<div class="d-flex align-items-center"><span class="handle mr-2"><i class="fas fa-grip-vertical"></i></span>';
+        echo '<span>'.htmlspecialchars($t, ENT_QUOTES, 'UTF-8').'</span></div>';
+        echo '</div></div>';
     }
-    $html .= '</div></div>';
-    return $html;
+    echo '</div></div>';
+    return ob_get_clean();
 }
 
-// --- Función principal para generar un campo ---
 function generarCampo($campo, $valor, $soloLectura): string {
-    // ...lógica para renderizar cada tipo de campo...
-    // Esta función debe ser completada según la estructura de tu JSON y los tipos de campo soportados.
-    return '';
+    $attrs = $campo['attrs'] ?? [];
+    $tipo = strtolower($campo['tipo'] ?? 'text');
+    $hLabel = htmlspecialchars($campo['etiqueta'] ?? $campo['label'] ?? '', ENT_QUOTES, 'UTF-8');
+    $inputType = $tipo;
+    $hName = htmlspecialchars($campo['nombre'] ?? $campo['name'] ?? '', ENT_QUOTES, 'UTF-8');
+    $disabled = $soloLectura ? ' disabled readonly' : '';
+    $label = $campo['etiqueta'] ?? $campo['label'] ?? '';
+    $attrStr = '';
+    if (!empty($attrs)) {
+        $attrStr = implode(' ', array_map(
+            function($k, $v) {
+                return htmlspecialchars($k, ENT_QUOTES, 'UTF-8')."=\"".htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8')."\"";
+            },
+            array_keys($attrs),
+            $attrs
+        ));
+        $attrStr = ' ' . $attrStr;
+    }
+    switch ($tipo) {
+        case 'embevido':
+            $ancho = $campo['ancho'] ?? '100%';
+            $alto = $campo['alto'] ?? '400px';
+            $borde = !empty($campo['mostrar_borde']) ? '1' : '0';
+            $fullscreen = !empty($campo['permitir_fullscreen']) ? 'allowfullscreen' : '';
+            $params = $campo['parametros_embebido'] ?? [];
+            $url = $campo['url_embebido'] ?? '';
+            if (!empty($params) && is_array($params)) {
+                $url .= (strpos($url, '?') === false ? '?' : '&') . http_build_query($params);
+            }
+            $iframe = "<iframe src='".htmlspecialchars($url, ENT_QUOTES, 'UTF-8')."' width='".htmlspecialchars($ancho, ENT_QUOTES, 'UTF-8')."' height='".htmlspecialchars($alto, ENT_QUOTES, 'UTF-8')."' frameborder='".htmlspecialchars($borde, ENT_QUOTES, 'UTF-8')."' style='border:1px solid #ccc;' $fullscreen></iframe>";
+            return "<div class='form-group mb-2'>{$hLabel}{$iframe}</div>";
+        case 'email':
+        case 'password':
+        case 'text':
+        case 'number':
+        case 'date':
+        case 'hidden':
+            $cls = $tipo === 'hidden' ? 'form-control d-none' : 'form-control';
+            return "<div class='form-group mb-2'>".($tipo==='hidden'?'':$hLabel)."<input type='{$inputType}' name='{$hName}' value='".htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8')."' class='{$cls}'{$disabled}{$attrStr}></div>";
+        case 'textarea':
+            return "<div class='form-group mb-2'>{$hLabel}<textarea name='{$hName}' class='form-control'{$disabled}{$attrStr}>".htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8')."</textarea></div>";
+        case 'file':
+            return "<div class='form-group mb-2'>{$hLabel}<input type='file' name='{$hName}".(isset($attrs['multiple'])?'[]':'')."' class='form-control'{$disabled}{$attrStr}></div>";
+        case 'select':
+            if (!empty($campo['data-source'])) {
+                return "<div class='form-group mb-2'>{$hLabel}<select name='{$hName}' class='form-control' data-source='" . htmlspecialchars(json_encode($campo['data-source']), ENT_QUOTES, 'UTF-8') . "'{$disabled}{$attrStr}></select></div>";
+            }
+            $options = $campo['opciones'] ?? [];
+            $opts = '';
+            foreach ((array)$options as $key => $text) {
+                $sel = ((string)$valor === (string)$key) ? ' selected' : '';
+                $opts .= "<option value='".htmlspecialchars((string)$key, ENT_QUOTES, 'UTF-8')."'{$sel}>".htmlspecialchars((string)$text, ENT_QUOTES, 'UTF-8')."</option>";
+            }
+            return "<div class='form-group mb-2'>{$hLabel}<select name='{$hName}' class='form-control'{$disabled}{$attrStr}>{$opts}</select></div>";
+        case 'selectdata':
+            if (!empty($campo['data'])) {
+                return "<div class='form-group mb-2'>{$hLabel}<select name='{$hName}' class='form-control' data-selectdata='" . htmlspecialchars(json_encode($campo['data']), ENT_QUOTES, 'UTF-8') . "'{$disabled}{$attrStr}></select></div>";
+            }
+            $options = $campo['opciones'] ?? [];
+            $opts = '';
+            foreach ((array)$options as $key => $text) {
+                $sel = ((string)$valor === (string)$key) ? ' selected' : '';
+                $opts .= "<option value='".htmlspecialchars((string)$key, ENT_QUOTES, 'UTF-8')."'{$sel}>".htmlspecialchars((string)$text, ENT_QUOTES, 'UTF-8')."</option>";
+            }
+            return "<div class='form-group mb-2'>{$hLabel}<select name='{$hName}' class='form-control'{$disabled}{$attrStr}>{$opts}</select></div>";
+        case 'radio':
+            $options = $campo['opciones'] ?? [];
+            $html = "<div class='form-group mb-2'>{$hLabel}<div>";
+            foreach ((array)$options as $key => $text) {
+                $html .= "<div class='form-check form-check-inline'><input class='form-check-input' type='radio' id='{$hName}_{$key}' name='{$hName}' value='".htmlspecialchars((string)$key, ENT_QUOTES, 'UTF-8')."'".(((string)$valor === (string)$key)?' checked':'')."{$disabled}{$attrStr}><label class='form-check-label' for='{$hName}_{$key}'>".htmlspecialchars((string)$text, ENT_QUOTES, 'UTF-8')."</label></div>";
+            }
+            return $html."</div></div>";
+        case 'checkbox':
+            return "<div class='form-group form-check mb-2'><input class='form-check-input' type='checkbox' id='{$hName}' name='{$hName}' value='1'".(($valor)?' checked':'')."{$disabled}{$attrStr}><label class='form-check-label' for='{$hName}'>".htmlspecialchars($label ?: $hLabel, ENT_QUOTES, 'UTF-8')."</label></div>";
+        case 'datatable':
+            $cols = $campo['columnas'] ?? $campo['columns'] ?? [];
+            $head = '';
+            foreach ($cols as $col) {
+                $head .= "<th>".htmlspecialchars($col['label'] ?? $col['nombre'] ?? $col['name'] ?? '', ENT_QUOTES, 'UTF-8')."</th>";
+            }
+            return "<div class='form-group mb-2'>{$hLabel}<div data-tipo='datatable' data-nombre='{$hName}' class='table-responsive'><table class='table table-sm table-bordered mb-0'><thead><tr>{$head}</tr></thead><tbody><!-- filas dinámicas --></tbody></table></div></div>";
+        default:
+            return "<div class='form-group mb-2'>{$hLabel}<input type='{$inputType}' name='{$hName}' value='".htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8')."' class='form-control'{$disabled}{$attrStr}></div>";
+    }
+}
+
+function fd_count_fields_por_fieldset(array $fieldsets) {
+    $out = [];
+    foreach ($fieldsets as $key => $fs) {
+        $out[$key] = isset($fs['campos']) && is_array($fs['campos']) ? count($fs['campos']) : 0;
+    }
+    return $out;
+}
+function fd_count_fieldsets($fieldsets) {
+    return is_array($fieldsets) ? count($fieldsets) : 0;
+}
+
+if (!function_exists('fd_is_assoc')) {
+    function fd_is_assoc(array $arr): bool {
+        return $arr !== [] && array_keys($arr) !== range(0, count($arr) - 1);
+    }
+}
+
+if (!function_exists('fd_render_fieldset_fallback')) {
+    function fd_render_fieldset_fallback(string $key, array $fieldset): string {
+        $titulo = htmlspecialchars($fieldset['titulo'] ?? $key, ENT_QUOTES, 'UTF-8');
+        $fields = [];
+        if (isset($fieldset['fields']) && is_array($fieldset['fields'])) {
+            $fields = $fieldset['fields'];
+        } elseif (isset($fieldset['campos']) && is_array($fieldset['campos'])) {
+            $fields = $fieldset['campos'];
+        }
+        $html = '<fieldset class="fd-fieldset" data-fs="'.$key.'"><legend>'.$titulo.'</legend>';
+        if (isset($fieldset['layout']) && is_array($fieldset['layout'])) {
+            foreach ($fieldset['layout'] as $row) {
+                $cols = [];
+                if (isset($row['row']) && is_array($row['row'])) {
+                    $cols = $row['row'];
+                } elseif (isset($row['columns']) && is_array($row['columns'])) {
+                    $cols = $row['columns'];
+                } elseif (isset($row['cols']) && is_array($row['cols'])) {
+                    $cols = $row['cols'];
+                }
+                if (!is_array($cols) || !$cols) continue;
+                $html .= '<div class="row fd-row">';
+                foreach ($cols as $col) {
+                    $colW = (int)($col['col'] ?? $col['width'] ?? 12);
+                    $campoKey = $col['campo'] ?? null;
+                    $campoObj = null;
+                    foreach ($fields as $f) {
+                        if (isset($f['nombre']) && $f['nombre'] === $campoKey) {
+                            $campoObj = $f;
+                            break;
+                        }
+                    }
+                    if ($campoObj) {
+                        $html .= '<div class="col-md-'.$colW.' fd-col">'.generarCampo($campoObj, '', false).'</div>';
+                    }
+                }
+                $html .= '</div>';
+            }
+        } else {
+            if (!empty($fields)) {
+                foreach ($fields as $campo) {
+                    if (!is_array($campo)) continue;
+                    $html .= generarCampo($campo, '', false);
+                }
+            }
+        }
+        $html .= '</fieldset>';
+        return $html;
+    }
+}
+
+if (!function_exists('fd_render_layout_fallback')) {
+    function fd_render_layout_fallback($layout, array $fieldsets): string {
+        if (!$layout || !is_array($layout)) return '';
+        $sections = fd_is_assoc($layout)
+            ? array_map(function($k,$v){ if(is_array($v)) $v['_section_key']=$k; return $v; }, array_keys($layout), $layout)
+            : $layout;
+        $html = '';
+        foreach ($sections as $section) {
+            if (!is_array($section)) continue;
+            $sectionKey = $section['_section_key'] ?? '';
+            $rows = $section['rows'] ?? [];
+            $html .= '<div class="fd-section mb-4">';
+            foreach ($rows as $row) {
+                $columns = $row['columns'] ?? [];
+                $html .= '<div class="row">';
+                foreach ($columns as $col) {
+                    $width = intval($col['width'] ?? 12);
+                    $fsKey = $col['fieldset'] ?? null;
+                    $html .= '<div class="col-md-' . $width . '">';
+                    if ($fsKey && isset($fieldsets[$fsKey])) {
+                        $html .= fd_render_fieldset_fallback($fsKey, $fieldsets[$fsKey]);
+                    }
+                    $html .= '</div>';
+                }
+                $html .= '</div>';
+            }
+            $html .= '</div>';
+        }
+        return $html;
+    }
+}
+
+if (!function_exists('fd_render_tabs_section')) {
+    function fd_render_tabs_section(array $section, array $fieldsets, $modoBotones = false): string {
+        $tabs = $section['tabs'] ?? [];
+        if (!$tabs || !is_array($tabs)) return '';
+        $uid = 'fd_tabs_'.substr(md5(json_encode(array_keys($tabs)).microtime(true)),0,8);
+        $navClass = $modoBotones ? 'nav-pills' : 'nav-tabs';
+        $html = '<div class="fd-section fd-tabs-bootstrap" data-tabs="'.$uid.'">';
+        $html .= '<ul class="nav '.$navClass.'" id="'.$uid.'_nav" role="tablist">';
+        foreach ($tabs as $i => $tab) {
+            $isActive = $i === 0;
+            $paneId = $uid.'_pane_'.$i;
+            $title = htmlspecialchars($tab['title'] ?? $tab['titulo'] ?? ('Tab '.($i+1)), ENT_QUOTES, 'UTF-8');
+            $html .= '<li class="nav-item" role="presentation">';
+            $html .= '<button class="nav-link'.($isActive?' active':'').'" id="'.$paneId.'-tab" data-bs-toggle="tab" data-bs-target="#'.$paneId.'" type="button" role="tab" aria-controls="'.$paneId.'" aria-selected="'.($isActive?'true':'false').'">'.$title.'</button>';
+            $html .= '</li>';
+        }
+        $html .= '</ul>';
+        $html .= '<div class="tab-content" id="'.$uid.'_content">';
+        foreach ($tabs as $i => $tab) {
+            $isActive = $i === 0;
+            $paneId = $uid.'_pane_'.$i;
+            $rows = $tab['rows'] ?? [];
+            $html .= '<div class="tab-pane fade'.($isActive?' show active':'').'" id="'.$paneId.'" role="tabpanel" aria-labelledby="'.$paneId.'-tab">';
+            $html .= fd_render_rows_fallback($rows, $fieldsets);
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+        $html .= '</div>';
+        return $html;
+    }
+}
+
+if (!function_exists('fd_render_rows_fallback')) {
+    function fd_render_rows_fallback(array $rows, array $fieldsets): string {
+        $html = '';
+        foreach ($rows as $row) {
+            $columns = $row['columns'] ?? $row['cols'] ?? [];
+            $html .= '<div class="row">';
+            foreach ($columns as $col) {
+                $width = intval($col['width'] ?? $col['col'] ?? 12);
+                $fsKey = $col['fieldset'] ?? $col['fs'] ?? null;
+                $html .= '<div class="col-md-' . $width . '">';
+                if ($fsKey && isset($fieldsets[$fsKey])) {
+                    $html .= fd_render_fieldset_fallback($fsKey, $fieldsets[$fsKey]);
+                }
+                $html .= '</div>';
+            }
+            $html .= '</div>';
+        }
+        return $html;
+    }
 }
 
 // Puedes agregar aquí más funciones auxiliares según las necesidades del formulario dinámico.
+
+?>
 

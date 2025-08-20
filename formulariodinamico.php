@@ -7,8 +7,21 @@
 
     <div class="fd-shell">
       <div class="fd-form-area">
-    <?php
-    require_once __DIR__ . '/formulariodinamicofunciones.php';
+  <?php
+  // Cargar y decodificar el JSON del formulario
+  $json_path = __DIR__ . '/json/formulariogenerico2.json';
+  $json_data = [];
+  if (file_exists($json_path)) {
+    $json_str = file_get_contents($json_path);
+    $json_data = json_decode($json_str, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+      echo '<div class="alert alert-danger">Error al decodificar el JSON: '.json_last_error_msg().'</div>';
+      $json_data = [];
+    }
+  } else {
+    echo '<div class="alert alert-danger">No se encontró el archivo JSON: '.$json_path.'</div>';
+  }
+  require_once __DIR__ . '/formulariodinamicofunciones.php';
     // Renderizar los tabs en modo botones (nav-pills)
     $mainLayout = $json_data['layout']['main'];
     $tabsCount = isset($mainLayout['tabs']) && is_array($mainLayout['tabs']) ? count($mainLayout['tabs']) : 0;

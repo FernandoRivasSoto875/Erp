@@ -58,9 +58,16 @@
 
  "direccion": {
       "titulo": "Direccion",
-      "campos": [ 
-        
-     
+              "campos": [
+        { "nombre": "telefono", "etiqueta": "Teléfono (text)", "tipo": "text", "placeholder": "+56 9 1234 5678" },
+        { "nombre": "direccion", "etiqueta": "Dirección (textarea)", "tipo": "textarea", "placeholder": "Calle, número, comuna, ciudad" },
+        { "nombre": "pais_db", "etiqueta": "País (cargado desde BD)..", "tipo": "select", "data-source": {
+            "tabla": "Pais",
+            "campo_valor": "PaiId",
+            "campo_etiqueta": "PaiDes",
+            "order": "PaiDes ASC"
+          }
+        },      
  { "nombre": "ciudad_db", "etiqueta": "Ciudad (depende del país..)", "tipo": "select", "data-source": {
             "tabla": "Ciudad",
             "campo_valor": "CiuId",

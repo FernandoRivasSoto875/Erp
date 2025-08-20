@@ -32,7 +32,6 @@ foreach ($fieldsets as $fs) {
     <title>Formulario Dinámico</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="/css/estilos.css">
-    <link rel="stylesheet" href="/css/formulariodinamico-blue1.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/js/formulariodinamico.js"></script>
@@ -42,7 +41,8 @@ foreach ($fieldsets as $fs) {
     <script src="/js/formulariodinamicotest.js"></script>
 </head>
 <body>
-<div class="container mt-4">
+<?php $cssDefault = $json['CssDefault'] ?? ''; ?>
+<div class="container mt-4 <?php echo htmlspecialchars($cssDefault); ?>">
     <h2 class="mb-3">Formulario Dinámico</h2>
     <?php
     // Diagnóstico visual de funciones PHP
@@ -64,7 +64,15 @@ foreach ($fieldsets as $fs) {
         echo '¿Existe el archivo?: <b>' . (file_exists($json_path) ? 'Sí' : 'No') . '</b><br>';
         echo 'Fieldsets cargados: <b>' . count($fieldsets) . '</b><br>';
         echo 'Layout presente: <b>' . (!empty($layout) ? 'Sí' : 'No') . '</b><br>';
-        if (empty($fieldsets)) echo '<span class="text-danger">No se encontraron fieldsets en el JSON.</span><br>';
+        // --- DIAGNÓSTICO OPCIONAL ---
+    $cssDefault = $json['CssDefault'] ?? '';
+    echo '<button type="button" class="btn btn-sm btn-outline-info mb-2 ' . htmlspecialchars($cssDefault) . '" onclick="document.getElementById(\'diagnostico\').style.display = (document.getElementById(\'diagnostico\').style.display === \'none\' ? \'block\' : \'none\');">Mostrar/Ocultar Diagnóstico</button>';
+    echo '<div id="diagnostico" class="' . htmlspecialchars($cssDefault) . '" style="display:none;">';
+        // echo 'Archivo JSON: <b>' . htmlspecialchars($archivo_json) . '</b><br>';
+        // echo 'Ruta absoluta: <b>' . htmlspecialchars($json_path) . '</b><br>';
+        // echo '¿Existe el archivo?: <b>' . (file_exists($json_path) ? 'Sí' : 'No') . '</b><br>';
+        // if (empty($fieldsets)) echo '<span class="text-danger">No se encontraron fieldsets en el JSON.</span><br>';
+        echo '</div>';
         if (empty($layout)) echo '<span class="text-warning">No se encontró layout, se mostrarán todos los fieldsets.</span><br>';
         ?>
     </div>

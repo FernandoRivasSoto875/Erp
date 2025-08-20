@@ -69,12 +69,13 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
       <div class="fd-form-area">
     <?php
     require_once __DIR__ . '/formulariodinamicofunciones.php';
+    // Renderizar los tabs en modo botones (nav-pills)
     $mainLayout = $json_data['layout']['main'];
     $tabsCount = isset($mainLayout['tabs']) && is_array($mainLayout['tabs']) ? count($mainLayout['tabs']) : 0;
     if ($tabsCount > 0 && ($mainLayout['type'] ?? '') === 'tabs') {
-      // Solo renderizar los tabs y su contenido
-      echo fd_render_tabs_section($mainLayout, $json_data['fieldsets']);
-      // Renderizar los botones debajo de los tabs
+      // Renderizar tabs como nav-pills (botones)
+      echo fd_render_tabs_section($mainLayout, $json_data['fieldsets'], true);
+      // Botones debajo de los tabs
       echo '<div class="mt-3">';
       $botones_config = is_array($botones_config) ? $botones_config : [];
       foreach ($botones_config as $b) {
@@ -88,6 +89,23 @@ $modoDiseno = isset($_GET['modoDiseno']) ? (bool)$_GET['modoDiseno'] : false;
         echo '<button type="button" class="btn btn-warning ms-2" id="btnDisenoExtra">Botón Diseño Activo</button>';
       }
       echo '</div>';
+      // Mostrar los fieldsets no referenciados en los tabs
+      $referenciados = [];
+      foreach ($mainLayout['tabs'] as $tab) {
+        foreach ($tab['rows'] as $row) {
+          foreach ($row['columns'] as $col) {
+            if (!empty($col['fieldset'])) $referenciados[] = $col['fieldset'];
+          }
+        }
+      }
+      $otros_fieldsets = array_diff(array_keys($json_data['fieldsets']), $referenciados);
+      if (!empty($otros_fieldsets)) {
+        echo '<div class="mt-4"><h5>Otros Fieldsets</h5>';
+        foreach ($otros_fieldsets as $fs) {
+          echo fd_render_fieldset_fallback($fs, $json_data['fieldsets'][$fs]);
+        }
+        echo '</div>';
+      }
     } else {
       // Si no hay tabs, renderizar el layout completo como antes
       echo '<form id="formulariodinamico" data-layout-container class="mb-4">';

@@ -196,13 +196,14 @@ if (!function_exists('fd_render_layout_fallback')) {
 }
 
 if (!function_exists('fd_render_tabs_section')) {
-    function fd_render_tabs_section(array $section, array $fieldsets): string {
+    function fd_render_tabs_section(array $section, array $fieldsets, $modoBotones = false): string {
         $tabs = $section['tabs'] ?? [];
-    if (!$tabs || !is_array($tabs)) return '';
+        if (!$tabs || !is_array($tabs)) return '';
         $uid = 'fd_tabs_'.substr(md5(json_encode(array_keys($tabs)).microtime(true)),0,8);
+        $navClass = $modoBotones ? 'nav-pills' : 'nav-tabs';
         $html = '<div class="fd-section fd-tabs-bootstrap" data-tabs="'.$uid.'">';
-        // Nav tabs
-        $html .= '<ul class="nav nav-tabs" id="'.$uid.'_nav" role="tablist">';
+        // Nav tabs (ahora pueden ser nav-pills)
+        $html .= '<ul class="nav '.$navClass.'" id="'.$uid.'_nav" role="tablist">';
         foreach ($tabs as $i => $tab) {
             $isActive = $i === 0;
             $paneId = $uid.'_pane_'.$i;

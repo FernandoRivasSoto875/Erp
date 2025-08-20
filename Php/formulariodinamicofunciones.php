@@ -303,6 +303,25 @@ if (isset($_GET['diag']) && $_GET['diag'] === '1') {
     echo json_encode($result);
     exit;
 }
+// --- DIAGNÓSTICO VISUAL ---
+function fd_diagnostico_html() {
+    $funcs = [
+        'fd_render_rows_fallback',
+        'fd_render_tabs_section',
+        'fd_render_layout_fallback',
+        'fd_render_fieldset_fallback',
+        'generarCampo',
+        'generarLayout',
+        'generarFieldsetContenido'
+    ];
+    $html = '<div class="alert alert-warning mt-2"><b>Diagnóstico funciones PHP:</b><ul>';
+    foreach ($funcs as $f) {
+        $html .= '<li>' . $f . ': <b>' . (function_exists($f) ? 'OK' : 'NO DEFINIDA') . '</b></li>';
+    }
+    $html .= '</ul></div>';
+    return $html;
+}
+// Puedes agregar aquí más funciones auxiliares según las necesidades del formulario dinámico.
 // Puedes agregar aquí más funciones auxiliares según las necesidades del formulario dinámico.
 
 ?>

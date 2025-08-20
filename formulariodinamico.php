@@ -1,3 +1,4 @@
+    ?>
     <div class="fd-shell">
       <div class="fd-form-area">
     <?php
@@ -83,6 +84,7 @@
     if (!empty($json_data['layout']['footer'])) {
       echo fd_render_layout_fallback(['footer' => $json_data['layout']['footer']], $json_data['fieldsets']);
     }
+    ?>
     <!-- Botones flotantes para alternar vistas -->
     <div id="fd-float-btns" style="position:fixed;bottom:32px;right:32px;z-index:9999;display:flex;flex-direction:column;gap:12px;">
       <button id="btnShowTree" class="btn btn-outline-secondary shadow">Diseño Árbol</button>

@@ -164,7 +164,6 @@ if (!function_exists('fd_is_assoc')) {
     function fd_is_assoc(array $arr): bool {
         return $arr !== [] && array_keys($arr) !== range(0, count($arr) - 1);
     }
-}
 
 if (!function_exists('fd_render_layout_fallback')) {
 
@@ -194,7 +193,6 @@ if (!function_exists('fd_render_layout_fallback')) {
         }
         return $html;
     }
-}
 
 if (!function_exists('fd_render_tabs_section')) {
     function fd_render_tabs_section(array $section, array $fieldsets, $modoBotones = false): string {

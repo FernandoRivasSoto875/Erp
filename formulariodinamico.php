@@ -2,7 +2,7 @@
 // Leer COPILOT_PROMPT en formulariodinamicoprompt.txt.
 // --- INCLUDES PRINCIPALES ---
 require_once __DIR__ . '/formulariodinamicologica.php';
-require_once __DIR__ . '/Php/formulariodinamicofunciones.php';
+require_once __DIR__ . '/formulariodinamicofunciones.php';
 
 // --- CARGA DEL JSON DEL FORMULARIO ---
 $archivo_json = $_GET['archivo'] ?? 'formulariogenerico2.json';

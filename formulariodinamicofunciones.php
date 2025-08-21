@@ -203,9 +203,10 @@ if (!function_exists('fd_render_layout_fallback')) {
 
 if (!function_exists('fd_render_tabs_section')) {
     function fd_render_tabs_section(array $section, array $fieldsets, $modoBotones = false): string {
-        $tabs = $section['tabs'] ?? [];
-        if (!$tabs || !is_array($tabs)) return '';
-        $uid = 'fd_tabs_'.substr(md5(json_encode(array_keys($tabs)).microtime(true)),0,8);
+    $tabs = $section['tabs'] ?? [];
+    if (!$tabs || !is_array($tabs)) return '';
+    $sectionKey = $section['_section_key'] ?? '';
+    $uid = 'fd_tabs_' . ($sectionKey ? preg_replace('/[^a-z0-9_]+/i','', $sectionKey).'_' : '') . substr(md5(json_encode(array_keys($tabs)).microtime(true)),0,8);
         $navClass = $modoBotones ? 'nav-pills' : 'nav-tabs';
         $html = '<div class="fd-section fd-tabs-bootstrap" data-tabs="'.$uid.'">';
         // Nav tabs (ahora pueden ser nav-pills)

@@ -2,7 +2,7 @@
   "parametros": {
     "FormularioDataSourcePrincipal": "",
     "titulo": "Formulario Genérico A TRATAR",
-    "CssDefault": "formulariodinamico-base.css",
+  "CssDefault": "formulariodinamico-base.css",
     "tituloimagen": "https://cdn.pixabay.com/photo/2017/05/31/16/39/windows-2360920_1280.png",
     "comentario": "Observa cómo cada etiqueta y tipo de campo se comporta.",
     "pie": "Gracias por usar nuestro sistema.",
@@ -23,35 +23,7 @@
       "error": "Ocurrió un error al procesar el formulario.",
       "advertencia": "Por favor, revisa los campos resaltados."
     },
-    "validaciones": {
-      "email": {
-        "regex": "^[\\w\\.-]+@[\\w\\.-]+\\.\\w{2,}$",
-        "mensaje": "El correo no es válido."
-      },
-      "telefono": {
-        "regex": "^\\+56\\d{9}$",
-        "mensaje": "El teléfono debe tener formato +569XXXXXXXX."
-      }
-    },
-    "botones": [
-      { "texto": "Guardar", "accion": "submit", "clase": "btn-success" },
-      { "texto": "Limpiar", "accion": "reset", "clase": "btn-secondary" }
-    ],
-    "post_envio": {
-      "redireccion": "",
-      "mostrar_resumen": true,
-      "limpiar_sesion": true
-    },
-    "adjuntos": {
-      "tipos_permitidos": [
-        "image/jpeg", "image/png", "image/gif", "application/pdf",
-        "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "text/plain", "application/zip", "application/x-zip-compressed",
-        "application/vnd.ms-powerpoint", "application/octet-stream"
-      ],
-      "tamano_maximo_mb": 5
-    },
+    
     "notificaciones": {
       "enviar_correo": true,
       "guardar_bd": false,
@@ -83,14 +55,43 @@
         { "nombre": "clave_acceso", "etiqueta": "Contraseña (password)", "tipo": "password" }
       ]
     },
-    "direccion": {
-      "titulo": "Datos Personales",
-      "campos": [
-        { "nombre": "ciudad_db", "etiqueta": "Ciudad (depende del país..)", "tipo": "select", "data-source": { "tabla": "Ciudad", "campo_valor": "CiuId", "campo_etiqueta": "CiuDes", "filtro": "PaiId={pais_db}", "order": "CiuDes ASC" } },
-        { "nombre": "comuna_Id", "etiqueta": "Comuna (depende del ciudad)", "tipo": "select", "data-source": { "tabla": "Comuna", "campo_valor": "ComId", "campo_etiqueta": "ComDes", "filtro": "CiuId={ciudad_db}", "order": "ComDes ASC" } }
-      ]
-    },
-    "datos_contacto": {
+
+ "direccion": {
+      "titulo": "Direccion",
+              "campos": [
+        { "nombre": "telefono", "etiqueta": "Teléfono (text)", "tipo": "text", "placeholder": "+56 9 1234 5678" },
+        { "nombre": "direccion", "etiqueta": "Dirección (textarea)", "tipo": "textarea", "placeholder": "Calle, número, comuna, ciudad" },
+        { "nombre": "pais_db", "etiqueta": "País (cargado desde BD)..", "tipo": "select", "data-source": {
+            "tabla": "Pais",
+            "campo_valor": "PaiId",
+            "campo_etiqueta": "PaiDes",
+            "order": "PaiDes ASC"
+          }
+        },      
+ { "nombre": "ciudad_db", "etiqueta": "Ciudad (depende del país..)", "tipo": "select", "data-source": {
+            "tabla": "Ciudad",
+            "campo_valor": "CiuId",
+            "campo_etiqueta": "CiuDes",
+            "filtro": "PaiId={pais_db}",
+            "order": "CiuDes ASC"
+          }
+        },
+        { "nombre": "comuna_Id", "etiqueta": "Comuna (depende del ciudad)", "tipo": "select", "data-source": {
+            "tabla": "Comuna",
+            "campo_valor": "ComId",
+            "campo_etiqueta": "ComDes",
+            "filtro": "CiuId={ciudad_db}",
+            "order": "ComDes ASC"
+          }
+        }
+
+
+ ]
+  
+
+
+ },
+     "datos_contacto": {
       "titulo": "Información de Contacto",
       "campos": [
         { "nombre": "telefono", "etiqueta": "Teléfono (text)", "tipo": "text", "placeholder": "+56 9 1234 5678" },
@@ -156,6 +157,7 @@
     "todos_los_controles": {
       "titulo": "Todos los Tipos de Control",
       "campos": [
+        {
         { "nombre": "campo_texto", "etiqueta": "Campo de Texto", "tipo": "text", "placeholder": "Texto simple" },
         { "nombre": "campo_textarea", "etiqueta": "Área de Texto", "tipo": "textarea", "placeholder": "Texto largo" },
         { "nombre": "campo_numero", "etiqueta": "Número", "tipo": "number", "placeholder": "123" },
@@ -167,10 +169,37 @@
         { "nombre": "campo_file", "etiqueta": "Archivo", "tipo": "file" },
         { "nombre": "campo_date", "etiqueta": "Fecha", "tipo": "date" },
         { "nombre": "campo_hidden", "tipo": "hidden", "valor_predeterminado": "oculto123" },
-        { "nombre": "campo_select_multiple", "etiqueta": "Select Múltiple", "tipo": "select", "atributos": { "multiple": "multiple" }, "opciones": { "uno": "Uno", "dos": "Dos", "tres": "Tres" } },
-        { "nombre": "campo_datatable", "etiqueta": "Datatable (Mixto)", "tipo": "datatable", "busqueda_simple": "enable", "filtro_avanzado": "enable", "sumar_columnas": ["col_numero"], "columnas": [ { "nombre": "col_texto", "etiqueta": "Columna Texto..", "tipo": "text" }, { "nombre": "col_numero", "etiqueta": "Columna Número", "tipo": "number" }, { "nombre": "col_select", "etiqueta": "Columna Select", "tipo": "select", "opciones": { "a": "A", "b": "B" } }, { "nombre": "col_fecha", "etiqueta": "Columna Fecha", "tipo": "date" }, { "nombre": "col_checkbox", "etiqueta": "Columna Checkbox", "tipo": "checkbox", "opciones": { "si": "Sí", "no": "No" } } ], "dataSource": { "tabla": "" } }
+        { "nombre": "campo_select_multiple", "etiqueta": "Select Múltiple", "tipo": "select", "atributos": { "multiple": "multiple" }, "opciones": { "uno": "Uno", "dos": "Dos", "tres": "Tres" } }
+     }
       ]
     },
+  
+ "todos_los_controles1": {
+      "titulo": "Todos los Tipos de Control1",
+      "campos": [ 
+        { "nombre": "campo_datatable", "etiqueta": "Datatable (Mixto)", "tipo": "datatable",
+          "busqueda_simple": "enable",
+          "filtro_avanzado": "enable",
+          "sumar_columnas": ["col_numero"],
+          "columnas": [
+            { "nombre": "col_texto", "etiqueta": "Columna Texto..", "tipo": "text" },
+            { "nombre": "col_numero", "etiqueta": "Columna Número", "tipo": "number" },
+            { "nombre": "col_select", "etiqueta": "Columna Select", "tipo": "select", "opciones": { "a": "A", "b": "B" } },
+            { "nombre": "col_fecha", "etiqueta": "Columna Fecha", "tipo": "date" },
+            { "nombre": "col_checkbox", "etiqueta": "Columna Checkbox", "tipo": "checkbox", "opciones": { "si": "Sí", "no": "No" } }
+          ],
+          "dataSource": { "tabla": "" }
+        }
+      ]
+    },
+
+
+
+
+
+
+
+
     "grupo_grilla_ejemplo": {
       "titulo": "Grilla de Ejemplo en Fieldset",
       "campos": [
@@ -189,7 +218,7 @@
           ]
         }
       ]
-    },
+      },
     "header": {
       "titulo": "Cabecera",
       "campos": [
@@ -234,13 +263,55 @@
       "rows": [
         {
           "columns": [
-            { "width": 6, "fieldset": "header" },
-            { "width": 6, "tabs_section": "main_datos" }
+            { "width": 4, "fieldset": "header" },
+            { "width": 4, "tabs_section": "main_datos1" },
+            { "width": 4, "fieldset": "header_info" }
+
           ]
         }
       ]
     },
     "main_datos": {
+      "type": "tabs",
+      "tabs": [
+        {
+          "title": "General_Datos",
+          "rows": [
+            { "columns": [ { "width": 12, "fieldset": "principal" } ] }
+          ]
+        },
+        {
+          "title": "Datos_Personales_Datos",
+          "rows": [
+            {
+              "columns": [
+                { "width": 6, "fieldset": "datos_personales" },
+                { "width": 6, "fieldset": "datos_contacto" }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Direccion_Datos",
+          "rows": [
+            {
+              "columns": [
+                { "width": 12, "fieldset": "direccion" }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Campos_Varios_Datos",
+          "rows": [
+            { "columns": [ { "width": 12, "fieldset": "campos_variados" } ] }
+          ]
+        }
+      ]
+    },
+
+
+  "main_datos1": {
       "type": "tabs",
       "tabs": [
         {
@@ -278,6 +349,7 @@
         }
       ]
     },
+
     "main_operaciones": {
       "type": "tabs",
       "tabs": [
@@ -313,13 +385,13 @@
         {
           "title": "Contacto_Extras",
           "rows": [
-            { "columns": [ { "width": 12, "fieldset": "datos_contacto" } ] }
+            { "columns": [ { "width": 12, "fieldset": "datos_contacto2" } ] }
           ]
         },
         {
           "title": "Controles_Extras",
           "rows": [
-            { "columns": [ { "width": 12, "fieldset": "todos_los_controles" } ] }
+            { "columns": [ { "width": 12, "fieldset": "todos_los_controles2" } ] }
           ]
         }
       ]
@@ -329,8 +401,7 @@
       "rows": [
         {
           "columns": [
-            { "width": 3, "fieldset": "footer" },
-            { "width": 3, "fieldset": "footer_legal" }
+            { "width": 3, "fieldset": "footer" }, { "width": 3, "fieldset": "footer_legal" }
           ]
         }
       ]

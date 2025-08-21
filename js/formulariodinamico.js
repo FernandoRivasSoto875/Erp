@@ -258,8 +258,57 @@ window.addEventListener('message', (e)=>{
 document.addEventListener('DOMContentLoaded', function() {
   // Renderiza el formulario principal y luego carga los selects
   function cargarSelectsDataSource() {
-    // Inicializa todos los selects con data-source
+    // Diagnóstico para select de países
+    var paisSel = document.querySelector('select[name="pais_db"]');
+    if (!paisSel) {
+      console.warn('No se encontró el select de países (pais_db) en el DOM');
+      var diag = document.createElement('div');
+      diag.className = 'alert alert-danger';
+      diag.innerText = 'No se encontró el select de países (pais_db) en el DOM';
+      document.getElementById('formulariodinamico').prepend(diag);
+    } else {
+      let config;
+      try { config = JSON.parse(paisSel.getAttribute('data-source')); } catch(e){ config = null; }
+      if (!config || !config.tabla) {
+        console.warn('El select de países no tiene data-source válido');
+        var diag = document.createElement('div');
+        diag.className = 'alert alert-danger';
+        diag.innerText = 'El select de países no tiene data-source válido';
+        paisSel.parentNode.insertBefore(diag, paisSel);
+      } else {
+        fetch('ajax/selectdata.php?tabla=' + encodeURIComponent(config.tabla) +
+              (config.campo_valor ? '&campo_valor=' + encodeURIComponent(config.campo_valor) : '') +
+              (config.campo_etiqueta ? '&campo_etiqueta=' + encodeURIComponent(config.campo_etiqueta) : '') +
+              (config.filtro ? '&filtro=' + encodeURIComponent(config.filtro) : '') +
+              (config.order ? '&order=' + encodeURIComponent(config.order) : ''))
+          .then(r => r.json())
+          .then(data => {
+            paisSel.innerHTML = '<option value="">Seleccione...</option>';
+            if (!data || !Array.isArray(data) || data.length === 0) {
+              console.warn('La respuesta de países está vacía');
+              var diag = document.createElement('div');
+              diag.className = 'alert alert-warning';
+              diag.innerText = 'No hay países disponibles (respuesta vacía)';
+              paisSel.parentNode.insertBefore(diag, paisSel);
+            } else {
+              data.forEach(opt => {
+                paisSel.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
+              });
+            }
+          })
+          .catch(err => {
+            console.error('Error al cargar países:', err);
+            var diag = document.createElement('div');
+            diag.className = 'alert alert-danger';
+            diag.innerText = 'Error al cargar países: ' + err;
+            paisSel.parentNode.insertBefore(diag, paisSel);
+          });
+      }
+    }
+
+    // Inicializa todos los selects con data-source (excepto país, ya cubierto)
     document.querySelectorAll('select[data-source]').forEach(function(sel) {
+      if (sel.name === 'pais_db') return;
       let config;
       try { config = JSON.parse(sel.getAttribute('data-source')); } catch(e){ config = null; }
       if (!config || !config.tabla) return;

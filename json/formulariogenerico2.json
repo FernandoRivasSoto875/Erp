@@ -248,12 +248,54 @@
         {
           "columns": [
             { "width": 6, "fieldset": "header" },
-            { "width": 6, "tabs_section": "main_datos" }
+            { "width": 6, "tabs_section": "main_datos1" },
+            { "width": 6, "fieldset": "header_info" }
+
           ]
         }
       ]
     },
     "main_datos": {
+      "type": "tabs",
+      "tabs": [
+        {
+          "title": "General_Datos1",
+          "rows": [
+            { "columns": [ { "width": 12, "fieldset": "principal" } ] }
+          ]
+        },
+        {
+          "title": "Datos_Personales_Datos",
+          "rows": [
+            {
+              "columns": [
+                { "width": 6, "fieldset": "datos_personales" },
+                { "width": 6, "fieldset": "datos_contacto" }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Direccion_Datos",
+          "rows": [
+            {
+              "columns": [
+                { "width": 12, "fieldset": "direccion" }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Campos_Varios_Datos",
+          "rows": [
+            { "columns": [ { "width": 12, "fieldset": "campos_variados" } ] }
+          ]
+        }
+      ]
+    },
+
+
+  "main_datos1": {
       "type": "tabs",
       "tabs": [
         {
@@ -291,6 +333,16 @@
         }
       ]
     },
+
+
+
+
+
+
+
+
+
+
     "main_operaciones": {
       "type": "tabs",
       "tabs": [

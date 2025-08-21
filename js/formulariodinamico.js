@@ -257,15 +257,14 @@ window.addEventListener('message', (e)=>{
 
 document.addEventListener('DOMContentLoaded', function() {
   // Renderiza el formulario principal y luego carga los selects
-  if(window.formularioJsonOriginal){
-    renderForm(window.formularioJsonOriginal, 'formulariodinamico');
-    // Espera al siguiente ciclo de render para asegurar que los selects existen
-    setTimeout(function() {
-      document.querySelectorAll('select[data-source]').forEach(function(sel) {
-        let config;
-        try { config = JSON.parse(sel.getAttribute('data-source')); } catch(e){ config = null; }
-        if (!config || !config.tabla) return;
-
+  function cargarSelectsDataSource() {
+    // Primero, carga todos los selects independientes
+    document.querySelectorAll('select[data-source]').forEach(function(sel) {
+      let config;
+      try { config = JSON.parse(sel.getAttribute('data-source')); } catch(e){ config = null; }
+      if (!config || !config.tabla) return;
+      // Si el filtro NO tiene patrón {campo}, carga normal
+      if (!config.filtro || !config.filtro.match(/\{\w+\}/)) {
         fetch('ajax/selectdata.php?tabla=' + encodeURIComponent(config.tabla) +
               (config.campo_valor ? '&campo_valor=' + encodeURIComponent(config.campo_valor) : '') +
               (config.campo_etiqueta ? '&campo_etiqueta=' + encodeURIComponent(config.campo_etiqueta) : '') +
@@ -278,8 +277,51 @@ document.addEventListener('DOMContentLoaded', function() {
               sel.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
             });
           });
-      });
-    }, 0);
+      }
+    });
+
+    // Ahora, para selects dependientes
+    document.querySelectorAll('select[data-source]').forEach(function(sel) {
+      let config;
+      try { config = JSON.parse(sel.getAttribute('data-source')); } catch(e){ config = null; }
+      if (!config || !config.tabla || !config.filtro) return;
+      // Detecta patrón {campo}
+      var matches = config.filtro.match(/\{(\w+)\}/g);
+      if (matches) {
+        matches.forEach(function(match) {
+          var parentName = match.replace(/[{}]/g, '');
+          var parentSel = document.querySelector('[name="'+parentName+'"]');
+          if (parentSel) {
+            parentSel.addEventListener('change', function() {
+              let configActual = JSON.parse(sel.getAttribute('data-source'));
+              // Reemplaza todos los {campo} por el valor actual
+              var filtroActual = configActual.filtro.replace(/\{(\w+)\}/g, function(_, campo){
+                var el = document.querySelector('[name="'+campo+'"]');
+                return el ? el.value : '';
+              });
+              configActual.filtro = filtroActual;
+              fetch('ajax/selectdata.php?tabla=' + encodeURIComponent(configActual.tabla) +
+                    (configActual.campo_valor ? '&campo_valor=' + encodeURIComponent(configActual.campo_valor) : '') +
+                    (configActual.campo_etiqueta ? '&campo_etiqueta=' + encodeURIComponent(configActual.campo_etiqueta) : '') +
+                    (configActual.filtro ? '&filtro=' + encodeURIComponent(configActual.filtro) : '') +
+                    (configActual.order ? '&order=' + encodeURIComponent(configActual.order) : ''))
+                .then(r => r.json())
+                .then(data => {
+                  sel.innerHTML = '<option value="">Seleccione...</option>';
+                  data.forEach(opt => {
+                    sel.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
+                  });
+                });
+            });
+          }
+        });
+      }
+    });
+  }
+
+  if(window.formularioJsonOriginal){
+    renderForm(window.formularioJsonOriginal, 'formulariodinamico');
+    setTimeout(cargarSelectsDataSource, 0);
   }
 
     // Lógica de dependencias país → ciudad → comuna

@@ -171,6 +171,35 @@
         { "nombre": "campo_datatable", "etiqueta": "Datatable (Mixto)", "tipo": "datatable", "busqueda_simple": "enable", "filtro_avanzado": "enable", "sumar_columnas": ["col_numero"], "columnas": [ { "nombre": "col_texto", "etiqueta": "Columna Texto..", "tipo": "text" }, { "nombre": "col_numero", "etiqueta": "Columna Número", "tipo": "number" }, { "nombre": "col_select", "etiqueta": "Columna Select", "tipo": "select", "opciones": { "a": "A", "b": "B" } }, { "nombre": "col_fecha", "etiqueta": "Columna Fecha", "tipo": "date" }, { "nombre": "col_checkbox", "etiqueta": "Columna Checkbox", "tipo": "checkbox", "opciones": { "si": "Sí", "no": "No" } } ], "dataSource": { "tabla": "" } }
       ]
     },
+
+ "todos_los_controles1": {
+      "titulo": "Todos los Tipos de Control1",
+      "campos": [ 
+        { "nombre": "campo_datatable", "etiqueta": "Datatable (Mixto)", "tipo": "datatable",
+          "busqueda_simple": "enable",
+          "filtro_avanzado": "enable",
+          "sumar_columnas": ["col_numero"],
+          "columnas": [
+            { "nombre": "col_texto", "etiqueta": "Columna Texto..", "tipo": "text" },
+            { "nombre": "col_numero", "etiqueta": "Columna Número", "tipo": "number" },
+            { "nombre": "col_select", "etiqueta": "Columna Select", "tipo": "select", "opciones": { "a": "A", "b": "B" } },
+            { "nombre": "col_fecha", "etiqueta": "Columna Fecha", "tipo": "date" },
+            { "nombre": "col_checkbox", "etiqueta": "Columna Checkbox", "tipo": "checkbox", "opciones": { "si": "Sí", "no": "No" } }
+          ],
+          "dataSource": { "tabla": "" }
+        }
+      ]
+    },
+
+
+
+
+
+
+
+
+
+
     "grupo_grilla_ejemplo": {
       "titulo": "Grilla de Ejemplo en Fieldset",
       "campos": [
@@ -319,7 +348,7 @@
         {
           "title": "Controles_Extras",
           "rows": [
-            { "columns": [ { "width": 12, "fieldset": "todos_los_controles" } ] }
+            { "columns": [ { "width": 12, "fieldset": "todos_los_controles1" } ] }
           ]
         }
       ]

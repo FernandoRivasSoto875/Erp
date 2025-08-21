@@ -4,7 +4,7 @@
   'use strict';
   window.addEventListener('DOMContentLoaded', function() {
     var diag = [];
-    // Chequeo de helpers PHP (por AJAX)
+    // Chequeo de helpers PHP (por AJAX) 
     fetch('formulariodinamicotest.php')
       .then(r => r.json())
       .then(function(data){

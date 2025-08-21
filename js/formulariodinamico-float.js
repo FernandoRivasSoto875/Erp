@@ -20,4 +20,4 @@
 
   // Por defecto mostrar solo el formulario
   showForm();
-})(window,document);
+})(window,document); 

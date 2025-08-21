@@ -283,6 +283,7 @@ document.addEventListener('DOMContentLoaded', function() {
               (config.order ? '&order=' + encodeURIComponent(config.order) : ''))
           .then(r => r.json())
           .then(data => {
+            console.log('Respuesta AJAX países:', data);
             paisSel.innerHTML = '<option value="">Seleccione...</option>';
             if (!data || !Array.isArray(data) || data.length === 0) {
               console.warn('La respuesta de países está vacía');

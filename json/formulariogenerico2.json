@@ -269,8 +269,10 @@
       "rows": [
         {
           "columns": [
-            { "width": 6, "fieldset": "header" },
-            { "width": 6, "tabs_section": "main_datos" }
+            { "width": 3, "fieldset": "header" },
+            { "width": 4, "tabs_section": "main_datos" },
+
+            { "width": 3, "fieldset": "footer" }
           ]
         }
       ]

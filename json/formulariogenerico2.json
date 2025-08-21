@@ -86,9 +86,6 @@
     "direccion": {
       "titulo": "Datos Personales",
       "campos": [
-
-
-
    { "nombre": "pais_db", "etiqueta": "País (cargado desde BD)..", "tipo": "select", "data-source": {
             "tabla": "Pais",
             "campo_valor": "PaiId",
@@ -96,19 +93,6 @@
             "order": "PaiDes ASC"
           }
         },
-
-
-
-
-
-
-
-
-
-
-
-
-
         { "nombre": "ciudad_db", "etiqueta": "Ciudad (depende del país..)", "tipo": "select", "data-source": { "tabla": "Ciudad", "campo_valor": "CiuId", "campo_etiqueta": "CiuDes", "filtro": "PaiId={pais_db}", "order": "CiuDes ASC" } },
         { "nombre": "comuna_Id", "etiqueta": "Comuna (depende del ciudad)", "tipo": "select", "data-source": { "tabla": "Comuna", "campo_valor": "ComId", "campo_etiqueta": "ComDes", "filtro": "CiuId={ciudad_db}", "order": "ComDes ASC" } }
       ]

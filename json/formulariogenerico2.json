@@ -348,13 +348,13 @@
         {
           "title": "Contacto_Extras1",
           "rows": [
-            { "columns": [ { "width": 12, "fieldset": "datos_contacto1" } ] }
+            { "columns": [ { "width": 12, "fieldset": "datos_contacto" } ] }
           ]
         },
         {
           "title": "Controles_Extras2",
           "rows": [
-            { "columns": [ { "width": 12, "fieldset": "todos_los_controles1" } ] }
+            { "columns": [ { "width": 12, "fieldset": "todos_los_controles" } ] }
           ]
         }
       ]

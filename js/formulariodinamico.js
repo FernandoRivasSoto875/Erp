@@ -364,6 +364,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
           }
+          // Si el parentSel no existe, no hacer nada (evita error)
         });
       }
     });

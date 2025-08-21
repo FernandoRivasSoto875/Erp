@@ -259,7 +259,7 @@
       "type": "tabs",
       "tabs": [
         {
-          "title": "General_Datos1",
+          "title": "General_Datos",
           "rows": [
             { "columns": [ { "width": 12, "fieldset": "principal" } ] }
           ]

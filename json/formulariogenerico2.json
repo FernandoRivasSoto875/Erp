@@ -97,6 +97,16 @@
         { "nombre": "direccion", "etiqueta": "Dirección (textarea)", "tipo": "textarea", "placeholder": "Calle, número, comuna, ciudad" }
       ]
     },
+
+   
+    "datos_contacto1": {
+      "titulo": "Información de Contacto1",
+      "campos": [
+        { "nombre": "telefono1", "etiqueta": "Teléfono (text)", "tipo": "text", "placeholder": "+56 9 1234 5678" },
+        { "nombre": "direccion1", "etiqueta": "Dirección (textarea)", "tipo": "textarea", "placeholder": "Calle, número, comuna, ciudad" }
+      ]
+    },
+
     "campos_variados": {
       "titulo": "Tipos de Campos Variados",
       "campos": [
@@ -190,14 +200,6 @@
         }
       ]
     },
-
-
-
-
-
-
-
-
 
 
     "grupo_grilla_ejemplo": {

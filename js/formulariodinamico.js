@@ -258,12 +258,12 @@ window.addEventListener('message', (e)=>{
 document.addEventListener('DOMContentLoaded', function() {
   // Renderiza el formulario principal y luego carga los selects
   function cargarSelectsDataSource() {
-    // Primero, carga todos los selects independientes
+    // Inicializa todos los selects con data-source
     document.querySelectorAll('select[data-source]').forEach(function(sel) {
       let config;
       try { config = JSON.parse(sel.getAttribute('data-source')); } catch(e){ config = null; }
       if (!config || !config.tabla) return;
-      // Si el filtro NO tiene patrón {campo}, carga normal
+      // Si el filtro NO tiene patrón {campo}, carga normal (independiente)
       if (!config.filtro || !config.filtro.match(/\{\w+\}/)) {
         fetch('ajax/selectdata.php?tabla=' + encodeURIComponent(config.tabla) +
               (config.campo_valor ? '&campo_valor=' + encodeURIComponent(config.campo_valor) : '') +
@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
 
-    // Ahora, para selects dependientes
+    // Para selects dependientes, agrega listeners para actualizar cuando cambie el campo padre
     document.querySelectorAll('select[data-source]').forEach(function(sel) {
       let config;
       try { config = JSON.parse(sel.getAttribute('data-source')); } catch(e){ config = null; }
@@ -323,51 +323,6 @@ document.addEventListener('DOMContentLoaded', function() {
     renderForm(window.formularioJsonOriginal, 'formulariodinamico');
     setTimeout(cargarSelectsDataSource, 0);
   }
-
-    // Lógica de dependencias país → ciudad → comuna
-    const paisSel = document.querySelector('select[name="pais_db"]');
-    const ciudadSel = document.querySelector('select[name="ciudad_db"]');
-    const comunaSel = document.querySelector('select[name="comuna_Id"]');
-
-    if (paisSel && ciudadSel) {
-      paisSel.addEventListener('change', function() {
-        let config = JSON.parse(ciudadSel.getAttribute('data-source'));
-        config.filtro = 'PaiId=' + paisSel.value;
-        fetch('ajax/selectdata.php?tabla=' + encodeURIComponent(config.tabla) +
-              '&campo_valor=' + encodeURIComponent(config.campo_valor) +
-              '&campo_etiqueta=' + encodeURIComponent(config.campo_etiqueta) +
-              '&filtro=' + encodeURIComponent(config.filtro) +
-              (config.order ? '&order=' + encodeURIComponent(config.order) : ''))
-          .then(r => r.json())
-          .then(data => {
-            ciudadSel.innerHTML = '<option value="">Seleccione...</option>';
-            data.forEach(opt => {
-              ciudadSel.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
-            });
-            // Limpiar comuna al cambiar país
-            if (comunaSel) comunaSel.innerHTML = '<option value="">Seleccione...</option>';
-          });
-      });
-    }
-
-    if (ciudadSel && comunaSel) {
-      ciudadSel.addEventListener('change', function() {
-        let config = JSON.parse(comunaSel.getAttribute('data-source'));
-        config.filtro = 'CiuId=' + ciudadSel.value;
-        fetch('ajax/selectdata.php?tabla=' + encodeURIComponent(config.tabla) +
-              '&campo_valor=' + encodeURIComponent(config.campo_valor) +
-              '&campo_etiqueta=' + encodeURIComponent(config.campo_etiqueta) +
-              '&filtro=' + encodeURIComponent(config.filtro) +
-              (config.order ? '&order=' + encodeURIComponent(config.order) : ''))
-          .then(r => r.json())
-          .then(data => {
-            comunaSel.innerHTML = '<option value="">Seleccione...</option>';
-            data.forEach(opt => {
-              comunaSel.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
-            });
-          });
-      });
-    }
 });
 
 // --- Sección: Renderizado y lógica dinámica para campos tipo "datatable" ---

@@ -363,8 +363,9 @@ document.addEventListener('DOMContentLoaded', function() {
                   });
                 });
             });
+          } else {
+            console.warn('Campo padre no encontrado para dependencia:', parentName, 'del select', sel.name);
           }
-          // Si el parentSel no existe, no hacer nada (evita error)
         });
       }
     });

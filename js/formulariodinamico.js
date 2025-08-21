@@ -371,9 +371,18 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
+  function cargarSelectsCuandoExista() {
+    var paisSel = document.querySelector('select[name="pais_db"]');
+    if (paisSel) {
+      cargarSelectsDataSource();
+    } else {
+      setTimeout(cargarSelectsCuandoExista, 100);
+    }
+  }
+
   if(window.formularioJsonOriginal){
     renderForm(window.formularioJsonOriginal, 'formulariodinamico');
-    setTimeout(cargarSelectsDataSource, 0);
+    cargarSelectsCuandoExista();
   }
 });
 

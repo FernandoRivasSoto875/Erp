@@ -280,6 +280,51 @@ document.addEventListener('DOMContentLoaded', function() {
         });
       });
   });
+
+    // Lógica de dependencias país → ciudad → comuna
+    const paisSel = document.querySelector('select[name="pais_db"]');
+    const ciudadSel = document.querySelector('select[name="ciudad_db"]');
+    const comunaSel = document.querySelector('select[name="comuna_Id"]');
+
+    if (paisSel && ciudadSel) {
+      paisSel.addEventListener('change', function() {
+        let config = JSON.parse(ciudadSel.getAttribute('data-source'));
+        config.filtro = 'PaiId=' + paisSel.value;
+        fetch('ajax/selectdata.php?tabla=' + encodeURIComponent(config.tabla) +
+              '&campo_valor=' + encodeURIComponent(config.campo_valor) +
+              '&campo_etiqueta=' + encodeURIComponent(config.campo_etiqueta) +
+              '&filtro=' + encodeURIComponent(config.filtro) +
+              (config.order ? '&order=' + encodeURIComponent(config.order) : ''))
+          .then(r => r.json())
+          .then(data => {
+            ciudadSel.innerHTML = '<option value="">Seleccione...</option>';
+            data.forEach(opt => {
+              ciudadSel.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
+            });
+            // Limpiar comuna al cambiar país
+            if (comunaSel) comunaSel.innerHTML = '<option value="">Seleccione...</option>';
+          });
+      });
+    }
+
+    if (ciudadSel && comunaSel) {
+      ciudadSel.addEventListener('change', function() {
+        let config = JSON.parse(comunaSel.getAttribute('data-source'));
+        config.filtro = 'CiuId=' + ciudadSel.value;
+        fetch('ajax/selectdata.php?tabla=' + encodeURIComponent(config.tabla) +
+              '&campo_valor=' + encodeURIComponent(config.campo_valor) +
+              '&campo_etiqueta=' + encodeURIComponent(config.campo_etiqueta) +
+              '&filtro=' + encodeURIComponent(config.filtro) +
+              (config.order ? '&order=' + encodeURIComponent(config.order) : ''))
+          .then(r => r.json())
+          .then(data => {
+            comunaSel.innerHTML = '<option value="">Seleccione...</option>';
+            data.forEach(opt => {
+              comunaSel.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
+            });
+          });
+      });
+    }
 });
 
 // --- Sección: Renderizado y lógica dinámica para campos tipo "datatable" ---

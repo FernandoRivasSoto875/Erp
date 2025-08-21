@@ -256,30 +256,31 @@ window.addEventListener('message', (e)=>{
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-  // Renderiza el formulario principal
+  // Renderiza el formulario principal y luego carga los selects
   if(window.formularioJsonOriginal){
     renderForm(window.formularioJsonOriginal, 'formulariodinamico');
-  }
+    // Espera al siguiente ciclo de render para asegurar que los selects existen
+    setTimeout(function() {
+      document.querySelectorAll('select[data-source]').forEach(function(sel) {
+        let config;
+        try { config = JSON.parse(sel.getAttribute('data-source')); } catch(e){ config = null; }
+        if (!config || !config.tabla) return;
 
-  // Renderiza selects con data-source
-  document.querySelectorAll('select[data-source]').forEach(function(sel) {
-    let config;
-    try { config = JSON.parse(sel.getAttribute('data-source')); } catch(e){ config = null; }
-    if (!config || !config.tabla) return;
-
-    fetch('ajax/selectdata.php?tabla=' + encodeURIComponent(config.tabla) +
-          (config.campo_valor ? '&campo_valor=' + encodeURIComponent(config.campo_valor) : '') +
-          (config.campo_etiqueta ? '&campo_etiqueta=' + encodeURIComponent(config.campo_etiqueta) : '') +
-          (config.filtro ? '&filtro=' + encodeURIComponent(config.filtro) : '') +
-          (config.order ? '&order=' + encodeURIComponent(config.order) : ''))
-      .then(r => r.json())
-      .then(data => {
-        sel.innerHTML = '<option value="">Seleccione...</option>';
-        data.forEach(opt => {
-          sel.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
-        });
+        fetch('ajax/selectdata.php?tabla=' + encodeURIComponent(config.tabla) +
+              (config.campo_valor ? '&campo_valor=' + encodeURIComponent(config.campo_valor) : '') +
+              (config.campo_etiqueta ? '&campo_etiqueta=' + encodeURIComponent(config.campo_etiqueta) : '') +
+              (config.filtro ? '&filtro=' + encodeURIComponent(config.filtro) : '') +
+              (config.order ? '&order=' + encodeURIComponent(config.order) : ''))
+          .then(r => r.json())
+          .then(data => {
+            sel.innerHTML = '<option value="">Seleccione...</option>';
+            data.forEach(opt => {
+              sel.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
+            });
+          });
       });
-  });
+    }, 0);
+  }
 
     // Lógica de dependencias país → ciudad → comuna
     const paisSel = document.querySelector('select[name="pais_db"]');

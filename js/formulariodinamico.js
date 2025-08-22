@@ -292,13 +292,19 @@ document.addEventListener('DOMContentLoaded', function() {
           const td = document.createElement('td');
           // Buscar la columna en config.columnas para obtener propiedades extra
           let colDef = Array.isArray(config.columnas) ? config.columnas.find(c => (c.etiqueta || c.nombre) === colName) : null;
+          if (!colDef) {
+            console.log('[FD] No se encontró columna para:', colName, config.columnas);
+          }
           let inputType = 'text';
           if (colName === 'Total' || (colDef && colDef.tipo === 'number')) inputType = 'number';
           let input = document.createElement('input');
           input.type = inputType;
           input.className = 'form-control form-control-sm';
           input.name = colDef ? colDef.nombre : colName.toLowerCase();
-          if (colDef && colDef.formula) input.setAttribute('data-formula', colDef.formula);
+          if (colDef && colDef.formula) {
+            input.setAttribute('data-formula', colDef.formula);
+            console.log('[FD] data-formula agregado:', colDef.formula, 'a', input.name);
+          }
           if (colName === 'Total') input.setAttribute('readonly', '');
           td.appendChild(input);
           row.appendChild(td);

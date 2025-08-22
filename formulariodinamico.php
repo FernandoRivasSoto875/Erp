@@ -54,7 +54,7 @@ foreach ($fieldsets as $fs) {
     }
     ?>
     <div class="mb-2">
-    <a href="/formulariodinamicotest.php" target="_blank" class="btn btn-outline-warning btn-sm">Ver diagnóstico PHP (test)</a>
+    <!-- <a href="/formulariodinamicotest.php" target="_blank" class="btn btn-outline-warning btn-sm">Ver diagnóstico PHP (test)</a> -->
     </div>
     <!-- Bloque de diagnóstico visual -->
             <div class="alert alert-info">

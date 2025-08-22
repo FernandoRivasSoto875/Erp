@@ -140,7 +140,7 @@
             { "nombre": "producto", "etiqueta": "Producto", "tipo": "text" },
             { "nombre": "precio", "etiqueta": "Precio", "tipo": "number" },
             { "nombre": "cantidad", "etiqueta": "Cantidad", "tipo": "number" },
-            { "nombre": "total_linea", "etiqueta": "Total", "tipo": "number" }
+            { "nombre": "total_linea", "etiqueta": "Total", "tipo": "number", "formula": "precio * cantidad" }
           ],
           "dataSource": { "tabla": "" }
         }

@@ -39,8 +39,15 @@ document.addEventListener('DOMContentLoaded', function() {
     addBtn.addEventListener('click', function() {
       const row = document.createElement('tr');
       Array.from(thead.querySelectorAll('th')).forEach(function(th) {
+        const colName = th.textContent;
         const td = document.createElement('td');
-        td.innerHTML = `<input type=\"text\" class=\"form-control form-control-sm\" name=\"${dtWrap.dataset.nombre}[]\">`;
+        if (colName === 'Total') {
+          td.innerHTML = `<input type=\"number\" class=\"form-control form-control-sm\" name=\"total_linea\" readonly>`;
+        } else if (colName === 'Precio' || colName === 'Cantidad') {
+          td.innerHTML = `<input type=\"number\" class=\"form-control form-control-sm\" name=\"${colName.toLowerCase()}\">`;
+        } else {
+          td.innerHTML = `<input type=\"text\" class=\"form-control form-control-sm\" name=\"${colName.toLowerCase()}\">`;
+        }
         row.appendChild(td);
       });
       // Botón eliminar
@@ -52,8 +59,21 @@ document.addEventListener('DOMContentLoaded', function() {
       delTd.appendChild(delBtn);
       row.appendChild(delTd);
       tbody.appendChild(row);
+      // Actualización dinámica de fórmula total_linea
+      const precioInput = row.querySelector('input[name="precio"]');
+      const cantidadInput = row.querySelector('input[name="cantidad"]');
+      const totalInput = row.querySelector('input[name="total_linea"]');
+      function updateFormula() {
+        const precio = parseFloat(precioInput?.value || '0');
+        const cantidad = parseFloat(cantidadInput?.value || '0');
+        const total = precio * cantidad;
+        if (totalInput) totalInput.value = isNaN(total) ? '' : total;
+        updateSum();
+      }
+      if (precioInput) precioInput.addEventListener('input', updateFormula);
+      if (cantidadInput) cantidadInput.addEventListener('input', updateFormula);
       row.querySelectorAll('input').forEach(input => input.addEventListener('input', updateSum));
-      updateSum();
+      updateFormula();
     });
 
     dtWrap.insertBefore(topBar, table);

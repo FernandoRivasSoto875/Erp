@@ -17,6 +17,7 @@ Este prompt define las capacidades y opciones de presentación que debe soportar
 13. **Accesibilidad**: Navegación por teclado, contraste alto, etiquetas ARIA y soporte para lectores de pantalla.
 14. **Layouts responsivos**: Adaptar la presentación según el dispositivo (móvil, tablet, escritorio).
 15. **Validaciones en tiempo real**: Feedback inmediato al usuario mientras completa el formulario.
+16. **Campos tipo "fórmula"**: Los campos tipo "fórmula" en datatables y formularios deben ser compatibles con filtros, búsqueda y suma de columnas. Su valor debe actualizarse dinámicamente cuando cambien los campos de los que dependen, y pueden ser usados en filtros avanzados y búsquedas, tanto locales como en BD.
 
 Estos lineamientos deben ser considerados en el diseño, desarrollo y evolución del sistema de formularios dinámicos para maximizar la experiencia y flexibilidad del usuario final.
 COPILOT_PROMPT (Lineamientos y requisitos para cualquier cambio en este archivo)

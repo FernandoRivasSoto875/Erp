@@ -1,3 +1,7 @@
+// --- Funciones globales para diagnóstico ---
+window.generarCampo = window.generarCampo || function(){ return null; };
+window.generarLayout = window.generarLayout || function(){ return null; };
+window.renderTabsBlock = window.renderTabsBlock || function(){ return null; };
 // --- Lógica para datatables dinámicos ---
 document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('[data-tipo="datatable"]').forEach(function(dtWrap) {

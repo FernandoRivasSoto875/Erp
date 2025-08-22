@@ -27,7 +27,12 @@ document.addEventListener('DOMContentLoaded', function() {
     searchInput.addEventListener('input', function() {
       const term = searchInput.value.toLowerCase();
       Array.from(tbody.rows).forEach(function(row) {
-        row.style.display = Array.from(row.cells).some(td => td.textContent.toLowerCase().includes(term)) ? '' : 'none';
+        row.style.display = Array.from(row.cells).some(td => {
+          const txt = td.textContent.toLowerCase();
+          const inp = td.querySelector('input');
+          const val = inp ? (inp.value || '').toLowerCase() : '';
+          return txt.includes(term) || val.includes(term);
+        }) ? '' : 'none';
       });
     });
 
@@ -589,7 +594,12 @@ function renderDatatable(field) {
     inputSearch.oninput = function() {
       const term = inputSearch.value.toLowerCase();
       Array.from(tbody.children).forEach(tr => {
-        tr.style.display = Array.from(tr.children).some(td => td.textContent.toLowerCase().includes(term)) ? '' : 'none';
+        tr.style.display = Array.from(tr.children).some(td => {
+          const txt = td.textContent.toLowerCase();
+          const inp = td.querySelector('input');
+          const val = inp ? (inp.value || '').toLowerCase() : '';
+          return txt.includes(term) || val.includes(term);
+        }) ? '' : 'none';
       });
     };
     controlsRow.appendChild(inputSearch);

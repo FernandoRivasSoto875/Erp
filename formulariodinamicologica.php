@@ -508,3 +508,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // ...existing code...
 }
 // FIN DE ARCHIVO
+// Cambio forzado para commit y push
+// Fecha: 2025-08-22
+// Motivo: Validación de sincronización y push en GitHub Desktop

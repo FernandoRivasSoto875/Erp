@@ -1,3 +1,33 @@
+// --- Lógica para datatables dinámicos ---
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('[data-tipo="datatable"]').forEach(function(dtWrap) {
+    const table = dtWrap.querySelector('table');
+    const tbody = table.querySelector('tbody');
+    const thead = table.querySelector('thead');
+    // Botón para agregar fila
+    const addBtn = document.createElement('button');
+    addBtn.textContent = 'Agregar fila';
+    addBtn.className = 'btn btn-sm btn-primary mb-2';
+    dtWrap.insertBefore(addBtn, table);
+    addBtn.addEventListener('click', function() {
+      const row = document.createElement('tr');
+      Array.from(thead.querySelectorAll('th')).forEach(function(th) {
+        const td = document.createElement('td');
+        td.innerHTML = `<input type="text" class="form-control form-control-sm" name="${dtWrap.dataset.nombre}[]">`;
+        row.appendChild(td);
+      });
+      // Botón eliminar
+      const delTd = document.createElement('td');
+      const delBtn = document.createElement('button');
+      delBtn.textContent = 'Eliminar';
+      delBtn.className = 'btn btn-sm btn-danger';
+      delBtn.onclick = function(){ row.remove(); };
+      delTd.appendChild(delBtn);
+      row.appendChild(delTd);
+      tbody.appendChild(row);
+    });
+  });
+});
 // Renderiza el formulario completo desde el JSON
 // Leer COPILOT_PROMPT en formulariodinamicoprompt.txt.
 function renderForm(json, containerId = 'formulariodinamico') {

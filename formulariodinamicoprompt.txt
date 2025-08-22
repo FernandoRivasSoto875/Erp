@@ -81,7 +81,7 @@ Debe permitir agregar un campo con:
 
   - "dataSource": objeto con "tabla" (opcional, si se conecta a BD)
 
-Las propiedades "dataSource" y "filtro" deben aparecer siempre en la definición del datatable, aunque no se indique tabla. El filtro puede crearse sobre cualquier campo del formulario y debe permitir búsquedas y filtrado avanzado sobre los datos locales o de BD, según corresponda.
+Las propiedades "dataSource" y "filtro" deben aparecer siempre en la definición del datatable, aunque no se indique tabla. El filtro puede crearse sobre cualquier campo del formulario y debe permitir búsquedas y filtrado avanzado sobre los datos locales o de BD, según corresponda. El botón "Agregar" y el campo de búsqueda deben estar justificados a la derecha. El filtro avanzado debe permitir filtrar por campos anidados del formulario.
 
 Regla adicional para datatable:
 Si el campo "dataSource" no indica "tabla" (está vacío o no existe), el datatable debe funcionar igual con todas sus funcionalidades (búsqueda rápida, filtros avanzados, suma de columnas, edición manual de filas) usando solo datos locales del usuario. Solo si se indica "tabla" en "dataSource", se habilita la carga automática desde BD.

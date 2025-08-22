@@ -13,12 +13,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const dataSource = config.dataSource || {};
     const filtro = config.filtro || '';
 
+    // --- Contenedor superior para búsqueda y agregar ---
+    const topBar = document.createElement('div');
+    topBar.className = 'd-flex justify-content-end align-items-center mb-2 gap-2';
+
     // --- Búsqueda rápida ---
     const searchInput = document.createElement('input');
     searchInput.type = 'search';
-    searchInput.className = 'form-control form-control-sm mb-2';
+    searchInput.className = 'form-control form-control-sm';
+    searchInput.style.maxWidth = '200px';
     searchInput.placeholder = 'Buscar...';
-    dtWrap.insertBefore(searchInput, table);
+    topBar.appendChild(searchInput);
     searchInput.addEventListener('input', function() {
       const term = searchInput.value.toLowerCase();
       Array.from(tbody.rows).forEach(function(row) {
@@ -26,40 +31,16 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
 
-    // --- Filtros avanzados sobre campos del formulario ---
-    const filterDiv = document.createElement('div');
-    filterDiv.className = 'mb-2';
-    if (Array.isArray(config.columnas)) {
-      config.columnas.forEach(function(col) {
-        const f = document.createElement('input');
-        f.type = 'text';
-        f.className = 'form-control form-control-sm d-inline-block mx-1';
-        f.placeholder = 'Filtrar ' + (col.etiqueta || col.nombre);
-        f.dataset.col = col.nombre;
-        f.addEventListener('input', function() {
-          const val = f.value.toLowerCase();
-          Array.from(tbody.rows).forEach(function(row) {
-            const idx = Array.from(thead.querySelectorAll('th')).findIndex(th => th.textContent === (col.etiqueta || col.nombre));
-            if (idx >= 0) {
-              row.style.display = row.cells[idx] && row.cells[idx].textContent.toLowerCase().includes(val) ? '' : 'none';
-            }
-          });
-        });
-        filterDiv.appendChild(f);
-      });
-      dtWrap.insertBefore(filterDiv, table);
-    }
-
     // --- Botón para agregar fila ---
     const addBtn = document.createElement('button');
-    addBtn.textContent = 'Agregar fila';
-    addBtn.className = 'btn btn-sm btn-primary mb-2';
-    dtWrap.insertBefore(addBtn, table);
+    addBtn.textContent = 'Agregar';
+    addBtn.className = 'btn btn-sm btn-primary';
+    topBar.appendChild(addBtn);
     addBtn.addEventListener('click', function() {
       const row = document.createElement('tr');
       Array.from(thead.querySelectorAll('th')).forEach(function(th) {
         const td = document.createElement('td');
-        td.innerHTML = `<input type="text" class="form-control form-control-sm" name="${dtWrap.dataset.nombre}[]">`;
+        td.innerHTML = `<input type=\"text\" class=\"form-control form-control-sm\" name=\"${dtWrap.dataset.nombre}[]\">`;
         row.appendChild(td);
       });
       // Botón eliminar
@@ -74,6 +55,50 @@ document.addEventListener('DOMContentLoaded', function() {
       row.querySelectorAll('input').forEach(input => input.addEventListener('input', updateSum));
       updateSum();
     });
+
+    dtWrap.insertBefore(topBar, table);
+
+    // --- Filtros avanzados sobre campos del formulario y anidados ---
+    const filterDiv = document.createElement('div');
+    filterDiv.className = 'mb-2 d-flex flex-wrap gap-2 justify-content-end';
+    function addFilterInput(col, parentName = '') {
+      const f = document.createElement('input');
+      f.type = 'text';
+      f.className = 'form-control form-control-sm';
+      f.style.maxWidth = '180px';
+      f.placeholder = 'Filtrar ' + (col.etiqueta || col.nombre);
+      f.dataset.col = parentName ? parentName + '.' + col.nombre : col.nombre;
+      f.addEventListener('input', function() {
+        const val = f.value.toLowerCase();
+        Array.from(tbody.rows).forEach(function(row) {
+          // Filtrado por campos anidados
+          let cellValue = '';
+          if (parentName) {
+            // Buscar en objeto anidado si existe
+            cellValue = row.dataset[parentName + '.' + col.nombre] || '';
+          } else {
+            const idx = Array.from(thead.querySelectorAll('th')).findIndex(th => th.textContent === (col.etiqueta || col.nombre));
+            if (idx >= 0) {
+              cellValue = row.cells[idx] && row.cells[idx].textContent;
+            }
+          }
+          row.style.display = cellValue && cellValue.toLowerCase().includes(val) ? '' : 'none';
+        });
+      });
+      filterDiv.appendChild(f);
+    }
+    if (Array.isArray(config.columnas)) {
+      config.columnas.forEach(function(col) {
+        addFilterInput(col);
+        // Si el campo tiene hijos anidados
+        if (Array.isArray(col.hijos)) {
+          col.hijos.forEach(function(hijo) {
+            addFilterInput(hijo, col.nombre);
+          });
+        }
+      });
+      dtWrap.insertBefore(filterDiv, table);
+    }
 
     // --- Suma de columnas ---
     function updateSum() {

@@ -139,9 +139,9 @@
           "columnas": [
               { "nombre": "ProductoId", "etiqueta": "Producto Id", "tipo": "text" },
               { "nombre": "ProductoDes", "etiqueta": "Producto Des", "tipo": "text", "formula": "SQL:SELECT productoDes FROM producto WHERE productoId={ProductoId}" },
-            { "nombre": "ProductoPrecio", "etiqueta": "Precio", "tipo": "number", "formula": "BusquedaDato('producto','ProductoPrecio','ProductoId={ProductoId}')" },
+            { "nombre": "ProductoPrecio", "etiqueta": "Precio", "tipo": "number", "formula": "BusquedaDato('Producto','ProductoPrecio','ProductoId={ProductoId}')" },
             { "nombre": "cantidad", "etiqueta": "Cantidad", "tipo": "number" }, 
-            { "nombre": "total_linea", "etiqueta": "Total", "tipo": "number", "formula": "precio * cantidad" },
+            { "nombre": "total_linea", "etiqueta": "Total", "tipo": "number", "formula": "ProductoPrecio * cantidad" },
             { "nombre": "checkboxSel", "etiqueta": "", "tipo": "checkbox", "opciones": { "s": "" } }
             
           ],

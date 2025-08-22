@@ -86,30 +86,30 @@ function makeTableExportable(dtWrap, table) {
 // Selección múltiple de filas
 function makeTableSelectable(table, config) {
   if (config.seleccion_multiple !== 'enable') return;
-  const thead = table.querySelector('thead');
-  if (!thead) return;
-  const selTh = document.createElement('th');
-  const cbAll = document.createElement('input');
-  cbAll.type = 'checkbox';
-  selTh.appendChild(cbAll);
-  thead.querySelector('tr').insertBefore(selTh, thead.querySelector('tr').firstChild);
-  Array.from(table.querySelector('tbody').rows).forEach(row => {
-    const selTd = document.createElement('td');
-    const cb = document.createElement('input');
-    cb.type = 'checkbox';
-    selTd.appendChild(cb);
-    row.insertBefore(selTd, row.firstChild);
-  });
-  cbAll.addEventListener('change', function(){
-    Array.from(table.querySelector('tbody').rows).forEach(row => {
-      const cb = row.querySelector('input[type="checkbox"]');
-      if(cb) cb.checked = cbAll.checked;
-    });
-  });
-}
-
-// Mostrar/ocultar columnas
-function makeTableColumnToggle(dtWrap, table) {
+          // Agregar columna de selección múltiple al inicio
+          const thSel = document.createElement('th');
+          thSel.textContent = '';
+          theadRow.insertBefore(thSel, theadRow.firstChild);
+          // Agregar checkboxSel a cada fila
+          Array.from(tbody.querySelectorAll('tr')).forEach(function(tr) {
+            const tdSel = document.createElement('td');
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.className = 'checkboxSel';
+            cb.addEventListener('change', function() {
+              tr.classList.toggle('selected', cb.checked);
+            });
+            tdSel.appendChild(cb);
+            tr.insertBefore(tdSel, tr.firstChild);
+          });
+          // Doble click para seleccionar/deseleccionar
+          tbody.addEventListener('dblclick', function(e) {
+            if (e.target.tagName === 'TD' && e.target.querySelector('.checkboxSel')) {
+              const cb = e.target.querySelector('.checkboxSel');
+              cb.checked = !cb.checked;
+              e.target.closest('tr').classList.toggle('selected', cb.checked);
+            }
+          });
   const thead = table.querySelector('thead');
   if (!thead) return;
   const toggleBar = document.createElement('div');
@@ -290,13 +290,17 @@ document.addEventListener('DOMContentLoaded', function() {
           if (config.seleccion_multiple === 'enable' && thIdx === 0) return;
           const colName = th.textContent;
           const td = document.createElement('td');
-          if (colName === 'Total') {
-            td.innerHTML = `<input type="number" class="form-control form-control-sm" name="total_linea" readonly>`;
-          } else if (colName === 'Precio' || colName === 'Cantidad') {
-            td.innerHTML = `<input type="number" class="form-control form-control-sm" name="${colName.toLowerCase()}">`;
-          } else {
-            td.innerHTML = `<input type="text" class="form-control form-control-sm" name="${colName.toLowerCase()}">`;
-          }
+          // Buscar la columna en config.columnas para obtener propiedades extra
+          let colDef = Array.isArray(config.columnas) ? config.columnas.find(c => (c.etiqueta || c.nombre) === colName) : null;
+          let inputType = 'text';
+          if (colName === 'Total' || (colDef && colDef.tipo === 'number')) inputType = 'number';
+          let input = document.createElement('input');
+          input.type = inputType;
+          input.className = 'form-control form-control-sm';
+          input.name = colDef ? colDef.nombre : colName.toLowerCase();
+          if (colDef && colDef.formula) input.setAttribute('data-formula', colDef.formula);
+          if (colName === 'Total') input.setAttribute('readonly', '');
+          td.appendChild(input);
           row.appendChild(td);
         });
         // Botón eliminar

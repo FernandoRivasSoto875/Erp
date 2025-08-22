@@ -2,13 +2,55 @@
 window.generarCampo = window.generarCampo || function(){ return null; };
 window.generarLayout = window.generarLayout || function(){ return null; };
 window.renderTabsBlock = window.renderTabsBlock || function(){ return null; };
-// --- Lógica para datatables dinámicos ---
+// --- Lógica avanzada para datatables dinámicos ---
 document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('[data-tipo="datatable"]').forEach(function(dtWrap) {
     const table = dtWrap.querySelector('table');
     const tbody = table.querySelector('tbody');
     const thead = table.querySelector('thead');
-    // Botón para agregar fila
+    // --- Propiedades dataSource y filtro siempre presentes ---
+    const config = dtWrap.dataset.config ? JSON.parse(dtWrap.dataset.config) : {};
+    const dataSource = config.dataSource || {};
+    const filtro = config.filtro || '';
+
+    // --- Búsqueda rápida ---
+    const searchInput = document.createElement('input');
+    searchInput.type = 'search';
+    searchInput.className = 'form-control form-control-sm mb-2';
+    searchInput.placeholder = 'Buscar...';
+    dtWrap.insertBefore(searchInput, table);
+    searchInput.addEventListener('input', function() {
+      const term = searchInput.value.toLowerCase();
+      Array.from(tbody.rows).forEach(function(row) {
+        row.style.display = Array.from(row.cells).some(td => td.textContent.toLowerCase().includes(term)) ? '' : 'none';
+      });
+    });
+
+    // --- Filtros avanzados sobre campos del formulario ---
+    const filterDiv = document.createElement('div');
+    filterDiv.className = 'mb-2';
+    if (Array.isArray(config.columnas)) {
+      config.columnas.forEach(function(col) {
+        const f = document.createElement('input');
+        f.type = 'text';
+        f.className = 'form-control form-control-sm d-inline-block mx-1';
+        f.placeholder = 'Filtrar ' + (col.etiqueta || col.nombre);
+        f.dataset.col = col.nombre;
+        f.addEventListener('input', function() {
+          const val = f.value.toLowerCase();
+          Array.from(tbody.rows).forEach(function(row) {
+            const idx = Array.from(thead.querySelectorAll('th')).findIndex(th => th.textContent === (col.etiqueta || col.nombre));
+            if (idx >= 0) {
+              row.style.display = row.cells[idx] && row.cells[idx].textContent.toLowerCase().includes(val) ? '' : 'none';
+            }
+          });
+        });
+        filterDiv.appendChild(f);
+      });
+      dtWrap.insertBefore(filterDiv, table);
+    }
+
+    // --- Botón para agregar fila ---
     const addBtn = document.createElement('button');
     addBtn.textContent = 'Agregar fila';
     addBtn.className = 'btn btn-sm btn-primary mb-2';
@@ -25,11 +67,43 @@ document.addEventListener('DOMContentLoaded', function() {
       const delBtn = document.createElement('button');
       delBtn.textContent = 'Eliminar';
       delBtn.className = 'btn btn-sm btn-danger';
-      delBtn.onclick = function(){ row.remove(); };
+      delBtn.onclick = function(){ row.remove(); updateSum(); };
       delTd.appendChild(delBtn);
       row.appendChild(delTd);
       tbody.appendChild(row);
+      row.querySelectorAll('input').forEach(input => input.addEventListener('input', updateSum));
+      updateSum();
     });
+
+    // --- Suma de columnas ---
+    function updateSum() {
+      if (!Array.isArray(config.sumar_columnas)) return;
+      config.sumar_columnas.forEach(function(colName) {
+        let sum = 0;
+        Array.from(tbody.rows).forEach(function(row) {
+          const idx = Array.from(thead.querySelectorAll('th')).findIndex(th => th.textContent === colName);
+          if (idx >= 0) {
+            const val = row.cells[idx] ? parseFloat(row.cells[idx].querySelector('input')?.value || '0') : 0;
+            if (!isNaN(val)) sum += val;
+          }
+        });
+        let sumRow = dtWrap.querySelector('.fd-datatable-sum[data-col="' + colName + '"]');
+        if (!sumRow) {
+          sumRow = document.createElement('div');
+          sumRow.className = 'fd-datatable-sum mt-1';
+          sumRow.dataset.col = colName;
+          dtWrap.appendChild(sumRow);
+        }
+        sumRow.textContent = 'Suma de ' + colName + ': ' + sum;
+      });
+    }
+
+    // --- Carga desde dataSource si tabla está definida ---
+    if (dataSource.tabla) {
+      // Aquí iría la lógica AJAX para cargar datos desde BD usando dataSource y filtro
+      // Por ahora solo placeholder
+      // fetch('ajax/selectdata.php?...')
+    }
   });
 });
 // Renderiza el formulario completo desde el JSON

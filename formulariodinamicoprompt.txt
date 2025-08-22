@@ -8,7 +8,7 @@
   - Ordenar por columna (ascendente/descendente).
   - Paginación para grandes volúmenes de datos.
   - Exportar datos (CSV, Excel, PDF).
-  - Selección múltiple de filas (checkbox), controlada por la propiedad 'seleccion_multiple' (enable/disable). Si está en 'enable', aparecen checkboxes en cada fila y en el encabezado para seleccionar todos; si está en 'disable', no se muestran.
+  - Selección múltiple de filas (checkbox), controlada por la propiedad 'seleccion_multiple' (enable/disable). Si está en 'enable', aparecen checkboxes en cada fila y en el encabezado para seleccionar todos; si está en 'disable', no se muestran. El filtro avanzado debe ignorar la columna de selección múltiple y calcular correctamente el índice de columna cuando está presente.
   - Validación de datos en tiempo real.
   - Visualización responsiva y adaptable.
   - Mostrar/ocultar columnas.

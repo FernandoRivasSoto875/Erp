@@ -341,6 +341,7 @@ document.addEventListener('DOMContentLoaded', function() {
     filterPanel.style.display = 'none';
 
     function addAdvancedFilterRow(col, parentName = '') {
+      if (col.tipo === 'seleccion' || col.tipo === 'checkbox' || col.nombre === 'seleccion' || col.etiqueta?.toLowerCase() === 'seleccion') return;
       const row = document.createElement('div');
       row.className = 'd-flex align-items-center gap-2 mb-1';
       // Campo
@@ -393,7 +394,9 @@ document.addEventListener('DOMContentLoaded', function() {
           const label = fRow.querySelector('span')?.textContent;
           const op = fRow.querySelector('select')?.value;
           const val = fRow.querySelector('input')?.value.toLowerCase();
-          const idx = Array.from(thead.querySelectorAll('th')).findIndex(th => th.textContent === label.split('.').pop());
+          // Si hay columna de selección múltiple, sumar +1 al índice
+          let idx = Array.from(thead.querySelectorAll('th')).findIndex(th => th.textContent === label.split('.').pop());
+          if (config.seleccion_multiple === 'enable') idx += 1;
           let cellValue = '';
           if (idx >= 0) {
             const inp = row.cells[idx]?.querySelector('input');

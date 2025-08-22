@@ -270,65 +270,94 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // --- Botón para agregar fila ---
-    const addBtn = document.createElement('button');
-    addBtn.textContent = 'Agregar';
-    addBtn.className = 'btn btn-sm btn-primary';
-    topBar.appendChild(addBtn);
-    addBtn.addEventListener('click', function() {
-      const row = document.createElement('tr');
-      Array.from(thead.querySelectorAll('th')).forEach(function(th) {
-        const colName = th.textContent;
-        const td = document.createElement('td');
-        if (colName === 'Total') {
-          td.innerHTML = `<input type=\"number\" class=\"form-control form-control-sm\" name=\"total_linea\" readonly>`;
-        } else if (colName === 'Precio' || colName === 'Cantidad') {
-          td.innerHTML = `<input type=\"number\" class=\"form-control form-control-sm\" name=\"${colName.toLowerCase()}\">`;
-        } else {
-          td.innerHTML = `<input type=\"text\" class=\"form-control form-control-sm\" name=\"${colName.toLowerCase()}\">`;
+      const addBtn = document.createElement('button');
+      addBtn.textContent = 'Agregar';
+      addBtn.className = 'btn btn-sm btn-primary';
+      topBar.appendChild(addBtn);
+      addBtn.addEventListener('click', function() {
+        const row = document.createElement('tr');
+        // Si seleccion_multiple está habilitado, agregar celda de checkbox al inicio
+        if (config.seleccion_multiple === 'enable') {
+          const selTd = document.createElement('td');
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          selTd.appendChild(cb);
+          row.appendChild(selTd);
         }
-        row.appendChild(td);
+        Array.from(thead.querySelectorAll('th')).forEach(function(th, thIdx) {
+          // Si seleccion_multiple está habilitado y es la primera columna, saltar (ya agregada)
+          if (config.seleccion_multiple === 'enable' && thIdx === 0) return;
+          const colName = th.textContent;
+          const td = document.createElement('td');
+          if (colName === 'Total') {
+            td.innerHTML = `<input type="number" class="form-control form-control-sm" name="total_linea" readonly>`;
+          } else if (colName === 'Precio' || colName === 'Cantidad') {
+            td.innerHTML = `<input type="number" class="form-control form-control-sm" name="${colName.toLowerCase()}">`;
+          } else {
+            td.innerHTML = `<input type="text" class="form-control form-control-sm" name="${colName.toLowerCase()}">`;
+          }
+          row.appendChild(td);
+        });
+        // Botón eliminar
+        const delTd = document.createElement('td');
+        const delBtn = document.createElement('button');
+        delBtn.textContent = 'Eliminar';
+        delBtn.className = 'btn btn-sm btn-danger';
+        delBtn.onclick = function(){ row.remove(); updateSum(); };
+        delTd.appendChild(delBtn);
+        row.appendChild(delTd);
+        tbody.appendChild(row);
+        // Actualización dinámica de fórmula total_linea
+        const precioInput = row.querySelector('input[name="precio"]');
+        const cantidadInput = row.querySelector('input[name="cantidad"]');
+        const totalInput = row.querySelector('input[name="total_linea"]');
+        function updateFormula() {
+          const precio = parseFloat(precioInput?.value || '0');
+          const cantidad = parseFloat(cantidadInput?.value || '0');
+          const total = precio * cantidad;
+          if (totalInput) totalInput.value = isNaN(total) ? '' : total;
+          updateSum();
+        }
+        if (precioInput) precioInput.addEventListener('input', updateFormula);
+        if (cantidadInput) cantidadInput.addEventListener('input', updateFormula);
+        row.querySelectorAll('input').forEach(input => input.addEventListener('input', updateSum));
+        updateFormula();
       });
-      // Botón eliminar
-      const delTd = document.createElement('td');
-      const delBtn = document.createElement('button');
-      delBtn.textContent = 'Eliminar';
-      delBtn.className = 'btn btn-sm btn-danger';
-      delBtn.onclick = function(){ row.remove(); updateSum(); };
-      delTd.appendChild(delBtn);
-      row.appendChild(delTd);
-      tbody.appendChild(row);
-      // Actualización dinámica de fórmula total_linea
-      const precioInput = row.querySelector('input[name="precio"]');
-      const cantidadInput = row.querySelector('input[name="cantidad"]');
-      const totalInput = row.querySelector('input[name="total_linea"]');
-      function updateFormula() {
-        const precio = parseFloat(precioInput?.value || '0');
-        const cantidad = parseFloat(cantidadInput?.value || '0');
-        const total = precio * cantidad;
-        if (totalInput) totalInput.value = isNaN(total) ? '' : total;
-        updateSum();
-      }
-      if (precioInput) precioInput.addEventListener('input', updateFormula);
-      if (cantidadInput) cantidadInput.addEventListener('input', updateFormula);
-      row.querySelectorAll('input').forEach(input => input.addEventListener('input', updateSum));
-      updateFormula();
-    });
 
-    dtWrap.insertBefore(topBar, table);
-    // Línea en blanco al final del datatable, siempre visible
-    function ensureBlankLine() {
-      let blankRow = dtWrap.querySelector('.fd-datatable-blank-row');
-      if (!blankRow) {
-        blankRow = document.createElement('div');
-        blankRow.className = 'fd-datatable-blank-row';
-        blankRow.style.height = '32px';
-        dtWrap.appendChild(blankRow);
+      // Agregar columna de checkbox al thead si seleccion_multiple está habilitado
+      if (config.seleccion_multiple === 'enable') {
+        const theadRow = thead.querySelector('tr');
+        if (theadRow && theadRow.querySelector('th[data-checkbox]') == null) {
+          const selTh = document.createElement('th');
+          selTh.setAttribute('data-checkbox', 'true');
+          selTh.textContent = '';
+          theadRow.insertBefore(selTh, theadRow.firstChild);
+        }
       }
-    }
-    ensureBlankLine();
-    // Reasegurar línea en blanco tras cambios
-    const observer = new MutationObserver(ensureBlankLine);
-    observer.observe(table, { childList: true, subtree: true });
+      dtWrap.insertBefore(topBar, table);
+      // Scroll horizontal al final de la grilla, justificado a la izquierda
+      if (!dtWrap.querySelector('.fd-datatable-scroll-x')) {
+        const scrollDiv = document.createElement('div');
+        scrollDiv.className = 'fd-datatable-scroll-x mt-2 d-flex justify-content-start';
+        scrollDiv.style.overflowX = 'auto';
+        scrollDiv.style.width = '100%';
+        scrollDiv.appendChild(table);
+        dtWrap.appendChild(scrollDiv);
+      }
+      // Línea en blanco al final del datatable, siempre visible
+      function ensureBlankLine() {
+        let blankRow = dtWrap.querySelector('.fd-datatable-blank-row');
+        if (!blankRow) {
+          blankRow = document.createElement('div');
+          blankRow.className = 'fd-datatable-blank-row';
+          blankRow.style.height = '32px';
+          dtWrap.appendChild(blankRow);
+        }
+      }
+      ensureBlankLine();
+      // Reasegurar línea en blanco tras cambios
+      const observer = new MutationObserver(ensureBlankLine);
+      observer.observe(table, { childList: true, subtree: true });
 
     // --- Filtro avanzado con botón y panel ---
     const filterAdvancedBtn = document.createElement('button');

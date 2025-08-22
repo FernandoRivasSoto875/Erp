@@ -10,7 +10,7 @@
   - Exportar datos (CSV, Excel, PDF).
   - Selección múltiple de filas (checkbox), controlada por la propiedad 'seleccion_multiple' (enable/disable). Si está en 'enable', aparecen checkboxes en cada fila y en el encabezado para seleccionar todos; si está en 'disable', no se muestran. El filtro avanzado debe ignorar la columna de selección múltiple y calcular correctamente el índice de columna cuando está presente.
   - Validación de datos en tiempo real.
-  - Visualización responsiva y adaptable.
+  - Visualización responsiva y adaptable. La grilla debe mostrar una barra de scroll horizontal al final, justificada a la izquierda, para facilitar la navegación de registros.
   - Mostrar/ocultar columnas.
   - Resaltar filas/columnas según condiciones (colores, iconos).
   - Integración con base de datos si se define tabla en dataSource.

@@ -18,7 +18,8 @@ Este prompt define las capacidades y opciones de presentación que debe soportar
 14. **Layouts responsivos**: Adaptar la presentación según el dispositivo (móvil, tablet, escritorio).
 15. **Validaciones en tiempo real**: Feedback inmediato al usuario mientras completa el formulario.
 16. **Campos tipo "fórmula"**: Los campos tipo "fórmula" en datatables y formularios deben ser compatibles con filtros, búsqueda y suma de columnas. Su valor debe actualizarse dinámicamente cuando cambien los campos de los que dependen, y pueden ser usados en filtros avanzados y búsquedas, tanto locales como en BD.
-17. **Búsqueda en datatables**: La búsqueda debe funcionar tanto con el texto visible de la celda como con el valor de los inputs, para máxima compatibilidad en modo edición y visualización.
+17. **Búsqueda en datatables**: La barra de búsqueda debe aparecer siempre, y debe estar seguida de una línea en blanco al final del datatable, tanto si existen o no filas. La búsqueda debe funcionar tanto con el texto visible de la celda como con el valor de los inputs, para máxima compatibilidad en modo edición y visualización. El filtro avanzado debe estar presente y visible siempre que esté habilitado en la definición.
+18. **Suma de totales en datatables**: La suma de totales debe aparecer al final del datatable, en la columna que corresponda, alineada visualmente con el encabezado de la columna sumada.
 
 Estos lineamientos deben ser considerados en el diseño, desarrollo y evolución del sistema de formularios dinámicos para maximizar la experiencia y flexibilidad del usuario final.
 COPILOT_PROMPT (Lineamientos y requisitos para cualquier cambio en este archivo)

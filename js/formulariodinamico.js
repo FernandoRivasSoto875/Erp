@@ -82,6 +82,20 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     dtWrap.insertBefore(topBar, table);
+    // Línea en blanco al final del datatable, siempre visible
+    function ensureBlankLine() {
+      let blankRow = dtWrap.querySelector('.fd-datatable-blank-row');
+      if (!blankRow) {
+        blankRow = document.createElement('div');
+        blankRow.className = 'fd-datatable-blank-row';
+        blankRow.style.height = '32px';
+        dtWrap.appendChild(blankRow);
+      }
+    }
+    ensureBlankLine();
+    // Reasegurar línea en blanco tras cambios
+    const observer = new MutationObserver(ensureBlankLine);
+    observer.observe(table, { childList: true, subtree: true });
 
     // --- Filtros avanzados sobre campos del formulario y anidados ---
     const filterDiv = document.createElement('div');
@@ -123,29 +137,43 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
       dtWrap.insertBefore(filterDiv, table);
+    } else {
+      // Si no hay columnas, igual mostrar filtro avanzado vacío
+      dtWrap.insertBefore(filterDiv, table);
     }
 
     // --- Suma de columnas ---
     function updateSum() {
       if (!Array.isArray(config.sumar_columnas)) return;
-      config.sumar_columnas.forEach(function(colName) {
-        let sum = 0;
-        Array.from(tbody.rows).forEach(function(row) {
-          const idx = Array.from(thead.querySelectorAll('th')).findIndex(th => th.textContent === colName);
-          if (idx >= 0) {
-            const val = row.cells[idx] ? parseFloat(row.cells[idx].querySelector('input')?.value || '0') : 0;
-            if (!isNaN(val)) sum += val;
-          }
-        });
-        let sumRow = dtWrap.querySelector('.fd-datatable-sum[data-col="' + colName + '"]');
-        if (!sumRow) {
-          sumRow = document.createElement('div');
-          sumRow.className = 'fd-datatable-sum mt-1';
-          sumRow.dataset.col = colName;
-          dtWrap.appendChild(sumRow);
+      // Eliminar fila de suma previa si existe
+      let sumTr = table.querySelector('tfoot .fd-datatable-sum-row');
+      if (sumTr) sumTr.remove();
+      // Crear tfoot si no existe
+      let tfoot = table.querySelector('tfoot');
+      if (!tfoot) {
+        tfoot = document.createElement('tfoot');
+        table.appendChild(tfoot);
+      }
+      const sumRow = document.createElement('tr');
+      sumRow.className = 'fd-datatable-sum-row';
+      Array.from(thead.querySelectorAll('th')).forEach(function(th) {
+        const colName = th.textContent;
+        const td = document.createElement('td');
+        if (config.sumar_columnas.includes(colName.toLowerCase()) || config.sumar_columnas.includes(colName)) {
+          let sum = 0;
+          Array.from(tbody.rows).forEach(function(row) {
+            const idx = Array.from(thead.querySelectorAll('th')).findIndex(th2 => th2.textContent === colName);
+            if (idx >= 0) {
+              const val = row.cells[idx] ? parseFloat(row.cells[idx].querySelector('input')?.value || '0') : 0;
+              if (!isNaN(val)) sum += val;
+            }
+          });
+          td.textContent = sum;
+          td.style.fontWeight = 'bold';
         }
-        sumRow.textContent = 'Suma de ' + colName + ': ' + sum;
+        sumRow.appendChild(td);
       });
+      tfoot.appendChild(sumRow);
     }
 
     // --- Carga desde dataSource si tabla está definida ---

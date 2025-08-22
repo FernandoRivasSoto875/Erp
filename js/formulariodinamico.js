@@ -300,7 +300,7 @@ document.addEventListener('DOMContentLoaded', function() {
           let input = document.createElement('input');
           input.type = inputType;
           input.className = 'form-control form-control-sm';
-          input.name = colDef ? colDef.nombre : colName.toLowerCase();
+          input.name = colDef && colDef.nombre ? colDef.nombre : colName.toLowerCase();
           if (colDef && colDef.formula) {
             input.setAttribute('data-formula', colDef.formula);
             console.log('[FD] data-formula agregado:', colDef.formula, 'a', input.name);

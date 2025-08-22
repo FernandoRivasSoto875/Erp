@@ -338,18 +338,24 @@ document.addEventListener('DOMContentLoaded', function() {
           if (totalInput && totalInput.getAttribute('data-formula')) {
             const formula = totalInput.getAttribute('data-formula');
             if (/BusquedaDato\s*\(/.test(formula)) {
-              // Extraer parámetros de BusquedaDato(tabla, valoratraer, filtro)
+              // Extraer parámetros de BusquedaDato(tabla, valoratraer, filtro, order)
               const match = formula.match(/BusquedaDato\s*\(([^)]+)\)/);
               if (match) {
                 const params = match[1].split(',').map(s => s.trim().replace(/^"|"$/g, ''));
-                const [tabla, valoratraer, filtro] = params;
-                // Reemplazar {campo} en filtro por valores actuales del formulario
-                let filtroFinal = filtro.replace(/\{(\w+)\}/g, function(_, campo){
+                const [tabla, valoratraer, filtro, order] = params;
+                // Reemplazar {campo} en filtro y order por valores actuales del formulario
+                let filtroFinal = filtro ? filtro.replace(/\{(\w+)\}/g, function(_, campo){
                   const el = document.querySelector(`[name='${campo}']`);
                   return el ? el.value : '';
-                });
-                // AJAX para obtener el valor
-                fetch(`ajax/busquedato.php?tabla=${encodeURIComponent(tabla)}&valor=${encodeURIComponent(valoratraer)}&filtro=${encodeURIComponent(filtroFinal)}`)
+                }) : '';
+                let orderFinal = order ? order.replace(/\{(\w+)\}/g, function(_, campo){
+                  const el = document.querySelector(`[name='${campo}']`);
+                  return el ? el.value : '';
+                }) : '';
+                // AJAX para obtener el valor, incluyendo order si existe
+                let url = `ajax/busquedato.php?tabla=${encodeURIComponent(tabla)}&valor=${encodeURIComponent(valoratraer)}&filtro=${encodeURIComponent(filtroFinal)}`;
+                if (orderFinal) url += `&order=${encodeURIComponent(orderFinal)}`;
+                fetch(url)
                   .then(r => r.json())
                   .then(data => {
                     totalInput.value = data && data.valor ? data.valor : '';

@@ -14,7 +14,7 @@
   - El sistema debe identificar y procesar todos los bloques con tipo="datable" en el JSON, aplicando la lógica y funcionalidades de datatable a cada uno de forma independiente.
   - Cuando "seleccion_multiple" está en "enable", la selección múltiple se activa con doble click en el título de la columna de checkbox (nombre="checkboxSel"). Un doble click selecciona todos los registros, y otro doble click los deselecciona. El botón de selección múltiple no debe aparecer, solo se usa el doble click en el encabezado.
   - La columna (campo) "checkboxSel" solo debe ser visible cuando "seleccion_multiple" está en "enable"; si no, no debe aparecer en la grilla ni ser seleccionable.
-  - El tipo "formula" permite usar funciones de cálculo estándar (SUM, AVERAGE, MIN, MAX, etc.), funciones personalizadas como BusquedaDato(tabla, valoratraer, filtro), y también sentencias SQL directas para traer un valor desde la base de datos. Debe devolver un solo valor y se pueden usar varias funciones o sentencias dentro de la fórmula.
+  - El tipo "formula" permite usar funciones de cálculo estándar (SUM, AVERAGE, MIN, MAX, etc.), funciones personalizadas como BusquedaDato(tabla, valoratraer, filtro, order), y también sentencias SQL directas para traer un valor desde la base de datos. BusquedaDato puede recibir un parámetro "order" que toma valores dinámicos del filtro y se usa para ordenar el resultado en la consulta. Debe devolver un solo valor y se pueden usar varias funciones o sentencias dentro de la fórmula.
   - Mostrar/ocultar columnas.
   - Resaltar filas/columnas según condiciones (colores, iconos).
   - Integración con base de datos si se define tabla en dataSource.

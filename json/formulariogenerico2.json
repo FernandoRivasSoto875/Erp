@@ -135,11 +135,11 @@
           "etiqueta": "Producto",
           "busqueda_simple": "enable",
           "filtro_avanzado": "enable",
-          "sumar_columnas": ["precio", "cantidad"],
+          "sumar_columnas": ["ProductoPrecio", "cantidad"],
           "columnas": [
-              { "nombre": "productoId", "etiqueta": "Producto Id", "tipo": "text" },
-              { "nombre": "productoDes", "etiqueta": "Producto Des", "tipo": "text", "formula": "SQL:SELECT productoDes FROM producto WHERE productoId={productoId}" },
-            { "nombre": "precio", "etiqueta": "Precio", "tipo": "number", "formula": "BusquedaDato('producto','precio','ProductoId={ProductoId}')" },
+              { "nombre": "ProductoId", "etiqueta": "Producto Id", "tipo": "text" },
+              { "nombre": "ProductoDes", "etiqueta": "Producto Des", "tipo": "text", "formula": "SQL:SELECT productoDes FROM producto WHERE productoId={ProductoId}" },
+            { "nombre": "ProductoPrecio", "etiqueta": "Precio", "tipo": "number", "formula": "BusquedaDato('producto','ProductoPrecio','ProductoId={ProductoId}')" },
             { "nombre": "cantidad", "etiqueta": "Cantidad", "tipo": "number" }, 
             { "nombre": "total_linea", "etiqueta": "Total", "tipo": "number", "formula": "precio * cantidad" },
             { "nombre": "checkboxSel", "etiqueta": "", "tipo": "checkbox", "opciones": { "s": "" } }

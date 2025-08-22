@@ -1,3 +1,236 @@
+// --- Funcionalidades avanzadas datatable ---
+// Orden por columna
+function makeTableSortable(table) {
+  const thead = table.querySelector('thead');
+  if (!thead) return;
+  Array.from(thead.querySelectorAll('th')).forEach((th, idx) => {
+    th.style.cursor = 'pointer';
+    th.onclick = function() {
+      const rows = Array.from(table.querySelector('tbody').rows);
+      const asc = th.dataset.sortAsc === 'true';
+      rows.sort((a, b) => {
+        const va = a.cells[idx].querySelector('input')?.value || a.cells[idx].textContent;
+        const vb = b.cells[idx].querySelector('input')?.value || b.cells[idx].textContent;
+        return asc ? va.localeCompare(vb, undefined, {numeric:true}) : vb.localeCompare(va, undefined, {numeric:true});
+      });
+      rows.forEach(r => table.querySelector('tbody').appendChild(r));
+      th.dataset.sortAsc = (!asc).toString();
+    };
+  });
+}
+
+// Paginación
+function makeTablePaginated(dtWrap, table, pageSize=10) {
+  const tbody = table.querySelector('tbody');
+  let currentPage = 1;
+  function renderPage() {
+    const rows = Array.from(tbody.rows);
+    rows.forEach((row, i) => {
+      row.style.display = (i >= (currentPage-1)*pageSize && i < currentPage*pageSize) ? '' : 'none';
+    });
+    pageInfo.textContent = `Página ${currentPage} de ${Math.ceil(rows.length/pageSize)}`;
+  }
+  const pager = document.createElement('div');
+  pager.className = 'fd-datatable-pager d-flex justify-content-end align-items-center gap-2 mb-2';
+  const prevBtn = document.createElement('button');
+  prevBtn.textContent = 'Anterior';
+  prevBtn.className = 'btn btn-sm btn-secondary';
+  const nextBtn = document.createElement('button');
+  nextBtn.textContent = 'Siguiente';
+  nextBtn.className = 'btn btn-sm btn-secondary';
+  const pageInfo = document.createElement('span');
+  pager.appendChild(prevBtn);
+  pager.appendChild(pageInfo);
+  pager.appendChild(nextBtn);
+  dtWrap.insertBefore(pager, table);
+  prevBtn.onclick = function(){ if(currentPage>1){currentPage--;renderPage();} };
+  nextBtn.onclick = function(){ const rows = tbody.rows.length; if(currentPage<Math.ceil(rows/pageSize)){currentPage++;renderPage();} };
+  renderPage();
+}
+
+// Exportar CSV/Excel
+function makeTableExportable(dtWrap, table) {
+  const exportBar = document.createElement('div');
+  exportBar.className = 'fd-datatable-export mb-2 d-flex justify-content-end gap-2';
+  const csvBtn = document.createElement('button');
+  csvBtn.textContent = 'Exportar CSV';
+  csvBtn.className = 'btn btn-sm btn-outline-primary';
+  const excelBtn = document.createElement('button');
+  excelBtn.textContent = 'Exportar Excel';
+  excelBtn.className = 'btn btn-sm btn-outline-success';
+  exportBar.appendChild(csvBtn);
+  exportBar.appendChild(excelBtn);
+  dtWrap.insertBefore(exportBar, table);
+  csvBtn.onclick = function(){
+    let csv = '';
+    Array.from(table.querySelectorAll('thead th')).forEach(th => csv += th.textContent + ',');
+    csv = csv.slice(0,-1)+'\n';
+    Array.from(table.querySelector('tbody').rows).forEach(row => {
+      Array.from(row.cells).forEach(td => {
+        const inp = td.querySelector('input');
+        csv += (inp ? inp.value : td.textContent) + ',';
+      });
+      csv = csv.slice(0,-1)+'\n';
+    });
+    const blob = new Blob([csv],{type:'text/csv'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'datatable.csv';
+    a.click();
+  };
+  excelBtn.onclick = function(){
+    alert('Exportar a Excel: funcionalidad básica CSV implementada. Para Excel avanzado, usar librería externa.');
+  };
+}
+
+// Selección múltiple de filas
+function makeTableSelectable(table, config) {
+  if (config.seleccion_multiple !== 'enable') return;
+  const thead = table.querySelector('thead');
+  if (!thead) return;
+  const selTh = document.createElement('th');
+  const cbAll = document.createElement('input');
+  cbAll.type = 'checkbox';
+  selTh.appendChild(cbAll);
+  thead.querySelector('tr').insertBefore(selTh, thead.querySelector('tr').firstChild);
+  Array.from(table.querySelector('tbody').rows).forEach(row => {
+    const selTd = document.createElement('td');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    selTd.appendChild(cb);
+    row.insertBefore(selTd, row.firstChild);
+  });
+  cbAll.addEventListener('change', function(){
+    Array.from(table.querySelector('tbody').rows).forEach(row => {
+      const cb = row.querySelector('input[type="checkbox"]');
+      if(cb) cb.checked = cbAll.checked;
+    });
+  });
+}
+
+// Mostrar/ocultar columnas
+function makeTableColumnToggle(dtWrap, table) {
+  const thead = table.querySelector('thead');
+  if (!thead) return;
+  const toggleBar = document.createElement('div');
+  toggleBar.className = 'fd-datatable-toggle mb-2 d-flex justify-content-end gap-2';
+  Array.from(thead.querySelectorAll('th')).forEach((th, idx) => {
+    const btn = document.createElement('button');
+    btn.textContent = 'Columna: ' + th.textContent;
+    btn.className = 'btn btn-sm btn-outline-dark';
+    btn.onclick = function(){
+      const show = th.style.display !== 'none';
+      th.style.display = show ? 'none' : '';
+      Array.from(table.querySelector('tbody').rows).forEach(row => {
+        if(row.cells[idx]) row.cells[idx].style.display = show ? 'none' : '';
+      });
+      Array.from(table.querySelectorAll('tfoot td')).forEach((td, i) => {
+        if(i===idx) td.style.display = show ? 'none' : '';
+      });
+    };
+    toggleBar.appendChild(btn);
+  });
+  dtWrap.insertBefore(toggleBar, table);
+}
+
+// Resaltado condicional
+function makeTableHighlight(table) {
+  Array.from(table.querySelector('tbody').rows).forEach(row => {
+    Array.from(row.cells).forEach(td => {
+      const val = td.querySelector('input')?.value || td.textContent;
+      if(!isNaN(val) && parseFloat(val)>1000) td.style.background='#ffe0e0';
+    });
+  });
+}
+
+// Tooltips en encabezados
+function makeTableTooltips(table) {
+  Array.from(table.querySelectorAll('thead th')).forEach(th => {
+    th.title = 'Filtrar y ordenar por ' + th.textContent;
+  });
+}
+
+// Agrupación de filas por valor de columna (simple)
+function makeTableGrouped(table, groupColIdx=0) {
+  // Agrupa por la columna indicada
+  // Implementación simple: solo visual
+  let lastVal = null;
+  Array.from(table.querySelector('tbody').rows).forEach(row => {
+    const val = row.cells[groupColIdx]?.querySelector('input')?.value || row.cells[groupColIdx]?.textContent;
+    if(val!==lastVal){
+      row.style.borderTop='2px solid #333';
+      lastVal=val;
+    }
+  });
+}
+
+// Acciones masivas
+function makeTableBulkActions(dtWrap, table) {
+  const bulkBar = document.createElement('div');
+  bulkBar.className = 'fd-datatable-bulk mb-2 d-flex justify-content-end gap-2';
+  const delBtn = document.createElement('button');
+  delBtn.textContent = 'Eliminar seleccionados';
+  delBtn.className = 'btn btn-sm btn-danger';
+  bulkBar.appendChild(delBtn);
+  dtWrap.insertBefore(bulkBar, table);
+  delBtn.onclick = function(){
+    Array.from(table.querySelector('tbody').rows).forEach(row => {
+      const cb = row.querySelector('input[type="checkbox"]');
+      if(cb && cb.checked) row.remove();
+    });
+  };
+}
+
+// Historial de cambios/deshacer
+function makeTableHistory(table) {
+  let history = [];
+  function saveState() {
+    const rows = Array.from(table.querySelector('tbody').rows).map(row =>
+      Array.from(row.cells).map(td => td.querySelector('input')?.value || td.textContent)
+    );
+    history.push(JSON.stringify(rows));
+    if(history.length>20) history.shift();
+  }
+  table.addEventListener('input', saveState);
+  // Botón deshacer
+  const undoBtn = document.createElement('button');
+  undoBtn.textContent = 'Deshacer';
+  undoBtn.className = 'btn btn-sm btn-warning mb-2';
+  table.parentElement.insertBefore(undoBtn, table);
+  undoBtn.onclick = function(){
+    if(history.length>1){
+      history.pop();
+      const last = JSON.parse(history[history.length-1]);
+      Array.from(table.querySelector('tbody').rows).forEach((row,i) => {
+        Array.from(row.cells).forEach((td,j) => {
+          const inp = td.querySelector('input');
+          if(inp) inp.value = last[i][j];
+          else td.textContent = last[i][j];
+        });
+      });
+    }
+  };
+  saveState();
+}
+
+// Aplicar todas las funcionalidades al datatable
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('[data-tipo="datatable"]').forEach(function(dtWrap) {
+    const table = dtWrap.querySelector('table');
+    if(!table) return;
+    const config = dtWrap.dataset.config ? JSON.parse(dtWrap.dataset.config) : {};
+    makeTableSortable(table);
+    makeTablePaginated(dtWrap, table, 10);
+    makeTableExportable(dtWrap, table);
+    makeTableSelectable(table, config);
+    makeTableColumnToggle(dtWrap, table);
+    makeTableHighlight(table);
+    makeTableTooltips(table);
+    makeTableGrouped(table, 0);
+    makeTableBulkActions(dtWrap, table);
+    makeTableHistory(table);
+  });
+});
 // --- Funciones globales para diagnóstico ---
 window.generarCampo = window.generarCampo || function(){ return null; };
 window.generarLayout = window.generarLayout || function(){ return null; };
@@ -97,51 +330,92 @@ document.addEventListener('DOMContentLoaded', function() {
     const observer = new MutationObserver(ensureBlankLine);
     observer.observe(table, { childList: true, subtree: true });
 
-    // --- Filtros avanzados sobre campos del formulario y anidados ---
-    const filterDiv = document.createElement('div');
-    filterDiv.className = 'mb-2 d-flex flex-wrap gap-2 justify-content-end';
-    function addFilterInput(col, parentName = '') {
-      const f = document.createElement('input');
-      f.type = 'text';
-      f.className = 'form-control form-control-sm';
-      f.style.maxWidth = '180px';
-      f.placeholder = 'Filtrar ' + (col.etiqueta || col.nombre);
-      f.dataset.col = parentName ? parentName + '.' + col.nombre : col.nombre;
-      f.addEventListener('input', function() {
-        const val = f.value.toLowerCase();
-        Array.from(tbody.rows).forEach(function(row) {
-          // Filtrado por campos anidados y por fórmula
-          let cellValue = '';
-          const idx = Array.from(thead.querySelectorAll('th')).findIndex(th => th.textContent === (col.etiqueta || col.nombre));
-          if (idx >= 0) {
-            const inp = row.cells[idx]?.querySelector('input');
-            cellValue = inp ? (inp.value || '') : (row.cells[idx]?.textContent || '');
-          }
-          row.style.display = cellValue && cellValue.toLowerCase().includes(val) ? '' : 'none';
-        });
+    // --- Filtro avanzado con botón y panel ---
+    const filterAdvancedBtn = document.createElement('button');
+    filterAdvancedBtn.textContent = 'Filtro Avanzado';
+    filterAdvancedBtn.className = 'btn btn-secondary btn-sm ms-2';
+    topBar.appendChild(filterAdvancedBtn);
+
+    const filterPanel = document.createElement('div');
+    filterPanel.className = 'fd-advanced-filter-panel card p-3 mb-2';
+    filterPanel.style.display = 'none';
+
+    function addAdvancedFilterRow(col, parentName = '') {
+      const row = document.createElement('div');
+      row.className = 'd-flex align-items-center gap-2 mb-1';
+      // Campo
+      const label = document.createElement('span');
+      label.textContent = (parentName ? parentName + '.' : '') + (col.etiqueta || col.nombre);
+      row.appendChild(label);
+      // Operador
+      const op = document.createElement('select');
+      op.className = 'form-select form-select-sm';
+      ['=', '!=', '>', '<', '>=', '<=', 'contiene', 'no contiene', 'y', 'o'].forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt;
+        o.textContent = opt;
+        op.appendChild(o);
       });
-      filterDiv.appendChild(f);
+      row.appendChild(op);
+      // Valor
+      const valInput = document.createElement('input');
+      valInput.type = 'text';
+      valInput.className = 'form-control form-control-sm';
+      row.appendChild(valInput);
+      filterPanel.appendChild(row);
     }
+
     if (Array.isArray(config.columnas)) {
       config.columnas.forEach(function(col) {
-        // Excluir columnas tipo 'button' o que sean de acción
         if (col.tipo !== 'button' && col.tipo !== 'accion' && col.nombre !== 'acciones' && col.etiqueta?.toLowerCase() !== 'acciones') {
-          addFilterInput(col);
-          // Si el campo tiene hijos anidados
+          addAdvancedFilterRow(col);
           if (Array.isArray(col.hijos)) {
             col.hijos.forEach(function(hijo) {
               if (hijo.tipo !== 'button' && hijo.tipo !== 'accion' && hijo.nombre !== 'acciones' && hijo.etiqueta?.toLowerCase() !== 'acciones') {
-                addFilterInput(hijo, col.nombre);
+                addAdvancedFilterRow(hijo, col.nombre);
               }
             });
           }
         }
       });
-      dtWrap.insertBefore(filterDiv, table);
-    } else {
-      // Si no hay columnas, igual mostrar filtro avanzado vacío
-      dtWrap.insertBefore(filterDiv, table);
     }
+    dtWrap.insertBefore(filterPanel, table);
+
+    filterAdvancedBtn.onclick = function() {
+      filterPanel.style.display = filterPanel.style.display === 'none' ? '' : 'none';
+    };
+
+    // Lógica de filtrado avanzado (simplificada, puede expandirse para lógica compuesta)
+    filterPanel.addEventListener('input', function() {
+      Array.from(tbody.rows).forEach(function(row) {
+        let show = true;
+        Array.from(filterPanel.children).forEach(function(fRow) {
+          const label = fRow.querySelector('span')?.textContent;
+          const op = fRow.querySelector('select')?.value;
+          const val = fRow.querySelector('input')?.value.toLowerCase();
+          const idx = Array.from(thead.querySelectorAll('th')).findIndex(th => th.textContent === label.split('.').pop());
+          let cellValue = '';
+          if (idx >= 0) {
+            const inp = row.cells[idx]?.querySelector('input');
+            cellValue = inp ? (inp.value || '').toLowerCase() : (row.cells[idx]?.textContent || '').toLowerCase();
+          }
+          if (val) {
+            switch(op) {
+              case '=': show = show && cellValue === val; break;
+              case '!=': show = show && cellValue !== val; break;
+              case '>': show = show && parseFloat(cellValue) > parseFloat(val); break;
+              case '<': show = show && parseFloat(cellValue) < parseFloat(val); break;
+              case '>=': show = show && parseFloat(cellValue) >= parseFloat(val); break;
+              case '<=': show = show && parseFloat(cellValue) <= parseFloat(val); break;
+              case 'contiene': show = show && cellValue.includes(val); break;
+              case 'no contiene': show = show && !cellValue.includes(val); break;
+              // 'y' y 'o' pueden expandirse para lógica compuesta
+            }
+          }
+        });
+        row.style.display = show ? '' : 'none';
+      });
+    });
 
     // --- Suma de columnas ---
     function updateSum() {

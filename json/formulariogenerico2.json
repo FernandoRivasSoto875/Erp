@@ -142,7 +142,8 @@
             { "nombre": "cantidad", "etiqueta": "Cantidad", "tipo": "number" },
             { "nombre": "total_linea", "etiqueta": "Total", "tipo": "number", "formula": "precio * cantidad" }
           ],
-          "dataSource": { "tabla": "" }
+          "dataSource": { "tabla": "" },
+          "seleccion_multiple": "enable"
         }
       ]
     },

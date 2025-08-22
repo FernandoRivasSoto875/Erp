@@ -110,16 +110,12 @@ document.addEventListener('DOMContentLoaded', function() {
       f.addEventListener('input', function() {
         const val = f.value.toLowerCase();
         Array.from(tbody.rows).forEach(function(row) {
-          // Filtrado por campos anidados
+          // Filtrado por campos anidados y por fórmula
           let cellValue = '';
-          if (parentName) {
-            // Buscar en objeto anidado si existe
-            cellValue = row.dataset[parentName + '.' + col.nombre] || '';
-          } else {
-            const idx = Array.from(thead.querySelectorAll('th')).findIndex(th => th.textContent === (col.etiqueta || col.nombre));
-            if (idx >= 0) {
-              cellValue = row.cells[idx] && row.cells[idx].textContent;
-            }
+          const idx = Array.from(thead.querySelectorAll('th')).findIndex(th => th.textContent === (col.etiqueta || col.nombre));
+          if (idx >= 0) {
+            const inp = row.cells[idx]?.querySelector('input');
+            cellValue = inp ? (inp.value || '') : (row.cells[idx]?.textContent || '');
           }
           row.style.display = cellValue && cellValue.toLowerCase().includes(val) ? '' : 'none';
         });
@@ -128,12 +124,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     if (Array.isArray(config.columnas)) {
       config.columnas.forEach(function(col) {
-        addFilterInput(col);
-        // Si el campo tiene hijos anidados
-        if (Array.isArray(col.hijos)) {
-          col.hijos.forEach(function(hijo) {
-            addFilterInput(hijo, col.nombre);
-          });
+        // Excluir columnas tipo 'button' o que sean de acción
+        if (col.tipo !== 'button' && col.tipo !== 'accion' && col.nombre !== 'acciones' && col.etiqueta?.toLowerCase() !== 'acciones') {
+          addFilterInput(col);
+          // Si el campo tiene hijos anidados
+          if (Array.isArray(col.hijos)) {
+            col.hijos.forEach(function(hijo) {
+              if (hijo.tipo !== 'button' && hijo.tipo !== 'accion' && hijo.nombre !== 'acciones' && hijo.etiqueta?.toLowerCase() !== 'acciones') {
+                addFilterInput(hijo, col.nombre);
+              }
+            });
+          }
         }
       });
       dtWrap.insertBefore(filterDiv, table);
@@ -164,7 +165,8 @@ document.addEventListener('DOMContentLoaded', function() {
           Array.from(tbody.rows).forEach(function(row) {
             const idx = Array.from(thead.querySelectorAll('th')).findIndex(th2 => th2.textContent === colName);
             if (idx >= 0) {
-              const val = row.cells[idx] ? parseFloat(row.cells[idx].querySelector('input')?.value || '0') : 0;
+              const inp = row.cells[idx]?.querySelector('input');
+              const val = inp ? parseFloat(inp.value || '0') : parseFloat(row.cells[idx]?.textContent || '0');
               if (!isNaN(val)) sum += val;
             }
           });
@@ -174,6 +176,16 @@ document.addEventListener('DOMContentLoaded', function() {
         sumRow.appendChild(td);
       });
       tfoot.appendChild(sumRow);
+      // Fila en blanco siempre al final
+      let blankTr = table.querySelector('tfoot .fd-datatable-blank-row');
+      if (blankTr) blankTr.remove();
+      const blankRow = document.createElement('tr');
+      blankRow.className = 'fd-datatable-blank-row';
+      Array.from(thead.querySelectorAll('th')).forEach(function() {
+        const td = document.createElement('td');
+        blankRow.appendChild(td);
+      });
+      tfoot.appendChild(blankRow);
     }
 
     // --- Carga desde dataSource si tabla está definida ---

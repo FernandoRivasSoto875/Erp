@@ -3,7 +3,7 @@
 // --- INCLUDES PRINCIPALES ---
 require_once __DIR__ . '/formulariodinamicologica.php';
 require_once __DIR__ . '/formulariodinamicofunciones.php';
-// --- CARGA DEL JSON DEL FORMULARIO ---
+// --- CARGA DEL JSON DEL FORMULARIO --- 
 $archivo_json = $_GET['archivo'] ?? 'formulariogenerico2.json';
 $json_path = __DIR__ . '/json/' . $archivo_json;
 $json = [];

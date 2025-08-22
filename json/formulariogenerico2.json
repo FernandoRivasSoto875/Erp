@@ -139,8 +139,8 @@
           "columnas": [
             { "nombre": "producto", "etiqueta": "Producto", "tipo": "text" },
             { "nombre": "precio", "etiqueta": "Precio", "tipo": "number" },
-            { "nombre": "cantidad", "etiqueta": "Cantidad", "tipo": "number" },
-            { "nombre": "total_linea", "etiqueta": "Total", "tipo": "number", "formula": "precio * cantidad" }
+            { "nombre": "cantidad", "etiqueta": "Cantidad", "tipo": "number" }, 
+            { "nombre": "total_linea", "etiqueta": "Total", "tipo": "number", "formula": "PAIiD * precio * cantidad" }
           ],
           "dataSource": { "tabla": "" },
           "seleccion_multiple": "enable"

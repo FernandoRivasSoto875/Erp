@@ -281,6 +281,7 @@ document.addEventListener('DOMContentLoaded', function() {
           const selTd = document.createElement('td');
           const cb = document.createElement('input');
           cb.type = 'checkbox';
+          cb.setAttribute('data-nombre', 'checkboxSel');
           selTd.appendChild(cb);
           row.appendChild(selTd);
         }
@@ -312,6 +313,53 @@ document.addEventListener('DOMContentLoaded', function() {
         const cantidadInput = row.querySelector('input[name="cantidad"]');
         const totalInput = row.querySelector('input[name="total_linea"]');
         function updateFormula() {
+          // Soporte para sentencias SQL directas en la fórmula
+          if (totalInput && totalInput.getAttribute('data-formula')) {
+            const formula = totalInput.getAttribute('data-formula');
+            if (/^SQL:/i.test(formula)) {
+              // Extraer la sentencia SQL
+              let sql = formula.replace(/^SQL:/i, '').trim();
+              // Reemplazar {campo} en SQL por valores actuales del formulario
+              sql = sql.replace(/\{(\w+)\}/g, function(_, campo){
+                const el = document.querySelector(`[name='${campo}']`);
+                return el ? el.value : '';
+              });
+              // AJAX para obtener el valor
+              fetch(`ajax/sqlformula.php?sql=${encodeURIComponent(sql)}`)
+                .then(r => r.json())
+                .then(data => {
+                  totalInput.value = data && data.valor ? data.valor : '';
+                  updateSum();
+                });
+              return;
+            }
+          }
+          // Soporte para BusquedaDato en la fórmula
+          if (totalInput && totalInput.getAttribute('data-formula')) {
+            const formula = totalInput.getAttribute('data-formula');
+            if (/BusquedaDato\s*\(/.test(formula)) {
+              // Extraer parámetros de BusquedaDato(tabla, valoratraer, filtro)
+              const match = formula.match(/BusquedaDato\s*\(([^)]+)\)/);
+              if (match) {
+                const params = match[1].split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+                const [tabla, valoratraer, filtro] = params;
+                // Reemplazar {campo} en filtro por valores actuales del formulario
+                let filtroFinal = filtro.replace(/\{(\w+)\}/g, function(_, campo){
+                  const el = document.querySelector(`[name='${campo}']`);
+                  return el ? el.value : '';
+                });
+                // AJAX para obtener el valor
+                fetch(`ajax/busquedato.php?tabla=${encodeURIComponent(tabla)}&valor=${encodeURIComponent(valoratraer)}&filtro=${encodeURIComponent(filtroFinal)}`)
+                  .then(r => r.json())
+                  .then(data => {
+                    totalInput.value = data && data.valor ? data.valor : '';
+                    updateSum();
+                  });
+                return;
+              }
+            }
+          }
+          // Fórmula estándar
           const precio = parseFloat(precioInput?.value || '0');
           const cantidad = parseFloat(cantidadInput?.value || '0');
           const total = precio * cantidad;
@@ -330,9 +378,30 @@ document.addEventListener('DOMContentLoaded', function() {
         if (theadRow && theadRow.querySelector('th[data-checkbox]') == null) {
           const selTh = document.createElement('th');
           selTh.setAttribute('data-checkbox', 'true');
+          selTh.setAttribute('data-nombre', 'checkboxSel');
           selTh.textContent = '';
           theadRow.insertBefore(selTh, theadRow.firstChild);
+          // Doble click para seleccionar/deseleccionar todos
+          let seleccionados = false;
+          selTh.addEventListener('dblclick', function() {
+            seleccionados = !seleccionados;
+            Array.from(tbody.querySelectorAll('input[type="checkbox"][data-nombre="checkboxSel"]')).forEach(cb => {
+              cb.checked = seleccionados;
+            });
+          });
         }
+      } else {
+        // Si no está habilitado, eliminar columna de checkbox si existe
+        const theadRow = thead.querySelector('tr');
+        const selTh = theadRow && theadRow.querySelector('th[data-checkbox]');
+        if (selTh) selTh.remove();
+        // Eliminar celdas de checkbox en el tbody
+        Array.from(tbody.rows).forEach(row => {
+          const firstCell = row.cells[0];
+          if (firstCell && firstCell.querySelector('input[type="checkbox"][data-nombre="checkboxSel"]')) {
+            firstCell.remove();
+          }
+        });
       }
       dtWrap.insertBefore(topBar, table);
       // Scroll horizontal al final de la grilla, justificado a la izquierda

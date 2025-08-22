@@ -137,10 +137,13 @@
           "filtro_avanzado": "enable",
           "sumar_columnas": ["precio", "cantidad"],
           "columnas": [
-            { "nombre": "producto", "etiqueta": "Producto", "tipo": "text" },
-            { "nombre": "precio", "etiqueta": "Precio", "tipo": "number" },
+              { "nombre": "productoId", "etiqueta": "Producto Id", "tipo": "text" },
+              { "nombre": "productoDes", "etiqueta": "Producto Des", "tipo": "text", "formula": "SQL:SELECT productoDes FROM producto WHERE productoId={productoId}" },
+            { "nombre": "precio", "etiqueta": "Precio", "tipo": "number", "formula": "BusquedaDato('producto','precio','ProductoId={ProductoId}')" },
             { "nombre": "cantidad", "etiqueta": "Cantidad", "tipo": "number" }, 
-            { "nombre": "total_linea", "etiqueta": "Total", "tipo": "number", "formula": "PAIiD * precio * cantidad" }
+            { "nombre": "total_linea", "etiqueta": "Total", "tipo": "number", "formula": "precio * cantidad" },
+            { "nombre": "checkboxSel", "etiqueta": "", "tipo": "checkbox", "opciones": { "s": "" } }
+            
           ],
           "dataSource": { "tabla": "" },
           "seleccion_multiple": "enable"
@@ -221,7 +224,8 @@
           "columnas": [
             { "nombre": "col1", "etiqueta": "Columna 1", "tipo": "text" },
             { "nombre": "col2", "etiqueta": "Columna 2", "tipo": "number" },
-            { "nombre": "col3", "etiqueta": "Columna 3", "tipo": "select", "opciones": { "a": "A", "b": "B" } }
+            { "nombre": "col3", "etiqueta": "Columna 3", "tipo": "select", "opciones": { "a": "A", "b": "B" } },
+           { "nombre": "checkboxSel", "etiqueta": "", "tipo": "checkbox", "opciones": { "s": "" } }
           ]
         }
       ]

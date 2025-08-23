@@ -290,8 +290,13 @@ document.addEventListener('DOMContentLoaded', function() {
           if (config.seleccion_multiple === 'enable' && thIdx === 0) return;
           const colName = th.textContent;
           const td = document.createElement('td');
-          // Buscar la columna en config.columnas para obtener propiedades extra
-          let colDef = Array.isArray(config.columnas) ? config.columnas.find(c => (c.etiqueta || c.nombre) === colName) : null;
+          // Normalizar para coincidencia robusta
+          function normalize(str) {
+            return (str || '').toString().replace(/\s+/g, '').toLowerCase();
+          }
+          let colDef = Array.isArray(config.columnas)
+            ? config.columnas.find(c => normalize(c.etiqueta || c.nombre) === normalize(colName))
+            : null;
           if (!colDef) {
             console.log('[FD] No se encontró columna para:', colName, config.columnas);
           }

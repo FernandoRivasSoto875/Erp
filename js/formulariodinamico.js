@@ -217,6 +217,7 @@ function makeTableHistory(table) {
 // Aplicar todas las funcionalidades al datatable
 document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('[data-tipo="datatable"]').forEach(function(dtWrap) {
+    console.log('Encontrado datatable:', dtWrap);
     const table = dtWrap.querySelector('table');
     if(!table) return;
     const config = dtWrap.dataset.config ? JSON.parse(dtWrap.dataset.config) : {};
@@ -529,7 +530,7 @@ function renderForm(json, containerId = 'formulariodinamico') {
       });
     }
     // Inicializar campos especiales en el HTML generado por PHP
-    // Embevido
+    // Embeido
     container.querySelectorAll('[data-tipo="embevido"], .fd-embed').forEach(function(el){
       if (el.dataset.embeddedInit) return;
       var url = el.dataset.url || el.getAttribute('data-url_embebido');

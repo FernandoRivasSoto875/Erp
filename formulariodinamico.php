@@ -35,7 +35,7 @@ foreach ($fieldsets as $fs) {
     <link rel="stylesheet" href="css/<?php echo htmlspecialchars($json['CssDefault']); ?>">
     <?php endif; ?>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/formulariodinamico_ver1.js"></script>
+    <script src="js/formulariodinamico.js"></script>
     <script src="js/formulariodinamico-page.js"></script>
     <script src="js/formulariodinamico-init.js"></script>
     <script src="js/formulariodinamico-float.js"></script>

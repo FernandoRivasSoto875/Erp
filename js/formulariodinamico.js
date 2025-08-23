@@ -277,7 +277,6 @@ document.addEventListener('DOMContentLoaded', function() {
       topBar.appendChild(addBtn);
       addBtn.addEventListener('click', function() {
         const row = document.createElement('tr');
-        // Si seleccion_multiple está habilitado, agregar celda de checkbox al inicio
         if (config.seleccion_multiple === 'enable') {
           const selTd = document.createElement('td');
           const cb = document.createElement('input');
@@ -287,29 +286,24 @@ document.addEventListener('DOMContentLoaded', function() {
           row.appendChild(selTd);
         }
         Array.from(thead.querySelectorAll('th')).forEach(function(th, thIdx) {
-          // Si seleccion_multiple está habilitado y es la primera columna, saltar (ya agregada)
           if (config.seleccion_multiple === 'enable' && thIdx === 0) return;
           const colName = th.textContent;
           const td = document.createElement('td');
-          // Normalizar para coincidencia robusta
-          function normalize(str) {
-            return (str || '').toString().replace(/\s+/g, '').toLowerCase();
-          }
           let colDef = Array.isArray(config.columnas)
             ? config.columnas.find(c => normalize(c.etiqueta || c.nombre) === normalize(colName))
             : null;
           if (!colDef) {
-            console.log('[FD] No se encontró columna para:', colName, config.columnas);
+            console.warn('[FD] No se encontró columna para:', colName, config.columnas);
           }
           let inputType = 'text';
           if (colName === 'Total' || (colDef && colDef.tipo === 'number')) inputType = 'number';
           let input = document.createElement('input');
           input.type = inputType;
           input.className = 'form-control form-control-sm';
-          input.name = colDef && colDef.nombre ? colDef.nombre : colName.toLowerCase();
+          input.name = colDef && colDef.nombre ? colDef.nombre : normalize(colName);
           if (colDef && colDef.formula) {
             input.setAttribute('data-formula', colDef.formula);
-            console.log('[FD] data-formula agregado:', colDef.formula, 'a', input.name);
+            console.info('[FD] data-formula agregado:', colDef.formula, 'a', input.name);
           }
           if (colName === 'Total') input.setAttribute('readonly', '');
           td.appendChild(input);

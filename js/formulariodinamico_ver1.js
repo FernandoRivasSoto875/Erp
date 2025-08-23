@@ -1,4 +1,3 @@
-console.log('[FD] JS cargado correctamente');
 // --- Funcionalidades avanzadas datatable ---
 // Orden por columna
 function makeTableSortable(table) {
@@ -1175,3 +1174,4 @@ function renderDatatable(field) {
 }
 window.renderForm = renderForm;
 
+ 

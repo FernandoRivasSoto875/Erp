@@ -490,8 +490,8 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 // Renderiza el formulario completo desde el JSON
-// Leer COPILOT_PROMPT en formulariodinamicoprompt.txt.
-function renderForm(json, containerId = 'formulariodinamico') {
+// Leer COPILOT_PROMPT en webpaneldynamicprompt.txt.
+function renderForm(json, containerId = 'webpaneldynamic') {
   // Diagnóstico visual: estado de Bootstrap y tabs
   var diagDiv = document.createElement('div');
   diagDiv.className = 'alert alert-info mb-2';
@@ -679,12 +679,12 @@ function renderForm(json, containerId = 'formulariodinamico') {
 
   function initDnD(){
     if(typeof Sortable==='undefined') return;
-    d.querySelectorAll('#formulariodinamico .row').forEach(row=>{
+  d.querySelectorAll('#webpaneldynamic .row').forEach(row=>{
       if(row.dataset.fdColsSortable) return;
       Sortable.create(row,{ group:'fd-cols', draggable:'> [class*="col-"]', animation:150, onEnd(){ FD.markDirty(); } });
       row.dataset.fdColsSortable='1';
     });
-    d.querySelectorAll('#formulariodinamico fieldset').forEach(fs=>{
+  d.querySelectorAll('#webpaneldynamic fieldset').forEach(fs=>{
       if(fs.dataset.fdFieldsSortable) return;
       const selector='.fd-field-wrapper, .form-group, .mb-3';
       if(!fs.querySelector(selector)) return;
@@ -756,7 +756,7 @@ document.addEventListener('DOMContentLoaded', function() {
       var diag = document.createElement('div');
       diag.className = 'alert alert-danger';
       diag.innerText = 'No se encontró el select de países (pais_db) en el DOM';
-      document.getElementById('formulariodinamico').prepend(diag);
+  document.getElementById('webpaneldynamic').prepend(diag);
     } else {
       let config;
       try { config = JSON.parse(paisSel.getAttribute('data-source')); } catch(e){ config = null; }
@@ -872,7 +872,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   if(window.formularioJsonOriginal){
-    renderForm(window.formularioJsonOriginal, 'formulariodinamico');
+  renderForm(window.formularioJsonOriginal, 'webpaneldynamic');
     cargarSelectsCuandoExista();
   }
 });

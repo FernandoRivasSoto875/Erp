@@ -1,0 +1,3 @@
+<?php
+// Renombrado desde formulariodinamicofuncionesBAK.php
+// ...existing code...

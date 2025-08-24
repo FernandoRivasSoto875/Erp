@@ -1,0 +1,3 @@
+<?php
+// Renombrado desde formulariodinamico.funcionesBakParaEleminar.php
+// ...existing code...

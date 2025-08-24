@@ -1143,41 +1143,33 @@ function renderDatatable(field) {
       const tr = document.createElement('tr');
       field.columnas.forEach(col => {
         const td = document.createElement('td');
-        td.textContent = row[col.nombre] || '';
+        const input = document.createElement('input');
+        input.type = col.tipo || 'text';
+        input.className = 'form-control form-control-sm';
+        input.name = col.nombre;
+        input.value = row[col.nombre] || '';
+        td.appendChild(input);
         tr.appendChild(td);
       });
-      // Acciones por fila: editar
+      // Acciones por fila: editar y guardar
       const tdAcc = document.createElement('td');
       const btnEdit = document.createElement('button');
       btnEdit.textContent = 'Editar';
       btnEdit.className = 'btn btn-warning btn-sm me-1';
       btnEdit.onclick = function() {
-        tr.innerHTML = '';
-        const editInputs = [];
-        field.columnas.forEach(col => {
-          const td = document.createElement('td');
-          const input = document.createElement('input');
-          input.type = col.tipo || 'text';
-          input.className = 'form-control form-control-sm';
-          input.value = row[col.nombre] || '';
-          td.appendChild(input);
-          tr.appendChild(td);
-          editInputs.push(input);
+        Array.from(tr.querySelectorAll('input')).forEach(inp => inp.removeAttribute('readonly'));
+      };
+      const btnSaveEdit = document.createElement('button');
+      btnSaveEdit.textContent = 'Guardar';
+      btnSaveEdit.className = 'btn btn-success btn-sm';
+      btnSaveEdit.onclick = function() {
+        Array.from(tr.querySelectorAll('input')).forEach((inp, idx) => {
+          field._localData[rowIdx][field.columnas[idx].nombre] = inp.value;
+          inp.setAttribute('readonly', '');
         });
-        const tdAccEdit = document.createElement('td');
-        const btnSaveEdit = document.createElement('button');
-        btnSaveEdit.textContent = 'Guardar';
-        btnSaveEdit.className = 'btn btn-success btn-sm';
-        btnSaveEdit.onclick = function() {
-          field.columnas.forEach((col, idx) => {
-            field._localData[rowIdx][col.nombre] = editInputs[idx].value;
-          });
-          renderLocalRows();
-        };
-        tdAccEdit.appendChild(btnSaveEdit);
-        tr.appendChild(tdAccEdit);
       };
       tdAcc.appendChild(btnEdit);
+      tdAcc.appendChild(btnSaveEdit);
       tr.appendChild(tdAcc);
       tbody.appendChild(tr);
     });

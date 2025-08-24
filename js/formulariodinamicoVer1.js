@@ -301,6 +301,47 @@ document.addEventListener('DOMContentLoaded', function() {
     makeTableGrouped(table, 0);
     makeTableBulkActions(dtWrap, table);
     makeTableHistory(table);
+
+    // Botón agregar fila
+    const addBtn = dtWrap.querySelector('.fd-datatable-add-row');
+    if(addBtn) {
+      addBtn.addEventListener('click', function() {
+        const cols = table.querySelectorAll('thead th');
+        const tr = document.createElement('tr');
+        Array.from(cols).forEach((th, idx) => {
+          // Detecta el tipo de input por la primera fila
+          let cellType = 'text';
+          const firstRow = table.querySelector('tbody tr');
+          if(firstRow && firstRow.cells[idx]) {
+            const inp = firstRow.cells[idx].querySelector('input,select');
+            if(inp) cellType = inp.tagName.toLowerCase();
+          }
+          let td = document.createElement('td');
+          if(cellType === 'select') {
+            td.innerHTML = firstRow.cells[idx].innerHTML;
+          } else if(cellType === 'input') {
+            let type = 'text';
+            const inp = firstRow.cells[idx].querySelector('input');
+            if(inp) type = inp.type;
+            td.innerHTML = `<input type='${type}' class='form-control form-control-sm'>`;
+          } else {
+            td.innerHTML = '';
+          }
+          tr.appendChild(td);
+        });
+        table.querySelector('tbody').appendChild(tr);
+        makeTableTotals(table);
+      });
+    }
+    // Botón eliminar fila
+    const delBtn = dtWrap.querySelector('.fd-datatable-del-row');
+    if(delBtn) {
+      delBtn.addEventListener('click', function() {
+        const tbody = table.querySelector('tbody');
+        if(tbody.rows.length>0) tbody.deleteRow(tbody.rows.length-1);
+        makeTableTotals(table);
+      });
+    }
   });
 });
 // --- Funciones globales para diagnóstico ---

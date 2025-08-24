@@ -142,7 +142,76 @@ function generarCampo($campo, $valor, $soloLectura, $fieldsetKey = '', $fieldInd
             foreach ($cols as $col) {
                 $head .= "<th>".htmlspecialchars($col['label'] ?? $col['etiqueta'] ?? $col['nombre'] ?? $col['name'] ?? '', ENT_QUOTES, 'UTF-8')."</th>";
             }
-            return "<div class='form-group mb-2'{$style}>{$hLabel}<div data-tipo='datatable' data-nombre='{$hName}' class='table-responsive'><table class='table table-sm table-bordered mb-0'><thead><tr>{$head}</tr></thead><tbody><!-- filas dinámicas --></tbody></table></div></div>";
+            $rowsHtml = '';
+            $datos = $campo['datos'] ?? [];
+            if (is_array($datos) && count($datos)) {
+                foreach ($datos as $rowIdx => $rowData) {
+                    $rowsHtml .= '<tr>';
+                    foreach ($cols as $colIdx => $col) {
+                        $colName = $col['nombre'] ?? $col['name'] ?? '';
+                        $colType = strtolower($col['tipo'] ?? 'text');
+                        $cellValue = isset($rowData[$colName]) ? $rowData[$colName] : '';
+                        $inputName = $hName . '[' . $rowIdx . '][' . $colName . ']';
+                        $inputId = $hName . '_' . $rowIdx . '_' . $colName;
+                        switch ($colType) {
+                            case 'number':
+                            case 'text':
+                            case 'date':
+                            case 'email':
+                            case 'password':
+                                $rowsHtml .= "<td><input type='{$colType}' name='{$inputName}' id='{$inputId}' value='".htmlspecialchars((string)$cellValue, ENT_QUOTES, 'UTF-8')."' class='form-control form-control-sm'></td>";
+                                break;
+                            case 'select':
+                                $opts = '';
+                                foreach (($col['opciones'] ?? []) as $key => $text) {
+                                    $sel = ((string)$cellValue === (string)$key) ? ' selected' : '';
+                                    $opts .= "<option value='".htmlspecialchars((string)$key, ENT_QUOTES, 'UTF-8')."'{$sel}>".htmlspecialchars((string)$text, ENT_QUOTES, 'UTF-8')."</option>";
+                                }
+                                $rowsHtml .= "<td><select name='{$inputName}' id='{$inputId}' class='form-control form-control-sm'>{$opts}</select></td>";
+                                break;
+                            case 'checkbox':
+                                $checked = $cellValue ? ' checked' : '';
+                                $rowsHtml .= "<td><input type='checkbox' name='{$inputName}' id='{$inputId}' value='1'{$checked}></td>";
+                                break;
+                            default:
+                                $rowsHtml .= "<td>".htmlspecialchars((string)$cellValue, ENT_QUOTES, 'UTF-8')."</td>";
+                        }
+                    }
+                    $rowsHtml .= '</tr>';
+                }
+            } else {
+                // Si no hay datos, muestra una fila vacía
+                $rowsHtml .= '<tr>';
+                foreach ($cols as $colIdx => $col) {
+                    $colName = $col['nombre'] ?? $col['name'] ?? '';
+                    $colType = strtolower($col['tipo'] ?? 'text');
+                    $inputName = $hName . '[0][' . $colName . ']';
+                    $inputId = $hName . '_0_' . $colName;
+                    switch ($colType) {
+                        case 'number':
+                        case 'text':
+                        case 'date':
+                        case 'email':
+                        case 'password':
+                            $rowsHtml .= "<td><input type='{$colType}' name='{$inputName}' id='{$inputId}' value='' class='form-control form-control-sm'></td>";
+                            break;
+                        case 'select':
+                            $opts = '';
+                            foreach (($col['opciones'] ?? []) as $key => $text) {
+                                $opts .= "<option value='".htmlspecialchars((string)$key, ENT_QUOTES, 'UTF-8')."'>".htmlspecialchars((string)$text, ENT_QUOTES, 'UTF-8')."</option>";
+                            }
+                            $rowsHtml .= "<td><select name='{$inputName}' id='{$inputId}' class='form-control form-control-sm'>{$opts}</select></td>";
+                            break;
+                        case 'checkbox':
+                            $rowsHtml .= "<td><input type='checkbox' name='{$inputName}' id='{$inputId}' value='1'></td>";
+                            break;
+                        default:
+                            $rowsHtml .= "<td></td>";
+                    }
+                }
+                $rowsHtml .= '</tr>';
+            }
+            return "<div class='form-group mb-2'{$style}>{$hLabel}<div data-tipo='datatable' data-nombre='{$hName}' class='table-responsive'><table class='table table-sm table-bordered mb-0'><thead><tr>{$head}</tr></thead><tbody>{$rowsHtml}</tbody></table></div></div>";
         default:
             return "<div class='form-group mb-2'>{$hLabel}<input type='{$inputType}' name='{$hName}' value='".htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8')."' class='form-control'{$disabled}{$attrStr}></div>";
     }

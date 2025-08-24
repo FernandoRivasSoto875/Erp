@@ -43,29 +43,25 @@ foreach ($fieldsets as $fs) {
 </head>
 <body>
 <?php $cssDefault = $json['CssDefault'] ?? ''; ?>
-<div class="container mt-4 <?php echo htmlspecialchars($cssDefault); ?>">
-    <h2 class="mb-3"><?php echo htmlspecialchars($json['parametros']['titulo'] ?? 'Formulario Dinámico'); ?></h2>
+<!-- DIAGNÓSTICOS FUERA DEL FORMULARIO -->
+<div class="container mt-4 mb-4">
     <?php
     // Diagnóstico visual de funciones PHP
     if (function_exists('fd_diagnostico_html')) {
         echo fd_diagnostico_html();
-// COPILOT_MARK: Cambio menor para detección de push en GitHub Desktop
+    } else {
         echo '<div class="alert alert-danger">No se encontró la función de diagnóstico PHP.</div>';
     }
     ?>
-    <div class="mb-2">
-    <!-- <a href="/formulariodinamicotest.php" target="_blank" class="btn btn-outline-warning btn-sm">Ver diagnóstico PHP (test)</a> -->
+    <div class="alert alert-info">
+        <strong>Diagnóstico JSON:</strong><br>
+        <b>Archivo:</b> <?php echo htmlspecialchars($json_path); ?><br>
+        <b>¿Existe?:</b> <?php echo file_exists($json_path) ? 'Sí' : 'No'; ?><br>
+        <b>Decodificación:</b> <?php echo is_array($json) ? 'OK' : 'Error'; ?><br>
+        <b>Claves raíz:</b> <?php echo is_array($json) ? implode(', ', array_keys($json)) : 'N/A'; ?><br>
+        <b>Fieldsets cargados:</b> <?php echo is_array($fieldsets) ? count($fieldsets) : '0'; ?><br>
+        <b>Layout presente:</b> <?php echo !empty($layout) ? 'Sí' : 'No'; ?><br>
     </div>
-    <!-- Bloque de diagnóstico visual -->
-            <div class="alert alert-info">
-                <strong>Diagnóstico JSON:</strong><br>
-                <b>Archivo:</b> <?php echo htmlspecialchars($json_path); ?><br>
-                <b>¿Existe?:</b> <?php echo file_exists($json_path) ? 'Sí' : 'No'; ?><br>
-                <b>Decodificación:</b> <?php echo is_array($json) ? 'OK' : 'Error'; ?><br>
-                <b>Claves raíz:</b> <?php echo is_array($json) ? implode(', ', array_keys($json)) : 'N/A'; ?><br>
-                <b>Fieldsets cargados:</b> <?php echo is_array($fieldsets) ? count($fieldsets) : '0'; ?><br>
-                <b>Layout presente:</b> <?php echo !empty($layout) ? 'Sí' : 'No'; ?><br>
-            </div>
     <div class="alert alert-info mb-3">
         <b>Diagnóstico:</b><br>
         <?php
@@ -74,10 +70,9 @@ foreach ($fieldsets as $fs) {
         echo '¿Existe el archivo?: <b>' . (file_exists($json_path) ? 'Sí' : 'No') . '</b><br>';
         echo 'Fieldsets cargados: <b>' . count($fieldsets) . '</b><br>';
         echo 'Layout presente: <b>' . (!empty($layout) ? 'Sí' : 'No') . '</b><br>';
-        // --- DIAGNÓSTICO OPCIONAL ---
-    $cssDefault = $json['CssDefault'] ?? '';
-    echo '<button type="button" class="btn btn-sm btn-outline-info mb-2 ' . htmlspecialchars($cssDefault) . '" onclick="document.getElementById(\'diagnostico\').style.display = (document.getElementById(\'diagnostico\').style.display === \'none\' ? \'block\' : \'none\');">Mostrar/Ocultar Diagnóstico</button>';
-    echo '<div id="diagnostico" class="' . htmlspecialchars($cssDefault) . '" style="display:none;">';
+        $cssDefault = $json['CssDefault'] ?? '';
+        echo '<button type="button" class="btn btn-sm btn-outline-info mb-2 ' . htmlspecialchars($cssDefault) . '" onclick="document.getElementById(\'diagnostico\').style.display = (document.getElementById(\'diagnostico\').style.display === \'none\' ? \'block\' : \'none\');">Mostrar/Ocultar Diagnóstico</button>';
+        echo '<div id="diagnostico" class="' . htmlspecialchars($cssDefault) . '" style="display:none;">';
         // echo 'Archivo JSON: <b>' . htmlspecialchars($archivo_json) . '</b><br>';
         // echo 'Ruta absoluta: <b>' . htmlspecialchars($json_path) . '</b><br>';
         // echo '¿Existe el archivo?: <b>' . (file_exists($json_path) ? 'Sí' : 'No') . '</b><br>';
@@ -86,6 +81,10 @@ foreach ($fieldsets as $fs) {
         if (empty($layout)) echo '<span class="text-warning">No se encontró layout, se mostrarán todos los fieldsets.</span><br>';
         ?>
     </div>
+</div>
+<!-- FIN DIAGNÓSTICOS -->
+<div class="container mt-4 <?php echo htmlspecialchars($cssDefault); ?>">
+    <h2 class="mb-3"><?php echo htmlspecialchars($json['parametros']['titulo'] ?? 'Formulario Dinámico'); ?></h2>
     <?php
     // Renderizar todas las secciones del layout (incluyendo tabs múltiples)
     if (!empty($layout)) {

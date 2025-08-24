@@ -1144,16 +1144,99 @@ function renderDatatable(field) {
       const inputs = [];
       field.columnas.forEach(col => {
         const td = document.createElement('td');
-        const input = document.createElement('input');
-        input.type = col.tipo || 'text';
-        input.className = 'form-control form-control-sm';
-        input.name = col.nombre;
-        // Si es fórmula, poner readonly y calcular valor
-        if(col.formula) {
-          input.setAttribute('readonly', '');
-          input.setAttribute('data-formula', col.formula);
+        let input;
+        // Select
+        if(col.tipo === 'select') {
+          input = document.createElement('select');
+          input.className = 'form-select form-select-sm';
+          input.name = col.nombre;
+          if(col.atributos) {
+            Object.entries(col.atributos).forEach(([k,v]) => input.setAttribute(k,v));
+          }
+          // Opciones fijas
+          if(col.opciones) {
+            Object.entries(col.opciones).forEach(([val, label]) => {
+              const opt = document.createElement('option');
+              opt.value = val;
+              opt.textContent = label;
+              input.appendChild(opt);
+            });
+          }
+          // Data-source (dinámico)
+          if(col['data-source']) {
+            input.setAttribute('data-source', JSON.stringify(col['data-source']));
+            // Carga dinámica (solo si no hay opciones fijas)
+            if(!col.opciones) {
+              fetch('ajax/selectdata.php?tabla=' + encodeURIComponent(col['data-source'].tabla) +
+                (col['data-source'].campo_valor ? '&campo_valor=' + encodeURIComponent(col['data-source'].campo_valor) : '') +
+                (col['data-source'].campo_etiqueta ? '&campo_etiqueta=' + encodeURIComponent(col['data-source'].campo_etiqueta) : '') +
+                (col['data-source'].filtro ? '&filtro=' + encodeURIComponent(col['data-source'].filtro) : '') +
+                (col['data-source'].order ? '&order=' + encodeURIComponent(col['data-source'].order) : ''))
+                .then(r => r.json())
+                .then(data => {
+                  input.innerHTML = '<option value="">Seleccione...</option>';
+                  data.forEach(opt => {
+                    input.innerHTML += `<option value="${opt.value}">${opt.label}</option>`;
+                  });
+                  input.value = row[col.nombre] || '';
+                });
+            }
+          }
+          input.value = row[col.nombre] || '';
         }
-        input.value = row[col.nombre] || '';
+        // Checkbox
+        else if(col.tipo === 'checkbox') {
+          input = document.createElement('input');
+          input.type = 'checkbox';
+          input.className = 'form-check-input';
+          input.name = col.nombre;
+          if(row[col.nombre]) input.checked = true;
+        }
+        // Radio
+        else if(col.tipo === 'radio') {
+          input = document.createElement('div');
+          input.className = 'd-flex gap-2';
+          if(col.opciones) {
+            Object.entries(col.opciones).forEach(([val, label]) => {
+              const radio = document.createElement('input');
+              radio.type = 'radio';
+              radio.name = col.nombre + '_' + rowIdx;
+              radio.value = val;
+              radio.className = 'form-check-input';
+              if(row[col.nombre] === val) radio.checked = true;
+              const lbl = document.createElement('label');
+              lbl.textContent = label;
+              lbl.className = 'form-check-label';
+              input.appendChild(radio);
+              input.appendChild(lbl);
+            });
+          }
+        }
+        // Textarea
+        else if(col.tipo === 'textarea') {
+          input = document.createElement('textarea');
+          input.className = 'form-control form-control-sm';
+          input.name = col.nombre;
+          input.value = row[col.nombre] || '';
+        }
+        // Otros tipos (text, number, date, email, password, hidden, file)
+        else {
+          input = document.createElement('input');
+          input.type = col.tipo || 'text';
+          input.className = 'form-control form-control-sm';
+          input.name = col.nombre;
+          if(col.placeholder) input.placeholder = col.placeholder;
+          if(col.valor_predeterminado && !row[col.nombre]) input.value = col.valor_predeterminado;
+          input.value = row[col.nombre] || input.value || '';
+          if(col.atributos) {
+            Object.entries(col.atributos).forEach(([k,v]) => input.setAttribute(k,v));
+          }
+          // Si es fórmula, poner readonly y calcular valor
+          if(col.formula) {
+            input.setAttribute('readonly', '');
+            input.setAttribute('data-formula', col.formula);
+          }
+        }
         td.appendChild(input);
         tr.appendChild(td);
         inputs.push(input);

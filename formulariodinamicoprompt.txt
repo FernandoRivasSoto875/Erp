@@ -1,68 +1,51 @@
-19. **Funcionalidades recomendadas para datatable**:
-  - Búsqueda rápida sobre todas las columnas con datos.
-  - Filtro avanzado con operadores lógicos (y, o, igual, distinto, contiene, mayor, menor, etc.) y soporte para campos anidados.
-  - Suma de columnas y totales por columna, incluyendo campos fórmula.
-  - Edición en línea de filas y celdas.
-  - Agregar y eliminar filas dinámicamente.
-  - Soporte para campos tipo fórmula, con actualización dinámica.
-  - Ordenar por columna (ascendente/descendente).
-  - Paginación para grandes volúmenes de datos.
-  - Exportar datos (CSV, Excel, PDF).
-  - Selección múltiple de filas (checkbox), controlada por la propiedad 'seleccion_multiple' (enable/disable). Si está en 'enable', aparecen checkboxes en cada fila y en el encabezado para seleccionar todos; si está en 'disable', no se muestran. El filtro avanzado debe ignorar la columna de selección múltiple y calcular correctamente el índice de columna cuando está presente.
-  - Validación de datos en tiempo real.
-  - Visualización responsiva y adaptable. La grilla debe mostrar una barra de scroll horizontal al final, justificada a la izquierda, para facilitar la navegación de registros.
-  - El sistema debe identificar y procesar todos los bloques con tipo="datable" en el JSON, aplicando la lógica y funcionalidades de datatable a cada uno de forma independiente.
-  - Cuando "seleccion_multiple" está en "enable", la selección múltiple se activa con doble click en el título de la columna de checkbox (nombre="checkboxSel"). Un doble click selecciona todos los registros, y otro doble click los deselecciona. El botón de selección múltiple no debe aparecer, solo se usa el doble click en el encabezado.
-  - La columna (campo) "checkboxSel" solo debe ser visible cuando "seleccion_multiple" está en "enable"; si no, no debe aparecer en la grilla ni ser seleccionable.
-  - El tipo "formula" permite usar funciones de cálculo estándar (SUM, AVERAGE, MIN, MAX, etc.), funciones personalizadas como BusquedaDato(tabla, valoratraer, filtro, order), y también sentencias SQL directas para traer un valor desde la base de datos. BusquedaDato puede recibir un parámetro "order" que toma valores dinámicos del filtro y se usa para ordenar el resultado en la consulta. Debe devolver un solo valor y se pueden usar varias funciones o sentencias dentro de la fórmula.
-  - Mostrar/ocultar columnas.
-  - Resaltar filas/columnas según condiciones (colores, iconos).
-  - Integración con base de datos si se define tabla en dataSource.
-  - Accesibilidad: navegación por teclado, ARIA, contraste.
-  - Tooltips y ayuda contextual en encabezados.
-  - Agrupación de filas por valor de columna.
-  - Acciones masivas (eliminar, exportar, modificar varias filas).
-  - Historial de cambios y deshacer/rehacer en edición.
-# Lineamientos de Versatilidad para Formularios Dinámicos
 
-Este prompt define las capacidades y opciones de presentación que debe soportar el sistema de formularios dinámicos:
+============================
+PROMPT ORDENADO PARA DESARROLLO
+============================
 
-1. **Tabs anidados**: Permitir la creación de tabs dentro de otros tabs para formularios complejos.
-2. **Acordeones**: Secciones colapsables para agrupar campos y ahorrar espacio visual.
-3. **Wizard/Pasos**: Formularios multi-paso con navegación y validación por etapa.
-4. **Columnas flexibles**: Layouts de 2, 3 o más columnas, mezclando fieldsets y tabs.
-5. **Campos condicionales**: Mostrar/ocultar campos según selecciones previas del usuario.
-6. **Resumen lateral**: Panel lateral que muestra un resumen en tiempo real de lo ingresado.
-7. **Vista previa**: Botón para ver cómo quedará el formulario antes de enviar.
-8. **Modo compacto/expandido**: Alternar entre vista resumida y detallada del formulario.
-9. **Drag & drop**: Reordenar secciones, tabs o campos arrastrando.
-10. **Temas visuales**: Cambiar el estilo visual (colores, fuentes, etc.) desde el JSON.
-11. **Mensajes contextuales**: Mostrar advertencias, sugerencias o ayudas junto a cada campo.
-12. **Integración multimedia**: Permitir imágenes, videos o archivos embebidos en cualquier sección.
-13. **Accesibilidad**: Navegación por teclado, contraste alto, etiquetas ARIA y soporte para lectores de pantalla.
-14. **Layouts responsivos**: Adaptar la presentación según el dispositivo (móvil, tablet, escritorio).
-15. **Validaciones en tiempo real**: Feedback inmediato al usuario mientras completa el formulario.
-16. **Campos tipo "fórmula"**: Los campos tipo "fórmula" en datatables y formularios deben ser compatibles con filtros, búsqueda y suma de columnas. Su valor debe actualizarse dinámicamente cuando cambien los campos de los que dependen, y pueden ser usados en filtros avanzados y búsquedas, tanto locales como en BD.
-17. **Búsqueda en datatables**: La barra de búsqueda debe aparecer siempre, y debe estar seguida de una línea en blanco al final del datatable, tanto si existen o no filas. La búsqueda debe funcionar tanto con el texto visible de la celda como con el valor de los inputs, para máxima compatibilidad en modo edición y visualización. El filtro avanzado debe estar presente y visible siempre que esté habilitado en la definición.
-18. **Suma de totales en datatables**: La suma de totales debe aparecer al final del datatable, en la columna que corresponda, alineada visualmente con el encabezado de la columna sumada. Cuando la columna es una fórmula, el total debe calcularse y mostrarse igual. El filtro avanzado debe funcionar sobre campos fórmula y debe activarse mediante un botón visible. Al activarse, debe permitir anidar campos de columna y usar todos los operadores lógicos posibles (y, o, igual, distinto, contiene, mayor, menor, etc.) para filtrar los datos.
+1. Reglas generales y arquitectura
+----------------------------------
+- Archivo de vista/orquestador: solo carga JSON, pasa datos a helpers y renderiza HTML mínimo.
+- No lógica de negocio, ni funciones PHP nuevas, ni CSS/JS inline.
+- Toda la lógica en helpers (formulariodinamicofunciones.php, formulariodinamicologica.php).
+- Sanitizar salida (htmlspecialchars).
+- No eliminar ni degradar funcionalidades existentes salvo bug confirmado (usar // DEPRECATED).
+- Mantener compatibilidad y no renombrar IDs/clases sin actualizar todas las referencias.
+- Mantener modo diseño (toggle + DnD + árbol) operativo.
+- Usar solo CSS externo (Bootstrap, etc.), no inline.
+- No duplicar includes/requires.
+- No dejar salida de depuración permanente.
+- No agregar SQL/includes aquí.
+- No cambiar el diseño salvo en el contenedor CSS permitido.
 
-Estos lineamientos deben ser considerados en el diseño, desarrollo y evolución del sistema de formularios dinámicos para maximizar la experiencia y flexibilidad del usuario final.
-COPILOT_PROMPT (Lineamientos y requisitos para cualquier cambio en este archivo)
+2. Requisitos funcionales principales
+-------------------------------------
+- Soporte para nuevos tipos de campo: "embevido" y "datatable".
+- Propiedad "FormularioDataSourcePrincipal" en parámetros del JSON para controlar interacción con BD.
+- Datatable debe soportar todas las funcionalidades (búsqueda, filtro, suma, edición, etc.).
+- Soporte para todas las características de formularios dinámicos:
+  - Tabs anidados
+  - Acordeones
+  - Wizard/pasos
+  - Columnas flexibles
+  - Campos condicionales
+  - Resumen lateral
+  - Vista previa
+  - Modo compacto/expandido
+  - Drag & drop
+  - Temas visuales
+  - Mensajes contextuales
+  - Integración multimedia
+  - Accesibilidad
+  - Layouts responsivos
+  - Validaciones en tiempo real
+  - Campos tipo "fórmula"
+  - Búsqueda y suma en datatables
+  - Agrupación de filas
+  - Acciones masivas
+  - Historial de cambios/deshacer
 
-NUEVA FUNCIONALIDAD: Campo tipo "embevido"
-Debe permitir agregar un campo con:
-  - "tipo": "embevido"
-  - "etiqueta": "Contenido Embebido"
-  - "url_embebido": URL o ruta local del recurso a mostrar (página web, archivo HTML, archivo local)
-  - "parametros_embebido": objeto con parámetros clave-valor que se enviarán al recurso embebido (por ejemplo, como query string)
-  - "alto": altura en px o % (opcional)
-  - "ancho": ancho en px o % (opcional)
-  - "mostrar_borde": booleano (opcional, para mostrar borde en el iframe)
-  - "permitir_fullscreen": booleano (opcional, para permitir pantalla completa)
-
-El render debe crear un <iframe> con la URL y parámetros, aplicar alto/ancho, borde y fullscreen según las propiedades.
-
-Ejemplo de campo en el JSON:
+Ejemplo campo "embevido":
 {
   "nombre": "contenido_embebido",
   "tipo": "embevido",
@@ -75,48 +58,7 @@ Ejemplo de campo en el JSON:
   "permitir_fullscreen": true
 }
 
-Esta funcionalidad debe estar soportada en el renderizador JS y en el JSON.
-
-NUEVA PROPIEDAD: FormularioDataSourcePrincipal en 'parametros' del JSON
-Agrega la propiedad "FormularioDataSourcePrincipal" dentro del objeto "parametros" del JSON principal.
-Su función es definir el modo de operación del formulario:
-  - Si está vacía (""): el formulario es de entrada de datos libre, no interactúa con la base de datos.
-  - Si contiene un valor (por ejemplo, "Cliente"): el formulario interactúa directamente con la base de datos indicada.
-Esto permite distinguir si el formulario debe operar en modo libre o vinculado a una entidad de BD.
-
-Ejemplo en el JSON:
-"parametros": {
-  ...
-  "FormularioDataSourcePrincipal": "Cliente"
-}
-
-El render y la lógica deben respetar este comportamiento.
-
-Objetivo:
-Mantener este archivo SOLO como orquestador (vista): carga JSON, pasa datos a helpers y pinta HTML mínimo.
-NO agregar aquí: lógica de negocio, funciones PHP nuevas, CSS inline, ni JS inline.
-
-Ubicación de cada tipo de código:
-
-NUEVA FUNCIONALIDAD: Campo tipo "datatable"
-Debe permitir agregar un campo con:
-  - "tipo": "datatable"
-  - "etiqueta": "Datatable"
-  - "columnas": array de columnas (cada una con nombre, etiqueta, tipo, opciones, etc.)
-  - "busqueda_simple": "enable" para mostrar búsqueda rápida
-  - "filtro_avanzado": "enable" para mostrar filtros avanzados
-  - "sumar_columnas": array con nombres de columnas a sumar
-
-  - "dataSource": objeto con "tabla" (opcional, si se conecta a BD)
-
-Las propiedades "dataSource" y "filtro" deben aparecer siempre en la definición del datatable, aunque no se indique tabla. El filtro puede crearse sobre cualquier campo del formulario y debe permitir búsquedas y filtrado avanzado sobre los datos locales o de BD, según corresponda. El botón "Agregar" y el campo de búsqueda deben estar justificados a la derecha. El filtro avanzado debe permitir filtrar por campos anidados del formulario.
-
-Regla adicional para datatable:
-Si el campo "dataSource" no indica "tabla" (está vacío o no existe), el datatable debe funcionar igual con todas sus funcionalidades (búsqueda rápida, filtros avanzados, suma de columnas, edición manual de filas) usando solo datos locales del usuario. Solo si se indica "tabla" en "dataSource", se habilita la carga automática desde BD.
-
-Requisitos:
-
-Ejemplo de campo en el JSON:
+Ejemplo campo "datatable":
 {
   "nombre": "detalle_productos",
   "tipo": "datatable",
@@ -133,51 +75,46 @@ Ejemplo de campo en el JSON:
   "dataSource": { "tabla": "" }
 }
 
-Esta funcionalidad debe estar soportada en el renderizador JS y en el JSON.
-  * Micro‑app encapsula HTML/CSS/JS para explorar / editar parametros, fieldsets y layout.
-  * Integración: contenedor #fd-json-tree-app (iframe o montaje dinámico).
-  * Comunicación: postMessage, namespace FD, o endpoints AJAX.
+3. Lineamientos de diseño y UX
+------------------------------
+- Responsividad y adaptabilidad (Bootstrap, layouts flexibles, barra de scroll horizontal).
+- Accesibilidad: navegación por teclado, ARIA, contraste alto.
+- Temas visuales configurables desde el JSON.
+- Modo diseño siempre operativo (toggle + DnD + edición en árbol y formulario).
+- Tooltips y ayuda contextual en encabezados.
+- Agrupación de filas por valor de columna.
+- Visualización responsiva y adaptable.
+- Embellecimiento usando Bootstrap moderno + CSS externo.
 
-UX / Embellecimiento:
+4. Validaciones y pruebas
+------------------------
+- Antes de modificar:
+  - Revisar primero lógica existente (formulariodinamico.js, formulariodinamicofunciones.php, arboljson/*).
+  - Mantener compatibilidad retro o crear wrapper / alias temporal.
+  - No renombrar IDs / clases usadas por JS sin actualizar todo (incluida micro‑app).
+  - Mantener contrato JSON (solo ampliar tolerantemente).
+  - Eliminaciones: marcar // DEPRECATED si no críticas, conservar breve periodo si hay riesgo.
+  - Sin echo/print debug permanentes.
+  - Sin SQL / includes extra aquí.
+  - Evitar duplicar includes/require.
+  - Sanitizar salida (htmlspecialchars) siempre.
+  - Commits/PR atómicos (render / JS / CSS / refactor / integración árbol).
+  - Integración árbol: aquí solo contenedor #fd-json-tree-app (no markup interno).
+  - CONSISTENCIA DE LLAMADOS: verificar includes, data-* (#fd-data), scripts (Sortable + formulariodinamico.js), contenedor micro‑app y funciones clave (fd_render_layout_fallback) existen y JSON decodifica (json_last_error()==JSON_ERROR_NONE).
+  - Modo diseño debe seguir operando (toggle + DnD + árbol) tras cualquier cambio.
+  - NO cambiar el diseño a no ser que sean cambios en <div class="css"></div>
 
-Separación de modos y funcionalidades:
-   - "Diseño Árbol": permite editar la estructura desde el árbol JSON y arrastrar objetos en el formulario.
-   - "Diseño Formulario": permite editar directamente el formulario con DnD y arrastrar objetos.
+- Al finalizar:
+  - Verifica que todo quede de forma responsiva.
+  - Si hay algo que no puedes hacer por restricción del prompt, indícalo y sugiere qué agregar.
 
-Modo Diseño (siempre activable/desactivable):
-
-Reglas antes de modificar:
-0. REVISAR Y CONSERVAR FUNCIONALIDAD EXISTENTE: antes de agregar código nuevo, revisar tabs, árbol, DnD, guardado, render de fieldsets; solo complementar. PROHIBIDO eliminar, comentar o degradar funcionalidad existente salvo bug confirmado; en ese caso marcar // DEPRECATED, justificar y mantener wrapper/compatibilidad temporal.
-1. Revisar primero lógica existente (formulariodinamico.js, formulariodinamicofunciones.php, arboljson/*).
-2. Mantener compatibilidad retro o crear wrapper / alias temporal.
-3. No renombrar IDs / clases usadas por JS sin actualizar todo (incluida micro‑app).
-4. Mantener contrato JSON (solo ampliar tolerantemente).
-5. Eliminaciones: marcar // DEPRECATED si no críticas, conservar breve periodo si hay riesgo.
-6. Sin echo/print debug permanentes.
-7. Sin SQL / includes extra aquí.
-8. Evitar duplicar includes/require.
-9. Sanitizar salida (htmlspecialchars) siempre.
-10. Commits/PR atómicos (render / JS / CSS / refactor / integración árbol).
-11. Integración árbol: aquí solo contenedor #fd-json-tree-app (no markup interno).
-12. CONSISTENCIA DE LLAMADOS: verificar includes, data-* (#fd-data), scripts (Sortable + formulariodinamico.js), contenedor micro‑app y funciones clave (fd_render_layout_fallback) existen y JSON decodifica (json_last_error()==JSON_ERROR_NONE).
-13. Modo diseño debe seguir operando (toggle + DnD + árbol) tras cualquier cambio.
-14. NO cambiar el diseño  a no ser qexplictamente cambios en <div class="css"></div>
-Validaciones al finalizar:
-15 Siempre verifica que todo quede de forma responsiva.
-16.- Si hay algo que no puedes hacer, por restringcion del prompt, indicamelo, indicame que debemos agregar en el prompt.
-
-Resumen (TL;DR):
-Archivo de vista. NO lógica / NO JS / NO CSS aquí. Mantener modo diseño operativo (toggle + dos vías de edición). Embellecer usando Bootstrap moderno + CSS externo. Revisar consistencia (punto 12/13) y NO eliminar funcionalidad existente (regla 0).
-
-COPILOT_PROMPT (Complemento: Requisitos para rediseño en tiempo de ejecución por el usuario final)
-
-Objetivo de rediseño en runtime:
-
-Características obligatorias:
-
-Interacciones clave:
-
-Validaciones y consistencia:
-
-Resumen:
-Este bloque complementa el prompt principal, detallando requisitos para rediseño en tiempo de ejecución por el usuario final. Mantener estricta separación de responsabilidades, UX moderna y edición visual/estructural robusta, sin perder ninguna funcionalidad existente.
+5. Nuevas funcionalidades y extensiones
+--------------------------------------
+- Micro‑app encapsula HTML/CSS/JS para explorar / editar parámetros, fieldsets y layout.
+- Integración: contenedor #fd-json-tree-app (iframe o montaje dinámico).
+- Comunicación: postMessage, namespace FD, o endpoints AJAX.
+- Separación de modos y funcionalidades:
+  - "Diseño Árbol": editar estructura desde el árbol JSON y arrastrar objetos en el formulario.
+  - "Diseño Formulario": editar directamente el formulario con DnD y arrastrar objetos.
+- Modo diseño (siempre activable/desactivable).
+- Rediseño en tiempo de ejecución por el usuario final, manteniendo estricta separación de responsabilidades, UX moderna y edición visual/estructural robusta, sin perder ninguna funcionalidad existente.

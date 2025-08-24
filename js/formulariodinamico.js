@@ -1141,15 +1141,68 @@ function renderDatatable(field) {
     tbody.innerHTML = '';
     field._localData.forEach((row, rowIdx) => {
       const tr = document.createElement('tr');
+      const inputs = [];
       field.columnas.forEach(col => {
         const td = document.createElement('td');
         const input = document.createElement('input');
         input.type = col.tipo || 'text';
         input.className = 'form-control form-control-sm';
         input.name = col.nombre;
+        // Si es fórmula, poner readonly y calcular valor
+        if(col.formula) {
+          input.setAttribute('readonly', '');
+          input.setAttribute('data-formula', col.formula);
+        }
         input.value = row[col.nombre] || '';
         td.appendChild(input);
         tr.appendChild(td);
+        inputs.push(input);
+      });
+      // Lógica de fórmula: recalcular cuando cambian los campos referenciados
+      field.columnas.forEach((col, idx) => {
+        if(col.formula) {
+          // Detectar campos referenciados en la fórmula
+          const formulaInput = inputs[idx];
+          const formulaStr = col.formula;
+          // Buscar nombres de campos entre llaves: {campo}
+          const matches = formulaStr.match(/\{(\w+)\}/g);
+          if(matches) {
+            matches.forEach(match => {
+              const refName = match.replace(/[{}]/g, '');
+              // Buscar input referenciado en la misma fila
+              const refIdx = field.columnas.findIndex(c => c.nombre === refName);
+              if(refIdx >= 0) {
+                inputs[refIdx].addEventListener('input', function() {
+                  // Recalcular fórmula
+                  let expr = formulaStr;
+                  matches.forEach(m => {
+                    const n = m.replace(/[{}]/g, '');
+                    const v = inputs[field.columnas.findIndex(c => c.nombre === n)].value || '0';
+                    expr = expr.replace(m, v);
+                  });
+                  try {
+                    // Evaluar expresión matemática
+                    formulaInput.value = eval(expr);
+                  } catch(e) {
+                    formulaInput.value = '';
+                  }
+                });
+                // Inicializar valor fórmula
+                let exprInit = formulaStr;
+                matches.forEach(m => {
+                  const n = m.replace(/[{}]/g, '');
+                  const v = inputs[field.columnas.findIndex(c => c.nombre === n)].value || '0';
+                  exprInit = exprInit.replace(m, v);
+                });
+                try {
+                  formulaInput.value = eval(exprInit);
+                } catch(e) {
+                  formulaInput.value = '';
+                }
+              }
+            });
+          }
+        }
       });
       // Acciones por fila: editar y guardar
       const tdAcc = document.createElement('td');
@@ -1157,15 +1210,17 @@ function renderDatatable(field) {
       btnEdit.textContent = 'Editar';
       btnEdit.className = 'btn btn-warning btn-sm me-1';
       btnEdit.onclick = function() {
-        Array.from(tr.querySelectorAll('input')).forEach(inp => inp.removeAttribute('readonly'));
+        inputs.forEach(inp => {
+          if(!inp.hasAttribute('data-formula')) inp.removeAttribute('readonly');
+        });
       };
       const btnSaveEdit = document.createElement('button');
       btnSaveEdit.textContent = 'Guardar';
       btnSaveEdit.className = 'btn btn-success btn-sm';
       btnSaveEdit.onclick = function() {
-        Array.from(tr.querySelectorAll('input')).forEach((inp, idx) => {
+        inputs.forEach((inp, idx) => {
           field._localData[rowIdx][field.columnas[idx].nombre] = inp.value;
-          inp.setAttribute('readonly', '');
+          if(!inp.hasAttribute('data-formula')) inp.setAttribute('readonly', '');
         });
       };
       tdAcc.appendChild(btnEdit);

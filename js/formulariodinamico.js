@@ -1078,14 +1078,25 @@ function renderDatatable(field) {
   table.appendChild(thead);
   table.appendChild(tbody);
 
-  // Botón agregar
+  // Botones de acción a nivel de grilla
+  const gridActions = document.createElement('div');
+  gridActions.className = 'd-flex gap-2 mb-2';
+  // Botón agregar fila
   const btnAdd = document.createElement('button');
   btnAdd.textContent = 'Agregar fila';
-  btnAdd.className = 'btn btn-primary btn-sm mb-2';
+  btnAdd.className = 'btn btn-primary btn-sm';
+  gridActions.appendChild(btnAdd);
+  // Botón eliminar fila
+  const btnDel = document.createElement('button');
+  btnDel.textContent = 'Eliminar fila';
+  btnDel.className = 'btn btn-danger btn-sm';
+  gridActions.appendChild(btnDel);
+
   if(!field._localData) field._localData = [];
+
   btnAdd.onclick = function() {
+    // Agrega una nueva fila editable directamente en la tabla
     const tr = document.createElement('tr');
-    const inputs = [];
     field.columnas.forEach(col => {
       const td = document.createElement('td');
       const input = document.createElement('input');
@@ -1093,26 +1104,36 @@ function renderDatatable(field) {
       input.className = 'form-control form-control-sm';
       td.appendChild(input);
       tr.appendChild(td);
-      inputs.push(input);
     });
-    // Acciones
+    // Acciones por fila: guardar
     const tdAcc = document.createElement('td');
     const btnSave = document.createElement('button');
     btnSave.textContent = 'Guardar';
     btnSave.className = 'btn btn-success btn-sm';
     btnSave.onclick = function() {
-      // Local: guarda en memoria y muestra en tabla
       const rowData = {};
-      field.columnas.forEach((col, idx) => {
-        rowData[col.nombre] = inputs[idx].value;
+      Array.from(tr.querySelectorAll('td')).forEach((td, idx) => {
+        if(idx < field.columnas.length) {
+          const inp = td.querySelector('input');
+          rowData[field.columnas[idx].nombre] = inp ? inp.value : '';
+        }
       });
       field._localData.push(rowData);
       renderLocalRows();
-      tr.remove();
     };
     tdAcc.appendChild(btnSave);
     tr.appendChild(tdAcc);
     tbody.appendChild(tr);
+  };
+
+  btnDel.onclick = function() {
+    // Elimina la última fila de la grilla
+    if(field._localData.length > 0) {
+      field._localData.pop();
+      renderLocalRows();
+    } else if(tbody.rows.length > 0) {
+      tbody.deleteRow(tbody.rows.length-1);
+    }
   };
 
   // Render local rows
@@ -1125,7 +1146,7 @@ function renderDatatable(field) {
         td.textContent = row[col.nombre] || '';
         tr.appendChild(td);
       });
-      // Acciones
+      // Acciones por fila: editar
       const tdAcc = document.createElement('td');
       const btnEdit = document.createElement('button');
       btnEdit.textContent = 'Editar';
@@ -1156,15 +1177,7 @@ function renderDatatable(field) {
         tdAccEdit.appendChild(btnSaveEdit);
         tr.appendChild(tdAccEdit);
       };
-      const btnDel = document.createElement('button');
-      btnDel.textContent = 'Eliminar';
-      btnDel.className = 'btn btn-danger btn-sm';
-      btnDel.onclick = function() {
-        field._localData.splice(rowIdx, 1);
-        renderLocalRows();
-      };
       tdAcc.appendChild(btnEdit);
-      tdAcc.appendChild(btnDel);
       tr.appendChild(tdAcc);
       tbody.appendChild(tr);
     });
@@ -1175,8 +1188,8 @@ function renderDatatable(field) {
     renderLocalRows();
   }
 
-  container.appendChild(btnAdd);
-    container.appendChild(controlsRow);
+  container.appendChild(gridActions);
+  container.appendChild(controlsRow);
   container.appendChild(table);
   return container;
 }

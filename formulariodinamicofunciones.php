@@ -211,7 +211,9 @@ function generarCampo($campo, $valor, $soloLectura, $fieldsetKey = '', $fieldInd
                 }
                 $rowsHtml .= '</tr>';
             }
-            return "<div class='form-group mb-2'{$style}>{$hLabel}<div data-tipo='datatable' data-nombre='{$hName}' class='table-responsive'><table class='table table-sm table-bordered mb-0'><thead><tr>{$head}</tr></thead><tbody>{$rowsHtml}</tbody></table></div></div>";
+            $addBtn = "<button type='button' class='btn btn-sm btn-success fd-datatable-add-row mb-2' data-datatable='{$hName}'>Agregar fila</button>";
+            $delBtn = "<button type='button' class='btn btn-sm btn-danger fd-datatable-del-row mb-2' data-datatable='{$hName}'>Eliminar fila</button>";
+            return "<div class='form-group mb-2'{$style}>{$hLabel}<div data-tipo='datatable' data-nombre='{$hName}' class='table-responsive'>{$addBtn} {$delBtn}<table class='table table-sm table-bordered mb-0'><thead><tr>{$head}</tr></thead><tbody>{$rowsHtml}</tbody></table></div></div>";
         default:
             return "<div class='form-group mb-2'>{$hLabel}<input type='{$inputType}' name='{$hName}' value='".htmlspecialchars((string)$valor, ENT_QUOTES, 'UTF-8')."' class='form-control'{$disabled}{$attrStr}></div>";
     }

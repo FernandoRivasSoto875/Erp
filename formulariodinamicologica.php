@@ -1,3 +1,4 @@
+// COPILOT_MARK: Cambio menor para detección de push en GitHub Desktop
 <?php
 // Leer COPILOT_PROMPT en formulariodinamicoprompt.txt.
 // Leer COPILOT_PROMPT en formulariodinamicoprompt.txt.

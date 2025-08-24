@@ -1,3 +1,4 @@
+// COPILOT_MARK: Cambio menor para detección de push en GitHub Desktop
 console.log('[FD] JS cargado correctamente');
 // --- Funcionalidades avanzadas datatable ---
 // Orden por columna

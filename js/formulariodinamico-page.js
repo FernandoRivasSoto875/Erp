@@ -13,6 +13,7 @@
   // Externos esperados:
   // window.FORM_JSON  (inyectado por PHP)
   // window.FORM_CONFIG (ruta JSON, etc.)
+  // COPILOT_MARK: Cambio menor para detección de push en GitHub Desktop
   // --------- Helpers DOM ---------
   function $(sel, root=document){ return root.querySelector(sel); }
   function $all(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }

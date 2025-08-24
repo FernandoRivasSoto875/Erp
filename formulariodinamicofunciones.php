@@ -1,3 +1,4 @@
+// COPILOT_MARK: Cambio menor para detección de push en GitHub Desktop
 <?php
 // Encabezado para forzar UTF-8 en la salida HTML
 //   Leer COPILOT_PROMPT en Leer COPILOT_PROMPT en formulariodinamicoprompt.txt (fuente única de lineamientos).

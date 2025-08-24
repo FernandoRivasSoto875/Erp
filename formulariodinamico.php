@@ -49,7 +49,7 @@ foreach ($fieldsets as $fs) {
     // Diagnóstico visual de funciones PHP
     if (function_exists('fd_diagnostico_html')) {
         echo fd_diagnostico_html();
-    } else {
+// COPILOT_MARK: Cambio menor para detección de push en GitHub Desktop
         echo '<div class="alert alert-danger">No se encontró la función de diagnóstico PHP.</div>';
     }
     ?>

@@ -87,31 +87,33 @@ function makeTableExportable(dtWrap, table) {
 
 // Selección múltiple de filas
 function makeTableSelectable(table, config) {
+  const theadRow = table.querySelector('thead tr');
+  const tbody = table.querySelector('tbody');
   if (config.seleccion_multiple !== 'enable') return;
-          // Agregar columna de selección múltiple al inicio
-          const thSel = document.createElement('th');
-          thSel.textContent = '';
-          theadRow.insertBefore(thSel, theadRow.firstChild);
-          // Agregar checkboxSel a cada fila
-          Array.from(tbody.querySelectorAll('tr')).forEach(function(tr) {
-            const tdSel = document.createElement('td');
-            const cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.className = 'checkboxSel';
-            cb.addEventListener('change', function() {
-              tr.classList.toggle('selected', cb.checked);
-            });
-            tdSel.appendChild(cb);
-            tr.insertBefore(tdSel, tr.firstChild);
-          });
-          // Doble click para seleccionar/deseleccionar
-          tbody.addEventListener('dblclick', function(e) {
-            if (e.target.tagName === 'TD' && e.target.querySelector('.checkboxSel')) {
-              const cb = e.target.querySelector('.checkboxSel');
-              cb.checked = !cb.checked;
-              e.target.closest('tr').classList.toggle('selected', cb.checked);
-            }
-          });
+  // Agregar columna de selección múltiple al inicio
+  const thSel = document.createElement('th');
+  thSel.textContent = '';
+  theadRow.insertBefore(thSel, theadRow.firstChild);
+  // Agregar checkboxSel a cada fila
+  Array.from(tbody.querySelectorAll('tr')).forEach(function(tr) {
+    const tdSel = document.createElement('td');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'checkboxSel';
+    cb.addEventListener('change', function() {
+      tr.classList.toggle('selected', cb.checked);
+    });
+    tdSel.appendChild(cb);
+    tr.insertBefore(tdSel, tr.firstChild);
+  });
+  // Doble click para seleccionar/deseleccionar
+  tbody.addEventListener('dblclick', function(e) {
+    if (e.target.tagName === 'TD' && e.target.querySelector('.checkboxSel')) {
+      const cb = e.target.querySelector('.checkboxSel');
+      cb.checked = !cb.checked;
+      e.target.closest('tr').classList.toggle('selected', cb.checked);
+    }
+  });
   const thead = table.querySelector('thead');
   if (!thead) return;
   const toggleBar = document.createElement('div');
@@ -132,7 +134,71 @@ function makeTableSelectable(table, config) {
     };
     toggleBar.appendChild(btn);
   });
-  dtWrap.insertBefore(toggleBar, table);
+  table.parentElement.insertBefore(toggleBar, table);
+}
+
+// Suma de columnas y totales
+function makeTableTotals(table) {
+  const tfoot = table.querySelector('tfoot') || table.createTFoot();
+  tfoot.innerHTML = '';
+  const tr = document.createElement('tr');
+  const cols = table.querySelectorAll('thead th');
+  Array.from(cols).forEach((th, idx) => {
+    let sum = 0;
+    let isNumeric = false;
+    Array.from(table.querySelector('tbody').rows).forEach(row => {
+      const td = row.cells[idx];
+      if (!td) return;
+      const val = td.querySelector('input')?.value || td.textContent;
+      if (!isNaN(val) && val !== '') {
+        sum += parseFloat(val);
+        isNumeric = true;
+      }
+    });
+    const td = document.createElement('td');
+    td.style.fontWeight = 'bold';
+    td.style.background = '#f8f9fa';
+    td.textContent = isNumeric ? sum : '';
+    tr.appendChild(td);
+  });
+  tfoot.appendChild(tr);
+}
+
+// Barra de búsqueda y filtro
+function makeTableSearch(dtWrap, table) {
+  const searchBar = document.createElement('div');
+  searchBar.className = 'fd-datatable-search mb-2 d-flex justify-content-end gap-2';
+  const input = document.createElement('input');
+  input.type = 'search';
+  input.className = 'form-control form-control-sm';
+  input.placeholder = 'Buscar...';
+  searchBar.appendChild(input);
+  dtWrap.insertBefore(searchBar, table);
+  input.addEventListener('input', function() {
+    const term = input.value.toLowerCase();
+    Array.from(table.querySelector('tbody').rows).forEach(row => {
+      let found = false;
+      Array.from(row.cells).forEach(td => {
+        const val = td.querySelector('input')?.value || td.textContent;
+        if(val.toLowerCase().includes(term)) found = true;
+      });
+      row.style.display = found ? '' : 'none';
+    });
+    makeTableTotals(table); // Actualiza totales según filtro
+  });
+}
+
+// Validación en tiempo real (básica)
+function makeTableValidation(table) {
+  Array.from(table.querySelectorAll('tbody input')).forEach(inp => {
+    inp.addEventListener('input', function() {
+      if(inp.type === 'number' && isNaN(inp.value)) {
+        inp.classList.add('is-invalid');
+      } else {
+        inp.classList.remove('is-invalid');
+      }
+    });
+  });
 }
 
 // Resaltado condicional
@@ -226,6 +292,9 @@ document.addEventListener('DOMContentLoaded', function() {
     makeTablePaginated(dtWrap, table, 10);
     makeTableExportable(dtWrap, table);
     makeTableSelectable(table, config);
+    makeTableSearch(dtWrap, table);
+    makeTableTotals(table);
+    makeTableValidation(table);
     makeTableColumnToggle(dtWrap, table);
     makeTableHighlight(table);
     makeTableTooltips(table);

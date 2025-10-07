@@ -19,7 +19,7 @@ function makeTableSortable(table) {
       th.dataset.sortAsc = (!asc).toString();
     };
   });
-}
+} 
 
 // Paginación
 function makeTablePaginated(dtWrap, table, pageSize=10) {
